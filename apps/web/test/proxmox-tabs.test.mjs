@@ -239,9 +239,9 @@ test('cluster header owns refresh and the active section action without duplicat
  await page.click(button(page,'Run Task'));assert.ok(page.container.querySelector('.modal'));}finally{await page.close()}
 });
 
-test('both overview and Nodes table inspect a node by click and keyboard',async()=>{
+test('both overview and Nodes table open nodes through explicit action controls',async()=>{
  const page=await mounted('pages/Proxmox.tsx',{},reviewApi);
- try{const row=page.container.querySelector('[aria-label="Inspect node n2"]');assert.equal(row.tabIndex,0);await page.click(row.querySelector('td'));assert.ok(route(page).includes('node=n2'));assert.equal(page.container.querySelector('.nodes-detail-head b').textContent.startsWith('n2'),true);const first=page.container.querySelector('[aria-label="Inspect node n1"]');await act(async()=>first.dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true})));assert.ok(route(page).includes('node=n1'));assert.ok(page.container.querySelector('.nodes-detail-head').textContent.startsWith('n1'));}finally{await page.close()}
+ try{const row=page.container.querySelector('[aria-label="Inspect node n2"]');assert.equal(row.tabIndex,-1);await page.click(row.querySelector('td'));assert.ok(!route(page).includes('node=n2'));await page.click(row.querySelector('button.table-action'));assert.ok(route(page).includes('node=n2'));assert.equal(page.container.querySelector('.nodes-detail-head b').textContent.startsWith('n2'),true);const first=page.container.querySelector('[aria-label="Inspect node n1"]');await act(async()=>first.dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true})));assert.ok(route(page).includes('node=n2'));await page.click(first.querySelector('button'));assert.ok(route(page).includes('node=n1'));assert.ok(page.container.querySelector('.nodes-detail-head').textContent.startsWith('n1'));}finally{await page.close()}
 });
 
 test('closing a pending task read keeps refresh available and ignores its late response',async()=>{

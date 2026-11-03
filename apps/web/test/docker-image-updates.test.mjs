@@ -115,3 +115,10 @@ test('Docker updates enables scheduled checks for a legacy disabled setting and 
   assert.match(page.container.textContent,/Checks automatically every 6 hours/);
  }finally{await page.close()}
 });
+
+test('review loading belongs only to the clicked update card',async()=>{
+ let resolve;const pending=new Promise(r=>resolve=r);const other={...row,containerId:'second-container',name:'Another app'};
+ const page=await mounted('components/DockerUpdates.tsx',{owner:true,onUpdated(){}},async p=>p==='/docker/updates'?{rows:[row,other],settings:{enabled:true,intervalHours:6}}:pending);
+ try{const cards=[...page.container.querySelectorAll('.docker-update-card')];await page.click(cards[0].querySelector('button'));assert.equal(cards[0].querySelector('button').getAttribute('aria-busy'),'true');assert.equal(cards[1].querySelector('button').getAttribute('aria-busy'),'false');assert.equal(cards[1].querySelector('.docker-review-loading'),null);assert.equal(cards[1].querySelector('button').disabled,true);await act(async()=>{resolve(plan);await new Promise(r=>setTimeout(r,0))});assert.ok(page.container.querySelector('.modal'));
+ }finally{resolve(plan);await page.close()}
+});

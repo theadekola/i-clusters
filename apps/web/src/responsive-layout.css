@@ -168,3 +168,23 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
 .modal.modal label:has(>input:is([type=checkbox],[type=radio]):not([role=switch]))>span{min-inline-size:0}
 .modal.modal :is(.form-grid,.cluster-form) :is(input:not([type=checkbox]):not([type=radio]):not([type=hidden]),select,textarea){box-sizing:border-box;inline-size:100%}
 .modal.modal .disk-node-controls>select{inline-size:auto}
+
+/* Resource identity is text; explicit action controls open details. */
+.resource-identity{display:inline-flex;align-items:center;gap:8px;min-inline-size:0;overflow-wrap:anywhere}
+.resource-identity>:is(svg,.brand-mark){flex-shrink:0}
+.modal :is(.image-inspection,.volume-inspection)>h3{display:flex;align-items:center;gap:10px;min-inline-size:0}
+.modal :is(.image-inspection,.volume-inspection)>h3>:is(svg,.brand-mark){flex-shrink:0}
+.content.content .docker-networks .volume-workspace>.card{min-inline-size:0}
+.content.content .docker-networks .table-wrap{max-block-size:none;max-height:none;padding:0}
+.content.content .docker-networks .table-wrap table{min-inline-size:780px;table-layout:auto}
+.content.content .docker-networks .table-wrap th{white-space:nowrap;word-break:normal;overflow-wrap:normal}
+.content.content .docker-networks .volume-toolbar>input{flex:1 1 180px}
+@media(max-width:767px){
+ /* Paginated lists use the page scroll rather than a second vertical scroll area. */
+ .content.content .table-wrap{max-height:none;max-block-size:none}
+ .content.content .metric-grid.metric-grid{grid-auto-flow:row;grid-auto-columns:auto;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}
+ .content.content .metric-grid.metric-grid>*{min-inline-size:0}
+ .modal.modal .task-details>div{grid-template-columns:minmax(0,1fr);gap:4px}
+ .modal.modal .task-details dd{text-align:start;margin:0}
+}
+.content.content .inspectable-row{cursor:default}
