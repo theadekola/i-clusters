@@ -53,3 +53,11 @@ test('shared volumes use the guest owner node rather than the first storage list
  const inventory=await datasetInventory({proxmox:true,guests:{vms:[{id:'100',node:'node02',status:'running',disk:40,diskTotal:100}]},inventory:async()=>({errors:[],resources:[{node:'node01',name:'shared',shared:true,status:'online'},{node:'node02',name:'shared',shared:true,status:'online'}]}),query:async()=>[{volid:'shared:vm-100-disk-0',vmid:100,content:'images',size:200}]});
  assert.equal(inventory.resources.length,1);assert.equal(inventory.resources[0].node,'node02');assert.equal(inventory.resources[0].guestUsage.used,40);
 });
+
+test('CT editor uses authoritative config size when content labels are images or content omits the root disk',async()=>{
+ for(const missing of [false,true]){
+  const f=proxmox('lxc');f.volume.content='images';if(missing)f.volume.volid='other';
+  const model=await f.editor.inspect(target);assert.equal(model.type,'CT Volume');assert.equal(model.size,120*GiB);
+  await f.editor.update({...target,revision:model.revision,sizeGiB:121});assert.equal(f.writes[0].path,'/nodes/node01/lxc/100/resize');
+ }
+});

@@ -8,7 +8,7 @@ test('normalization keeps inherited free space separate from quota and volume si
 });
 test('shared volumes are deduplicated and offline pools are not queried',async()=>{
  const calls=[];const result=await datasetInventory({proxmox:true,inventory:async()=>({errors:[],resources:[{node:'one',name:'nfs',shared:true,status:'online'},{node:'two',name:'nfs',shared:true,status:'online'},{node:'off',name:'local',status:'offline'}]}),query:async p=>{calls.push(p);return [{volid:'nfs:vm-100-disk-0',content:'images',size:100},{volid:'nfs:test.iso',content:'iso',size:80}];}});
- assert.equal(result.resources.length,1);assert.equal(result.resources[0].type,'VM Volume');assert.equal(result.resources[0].used,null);assert.equal(calls.length,2);
+ assert.equal(result.resources.length,1);assert.equal(result.resources[0].type,'VM Volume');assert.equal(result.resources[0].used,null);assert.equal(calls.length,3);
 });
 test('per-node volume failures retain successful resources',async()=>{
  const r=await datasetInventory({proxmox:true,inventory:async()=>({errors:[],resources:[{node:'one',name:'local',status:'online'},{node:'two',name:'local',status:'online'}]}),query:async p=>{if(p.includes('/two/'))throw Error('Denied');return [{volid:'local:subvol-1',content:'rootdir',size:100}];}});
@@ -48,4 +48,17 @@ test('guest measurements require the matching node, guest type, running state an
 });
 test('native volume usage is not mixed with guest totals',async()=>{
  const result=await datasetInventory({proxmox:true,guests:{vms:[{id:'100',node:'one',status:'running',disk:40,diskTotal:100}]},inventory:async()=>({errors:[],resources:[{node:'one',name:'local',status:'online'}]}),query:async()=>[{volid:'local:vm-100-disk-0',vmid:100,content:'images',size:200,used:20}]});assert.equal(result.resources[0].used,20);assert.equal(result.resources[0].available,null);assert.equal(result.resources[0].guestUsage,null);
+});
+
+
+test('container configs restore absent CT volumes and correct images labels without applying root usage to mount points',async()=>{
+ const result=await datasetInventory({proxmox:true,guests:{lxc:[{id:'200',node:'one',status:'running',disk:2,diskTotal:8}]},inventory:async()=>({errors:[],resources:[{node:'one',name:'local',status:'online'}]}),query:async path=>path.endsWith('/config')?{rootfs:'local:vm-200-disk-0,size=8G',mp0:'local:subvol-200-disk-1,mp=/data,size=20G',mp1:'/srv/shared,mp=/shared'}:[{vmid:200,volid:'local:vm-200-disk-0',content:'images',size:8*1024**3}]});
+ assert.equal(result.resources.length,3);
+ const root=result.resources.find(r=>r.disk==='rootfs');assert.equal(root.type,'CT Volume');assert.equal(root.mountpoint,'/');assert.equal(root.guestUsage.used,2);
+ const data=result.resources.find(r=>r.disk==='mp0');assert.equal(data.size,20*1024**3);assert.equal(data.guestUsage,null);
+ const bind=result.resources.find(r=>r.disk==='mp1');assert.equal(bind.type,'CT Bind Mount');assert.equal(bind.editable,false);assert.equal(bind.size,null);
+});
+test('CT config failures retain content rows and report partial coverage',async()=>{
+ const result=await datasetInventory({proxmox:true,guests:{lxc:[{id:'200',node:'one'}]},inventory:async()=>({errors:[],resources:[{node:'one',name:'local',status:'online'}]}),query:async path=>{if(path.endsWith('/config'))throw Error('Denied');return [{vmid:200,volid:'local:vm-200-disk-0',content:'images',size:8}];}});
+ assert.equal(result.resources[0].type,'CT Volume');assert.equal(result.summary.coverage.complete,false);assert.match(result.errors[0],/CT 200/);
 });

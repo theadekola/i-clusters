@@ -1,3 +1,4 @@
+import {configuredVolumeSize} from './proxmox-volume.js';
 import crypto from 'node:crypto';
 import {pve} from './connectors.js';
 import {truenas} from './infrastructure.js';
@@ -31,14 +32,14 @@ export function createStorageResourceEditor({query=pve,tn=truenas}={}){
   if(!config||typeof config!=='object')fail('Current guest configuration is unavailable',502);
   if(config.lock||config.template)fail('Locked guests and templates cannot be resized here',409);
   const pattern=guest.type==='qemu'?/^(scsi|sata|ide|virtio)\d+$/:/^(rootfs|mp\d+)$/;
-  const disks=Object.entries(config).filter(([key,value])=>pattern.test(key)&&typeof value==='string'&&!/(?:^|,)media=cdrom(?:,|$)/.test(value)&&value.split(',')[0].replace(/^file=/,'')===target.resourceId);
+  const disks=Object.entries(config).filter(([key,value])=>pattern.test(key)&&typeof value==='string'&&!/(?:^|,)media=cdrom(?:,|$)/.test(value)&&value.split(',')[0].replace(/^(?:file|volume)=/,'')===target.resourceId);
   if(disks.length!==1)fail('This volume is not uniquely attached to the selected guest. Refresh storage.',409);
   const pool=target.resourceId.split(':')[0];if(!target.resourceId.includes(':'))fail('Only managed storage volumes can be resized');
-  const content=await query(`/nodes/${encodeURIComponent(target.node)}/storage/${encodeURIComponent(pool)}/content`);
+  let content;try{content=await query(`/nodes/${encodeURIComponent(target.node)}/storage/${encodeURIComponent(pool)}/content`);}catch(error){if(guest.type!=='lxc')throw error;content=[];}
   if(!Array.isArray(content))fail('Current storage content is unavailable',502);
-  const volume=content.find(v=>v.volid===target.resourceId&&String(v.vmid)===target.vmid&&v.content===(guest.type==='qemu'?'images':'rootdir'));
-  const size=numeric(volume?.size);
-  if(!volume||!Number.isSafeInteger(size)||size<=0||!/^[a-f0-9]{40}$/.test(config.digest||''))fail('Current volume size or configuration revision is unavailable',409);
+  const volume=content.find(v=>v.volid===target.resourceId&&String(v.vmid)===target.vmid&&(guest.type==='lxc'||v.content==='images'));
+  const size=guest.type==='lxc'?configuredVolumeSize(disks[0][1])??numeric(volume?.size):numeric(volume?.size);
+  if((guest.type==='qemu'&&!volume)||!Number.isSafeInteger(size)||size<=0||!/^[a-f0-9]{40}$/.test(config.digest||''))fail('Current volume size or configuration revision is unavailable',409);
   const model={...target,type:guest.type==='qemu'?'VM Volume':'CT Volume',disk:disks[0][0],size,digest:config.digest};
   return {...model,revision:revision(model)};
  }
