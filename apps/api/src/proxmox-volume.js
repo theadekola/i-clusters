@@ -2,7 +2,7 @@
 export function configuredVolumeSize(value){
  const match=String(value||'').match(/(?:^|,)size=(\d+(?:\.\d+)?)([KMGTPE]?)(?:i?B)?(?:,|$)/i);
  if(!match)return null;
- const bytes=Number(match[1])*1024**('KMGTPE'.indexOf(match[2].toUpperCase())+1);
+ const bytes=Number(match[1])*1024**(match[2]?'KMGTPE'.indexOf(match[2].toUpperCase())+1:0);
  return Number.isSafeInteger(bytes)&&bytes>0?bytes:null;
 }
 export function containerVolumes(config){

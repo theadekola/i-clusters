@@ -1,3 +1,4 @@
+import {configuredVolumeSize} from '../src/proxmox-volume.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createStorageResourceEditor} from '../src/storage-resource-editor.js';
@@ -60,4 +61,12 @@ test('CT editor uses authoritative config size when content labels are images or
   const model=await f.editor.inspect(target);assert.equal(model.type,'CT Volume');assert.equal(model.size,120*GiB);
   await f.editor.update({...target,revision:model.revision,sizeGiB:121});assert.equal(f.writes[0].path,'/nodes/node01/lxc/100/resize');
  }
+});
+
+test('container config size parser preserves byte values and binary units and rejects unknown sizes',()=>{
+ assert.equal(configuredVolumeSize('local:disk,size=8589934592'),8*GiB);
+ assert.equal(configuredVolumeSize('local:disk,size=8G'),8*GiB);
+ assert.equal(configuredVolumeSize('local:disk,size=1.5T'),1536*GiB);
+ assert.equal(configuredVolumeSize('local:disk,mp=/data'),null);
+ assert.equal(configuredVolumeSize('local:disk,size=unknown'),null);
 });
