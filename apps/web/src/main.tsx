@@ -35,6 +35,5 @@ import './connection-notice.css';
 
 import './responsive-layout.css';
 
-if ('serviceWorker' in navigator && window.isSecureContext) {
- window.addEventListener('load',()=>{void navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).catch(()=>{/* Installation remains available through the browser menu. */});});
-}
+import {startWorkerUpdates} from './service-worker';
+startWorkerUpdates();
