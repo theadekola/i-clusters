@@ -36,3 +36,12 @@
 .storage-guest-allocation dt{color:var(--theme-muted,#adbed3)}
 .storage-guest-allocation .btn{max-width:100%;white-space:normal}
 @media(max-width:480px){.storage-guest-allocation dl{grid-template-columns:minmax(0,1fr)}.storage-guest-allocation dd{margin-bottom:8px}}
+
+.disk-configuration fieldset{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;border:1px solid var(--theme-border,#294158);border-radius:10px;padding:12px}
+.disk-configuration fieldset legend{padding:0 6px}
+.disk-configuration label:has(>input[type=checkbox]){display:flex;align-items:center;gap:10px;min-height:44px}
+.modal .disk-configuration input[type=checkbox]{width:18px;height:18px;min-height:18px;flex:0 0 18px}
+.disk-configuration select[multiple]{min-height:100px}
+.storage-contents td:first-child{overflow-wrap:anywhere;max-width:600px}
+.storage-contents>.card{margin-top:16px}
+@media(max-width:600px){.disk-configuration fieldset{grid-template-columns:minmax(0,1fr)}.storage-contents .header-actions{align-items:stretch}.storage-contents .btn{white-space:normal}}

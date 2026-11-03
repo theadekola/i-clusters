@@ -6,6 +6,7 @@ const decodedNode=value=>{try{return nodeTarget(decodeURIComponent(value))}catch
 export function approvalTargetForPath(path,body={},method='POST'){
  if(typeof path!=='string'||path.length>4096||!body||typeof body!=='object'||Array.isArray(body))return null;
  if(['/storage/datasets/edit','/storage/datasets/guest-expand'].includes(path)&&method==='PUT'&&body.provider==='proxmox')return nodeTarget(body.node);
+ if(path==='/proxmox/storage-file-upload'&&method==='POST')return nodeTarget(body.node);
  const lifecycle=path.match(/^\/actions\/proxmox\/(?:vm|lxc)\/\d+\/(?:start|stop|shutdown|reboot|reset|suspend|resume|snapshot|delete-snapshot|clone|delete)$/);
  if(lifecycle&&method==='POST')return nodeTarget(body.node);
  const node=path.match(/^\/proxmox\/node\/([^/]+)\/(?:power\/(?:reboot|shutdown)|service\/[^/]+\/(?:start|stop|restart))$/);
@@ -20,9 +21,9 @@ export function approvalTargetForPath(path,body={},method='POST'){
 export async function resolveActionApproval(path,body={},method='POST',{dockerHost='',query,hosts=agentHosts,nodes=agentNodes}={}){
  if(typeof path!=='string'||!body||typeof body!=='object'||Array.isArray(body)||!['POST','PUT','DELETE'].includes(method))return null;
  const direct=approvalTargetForPath(path,body,method);if(direct)return {target:direct,scope:direct};
- const nodeBound=/^\/(?:proxmox\/(?:node|network)\/|network\/(?:dns|firewall)\/|tasks\/|actions\/proxmox\/|storage\/snapshots\/guest\/(?:rollback|delete)$|restore\/[^/]+\/run$)/.test(path)||(method==='POST'&&['/proxmox/vm','/proxmox/ct','/retention/run'].includes(path));
+ const nodeBound=(path==='/proxmox/storage-file-upload'&&method==='POST')||/^\/(?:proxmox\/(?:node|network)\/|network\/(?:dns|firewall)\/|tasks\/|actions\/proxmox\/|storage\/snapshots\/guest\/(?:rollback|delete)$|restore\/[^/]+\/run$)/.test(path)||(method==='POST'&&['/proxmox/vm','/proxmox/ct','/retention/run'].includes(path));
  if((['/storage/datasets/edit','/storage/datasets/guest-expand'].includes(path)&&method==='PUT'&&body.provider==='proxmox')||nodeBound)fail('Invalid node target or action for password approval');
- const clusterAction=(method==='POST'&&/^\/proxmox\/storage$/.test(path))||(method==='PUT'&&/^\/proxmox\/storage\/[^/]+\/enabled$/.test(path))||(method==='DELETE'&&/^\/schedules\/[^/]+$/.test(path))||(method==='POST'&&['/retention'].includes(path))||(method==='POST'&&/^\/proxmox\/creation\/[^/]+\/ha$/.test(path));
+ const clusterAction=(method==='POST'&&/^\/proxmox\/storage$/.test(path))||(method==='PUT'&&/^\/proxmox\/storage\/[^/]+\/enabled$/.test(path))||(method==='DELETE'&&/^\/schedules\/[^/]+$/.test(path))||(method==='POST'&&['/retention','/proxmox/storage-configure'].includes(path))||(method==='POST'&&/^\/proxmox\/creation\/[^/]+\/ha$/.test(path));
  if(clusterAction){
   if(!query)query=(await import('./connectors.js')).pve;
   const status=await query('/cluster/status');if(!Array.isArray(status))fail('Cluster node inventory is unavailable',502);

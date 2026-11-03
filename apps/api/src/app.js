@@ -1,3 +1,6 @@
+import {requestBodyDeadline} from './request-body-deadline.js';
+import {storageConfigurationService} from './storage-configuration-service.js';
+import {createStorageFileUploads} from './storage-file-upload.js';
 import {guestStorage} from './guest-storage.js';
 import {storageResourceEditor} from './storage-resource-editor.js';
 import {vpnGateways,requireVPNNode} from './vpn-gateways.js';
@@ -80,13 +83,14 @@ import { request,pve,docker,dockerSnapshot,proxmoxVmAction,proxmoxLxcAction,prox
 import { encode,required,integer,httpError,retention,pveWrite,backupJobs,createBackupJob,runBackupJob,toggleBackupJob,backupArchives,restoreArchive,truenas } from './infrastructure.js';
 
 
-export function createApp({authenticate=auth,authorize=requireRole,audit=writeAudit,monitor=liveMonitor,db=pool,configuration=configurationStore,activity=headerNotifications,notificationService=notifier,connectorUpdates=connectorUpdater,autoConnectorUpdates=automaticConnectorUpdates,connectionService=connectionActions,connectorAddress=connectorSSHAddress,guestPermissions=guestPermissionRepair,powerPermissions=powerPermissionSetup,guestConnectionReader=createGuestConnectionReader({config:clusterConfig}),imageUpdates=dockerImageUpdates,imageUpdateInstaller=installDockerImageUpdate,dockerUpdateQuery=docker,operationJournalFile,nodePairing=automaticNodePairing,storageEditor=storageResourceEditor,guestStorageService=guestStorage}={}){
+export function createApp({authenticate=auth,authorize=requireRole,audit=writeAudit,monitor=liveMonitor,db=pool,configuration=configurationStore,activity=headerNotifications,notificationService=notifier,connectorUpdates=connectorUpdater,autoConnectorUpdates=automaticConnectorUpdates,connectionService=connectionActions,connectorAddress=connectorSSHAddress,guestPermissions=guestPermissionRepair,powerPermissions=powerPermissionSetup,guestConnectionReader=createGuestConnectionReader({config:clusterConfig}),imageUpdates=dockerImageUpdates,imageUpdateInstaller=installDockerImageUpdate,dockerUpdateQuery=docker,operationJournalFile,nodePairing=automaticNodePairing,storageEditor=storageResourceEditor,guestStorageService=guestStorage,storageConfigurationManager=storageConfigurationService}={}){
 
  const app=express(),readCache=createReadCache(),reportPerformance=createReportPerformance();
  app.use((req,res,next)=>{const started=performance.now();res.on('finish',()=>{if(req.method==='GET'&&req.route?.path)reportPerformance.record(req.route.path,performance.now()-started,res.statusCode)});next()});
  app.use((req,res,next)=>{res.on('finish',()=>{try{activity.capture(req,res.statusCode,res.locals.activityStatus)}catch{console.error('Application activity could not be recorded.')}});next();});
  app.use((req,res,next)=>{res.on('finish',()=>{if(!['GET','HEAD'].includes(req.method)&&res.statusCode<400&&req.path!=='/api/node-agents/pairing/status'&&!/^\/api\/(auth|ssh|node-agent|header-notifications)(?:\/|$)/.test(req.path))readCache.clear();});next();});
 
+ app.use(requestBodyDeadline);
  if(process.env.TRUST_PROXY)app.set('trust proxy',Number(process.env.TRUST_PROXY)||1);
  app.use(helmet());app.use(cors({origin:(process.env.WEB_ORIGIN||'http://localhost').split(',')}));app.use(express.json({limit:apiPolicy.jsonBodyBytes}));
  app.use(rateLimit({windowMs:60000,limit:apiPolicy.requestsPerMinute,standardHeaders:true,legacyHeaders:false,skip:req=>{if(req.path!=='/api/node-agent/poll')return false;try{req.nodeAgent=authenticateAgent(req.headers.authorization?.replace(/^Bearer /,''));return true;}catch{return false;}}}));
@@ -271,6 +275,15 @@ export function createApp({authenticate=auth,authorize=requireRole,audit=writeAu
  const readArchives=req=>readCache.run('backup-archives:'+connectionScope(),()=>backupArchives(),{force:forceRead(req)});
  read('/proxmox/storage',req=>readStorage(req));
  read('/proxmox/storage/configuration',()=>storageConfiguration());
+ const storageUploads=createStorageFileUploads({storage:storageConfigurationManager,scope:connectionScope});
+ read('/proxmox/storage-options',async()=>{const scope=connectionScope(),result=await storageConfigurationManager.options();if(scope!==connectionScope())throw httpError('Storage connection changed',409);return {...result,connectionScope:scope};},'admin');
+ read('/proxmox/storage-mounts/:node',req=>storageConfigurationManager.mounts(req.params.node),'admin');
+ read('/proxmox/storage-configure/:id',async req=>{const scope=connectionScope(),model=await storageConfigurationManager.inspect(req.params.id);if(scope!==connectionScope())throw httpError('Storage connection changed',409);return {...model,connectionScope:scope};},'admin');
+ action('post','/proxmox/storage-configure','admin','storage.configure',req=>{const scope=req.body.connectionScope;const guard=()=>{if(scope!==connectionScope())throw httpError('Storage connection changed. Reopen Configure Disk.',409)};guard();return storageConfigurationManager.configure(req.body,guard);},true);
+ read('/proxmox/storage-files/:node/:id',async req=>{const scope=connectionScope(),result=await storageConfigurationManager.browse(req.params.node,req.params.id);if(scope!==connectionScope())throw httpError('Storage connection changed',409);return {...result,connectionScope:scope};});
+ action('post','/proxmox/storage-file-upload','admin','storage.file.import',req=>storageUploads.prepare(req.body,req.user.sub),true);
+ app.put('/api/proxmox/storage-file-upload/:upload',authorize('admin'),async(req,res)=>{try{const result=await storageUploads.transfer(req.params.upload,req.user.sub,req);monitor.invalidate();await audit(req,'storage.file.import.complete',result.id,{filename:result.filename,node:result.node},'success');res.json({ok:true,result});}catch(error){req.resume();await audit(req,'storage.file.import.complete','file import',{error:error.message},'failed');res.status(error.status||502).json({error:error.message});}});
+
  read('/network/dns',async()=>{const nodes=await pve('/nodes'),resolvers=[],errors=[];await Promise.all(nodes.map(async n=>{try{if(n.status==='offline')throw new Error('Node is offline');resolvers.push({node:n.node,...await pve(`/nodes/${encode(n.node)}/dns`)});}catch(e){errors.push(`${n.node}: ${e.message}`);}}));return {resolvers,errors,sampledAt:new Date().toISOString()};});
  action('put','/network/dns/:node','admin','network.dns.configure',req=>networkDnsWrite(req.params.node,req.body),true);
  read('/network/firewall/:node',req=>networkFirewall(req.params.node));
