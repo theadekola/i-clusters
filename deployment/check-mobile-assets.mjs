@@ -15,4 +15,12 @@ for(const icon of [...manifest.icons,{src:'/assets/iclusters-180.png',sizes:'180
  const [width,height]=icon.sizes.split('x').map(Number);assert.equal(png.readUInt32BE(16),width);assert.equal(png.readUInt32BE(20),height);
 }
 const worker=await read('/sw.js',/(?:application|text)\/javascript/);assert.match(worker.toString(),/addEventListener\('fetch'/);
-console.log('Mobile manifest, all install icons and service worker are publicly readable.');
+const diagnostics=await read('/connection-check.html',/text\/html/);assert.match(diagnostics.toString(),/Check your i-Clusters connection/);
+await read('/connection-check.js',/(?:application|text)\/javascript/);
+for(const path of ['/sw.js','/connection-check.html','/connection-check.js']){
+ const response=await fetch(new URL(path,origin),{signal:AbortSignal.timeout(15000)});
+ assert.match(response.headers.get('cache-control')||'',/no-store/);
+ await response.arrayBuffer();
+}
+const missing=await fetch(new URL('/assets/iclusters-missing-chunk.js',origin),{signal:AbortSignal.timeout(15000)});assert.equal(missing.status,404);await missing.arrayBuffer();
+console.log('Mobile assets, uncached connection diagnostics and missing-chunk handling verified.');

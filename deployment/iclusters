@@ -10,6 +10,10 @@ case "$command" in
   stop) systemctl stop i-clusters;;
   restart) docker compose up -d --wait --wait-timeout 180;;
   config) "${EDITOR:-nano}" .env;;
+  certificate)
+    # Public PEM only. Redirect on the caller's side to save it for a device.
+    docker compose exec -T caddy cat /data/caddy/pki/authorities/local/root.crt </dev/null
+    ;;
   backup) bash deployment/controller-backup.sh "${2:?Backup directory required}" "${3:?age public recipient required}";;
   recover-account)
     username=${2:?Username required}
@@ -20,5 +24,5 @@ case "$command" in
     unset account_password account_confirm
     ;;
   update) bash deployment/upgrade.sh;;
-  *) echo 'Usage: sudo iclusters {status|logs|start|stop|restart|config|update|backup|recover-account}';;
+  *) echo 'Usage: sudo iclusters {status|logs|start|stop|restart|config|certificate|update|backup|recover-account}';;
 esac

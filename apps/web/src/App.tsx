@@ -44,7 +44,7 @@ export default function App(){
   window.addEventListener('online',retry);window.addEventListener('focus',retry);document.addEventListener('visibilitychange',visible);
   return()=>{window.clearInterval(timer);window.removeEventListener('online',retry);window.removeEventListener('focus',retry);document.removeEventListener('visibilitychange',visible)};
  },[connectionError,check]);
- const connectionNotice=connectionError&&!updating&&<div className="connection-notice" role="alert"><p><strong>Connection interrupted. Reconnecting automatically.</strong> {connectionError}</p><button className="btn secondary" onClick={()=>void check()}>Retry connection</button></div>;
+ const connectionNotice=connectionError&&!updating&&<div className="connection-notice" role="alert"><p><strong>Connection interrupted. Reconnecting automatically.</strong> {connectionError} <a href="/connection-check.html" target="_blank" rel="noopener">Connection diagnostics</a></p><button className="btn secondary" onClick={()=>void check()}>Retry connection</button></div>;
  if(connectionError&&authenticated!==true)return <div className="login-page">{updating?<ReportLoading message="Reconnecting…"/>:connectionNotice}</div>;
  if(authenticated===null)return <div className="login-page"><ReportLoading message="Loading i-Clusters…"/></div>;
  if(!authenticated)return <Login onLogin={()=>setAuthenticated(true)}/>;

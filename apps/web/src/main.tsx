@@ -4,6 +4,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
+import PageBoundary from './components/PageBoundary';
 import {applyAppearance} from './appearance';
 import './styles.css';
 import './sizing.css';
@@ -21,7 +22,7 @@ applyAppearance();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter><App /><InstallPrompt/></BrowserRouter>
+    <BrowserRouter><PageBoundary><App /><InstallPrompt/></PageBoundary></BrowserRouter>
   </React.StrictMode>
 );
 
@@ -35,6 +36,5 @@ import './connection-notice.css';
 
 import './responsive-layout.css';
 
-if ('serviceWorker' in navigator && window.isSecureContext) {
- window.addEventListener('load',()=>{void navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).catch(()=>{/* Installation remains available through the browser menu. */});});
-}
+import {startWorkerUpdates} from './service-worker';
+startWorkerUpdates();

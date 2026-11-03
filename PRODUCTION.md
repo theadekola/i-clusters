@@ -179,6 +179,37 @@ Provider diagnostics are read-only and owner-only. Run them after updating the V
 
 ### Automatic LAN HTTPS on port 6002
 
+For connection troubleshooting, open `/connection-check.html` on the installation's
+HTTPS origin. The page checks the API/database and frontend separately, links to
+the direct health endpoint for native browser TLS errors, and offers an explicit
+reset of only the root-scoped service worker. No cookies, credentials or server
+records are cleared. Close other dashboard tabs before resetting and reopen after.
+An older worker may still mask a TLS error until browser trust is repaired; use a
+fresh browser to inspect the direct health endpoint. A QR code is an address, not
+proof that a remote device can reach it. MikroTik and other existing VPNs remain
+independent of the optional i-Clusters WireGuard gateway.
+
+To export only the current public Caddy root on an updated Ubuntu installation:
+
+```bash
+sudo iclusters certificate > iclusters-root.crt
+openssl x509 -in iclusters-root.crt -noout -subject -dates -fingerprint -sha256
+```
+
+Transfer that public certificate through a trusted channel and compare its SHA-256
+fingerprint before installing it. On iPhone/iPad install the profile, then enable
+full trust under General → About → Certificate Trust Settings. On Windows import
+into Trusted Root Certification Authorities. On Android choose CA certificate;
+Firefox may need an Authorities import. Do not distribute private keys or trust a
+short-lived leaf certificate. Routine renewal retains device trust while the same
+root and persistent Caddy storage are retained. Keep the VM address stable.
+
+A publicly trusted certificate is an alternative for an owned DNS name with local
+DNS resolving to the controller and automated DNS-01 validation. The bundled Caddy
+build does not contain a DNS provider plugin: adding the appropriate maintained
+provider and narrowly scoped credentials is a separate configuration task. Keep
+the dashboard private; do not forward public management ports just to obtain TLS.
+
 New installations detect the VM address and configure HTTPS at `https://VM-IP:6002`. Existing LAN installations migrate during a software update, preserving passwords and tokens and saving `.env.before-https-6002`. Caddy keeps its certificate authority in the existing Docker volume. Public domain configurations retain their chosen ports and certificate settings. No environment-file or Caddyfile edits are required. HTTP uses auxiliary port 6003; open the HTTPS address explicitly after migration.
 
 Browsers and manually paired nodes must trust Caddy’s local CA. Automatic SSH node pairing transfers the public CA into that connector’s configuration and keeps certificate verification enabled without changing the node’s global trust store. Export it with `sudo docker compose --project-directory /opt/i-clusters -f /opt/i-clusters/docker-compose.yml exec -T caddy cat /data/caddy/pki/authorities/local/root.crt`. Install the certificate in the client’s trusted root store. i-Clusters cannot automatically alter trust stores on users’ computers. Existing paired agents using an old address need to reconnect using the new HTTPS address.
