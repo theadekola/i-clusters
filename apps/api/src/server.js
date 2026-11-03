@@ -10,6 +10,8 @@ import { createApp } from './app.js';
 import { monitor } from './monitor.js';
 await migrate();
 const server=createApp({operationJournalFile:path.join(process.env.DATA_DIR||fileURLToPath(new URL('../runtime',import.meta.url)),'docker-operation-journal.json')}).listen(Number(process.env.PORT||6000),'0.0.0.0',()=>console.log('i-Clusters live API listening'));
+// Per-route middleware retains the shorter deadline for ordinary request bodies.
+server.requestTimeout=7200000;
 const historyCleanup=createHistoryCleanup({get,mutate});
 const cleanup=()=>{try{historyCleanup.runDue()}catch(error){console.error('Alert history cleanup:',error.message)}};
 const sample=()=>{if(process.env.DATA_DIR&&fs.existsSync(path.join(process.env.DATA_DIR,'maintenance.json')))return;cleanup();return monitor.sample(true).catch(error=>console.error('Monitoring:',error.message));};

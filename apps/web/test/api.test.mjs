@@ -131,3 +131,9 @@ try{
   sessionStorage.setItem('iclusters_update_started',String(Date.now()-21*60*1000));globalThis.fetch=async()=>response(502);await assert.rejects(c.api('/dashboard'),error=>!error.updating&&error.message==='Request failed: 502');
  });
 }finally{Object.assign(globalThis,original);}
+
+test('binary file imports preserve their content type without combining it with the JSON default',async()=>{
+ const c=await client();let seen;const file=new Blob([new Uint8Array([0,255,128])]);globalThis.fetch=async(_url,options)=>{seen=options;return response(200,{ok:true})};
+ await c.api('/proxmox/storage-file-upload/'+'a'.repeat(48),{method:'PUT',headers:{'Content-Type':'application/octet-stream'},body:file});
+ assert.equal(new Headers(seen.headers).get('Content-Type'),'application/octet-stream');assert.equal(seen.body,file);
+});
