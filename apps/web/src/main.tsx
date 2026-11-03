@@ -35,6 +35,7 @@ import './components/VmCreateWizard.css';
 import './connection-notice.css';
 
 import './responsive-layout.css';
+import './interaction-feedback.css';
 
 import {startWorkerUpdates} from './service-worker';
 startWorkerUpdates();
