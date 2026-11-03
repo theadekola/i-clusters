@@ -161,3 +161,10 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
 
 :root[data-theme="light"] .cluster-setup-guide>summary{color:#945000}
 @media(prefers-reduced-motion:reduce){.cluster-setup-guide>summary svg{transition:none}}
+
+/* Native choice controls stay beside their text in every shared popup. */
+.modal.modal label:has(>input:is([type=checkbox],[type=radio]):not([role=switch])){display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:8px;min-block-size:44px;text-align:start}
+.modal.modal label input:is([type=checkbox],[type=radio]):not([role=switch]){flex:0 0 18px;inline-size:18px;block-size:18px;min-inline-size:18px;min-block-size:18px;max-inline-size:18px;margin:0;padding:0;align-self:center;vertical-align:middle}
+.modal.modal label:has(>input:is([type=checkbox],[type=radio]):not([role=switch]))>span{min-inline-size:0}
+.modal.modal :is(.form-grid,.cluster-form) :is(input:not([type=checkbox]):not([type=radio]):not([type=hidden]),select,textarea){box-sizing:border-box;inline-size:100%}
+.modal.modal .disk-node-controls>select{inline-size:auto}
