@@ -507,7 +507,7 @@ test('Reports paginate and clamp results when outcome cards filter the table',as
 });
 
 
-test('storage, network and event rows inspect from cells and keyboard while action controls stay icons',async()=>{
+test('resource rows remain passive and explicit action controls open details',async()=>{
  const stamp=new Date().toISOString();
  const alerts=['first','second'].map(id=>({id,title:id,severity:'warning',status:'active',source:id,triggered:stamp}));
  const resources=['first','second'].map(id=>({id,name:id,node:id,provider:'proxmox',size:100,health:'PASSED'}));
@@ -519,13 +519,17 @@ test('storage, network and event rows inspect from cells and keyboard while acti
   const page=await mounted('pages/'+file+'.tsx',props,async p=>p==='/auth/me'?{user:{role:'owner'}}:p==='/docker/hosts'?{hosts:[]}:data);
   try{
    const rows=[...page.container.querySelectorAll('tbody .inspectable-row')];assert.equal(rows.length,2,file);
-   assert.equal(rows[0].tabIndex,0,file);
+   assert.equal(rows[0].tabIndex,-1,file);
    await page.click(rows[1].querySelectorAll('td')[1]);
+   if(['ActiveAlerts','AlertHistory'].includes(file))assert.deepEqual(details,[],file);
+   await page.click(rows[1].lastElementChild.querySelector('button'));
    if(['ActiveAlerts','AlertHistory'].includes(file))assert.deepEqual(details,['second'],file);
-   else assert.ok(rows[1].className.includes('selected'),file+' selects second row');
+   else assert.ok(rows[1].className.includes('selected'),file+' action selects second row');
    await act(async()=>{rows[0].dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}))});
+   if(['ActiveAlerts','AlertHistory'].includes(file))assert.deepEqual(details,['second'],file);
+   await page.click(rows[0].lastElementChild.querySelector('button'));
    if(['ActiveAlerts','AlertHistory'].includes(file))assert.deepEqual(details,['second','first'],file);
-   else assert.ok(rows[0].className.includes('selected'),file+' selects first row with Enter');
+   else assert.ok(rows[0].className.includes('selected'),file+' action selects first row');
    const actions=rows[0].lastElementChild.querySelectorAll('button');
    for(const action of actions){assert.equal(action.textContent.trim(),'',file+' action is icon only');assert.ok(action.getAttribute('aria-label'),file+' action has accessible name');assert.ok(action.title,file+' action has tooltip')}
   }finally{await page.close()}
@@ -547,8 +551,8 @@ test('alert acknowledgement and history checkboxes do not bubble into row inspec
    assert.deepEqual(details,[]);
    const row=page.container.querySelector('tbody .inspectable-row');
    await act(async()=>row.dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:' ',bubbles:true,cancelable:true})));
-   assert.deepEqual(details,['fixture']);
-   const inspect=row.lastElementChild.querySelector('button');await page.click(inspect.querySelector('svg'));assert.deepEqual(details,['fixture','fixture']);
+   assert.deepEqual(details,[]);
+   const inspect=row.lastElementChild.querySelector('button');await page.click(inspect.querySelector('svg'));assert.deepEqual(details,['fixture']);
   }finally{await page.close()}
  }
 });

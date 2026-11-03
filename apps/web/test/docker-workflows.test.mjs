@@ -87,20 +87,35 @@ test('network table shows endpoint IPs and View opens a closable side panel with
  try{assert.equal(page.container.querySelector('.docker-network-details'),null);assert.ok(!reads.length);const table=page.container.querySelector('table');assert.match(table.textContent,/Container IPs/);assert.match(table.textContent,/172.20.0.2/);assert.match(table.textContent,/fd00::2/);assert.match(table.textContent,/no separate container IP/);assert.doesNotMatch(table.textContent,/172.20.0.0\/16|172.20.0.1/);assert.equal(page.container.querySelector('.docker-side'),null);const view=[...page.container.querySelectorAll('button')].find(b=>b.textContent==='View');await page.click(view);assert.match(page.container.querySelector('.docker-network-details').textContent,/172.20.0.0\/16/);assert.match(page.container.querySelector('.docker-network-details').textContent,/172.20.0.1/);await page.click(page.container.querySelector('[aria-label="Close network details"]'));assert.equal(page.container.querySelector('.docker-network-details'),null);assert.equal(page.dom.window.document.activeElement,view);}finally{await page.close()}
 });
 
-test('volume cells and keyboard open inspection without duplicate nested button requests',async()=>{
+test('volume inspection opens only from its action button',async()=>{
  const calls=[];const data={host:{hostname:'docker'},containers:[],volumes:[{id:'vol-one',name:'app-data',mountpoint:'/var/lib/docker/volumes/app-data'}]};
  const page=await mounted('pages/DockerVolumes.tsx',{data,enabled:true,admin:true,refresh:async()=>{}},async p=>{calls.push(p);return {Name:'app-data'}});
  try{
- const row=page.container.querySelector('[aria-label="Inspect volume app-data"]');assert.ok(row);assert.equal(row.tabIndex,0);
- await page.click(row.querySelectorAll('td')[2]);assert.ok(page.container.querySelector('.modal'));assert.equal(calls.filter(p=>p==='/docker/volume/vol-one').length,1);
- await page.click(page.container.querySelector('.modal [aria-label="Close dialog"]')||page.container.querySelector('.modal .modal-close'));
- await act(async()=>{row.dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,0))});assert.ok(page.container.querySelector('.modal'));assert.equal(calls.filter(p=>p==='/docker/volume/vol-one').length,2);
- await page.click(page.container.querySelector('.modal [aria-label="Close dialog"]'));const getSelection=page.dom.window.getSelection;page.dom.window.getSelection=()=>({toString:()=>'/var/lib/docker/volumes/app-data'});await page.click(row.querySelectorAll('td')[2]);assert.equal(page.container.querySelector('.modal'),null);page.dom.window.getSelection=getSelection;await page.click(row.querySelector('[aria-label="Inspect app-data"]'));assert.equal(calls.filter(p=>p==='/docker/volume/vol-one').length,3);
+ const row=page.container.querySelector('[aria-label="Inspect volume app-data"]');assert.equal(row.tabIndex,-1);
+ await page.click(row.querySelectorAll('td')[2]);await page.click(row.querySelector('.resource-identity'));
+ await act(async()=>row.dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true})));
+ assert.equal(page.container.querySelector('.modal'),null);assert.equal(calls.filter(p=>p==='/docker/volume/vol-one').length,0);
+ await page.click(row.querySelector('[aria-label="Inspect app-data"]'));assert.ok(page.container.querySelector('.modal'));assert.equal(calls.filter(p=>p==='/docker/volume/vol-one').length,1);
  }finally{await page.close()}
 });
 
-test('network cells open the closeable details panel and preserve actual endpoint addresses',async()=>{
+test('only the network action opens details and preserves actual endpoint addresses',async()=>{
  const data={host:{hostname:'docker'},networks:[{id:'net-one',name:'app-net',driver:'bridge',scope:'local',subnets:'172.20.0.0/16'}],containers:[{id:'app',name:'homepage',networks:{'app-net':{IPAddress:'172.20.0.7/16'}}}]};
  const page=await mounted('pages/DockerNetworks.tsx',{data,enabled:true,admin:true,refresh:async()=>{}},async()=>({}));
- try{const row=page.container.querySelector('[aria-label="Inspect network app-net"]');const pair=row.querySelector('.network-container-addresses div');assert.equal(pair.querySelector('b').textContent,'homepage');assert.equal(pair.querySelector('small').textContent,'172.20.0.7');await page.click(row.querySelectorAll('td')[1]);assert.ok(page.container.querySelector('[aria-label="Network Details"]'));await page.click(page.container.querySelector('[aria-label="Close network details"]'));assert.equal(page.container.querySelector('[aria-label="Network Details"]'),null)}finally{await page.close()}
+ try{const row=page.container.querySelector('[aria-label="Inspect network app-net"]');const pair=row.querySelector('.network-container-addresses div');assert.equal(pair.querySelector('b').textContent,'homepage');assert.equal(pair.querySelector('small').textContent,'172.20.0.7');await page.click(row.querySelectorAll('td')[1]);await page.click(row.querySelector('.resource-identity'));assert.equal(page.container.querySelector('[aria-label="Network Details"]'),null);await page.click(button(row,'View'));assert.ok(page.container.querySelector('[aria-label="Network Details"]'));await page.click(page.container.querySelector('[aria-label="Close network details"]'));assert.equal(page.container.querySelector('[aria-label="Network Details"]'),null)}finally{await page.close()}
+});
+
+test('image display uses one repository reference and keeps digests in technical details',async()=>{
+ const digest='a'.repeat(64),reads=[];const image={id:'sha256:'+digest,name:`postgres:16, postgres@sha256:${digest}`,tags:['postgres:16',`postgres@sha256:${digest}`],digests:[`postgres@sha256:${digest}`],size:1024,created:1};
+ const page=await mounted('pages/DockerImages.tsx',{data:{host:{},images:[image],containers:[]},enabled:true,admin:true,refresh:async()=>{}},async p=>{reads.push(p);return {Id:image.id,RepoDigests:image.digests,Architecture:'amd64',Os:'linux'}});
+ try{const row=page.container.querySelector('tbody tr');assert.doesNotMatch(row.textContent,/sha256|a{64}/);assert.match(row.textContent,/postgres:16/);assert.ok(row.querySelector('[data-brand="postgresql"]'));
+ await page.click(row.querySelector('.resource-identity'));await page.click(row.querySelectorAll('td')[1]);assert.equal(page.container.querySelector('.modal'),null);assert.equal(reads.length,0);
+ await page.click(button(row,'Inspect'));assert.equal(reads[0],'/docker/image/'+encodeURIComponent(image.id));assert.equal(page.container.querySelector('.image-inspection h3').textContent,'postgres:16');assert.doesNotMatch(page.container.querySelector('.task-details').textContent,/sha256/);assert.match(page.container.querySelectorAll('.modal details')[1].textContent,/sha256/);
+ }finally{await page.close()}
+});
+
+test('anonymous volume display explains its container and folder without changing its operation ID',async()=>{
+ const name='a'.repeat(64),reads=[];const page=await mounted('pages/DockerVolumes.tsx',{data:{host:{},volumes:[{id:name,name,mountpoint:'/var/lib/docker/volumes/'+name+'/_data'}],containers:[{id:'wiki',name:'wikijs',mounts:[{Type:'volume',Name:name,Destination:'/wiki/data/content',RW:true}]}]},enabled:true,admin:true,refresh:async()=>{}},async p=>{reads.push(p);return p==='/docker/volumes/usage'?{volumes:[]}:{Name:name,Mountpoint:'/var/lib/docker/volumes/'+name+'/_data'}});
+ try{const row=page.container.querySelector('tbody tr');assert.match(row.textContent,/wikijs · \/wiki\/data\/content/);assert.doesNotMatch(row.textContent,/a{64}|\/var\/lib/);await page.click(button(row,'Inspect'));assert.ok(reads.includes('/docker/volume/'+name));assert.equal(page.container.querySelector('.volume-inspection h3').textContent,'wikijs · /wiki/data/content');assert.doesNotMatch(page.container.querySelector('.task-details').textContent,/a{64}/);assert.match(page.container.querySelector('.modal details').textContent,/a{64}/);
+ }finally{await page.close()}
 });
