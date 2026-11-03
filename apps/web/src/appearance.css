@@ -75,3 +75,22 @@
   border-color: var(--theme-border) !important;
   color: var(--theme-text) !important;
 }
+
+/* Shared interaction feedback follows the chosen palette in light and dark mode. */
+:root :is(button,a[href],[role="button"],summary):not(:disabled):not([aria-disabled="true"]){cursor:pointer}
+:root :is(button,a[href],[role="button"],summary):not(:disabled):not([aria-disabled="true"]):focus-visible{
+ outline:2px solid var(--app-accent,#38bdf8);outline-offset:3px;
+}
+/* Apply hover only to devices with a mouse or trackpad, avoiding sticky touch states. */
+@media(hover:hover) and (pointer:fine){
+ :root[data-preset] :is(button,a[href],[role="button"],summary):not(:disabled):not([aria-disabled="true"]):not(.primary):not(.danger):hover{
+  background:var(--theme-highlight)!important;
+  color:var(--theme-text)!important;
+  border-color:var(--app-accent,#38bdf8)!important;
+ }
+ /* Keep the existing primary and destructive colours while adding visible feedback. */
+ :root[data-preset] :is(button,a[href]).primary:not(:disabled):not([aria-disabled="true"]):hover,
+ :root[data-preset] :is(button,a[href]).danger:not(:disabled):not([aria-disabled="true"]):hover{
+  filter:brightness(1.12);
+ }
+}
