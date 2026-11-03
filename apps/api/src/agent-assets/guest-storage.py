@@ -78,7 +78,7 @@ def layout():
                 with open('/sys/class/block/' + os.path.basename(os.path.realpath(other['name'])) + '/start') as f:
                     if int(f.read()) > start:
                         raise ValueError('The root partition must be the last partition on the disk')
-    elif device.get('children'):
+    elif any(child['type'] == 'part' for child in device.get('children', [])):
         raise ValueError('A whole-disk root filesystem cannot have child partitions')
     elif os.path.realpath(device['name']) != os.path.realpath(disk['name']):
         raise ValueError('Root device does not match the guest disk')

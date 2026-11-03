@@ -29,11 +29,17 @@ class Checks(unittest.TestCase):
   with patch.object(g,'layout',return_value=plan),patch.object(g,'run',side_effect=ValueError('disk busy')) as run,patch('builtins.open',return_value=io.StringIO()),patch('fcntl.flock'):
    with self.assertRaisesRegex(ValueError,'Earlier steps may have completed'):g.perform('expand','current')
    self.assertEqual(run.call_count,1)
- def inspect_fixture(self,kind='part',fstype='ext4',extra=False):
+ def inspect_fixture(self,kind='part',fstype='ext4',extra=False,whole_pv=False):
   root={'filesystems':[{'source':'/dev/sda1','fstype':fstype,'options':'rw,relatime'}]}
   blocks={'blockdevices':[{'name':'/dev/sda','type':'disk','size':200,'pkname':None,'uuid':None,'children':[{'name':'/dev/sda1','type':kind,'size':100,'pkname':'/dev/sda','uuid':'fs1'}]}]}
+  if whole_pv:
+   root['filesystems'][0]['source']='/dev/dm-0'
+   blocks['blockdevices'][0]['children']=[{'name':'/dev/dm-0','type':'lvm','size':100,'pkname':'/dev/sda','uuid':'fs1'}]
   if extra:blocks['blockdevices'].append({'name':'/dev/sdb','type':'disk','size':200})
-  def run(args,**kwargs):return json.dumps(root if args[0]=='findmnt' else blocks)
+  def run(args,**kwargs):
+   if args[0]=='lvs':return json.dumps({'report':[{'lv':[{'lv_path':'/dev/dm-0','lv_uuid':'lv1','vg_name':'vg','lv_size':'100','segtype':'linear'}]}]})
+   if args[0]=='pvs':return json.dumps({'report':[{'pv':[{'pv_name':'/dev/sda','pv_uuid':'pv1','vg_name':'vg','pv_size':'200','pv_free':'100'}]}]})
+   return json.dumps(root if args[0]=='findmnt' else blocks)
   with patch.object(g,'run',side_effect=run),patch.object(g.shutil,'which',return_value='/usr/bin/tool'),patch('builtins.open',side_effect=lambda path,*a:io.StringIO('1' if path.endswith('/partition') else '2048')):
    return g.layout()
  def test_unsupported_filesystems_layers_and_multiple_disks(self):
@@ -41,6 +47,8 @@ class Checks(unittest.TestCase):
    with self.assertRaises(ValueError):self.inspect_fixture(**options)
  def test_plan_distinguishes_capacity_from_available(self):
   result=self.inspect_fixture();self.assertEqual(result['diskBytes'],200);self.assertEqual(result['deviceBytes'],100);self.assertTrue(result['supported']);self.assertEqual(len(result['token']),64)
+ def test_whole_disk_lvm_pv_is_not_mistaken_for_a_partitioned_raw_filesystem(self):
+  result=self.inspect_fixture(whole_pv=True);self.assertTrue(result['supported']);self.assertIsNone(result['partition']);self.assertEqual(result['lvm']['pv']['pv_name'],'/dev/sda')
  def test_xfs_no_lvm_and_already_expanded(self):
   plan={'token':'current','supported':True,'partition':None,'lvm':None,'source':'/dev/sda','filesystem':'xfs','capacityBytes':100}
   with patch.object(g,'layout',return_value=plan),patch.object(g,'run',return_value='') as run,patch('builtins.open',return_value=io.StringIO()),patch('fcntl.flock'):
