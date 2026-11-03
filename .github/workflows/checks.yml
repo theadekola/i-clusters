@@ -62,6 +62,17 @@ jobs:
         working-directory: apps/web
       - run: npm run build --workspaces=false
         working-directory: apps/web
+      - name: Verify popup layouts in Chromium
+        run: |
+          npm install --prefix /tmp/iclusters-browser-tools --no-save --ignore-scripts playwright-core@1.62.1 @sparticuz/chromium@153.0.0
+          ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules node apps/web/scripts/check-popup-layout.mjs
+      - name: Save popup layout screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: popup-layout-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/iclusters-popup-layout
+          if-no-files-found: ignore
       - name: Build and start the deployment
         run: |
           sh deployment/generate-secrets.sh > /dev/null

@@ -37,11 +37,21 @@
 .storage-guest-allocation .btn{max-width:100%;white-space:normal}
 @media(max-width:480px){.storage-guest-allocation dl{grid-template-columns:minmax(0,1fr)}.storage-guest-allocation dd{margin-bottom:8px}}
 
-.disk-configuration fieldset{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px;border:1px solid var(--theme-border,#294158);border-radius:10px;padding:12px}
-.disk-configuration fieldset legend{padding:0 6px}
-.disk-configuration label:has(>input[type=checkbox]){display:flex;align-items:center;gap:10px;min-height:44px}
-.modal .disk-configuration input[type=checkbox]{width:18px;height:18px;min-height:18px;flex:0 0 18px}
-.disk-configuration select[multiple]{min-height:100px}
+.disk-configuration .disk-use-fieldset{grid-column:1/-1;border:1px solid var(--theme-border,#294158);border-radius:10px;padding:12px}
+.disk-configuration .disk-use-fieldset legend{padding:0 6px}
+.disk-use-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px}
+.disk-configuration .disk-use-options label{font-size:clamp(10px,2.7vw,12px);line-height:1.4;gap:6px}
+.disk-configuration .disk-use-options label>span{min-width:0;overflow-wrap:normal;word-break:normal}
+.disk-storage-summary,.disk-node-assignment{grid-column:1/-1;min-width:0}
+.disk-storage-summary{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.disk-storage-summary p{min-width:0;margin:0;overflow-wrap:anywhere}
+.disk-storage-summary .checkbox-option{flex:0 0 auto}
+.disk-node-assignment{display:grid;gap:7px}
+.disk-node-controls{display:flex;align-items:center;gap:12px;min-width:0}
+.disk-node-controls>select{flex:1;min-width:0;min-height:80px}
+.disk-node-controls>.checkbox-option{flex:0 0 auto}
 .storage-contents td:first-child{overflow-wrap:anywhere;max-width:600px}
 .storage-contents>.card{margin-top:16px}
-@media(max-width:600px){.disk-configuration fieldset{grid-template-columns:minmax(0,1fr)}.storage-contents .header-actions{align-items:stretch}.storage-contents .btn{white-space:normal}}
+@media(max-width:600px){.disk-use-options{gap:6px}.disk-configuration .disk-use-fieldset{padding:8px}.storage-contents .header-actions{align-items:stretch}.storage-contents .btn{white-space:normal}}
+
+@media(max-width:360px){.modal.modal .disk-configuration .disk-use-options .checkbox-option{gap:3px}}
