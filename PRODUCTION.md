@@ -179,6 +179,21 @@ Provider diagnostics are read-only and owner-only. Run them after updating the V
 
 ### Automatic LAN HTTPS on port 6002
 
+For Home Screen installation, the initial HTML declares an explicitly sized Apple
+touch icon. The standard `/apple-touch-icon.png` and
+`/apple-touch-icon-precomposed.png` endpoints serve the same existing 180px logo,
+not the SPA HTML fallback. Icon URLs include content versions; the manifest and
+root icon responses revalidate. Android retains the stable manifest `id` and
+start URL so an icon update does not create a different application identity.
+
+If iOS shows a letter instead of the logo, update the VM, establish trusted HTTPS
+on the phone, and open `/apple-touch-icon.png` in Safari to check that the logo is
+reachable. Cancel the old installation sheet, reload the dashboard and add it
+again. If a letter shortcut already exists, remove only that Home Screen shortcut
+before adding it again; do not delete server accounts or reset the database. A
+browser cannot force an existing iOS shortcut to refresh its icon. Test on the real
+device before claiming the installed icon has been verified.
+
 For connection troubleshooting, open `/connection-check.html` on the installation's
 HTTPS origin. The page checks the API/database and frontend separately, links to
 the direct health endpoint for native browser TLS errors, and offers an explicit
