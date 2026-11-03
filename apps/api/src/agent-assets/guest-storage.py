@@ -20,7 +20,17 @@ def run(args, allow_nochange=False):
 
 
 def rows(command, section):
-    return json.loads(run(command))['report'][0][section]
+    try:
+        report = json.loads(run(command))
+    except json.JSONDecodeError as error:
+        raise ValueError(command[0] + ' returned an invalid JSON storage report') from error
+    reports = report.get('report') if isinstance(report, dict) else None
+    if not isinstance(reports, list):
+        raise ValueError(command[0] + ' did not return the expected ' + section + ' storage report')
+    matches = [entry[section] for entry in reports if isinstance(entry, dict) and section in entry]
+    if len(matches) != 1 or not isinstance(matches[0], list) or any(not isinstance(row, dict) for row in matches[0]):
+        raise ValueError(command[0] + ' did not return the expected ' + section + ' storage report; no allocation was attempted by this inspection')
+    return matches[0]
 
 
 def layout():
@@ -46,7 +56,7 @@ def layout():
         raise ValueError('Root filesystem UUID is required to bind the checked layout')
     lvm = None
     if device['type'] == 'lvm':
-        lvs = rows(['lvs', '--reportformat', 'json', '--units', 'b', '--nosuffix', '-o', 'lv_path,lv_uuid,vg_name,lv_size,segtype', '--segments'], 'lv')
+        lvs = rows(['lvs', '--reportformat', 'json', '--units', 'b', '--nosuffix', '-o', 'lv_path,lv_uuid,vg_name,lv_size,segtype', '--segments'], 'seg')
         matches = [lv for lv in lvs if os.path.realpath(lv['lv_path']) == source]
         if not matches or any(lv['segtype'] != 'linear' for lv in matches) or len(set(lv['lv_uuid'] for lv in matches)) != 1:
             raise ValueError('Only a single linear root logical volume is supported')

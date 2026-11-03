@@ -38,6 +38,13 @@ jobs:
           bash deployment/test-network.sh
           sh -n deployment/generate-secrets.sh
           bash install.sh --help
+      - name: Check actual guest LVM report schemas (read-only)
+        run: |
+          if ! command -v lvs >/dev/null || ! command -v pvs >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install --no-install-recommends -y lvm2
+          fi
+          sudo python3 apps/api/test/guest-storage-report.test.py
       - name: Check private secret generation
         run: |
           sh deployment/generate-secrets.sh

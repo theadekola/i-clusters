@@ -5,10 +5,21 @@ import {fileURLToPath} from 'node:url';
 test('guest expansion script validates layouts and stale plans before growing and reports partial failures',()=>{
  const code=String.raw`
 import importlib.util, io, json, unittest, sys
+from types import SimpleNamespace
 from unittest.mock import patch
 spec=importlib.util.spec_from_file_location('guest_storage',sys.argv.pop())
 g=importlib.util.module_from_spec(spec);spec.loader.exec_module(g)
 class Checks(unittest.TestCase):
+ def test_segment_json_report_is_used_instead_of_assuming_lv(self):
+  segments=[{'lv_path':'/dev/vg/root','segtype':'linear'}]
+  with patch.object(g,'run',return_value=json.dumps({'report':[{'log':[]},{'seg':segments}]})):
+   self.assertEqual(g.rows(['lvs','--segments'],'seg'),segments)
+ def test_missing_or_malformed_storage_reports_are_actionable_errors(self):
+  for report in [{'report':[{'lv':[]}]},{'report':[]},{'report':[{'seg':{}}]},{'report':[{'seg':[None]}]},{'report':[{'seg':[]},{'seg':[]}]},{'report':None},[]]:
+   with patch.object(g,'run',return_value=json.dumps(report)):
+    with self.assertRaisesRegex(ValueError,'lvs.*expected seg storage report'):g.rows(['lvs','--segments'],'seg')
+  with patch.object(g,'run',return_value='not JSON'):
+   with self.assertRaisesRegex(ValueError,'invalid JSON storage report'):g.rows(['lvs','--segments'],'seg')
  def test_reject_stale_without_write(self):
   with patch.object(g,'layout',return_value={'token':'current','supported':True}),patch.object(g,'run') as run:
    with self.assertRaisesRegex(ValueError,'changed'):g.perform('expand','stale')
@@ -17,6 +28,24 @@ class Checks(unittest.TestCase):
   with patch.object(g,'layout',return_value={'token':'current','supported':False,'missingTools':['growpart']}),patch.object(g,'run') as run:
    with self.assertRaisesRegex(ValueError,'growpart'):g.perform('expand','current')
    run.assert_not_called()
+ def test_segment_report_flows_through_inspection_and_actual_allocation_stages(self):
+  state={'grown':False,'filesystem':False};writes=[]
+  def run(args,**kwargs):
+   name=args[0]
+   if name=='findmnt':return json.dumps({'filesystems':[{'source':'/dev/dm-0','fstype':'ext4','options':'rw,relatime'}]})
+   if name=='lsblk':return json.dumps({'blockdevices':[{'name':'/dev/sda','type':'disk','size':300,'children':[{'name':'/dev/sda3','type':'part','size':300,'pkname':'/dev/sda','children':[{'name':'/dev/dm-0','type':'lvm','size':300 if state['grown'] else 120,'uuid':'root-uuid'}]}]}]})
+   if name=='lvs':return json.dumps({'report':[{'seg':[{'lv_path':'/dev/dm-0','lv_uuid':'lv-uuid','vg_name':'vg','lv_size':'300' if state['grown'] else '120','segtype':'linear'}]}]})
+   if name=='pvs':return json.dumps({'report':[{'pv':[{'pv_name':'/dev/sda3','pv_uuid':'pv-uuid','vg_name':'vg','pv_size':'300','pv_free':'0' if state['grown'] else '180'}]}]})
+   writes.append(args)
+   if name=='lvextend':state['grown']=True
+   if name=='resize2fs':state['filesystem']=True
+   return ''
+  def opened(path,*args):return io.StringIO('3' if path.endswith('/partition') else '2048')
+  with patch.object(g,'run',side_effect=run),patch.object(g.shutil,'which',return_value='/usr/bin/tool'),patch.object(g.os,'statvfs',side_effect=lambda path:SimpleNamespace(f_blocks=300 if state['filesystem'] else 120,f_frsize=1,f_bavail=200 if state['filesystem'] else 20)),patch('builtins.open',side_effect=opened),patch('fcntl.flock'):
+   inspected=g.perform('inspect');self.assertEqual(inspected['capacityBytes'],120);self.assertEqual(writes,[])
+   result=g.perform('expand',inspected['token'])
+   self.assertTrue(result['verified']);self.assertEqual(result['after']['capacityBytes'],300);self.assertEqual(result['after']['availableBytes'],200)
+   self.assertEqual([c[0] for c in writes],['growpart','pvresize','lvextend','resize2fs'])
  def test_simple_lvm_full_expansion_and_verify(self):
   plan={'token':'current','supported':True,'partition':3,'disk':'/dev/sda','source':'/dev/dm-0','filesystem':'ext4','lvm':{'pv':{'pv_name':'/dev/sda3','pv_free':'100'},'lv':{'lv_path':'/dev/vg/root'}},'capacityBytes':100}
   after={**plan,'capacityBytes':200}
@@ -37,7 +66,7 @@ class Checks(unittest.TestCase):
    blocks['blockdevices'][0]['children']=[{'name':'/dev/dm-0','type':'lvm','size':100,'pkname':'/dev/sda','uuid':'fs1'}]
   if extra:blocks['blockdevices'].append({'name':'/dev/sdb','type':'disk','size':200})
   def run(args,**kwargs):
-   if args[0]=='lvs':return json.dumps({'report':[{'lv':[{'lv_path':'/dev/dm-0','lv_uuid':'lv1','vg_name':'vg','lv_size':'100','segtype':'linear'}]}]})
+   if args[0]=='lvs':return json.dumps({'report':[{'seg':[{'lv_path':'/dev/dm-0','lv_uuid':'lv1','vg_name':'vg','lv_size':'100','segtype':'linear'}]}]})
    if args[0]=='pvs':return json.dumps({'report':[{'pv':[{'pv_name':'/dev/sda','pv_uuid':'pv1','vg_name':'vg','pv_size':'200','pv_free':'100'}]}]})
    return json.dumps(root if args[0]=='findmnt' else blocks)
   with patch.object(g,'run',side_effect=run),patch.object(g.shutil,'which',return_value='/usr/bin/tool'),patch('builtins.open',side_effect=lambda path,*a:io.StringIO('1' if path.endswith('/partition') else '2048')):
