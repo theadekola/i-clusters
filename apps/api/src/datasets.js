@@ -1,3 +1,4 @@
+import {containerVolumes} from './proxmox-volume.js';
 import {pve} from './connectors.js';
 import {truenas,encode,required,httpError} from './infrastructure.js';
 import {storageInventory,storageSummary} from './storage.js';
@@ -20,15 +21,32 @@ export async function datasetInventory({proxmox=false,truenasEnabled=false,snaps
  };
  if(proxmox)try{
   const result=await inventory();coverage=result.coverage||coverage;errors.push(...result.errors);pools.push(...result.resources.map(p=>({...p,provider:'proxmox'})));
+  let containers=guests.lxc;
+  if(!Array.isArray(containers))try{const all=await query('/cluster/resources');if(!Array.isArray(all))throw Error('Unexpected guest inventory');containers=all.filter(g=>g.type==='lxc').map(g=>({...g,id:g.vmid}));}catch(e){containers=[];coverage={...coverage,complete:false};errors.push(`Container inventory: ${e.message}`);}
   const seen=new Set();const online=result.resources.filter(p=>p.status==='online');
   for(let i=0;i<online.length;i+=5)await Promise.all(online.slice(i,i+5).map(async p=>{
    try{const rows=await query(`/nodes/${encode(p.node)}/storage/${encode(p.name)}/content`);
     for(const row of rows.filter(r=>['images','rootdir'].includes(r.content))){const key=p.shared===true?`shared:${row.volid}`:`${p.node}:${row.volid}`;if(seen.has(key))continue;seen.add(key);
-     const guest=(row.content==='images'?guests.vms:guests.lxc)?.find(g=>String(g.id)===String(row.vmid));
+     const ct=containers?.find(g=>String(g.id??g.vmid)===String(row.vmid));
+     const guest=ct||(row.content==='images'?guests.vms:guests.lxc)?.find(g=>String(g.id)===String(row.vmid));
      const owner=p.shared===true&&guest?.node?guest.node:p.node;
-     resources.push({id:`proxmox:${key}`,resourceId:row.volid,name:row.volid,provider:'proxmox',pool:p.name,node:owner,type:row.content==='images'?'VM Volume':'CT Volume',size:number(row.size),used:number(row.used),available:number(row.available),guestUsage:guestUsage(row,owner),mountpoint:null,status:'Reported',vmid:row.vmid??null,format:row.format||null,shared:p.shared});
+     resources.push({id:`proxmox:${key}`,resourceId:row.volid,name:row.volid,provider:'proxmox',pool:p.name,node:owner,type:ct||row.content==='rootdir'?'CT Volume':'VM Volume',size:number(row.size),used:number(row.used),available:number(row.available),guestUsage:guestUsage({...row,content:ct?'rootdir':row.content},owner),mountpoint:null,status:'Reported',vmid:row.vmid??null,format:row.format||null,shared:p.shared});
     }
-   }catch(e){errors.push(`${p.node}/${p.name} volumes: ${e.message}`);}
+   }catch(e){coverage={...coverage,complete:false};errors.push(`${p.node}/${p.name} volumes: ${e.message}`);}
+  }));
+  for(let i=0;i<(containers||[]).length;i+=5)await Promise.all(containers.slice(i,i+5).map(async guest=>{
+   const vmid=String(guest.id??guest.vmid),node=guest.node;
+   if(!node||!/^\d+$/.test(vmid))return;
+   try{
+    const config=await query(`/nodes/${encode(node)}/lxc/${vmid}/config`);
+    if(!config||typeof config!=='object'||Array.isArray(config))throw Error('Configuration unavailable');
+    for(const volume of containerVolumes(config)){
+     const managed=volume.resourceId.includes(':')&&!volume.resourceId.startsWith('/');
+     let row=resources.find(r=>r.resourceId===volume.resourceId&&(r.node===node||r.shared)&&String(r.vmid)===vmid&&(!r.disk||r.disk===volume.disk));
+     if(!row){row={id:`proxmox:ct:${node}:${vmid}:${volume.disk}`,provider:'proxmox',resourceId:volume.resourceId,name:volume.resourceId,pool:managed?volume.resourceId.split(':')[0]:'Host bind mounts',node,vmid,used:null,available:null,status:'Reported'};resources.push(row);}
+     Object.assign(row,{type:managed?'CT Volume':'CT Bind Mount',node,disk:volume.disk,mountpoint:volume.mountpoint,size:volume.size??row.size??null,editable:managed,guestUsage:volume.disk==='rootfs'?guestUsage({...row,content:'rootdir',vmid},node):null});
+    }
+   }catch(e){coverage={...coverage,complete:false};errors.push(`${node}/CT ${vmid} volumes: ${e.message}`);}
   }));
  }catch(e){coverage={...coverage,complete:false};errors.push(`Proxmox: ${e.message}`);}
  if(truenasEnabled&&(!Array.isArray(snapshot.pools)||(snapshot.errors||[]).some(e=>/^pool\.(query|dataset\.query):/.test(e))))coverage={...coverage,complete:false};

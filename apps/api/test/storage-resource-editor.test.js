@@ -1,3 +1,4 @@
+import {configuredVolumeSize} from '../src/proxmox-volume.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createStorageResourceEditor} from '../src/storage-resource-editor.js';
@@ -52,4 +53,20 @@ test('Proxmox storage edits require node SSH approval and reject invalid node ta
 test('shared volumes use the guest owner node rather than the first storage listing node',async()=>{
  const inventory=await datasetInventory({proxmox:true,guests:{vms:[{id:'100',node:'node02',status:'running',disk:40,diskTotal:100}]},inventory:async()=>({errors:[],resources:[{node:'node01',name:'shared',shared:true,status:'online'},{node:'node02',name:'shared',shared:true,status:'online'}]}),query:async()=>[{volid:'shared:vm-100-disk-0',vmid:100,content:'images',size:200}]});
  assert.equal(inventory.resources.length,1);assert.equal(inventory.resources[0].node,'node02');assert.equal(inventory.resources[0].guestUsage.used,40);
+});
+
+test('CT editor uses authoritative config size when content labels are images or content omits the root disk',async()=>{
+ for(const missing of [false,true]){
+  const f=proxmox('lxc');f.volume.content='images';if(missing)f.volume.volid='other';
+  const model=await f.editor.inspect(target);assert.equal(model.type,'CT Volume');assert.equal(model.size,120*GiB);
+  await f.editor.update({...target,revision:model.revision,sizeGiB:121});assert.equal(f.writes[0].path,'/nodes/node01/lxc/100/resize');
+ }
+});
+
+test('container config size parser preserves byte values and binary units and rejects unknown sizes',()=>{
+ assert.equal(configuredVolumeSize('local:disk,size=8589934592'),8*GiB);
+ assert.equal(configuredVolumeSize('local:disk,size=8G'),8*GiB);
+ assert.equal(configuredVolumeSize('local:disk,size=1.5T'),1536*GiB);
+ assert.equal(configuredVolumeSize('local:disk,mp=/data'),null);
+ assert.equal(configuredVolumeSize('local:disk,size=unknown'),null);
 });

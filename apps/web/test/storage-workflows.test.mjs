@@ -115,3 +115,20 @@ test('TrueNAS edit failures retain the form and cancelling an editor cannot subm
   const submit=form[Object.keys(form).find(k=>k.startsWith('__reactProps'))].onSubmit;await page.click(button(page.container,'Cancel'));await act(async()=>submit({preventDefault(){},currentTarget:form}));assert.equal(writes.length,1);assert.equal(page.container.querySelector('.modal'),null);
  }finally{await page.close()}
 });
+
+
+test('guest filesystem expansion uses existing allocation without a disk increase and clears the plan after a write',async()=>{
+ const resource={id:'disk',resourceId:'local:vm-100-disk-0',node:'one',vmid:100},model={...resource,provider:'proxmox',type:'VM Volume',revision:'fresh'},calls=[];
+ const page=await mounted('components/GuestStorageAllocation.tsx',{resource,onSaved(){},disabled:false,onBusy(){}},async(p,init)=>{calls.push({p,init});return init?.method?{result:{verified:true,changed:true,before:{capacityBytes:50*1024**3},after:{capacityBytes:120*1024**3,availableBytes:80*1024**3}}}:{model,connectionScope:'connection',plan:{supported:true,token:'guest-token',diskBytes:120*1024**3,capacityBytes:50*1024**3,availableBytes:10*1024**3,source:'/dev/vg/root',filesystem:'ext4',missingTools:[]}}});
+ try{
+  assert.equal(calls.length,0);await page.click(button(page.container,'Check usable space'));assert.match(page.container.textContent,/50 GiB/);
+  await page.click(button(page.container,'Expand guest filesystem'));const write=calls.find(c=>c.init?.method);assert.equal(write.p,'/storage/datasets/guest-expand');const body=JSON.parse(write.init.body);assert.equal(body.resourceId,resource.resourceId);assert.equal(body.revision,'fresh');assert.equal(body.guestToken,'guest-token');assert.equal(body.sizeGiB,undefined);assert.match(page.container.textContent,/Verified filesystem capacity/);assert.equal(button(page.container,'Expand guest filesystem'),undefined);
+ }finally{await page.close()}
+});
+test('unsupported guest allocation cannot execute and errors require checking the layout again',async()=>{
+ for(const unsupported of [true,false]){
+  const writes=[],resource={id:'disk',resourceId:'local:disk',node:'one',vmid:100};
+  const page=await mounted('components/GuestStorageAllocation.tsx',{resource,onSaved(){},disabled:false,onBusy(){}},async(p,init)=>{if(init?.method){writes.push(p);throw Error('Guest storage changed. Recheck before retrying.')}return {model:{...resource,revision:'fresh'},plan:{supported:!unsupported,missingTools:unsupported?['growpart']:[],diskBytes:120,capacityBytes:50,availableBytes:10,token:'token'}}});
+  try{await page.click(button(page.container,'Check usable space'));const expand=button(page.container,'Expand guest filesystem');assert.equal(expand.disabled,unsupported);if(unsupported){assert.match(page.container.textContent,/growpart/);assert.equal(writes.length,0)}else{await page.click(expand);assert.match(page.container.querySelector('[role=alert]').textContent,/Recheck/);assert.equal(button(page.container,'Expand guest filesystem'),undefined)}}finally{await page.close()}
+ }
+});

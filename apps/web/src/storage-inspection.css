@@ -28,3 +28,11 @@
   .content .storage-pools-toolbar > label { flex: 1 1 100%; }
   .content .storage-pools-toolbar > select { flex: 1 1 140px; }
 }
+
+.storage-guest-allocation{margin-top:24px;padding-top:20px;border-top:1px solid var(--theme-border,#294158);min-width:0}
+.storage-guest-allocation p{line-height:1.6;overflow-wrap:anywhere}
+.storage-guest-allocation dl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 16px;margin:16px 0}
+.storage-guest-allocation dd{margin:0;overflow-wrap:anywhere}
+.storage-guest-allocation dt{color:var(--theme-muted,#adbed3)}
+.storage-guest-allocation .btn{max-width:100%;white-space:normal}
+@media(max-width:480px){.storage-guest-allocation dl{grid-template-columns:minmax(0,1fr)}.storage-guest-allocation dd{margin-bottom:8px}}
