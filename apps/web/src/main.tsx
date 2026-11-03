@@ -4,6 +4,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
+import PageBoundary from './components/PageBoundary';
 import {applyAppearance} from './appearance';
 import './styles.css';
 import './sizing.css';
@@ -21,7 +22,7 @@ applyAppearance();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter><App /><InstallPrompt/></BrowserRouter>
+    <BrowserRouter><PageBoundary><App /><InstallPrompt/></PageBoundary></BrowserRouter>
   </React.StrictMode>
 );
 
