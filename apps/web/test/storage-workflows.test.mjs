@@ -146,3 +146,8 @@ test('configuration eye opens contents with file import and backup-only storage 
   finally{await page.close()}
  }
 });
+
+test('a slow manual content refresh cannot replace files from a newly selected node',async()=>{
+ let reads=0,complete;const storage={id:'local',content:['iso'],nodes:['one','two']};const page=await mounted('components/StorageContents.tsx',{storage,admin:false,onBack(){}},async p=>{if(p==='/proxmox/storage')return {resources:[{name:'local',node:'one'},{name:'local',node:'two'}]};if(p.includes('/one/')&&++reads===2)return new Promise(r=>complete=r);return {files:[{volid:p.includes('/two/')?'node-two.iso':'node-one.iso',content:'iso'}],uploadTypes:[]}});
+ try{let pending;await act(async()=>{button(page.container,'Refresh').dispatchEvent(new page.dom.window.MouseEvent('click',{bubbles:true}));await new Promise(r=>setTimeout(r,0))});const node=page.container.querySelector('[aria-label="Storage contents node"]');await act(async()=>{node.value='two';node.dispatchEvent(new page.dom.window.Event('change',{bubbles:true}));await new Promise(r=>setTimeout(r,0))});assert.match(page.container.textContent,/node-two.iso/);await act(async()=>{complete({files:[{volid:'late-node-one.iso'}],uploadTypes:[]});await new Promise(r=>setTimeout(r,0))});assert.match(page.container.textContent,/node-two.iso/);assert.ok(!page.container.textContent.includes('late-node-one.iso'))}finally{await page.close()}
+});
