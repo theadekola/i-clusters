@@ -1,3 +1,4 @@
+import {storageResourceEditor} from './storage-resource-editor.js';
 import {vpnGateways,requireVPNNode} from './vpn-gateways.js';
 import {verifyProxmoxManagement} from './proxmox-management-access.js';
 import {automaticDockerPairing} from './automatic-docker-pairing.js';
@@ -78,7 +79,7 @@ import { request,pve,docker,dockerSnapshot,proxmoxVmAction,proxmoxLxcAction,prox
 import { encode,required,integer,httpError,retention,pveWrite,backupJobs,createBackupJob,runBackupJob,toggleBackupJob,backupArchives,restoreArchive,truenas } from './infrastructure.js';
 
 
-export function createApp({authenticate=auth,authorize=requireRole,audit=writeAudit,monitor=liveMonitor,db=pool,configuration=configurationStore,activity=headerNotifications,notificationService=notifier,connectorUpdates=connectorUpdater,autoConnectorUpdates=automaticConnectorUpdates,connectionService=connectionActions,connectorAddress=connectorSSHAddress,guestPermissions=guestPermissionRepair,powerPermissions=powerPermissionSetup,guestConnectionReader=createGuestConnectionReader({config:clusterConfig}),imageUpdates=dockerImageUpdates,imageUpdateInstaller=installDockerImageUpdate,dockerUpdateQuery=docker,operationJournalFile,nodePairing=automaticNodePairing}={}){
+export function createApp({authenticate=auth,authorize=requireRole,audit=writeAudit,monitor=liveMonitor,db=pool,configuration=configurationStore,activity=headerNotifications,notificationService=notifier,connectorUpdates=connectorUpdater,autoConnectorUpdates=automaticConnectorUpdates,connectionService=connectionActions,connectorAddress=connectorSSHAddress,guestPermissions=guestPermissionRepair,powerPermissions=powerPermissionSetup,guestConnectionReader=createGuestConnectionReader({config:clusterConfig}),imageUpdates=dockerImageUpdates,imageUpdateInstaller=installDockerImageUpdate,dockerUpdateQuery=docker,operationJournalFile,nodePairing=automaticNodePairing,storageEditor=storageResourceEditor}={}){
 
  const app=express(),readCache=createReadCache(),reportPerformance=createReportPerformance();
  app.use((req,res,next)=>{const started=performance.now();res.on('finish',()=>{if(req.method==='GET'&&req.route?.path)reportPerformance.record(req.route.path,performance.now()-started,res.statusCode)});next()});
@@ -333,6 +334,9 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
  action('post','/storage/snapshots/guest/delete','admin','proxmox.snapshot.delete',req=>guestSnapshot(req.body,'delete'),true);
  read('/storage/datasets',async req=>{const s=await sampleView(req);return {...await datasetInventory({proxmox:providers.proxmox.configured(),truenasEnabled:providers.truenas.configured(),snapshot:s.truenas||{},guests:s.services.some(x=>x.provider==='proxmox'&&x.status==='reachable')?s.proxmox||{}:{}}),refreshing:!!s.refreshing};});
 
+ const unchangedConnection=scope=>{if(scope!==connectionScope())throw httpError('The storage connection changed. Reopen Edit before saving.',409);};
+ read('/storage/datasets/edit',async req=>{const scope=connectionScope(),model=await storageEditor.inspect(req.query);unchangedConnection(scope);return {...model,connectionScope:scope};},'admin');
+ action('put','/storage/datasets/edit','admin','storage.resource.edit',req=>{const scope=req.body.connectionScope;unchangedConnection(scope);return storageEditor.update(req.body,()=>unchangedConnection(scope));},true);
  read('/storage/datasets/browse',async req=>({entries:await truenas('filesystem.listdir',[await datasetRoot(req.query.dataset),[],{limit:200}])}));
  read('/storage/datasets/permissions',async req=>({permissions:await truenas('filesystem.getacl',[await datasetRoot(req.query.dataset),true])}));
  read('/network',async req=>{

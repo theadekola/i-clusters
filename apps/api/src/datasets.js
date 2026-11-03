@@ -24,7 +24,9 @@ export async function datasetInventory({proxmox=false,truenasEnabled=false,snaps
   for(let i=0;i<online.length;i+=5)await Promise.all(online.slice(i,i+5).map(async p=>{
    try{const rows=await query(`/nodes/${encode(p.node)}/storage/${encode(p.name)}/content`);
     for(const row of rows.filter(r=>['images','rootdir'].includes(r.content))){const key=p.shared===true?`shared:${row.volid}`:`${p.node}:${row.volid}`;if(seen.has(key))continue;seen.add(key);
-     resources.push({id:`proxmox:${key}`,resourceId:row.volid,name:row.volid,provider:'proxmox',pool:p.name,node:p.node,type:row.content==='images'?'VM Volume':'CT Volume',size:number(row.size),used:number(row.used),available:number(row.available),guestUsage:guestUsage(row,p.node),mountpoint:null,status:'Reported',vmid:row.vmid??null,format:row.format||null,shared:p.shared});
+     const guest=(row.content==='images'?guests.vms:guests.lxc)?.find(g=>String(g.id)===String(row.vmid));
+     const owner=p.shared===true&&guest?.node?guest.node:p.node;
+     resources.push({id:`proxmox:${key}`,resourceId:row.volid,name:row.volid,provider:'proxmox',pool:p.name,node:owner,type:row.content==='images'?'VM Volume':'CT Volume',size:number(row.size),used:number(row.used),available:number(row.available),guestUsage:guestUsage(row,owner),mountpoint:null,status:'Reported',vmid:row.vmid??null,format:row.format||null,shared:p.shared});
     }
    }catch(e){errors.push(`${p.node}/${p.name} volumes: ${e.message}`);}
   }));

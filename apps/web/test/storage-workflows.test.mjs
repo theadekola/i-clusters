@@ -87,5 +87,31 @@ test('storage pools hide foreign node registrations and open TrueNAS setup direc
 test('dataset inspection is an explicit popup with scoped guest usage, leaving the full table visible',async()=>{
  const resource={id:'proxmox:one:local:vm-100-disk-0',resourceId:'local:vm-100-disk-0',name:'local:vm-100-disk-0',node:'one',provider:'proxmox',type:'VM Volume',pool:'local',size:200,used:null,available:null,guestUsage:{used:40,available:60,total:100,scope:'guest'},status:'Reported'};
  const page=await mounted('pages/StorageDatasets.tsx',{onTab(){}},async p=>p==='/auth/me'?{user:{role:'viewer'}}:{resources:[resource],summary:{},errors:[]});
- try{assert.equal(page.container.querySelector('.dataset-layout .dataset-detail-card'),null);assert.equal(page.container.querySelector('.modal'),null);assert.match(page.container.querySelector('tbody').textContent,/Guest total/);await page.click(page.container.querySelector('button[aria-label="Inspect local:vm-100-disk-0"]'));const modal=page.container.querySelector('.modal');assert.ok(modal);assert.match(modal.textContent,/Used \(guest total\)/);assert.match(modal.textContent,/not usage measured for this individual volume/);await page.click(page.container.querySelector('[aria-label="Close dialog"]'));assert.equal(page.container.querySelector('.modal'),null);assert.ok(page.container.querySelector('tbody'));}finally{await page.close()}
+ try{assert.equal(page.container.querySelector('.dataset-layout .dataset-detail-card'),null);assert.equal(page.container.querySelector('.modal'),null);assert.match(page.container.querySelector('tbody').textContent,/Guest total/);await page.click(page.container.querySelector('.storage-resource-name'));const modal=page.container.querySelector('.modal');assert.ok(modal);assert.match(modal.textContent,/Used \(guest total\)/);assert.match(modal.textContent,/not usage measured for this individual volume/);await page.click(page.container.querySelector('[aria-label="Close dialog"]'));assert.equal(page.container.querySelector('.modal'),null);assert.ok(page.container.querySelector('tbody'));}finally{await page.close()}
+});
+
+test('Edit opens a real Proxmox volume form and saves the clicked resource with its fresh revision',async()=>{
+ const GiB=1024**3,resources=[{id:'disk-a',name:'local:vm-100-disk-0',resourceId:'local:vm-100-disk-0',provider:'proxmox',node:'node01',vmid:100,type:'VM Volume',pool:'local'},{id:'disk-b',name:'local:vm-101-disk-0',resourceId:'local:vm-101-disk-0',provider:'proxmox',node:'node01',vmid:101,type:'VM Volume',pool:'local'}],calls=[];
+ const page=await mounted('pages/StorageDatasets.tsx',{onTab(){}},async(p,init)=>{calls.push({p,init});if(p==='/auth/me')return {user:{role:'owner'}};if(p.startsWith('/storage/datasets/edit?'))return {...resources[1],revision:'fresh',connectionScope:'connection',size:120*GiB,disk:'scsi0'};if(init?.method)return {result:{task:'UPID:node01:task'}};return {resources,summary:{},errors:[]}});
+ try{
+  const edit=page.container.querySelector('[aria-label="Edit local:vm-101-disk-0"]');assert.ok(edit);assert.equal(button(page.container,'Inspect'),undefined);
+  await page.click(edit);const modal=page.container.querySelector('.modal');assert.match(modal.textContent,/Edit Dataset \/ Volume/);assert.equal(modal.querySelector('.dataset-details'),null);assert.ok(modal.querySelector('input[name=sizeGiB]'));
+  const requested=new URL(calls.find(c=>c.p.includes('/edit?')).p,'https://fixture');assert.equal(requested.searchParams.get('resourceId'),resources[1].resourceId);assert.equal(requested.searchParams.get('vmid'),'101');
+  modal.querySelector('input').value='150';await act(async()=>{modal.querySelector('form').dispatchEvent(new page.dom.window.Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,0))});
+  const saved=calls.find(c=>c.init?.method==='PUT');assert.equal(saved.p,'/storage/datasets/edit');assert.deepEqual(JSON.parse(saved.init.body),{provider:'proxmox',resourceId:resources[1].resourceId,revision:'fresh',connectionScope:'connection',node:'node01',vmid:101,sizeGiB:150});assert.match(modal.textContent,/Resize task accepted/);
+ }finally{await page.close()}
+});
+
+test('TrueNAS edit failures retain the form and cancelling an editor cannot submit an old form',async()=>{
+ const writes=[],resource=datasets[0],page=await mounted('pages/StorageDatasets.tsx',{onTab(){}},async(p,init)=>{
+  if(p==='/auth/me')return {user:{role:'owner'}};
+  if(p.startsWith('/storage/datasets/edit?'))return {...resource,revision:'fresh',connectionScope:'connection',compression:'LZ4',readonly:'OFF',quota:0};
+  if(init?.method){writes.push(JSON.parse(init.body));throw Error('Storage settings changed. Reopen Edit.');}
+  return {resources:datasets,summary:{},errors:[]};
+ });
+ try{
+  await page.click(page.container.querySelector('[aria-label="Edit tank/a"]'));const form=page.container.querySelector('.modal form');form.querySelector('[name=quotaGiB]').value='50';
+  await act(async()=>{form.dispatchEvent(new page.dom.window.Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,0))});assert.match(page.container.querySelector('.modal [role=alert]').textContent,/settings changed/);assert.equal(form.querySelector('[name=quotaGiB]').value,'50');assert.equal(writes[0].resourceId,'tank/a');
+  const submit=form[Object.keys(form).find(k=>k.startsWith('__reactProps'))].onSubmit;await page.click(button(page.container,'Cancel'));await act(async()=>submit({preventDefault(){},currentTarget:form}));assert.equal(writes.length,1);assert.equal(page.container.querySelector('.modal'),null);
+ }finally{await page.close()}
 });

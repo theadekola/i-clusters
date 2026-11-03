@@ -133,6 +133,24 @@ Only the server owner configures these endpoints. A successful HTTP response est
 
 ## Verify and back up
 
+### Edit datasets and volumes
+
+Under **Storage → Datasets / Volumes**, owners and administrators can choose
+**Edit** on a resource to open its current editable settings. Proxmox VM disks and
+container rootfs/mount-point volumes support size increases, entered as the new
+total size in GiB. The selected volume is resolved to its actual guest disk before
+saving; unused/unattached disks, CD-ROMs, templates and locked guests cannot be
+resized here. Shrinking is not supported. Proxmox requires its disk-configuration
+permissions and the application's fresh node SSH approval. Check task history
+after a queued resize; expanding the guest partition/filesystem is separate.
+
+TrueNAS child datasets support quota (0 means unlimited), compression and read-only
+mode. ZFS volumes support increasing size, compression and read-only mode. Empty
+fields keep the current setting. Permissions, mount paths and unrelated properties
+are not changed by this editor. Provider permission or validation errors keep the
+form open. Changes require confirmation and fresh settings; if the resource or
+controller connection changes, close and reopen the editor before saving.
+
 Confirm real resources match each provider, exercise actions on a test guest/container/dataset, and inspect task outcomes. Disconnect a provider and verify its error is shown. Restart the stack and verify users, settings, alert rules and history persist.
 
 Back up the PostgreSQL volume, host `runtime/`, Caddy data, `.env` and connector certificates. Test restoration separately. The application uses `runtime/live-state.json`; legacy `state.json` demo records are deliberately not imported. No live infrastructure was tested by the local source checks.
