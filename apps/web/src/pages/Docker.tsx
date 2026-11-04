@@ -18,7 +18,7 @@ import DockerVolumes from './DockerVolumes';
 import DockerImages from './DockerImages';
 import {useState,useEffect,useRef} from 'react';
 import {useSearchParams} from 'react-router-dom';
-import {Container,Layers,Cpu,MemoryStick,Database,RefreshCw,Plus,Play,Square,RotateCcw,FileText,MoreVertical,Network,Settings,Activity,Terminal,Trash2,Download} from 'lucide-react';
+import {Container,Layers,Cpu,MemoryStick,Database,RefreshCw,Plus,Play,Square,RotateCcw,FileText,MoreVertical,Network,Settings,Activity,Terminal,Trash2,Download} from '../icons';
 import {useApi,useResourceRefresh} from '../hooks';
 import {api,confirmedApi,setDockerHost} from '../api';
 import {Card,Badge,Modal} from '../components/UI';

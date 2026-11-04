@@ -6,7 +6,7 @@ import {storageTabs} from '../storage-navigation';
 import PageIcon from '../components/PageIcon';
 import {InspectableRow,TableAction,SelectionBody} from '../components/TableActions';
 import {useState,useRef,useEffect} from 'react';
-import {HardDrive,Database,Shield,Activity,RefreshCw,Download,Search,Eye,CheckCircle,AlertTriangle,FileText} from 'lucide-react';
+import {HardDrive,Database,Shield,Activity,RefreshCw,Download,Search,Eye,CheckCircle,AlertTriangle,FileText} from '../icons';
 import {useApi} from '../hooks';
 import {api} from '../api';
 import {Card,Badge,Modal} from '../components/UI';

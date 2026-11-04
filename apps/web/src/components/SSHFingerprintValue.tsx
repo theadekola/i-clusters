@@ -1,5 +1,5 @@
 import ReportLoading from './ReportLoading';
-import {Eye,EyeOff,RefreshCw} from 'lucide-react';
+import {Eye,EyeOff,RefreshCw} from '../icons';
 import {useState,type ReactNode} from 'react';
 export default function SSHFingerprintValue({fingerprint,pending,children,loading=false,onRetry,retryDisabled=false}:{fingerprint:string;pending:string;children?:ReactNode;loading?:boolean;onRetry?:()=>void;retryDisabled?:boolean}){
  const [visible,setVisible]=useState(false),label=visible?'Hide SSH fingerprint':'Show SSH fingerprint';

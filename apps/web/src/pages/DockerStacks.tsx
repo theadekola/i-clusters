@@ -6,7 +6,7 @@ import {InspectableRow,SelectionBody} from '../components/TableActions';
 import ReportLoading from '../components/ReportLoading';
 import Pagination from '../components/Pagination';
 import {useState,useRef} from 'react';
-import {Layers,Play,Square,Container,RotateCcw,Search,Eye,Download,RefreshCw,FileText,Network,Database} from 'lucide-react';
+import {Layers,Play,Square,Container,RotateCcw,Search,Eye,Download,RefreshCw,FileText,Network,Database} from '../icons';
 import {api,confirmedApi} from '../api';
 import {Card,Badge,Modal} from '../components/UI';
 export default function DockerStacks({navigation,hostSelector,data,enabled,refresh}:{navigation?:import('react').ReactNode;hostSelector?:import('react').ReactNode;data:any;enabled:boolean;refresh:()=>Promise<any>}){

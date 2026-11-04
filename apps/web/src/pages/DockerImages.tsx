@@ -8,7 +8,7 @@ import ReportLoading from '../components/ReportLoading';
 import Pagination from '../components/Pagination';
 import {ServiceIcon} from '../components/BrandIcon';
 import {useEffect,useState} from 'react';
-import {Box,Layers,Database,Download,Trash2,Hammer,Search,Eye,RefreshCw,Tag,Play} from 'lucide-react';
+import {Box,Layers,Database,Download,Trash2,Hammer,Search,Eye,RefreshCw,Tag,Play} from '../icons';
 import {api,confirmedApi} from '../api';
 import {Card,Badge,Modal} from '../components/UI';
 const bytes=(n:any)=>n==null?'Unknown':`${(n/(n>=1024**3?1024**3:1024**2)).toFixed(1)} ${n>=1024**3?'GiB':'MiB'}`;

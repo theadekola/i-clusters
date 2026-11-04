@@ -4,7 +4,7 @@ import AccountSecurity from './AccountSecurity';
 import SessionPreferences from './SessionPreferences';
 import {useRef,useState} from 'react';
 import {Link} from 'react-router-dom';
-import {LockKeyhole,Users,Shield,Monitor,FileText,ShieldAlert,LogOut,RefreshCw,ExternalLink} from 'lucide-react';
+import {LockKeyhole,Users,Shield,Monitor,FileText,ShieldAlert,LogOut,RefreshCw,ExternalLink} from '../icons';
 import {useApi} from '../hooks';
 import {clearTokens} from '../api';
 import {Card,Badge} from './UI';

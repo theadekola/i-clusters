@@ -4,7 +4,7 @@ import ReportLoading from './ReportLoading';
 import RefreshButton from './RefreshButton';
 import {useEffect,useState} from 'react';
 import {Link} from 'react-router-dom';
-import {Monitor,Container,RefreshCw,ShieldCheck} from 'lucide-react';
+import {Monitor,Container,RefreshCw,ShieldCheck} from '../icons';
 import {api,confirmedApi,setDockerHost} from '../api';
 import {useApi} from '../hooks';
 import {Card,Badge,Modal} from './UI';

@@ -3,7 +3,7 @@ import {lockPageScroll} from '../scroll-lock';
 import {cardValue} from './ReportLoading';
 import PageIcon, {pageIconForTitle} from './PageIcon';
 import React, { useEffect, useState, useRef, useId } from 'react';
-import { CheckCircle2, X } from 'lucide-react';
+import { CheckCircle2, X } from '../icons';
 
 export function PageHeader({title, subtitle, actions, middle, className=''}:{title:string; subtitle:string; actions?:React.ReactNode; middle?:React.ReactNode; className?:string}) {
   return <div className={`page-header ${className}`}><div><h1>{/docker|compose|container/i.test(title)?<BrandIcon brand="docker" size={27}/>:<PageIcon name={pageIconForTitle(title)} className="page-title-icon"/>}{title}</h1><p>{subtitle}</p></div>{middle}<div className="header-actions">{actions}</div></div>

@@ -1,6 +1,6 @@
 # Local image and icon assets
 
-i-Clusters ships its logos in `apps/web/public/assets`. No CDN requests are needed. Standard actions, hardware, status indicators and file operations retain the existing Lucide SVG system.
+i-Clusters ships its logos in `apps/web/public/assets`. No CDN requests are needed. Navigation, headers, topology symbols, actions, hardware, status indicators and file operations use the shared Fluent-inspired SVG set in `public/assets/icons`. The 70 supplied SVGs are preserved unchanged. Matching controls and system identity tiles fill the remaining gaps.
 
 ## OS detection
 
@@ -18,4 +18,19 @@ A shared BrandIcon component controls sizing, local paths and failed-image fallb
 
 The local `assets/brands/manifest.json` records each SVG source at an immutable upstream commit. `assets/brands/NOTICE.txt` and the included CC0/MIT license texts provide provenance and attribution. About → Credits links to the notice and lists available OS logos.
 
-Feature icons for Dashboard, Storage, Network, Backups, Monitoring, Alerts, Assistant, Shell, SFTP, Users and Settings are original i-Clusters SVG drawings under `public/assets/pages`. Sidebar links and matching page/tab headings share these assets. They remain decorative beside visible text, use fixed dimensions, and fall back to a local outline icon if an image fails. Proxmox and Docker retain their brand logos.
+## Shared Fluent-style icons
+
+`PageIcon` serves the supplied feature files, including `/assets/icons/dashboard.svg`. `BrandIcon` uses the supplied Proxmox/Docker/TrueNAS artwork and matching raised tiles containing the existing licensed OS/application identity marks. Identity detection still uses reported metadata; visual styling never guesses an OS or service.
+
+`src/icons.ts` provides all 131 named action components used by the UI. They render SVG hosts containing the local icon image, retaining existing click/ref behaviour, `.lucide-*` animation hooks and dimensions. The visual pictograms come from the Fluent-style files, not the previous outline React components. Charts, sparklines, topology connection lines and scannable QR geometry remain data graphics.
+
+Icons beside visible text are decorative. Standalone icons accept accessible labels; icon-only buttons retain their existing button labels and keyboard behaviour. Images have fixed dimensions and switch to a local dimensional fallback if loading fails. The application logo and installation icons retain their product identity.
+
+### Maintaining the set
+
+1. Put supplied originals in `apps/web/public/assets/icons` and keep `pack-manifest.json` and `PACK-README.md` alongside them.
+2. Add a newly required action export to `scripts/fluent-icon-names.json`; map it to a supplied icon when its meaning matches, or generate its dimensional control pictogram.
+3. Run `npm run icons:build -w apps/web`. The generator preserves the supplied 70 files and writes missing assets, the action/brand registry and SHA-256/source metadata. It reads Lucide vector definitions as data; it does not load a remote icon service.
+4. Run the web tests and production build. Verify image requests and small sizes in light/dark modes and at desktop/mobile widths.
+
+`public/assets/icons/NOTICE.txt` records supplied artwork, derived Lucide ISC pictograms and identity-mark licences. Source assets under `assets/brands` and the earlier preview catalogues are retained for provenance and reproducibility; UI components use the new `/assets/icons` paths.

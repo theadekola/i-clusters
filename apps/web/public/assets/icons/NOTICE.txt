@@ -1,0 +1,11 @@
+i-Clusters Fluent-inspired interface icons
+
+70 supplied SVGs were provided in i-clusters-fluent-svg-pack(1).zip. Their original files are retained unchanged; PACK-README.md describes their usage rights. pack-manifest.json retains the supplied catalogue.
+
+Additional controls use original i-Clusters gradient, bevel, glass and shadow artwork around pictograms adapted from Lucide 0.475.0 (ISC). Preserve lucide-ISC.txt when redistributing these files.
+
+Additional operating-system and application icons place the existing licensed identity artwork on matching raised tiles. Their upstream sources and MIT/CC0 licences are recorded per file in manifest.json and in ../brands/NOTICE.txt. Retain the licences in ../brands/.
+
+These interface illustrations are inspired by colourful dimensional software icons. They are not Microsoft Fluent assets. Product marks remain their owners' property; use does not imply endorsement.
+
+Generated assets can be rebuilt with npm run icons:build -w apps/web. No external font, image CDN, JavaScript or network dependency is embedded in an icon SVG.

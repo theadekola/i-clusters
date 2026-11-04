@@ -1,7 +1,7 @@
 import {isActionCancelled} from '../action-cancellation';
 import {useEffect,useRef,useState} from 'react';
 import {Link} from 'react-router-dom';
-import {ArrowLeft,Upload,RefreshCw} from 'lucide-react';
+import {ArrowLeft,Upload,RefreshCw} from '../icons';
 import {api,confirmedApi} from '../api';
 import {Card,Modal} from './UI';
 const size=(n:any)=>typeof n==='number'?(n/1024**3).toLocaleString(undefined,{maximumFractionDigits:2})+' GiB':'Not reported';

@@ -9,7 +9,7 @@ import {ResponsiveContainer,BarChart,Bar,XAxis,YAxis,CartesianGrid,Tooltip} from
 import {backupOutcome,backupActivity,backupSummary} from '../backup-reports';
 import {useEffect,useState} from 'react';
 import {Link,useSearchParams} from 'react-router-dom';
-import {Calendar,Play,Pause,Clock,Database,Box,Search,RefreshCw,Plus,Upload,FileText,Trash2,ArrowRight,ChevronLeft,ChevronRight,CheckCircle,Info,LayoutTemplate} from 'lucide-react';
+import {Calendar,Play,Pause,Clock,Database,Box,Search,RefreshCw,Plus,Upload,FileText,Trash2,ArrowRight,ChevronLeft,ChevronRight,CheckCircle,Info,LayoutTemplate} from '../icons';
 import {useApi,useResourceRefresh} from '../hooks';
 import {confirmedApi} from '../api';
 import {Card,Badge,Modal,usePopupSuccess} from '../components/UI';

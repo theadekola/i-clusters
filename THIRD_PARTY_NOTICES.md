@@ -4,6 +4,7 @@ First-party application attribution: developer The Adekola; company ATT-Tech. Fi
 
 Dependencies retain their respective licences. The API and web lockfiles and generated CycloneDX SBOMs identify selected components; consult each distributed package's licence before redistribution. SBOM metadata is an inventory aid, not a complete legal clearance report.
 
+- Fluent-style interface icons: [asset notice](apps/web/public/assets/icons/NOTICE.txt), including the supplied artwork and Lucide ISC derivatives.
 - Technology/OS icons: [brand asset notice](apps/web/public/assets/brands/NOTICE.txt).
 - Page artwork: [page asset notice](apps/web/public/assets/pages/NOTICE.txt).
 - React, Node.js, Express, PostgreSQL, Vite, Docker, Proxmox, TrueNAS, Caddy and other names/logos remain their owners' marks. Credits do not imply endorsement.

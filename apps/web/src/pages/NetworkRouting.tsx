@@ -7,7 +7,7 @@ import {nodeNetworkUrl} from '../network-navigation';
 import {networkConfig} from '../network-config';
 import {useState} from 'react';
 import {Link} from 'react-router-dom';
-import {Route,Globe,Layers,RefreshCw,Eye,Pencil,Search,Settings,Network,FileText} from 'lucide-react';
+import {Route,Globe,Layers,RefreshCw,Eye,Pencil,Search,Settings,Network,FileText} from '../icons';
 import {useApi,useResourceRefresh} from '../hooks';
 import {confirmedApi} from '../api';
 import {Card,Stat,Badge,Modal,usePopupSuccess} from '../components/UI';

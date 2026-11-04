@@ -2,6 +2,10 @@
 
 Developer: **The Adekola** · Company: **ATT-Tech**.
 
+## Unreleased
+
+- Replace interface icons with the supplied Fluent-inspired SVG pack and matching dimensional controls and system identity tiles.
+
 ## v1.0.0 — release-notes baseline, 29 October 2026
 
 The release series starts at v1.0.0. Publication remains paused pending acceptance; a version number is not production approval. See the [v1.0.0 release notes](docs/releases/v1.0.0.md).
