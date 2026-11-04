@@ -4,9 +4,12 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "i18n:extract": "node scripts/i18n-catalog.mjs",
+    "i18n:recovery": "node scripts/build-recovery-languages.mjs",
+    "i18n:check": "node scripts/check-language-packs.mjs",
     "icons:build": "node scripts/build-fluent-icons.mjs",
     "dev": "vite --host 0.0.0.0",
-    "build": "tsc -b && vite build",
+    "build": "node scripts/check-language-packs.mjs && node scripts/build-recovery-languages.mjs && tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "node scripts/prepare-tests.mjs && node --test test/*.test.mjs"
   },

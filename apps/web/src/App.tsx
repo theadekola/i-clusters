@@ -1,3 +1,4 @@
+import {useLocale} from './i18n/locale';
 import ReportLoading from './components/ReportLoading';
 import {isSoftwareUpdating} from './software-update-state';
 import {startSessionActivity} from './session';
@@ -24,6 +25,7 @@ const Settings=lazy(()=>import('./pages/Settings'));
 const Shell=lazy(()=>import('./pages/Shell'));
 
 export default function App(){
+ useLocale();
  const [connectionError,setConnectionError]=useState(''),[updating,setUpdating]=useState(isSoftwareUpdating);
  useEffect(()=>{const changed=()=>setUpdating(isSoftwareUpdating());window.addEventListener('iclusters-software-update',changed);const timer=window.setInterval(changed,10000);return()=>{window.removeEventListener('iclusters-software-update',changed);window.clearInterval(timer)}},[]);
  const[authenticated,setAuthenticated]=useState<boolean|null>(null);

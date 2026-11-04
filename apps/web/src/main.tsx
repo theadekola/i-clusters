@@ -1,3 +1,5 @@
+import {initializeLocale} from './i18n/locale';
+import './i18n/language.css';
 import InstallPrompt from './components/InstallPrompt';
 import './brand-storage';
 import React from 'react';
@@ -20,11 +22,11 @@ import './components/ssh-dialog.css';
 
 applyAppearance();
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+void initializeLocale().then(()=>ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter><PageBoundary><App /><InstallPrompt/></PageBoundary></BrowserRouter>
   </React.StrictMode>
-);
+));
 
 import './components/distribution-summary.css';
 

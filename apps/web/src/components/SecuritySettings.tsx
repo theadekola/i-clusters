@@ -1,3 +1,4 @@
+import {translate} from '../i18n/locale';
 import RefreshButton from './RefreshButton';
 import ReportLoading from './ReportLoading';
 import AccountSecurity from './AccountSecurity';
@@ -14,7 +15,7 @@ export default function SecuritySettings({user,search}:any){
  const security=useApi<any>('/security',null),[logs,setLogs]=useState<any[]|null>(null),[reading,setReading]=useState(false),[error,setError]=useState('');
  const accountControls=useRef(false);if(security.data?.twoFactor)accountControls.current=true;
  const role=user?.role,admin=['admin','owner'].includes(role),auditor=['auditor','operator','admin','owner'].includes(role),policy=security.data;
- const visible=(text:string)=>text.toLowerCase().includes(search.toLowerCase());
+ const visible=(text:string)=>(text+' '+translate(text)).toLowerCase().includes(search.toLowerCase());
  const fact=(label:string,value:any)=><div className="settings-fact" key={label}><span>{label}</span><b>{value??'Not reported'}</b></div>;
  const loadLogs=async()=>{if(!auditor)return;setReading(true);setError('');try{const {api}=await import('../api');const result=await api('/audit');setLogs(Array.isArray(result.logs)?result.logs.slice(0,5):[]);}catch(e:any){setError(e.message||'Audit records could not be loaded.')}finally{setReading(false)}};
  const downloadLogs=async()=>{if(!auditor)return;setReading(true);setError('');try{const {api}=await import('../api');const result=await api('/audit'),url=URL.createObjectURL(new Blob([JSON.stringify({exportedAt:new Date().toISOString(),logs:result.logs},null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='iclusters-audit-logs.json';a.click();URL.revokeObjectURL(url)}catch(e:any){setError(e.message||'Audit download failed.')}finally{setReading(false)}};

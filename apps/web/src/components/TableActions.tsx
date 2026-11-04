@@ -1,3 +1,4 @@
+import {nativeTag,nativeChildren,isValueElement} from '../i18n/element-type';
 import {Children,cloneElement,createContext,isValidElement,useContext,useId,useState,type ButtonHTMLAttributes,type ComponentProps,type ReactNode} from 'react';
 
 const RowSelection=createContext<{selected:string|null;select:(id:string)=>void}|null>(null);
@@ -10,7 +11,7 @@ export function SelectionBody({children,...props}:ComponentProps<'tbody'>){
 
 function hasAction(value:ReactNode):boolean {
  return Children.toArray(value).some(child=>isValidElement<any>(child)&&(
-  child.type==='button'||child.type==='a'||typeof (child as any).props.onClick==='function'||hasAction((child as any).props.children)
+  nativeTag(child)==='button'||nativeTag(child)==='a'||typeof (child as any).props.onClick==='function'||hasAction(nativeChildren(child))
  ));
 }
 const identityClasses=/\b(resource-name-action|history-alert-name|history-message|retention-name|schedule-name|restore-row-name|rule-name)\b/;
@@ -19,7 +20,8 @@ function rowContent(value:ReactNode,firstCell=false):ReactNode {
  return Children.map(value,child=>{
   if(!isValidElement<any>(child))return child;
   const props=(child as any).props;
-  if(child.type==='button'&&!props.role&&(firstCell||identityClasses.test(props.className||''))){
+  if(isValueElement(child))return cloneElement(child,{value:rowContent(nativeChildren(child),firstCell)} as any);
+  if(nativeTag(child)==='button'&&!props.role&&(firstCell||identityClasses.test(props.className||''))){
    return <span className={`row-content-name ${(props.className||'').replace(/\b(resource-name-action|resource-identity-action)\b/g,'')}`} title={props.title}>{rowContent(props.children)}</span>;
   }
   return props.children?cloneElement(child,{},rowContent(props.children,firstCell)):child;
@@ -28,7 +30,7 @@ function rowContent(value:ReactNode,firstCell=false):ReactNode {
 
 export function InspectableRow({onInspect,className='',children,...props}:Omit<ComponentProps<'tr'>,'onClick'|'onKeyDown'> & {onInspect:(row:HTMLTableRowElement)=>void}){
  const id=useId(),selection=useContext(RowSelection),[localSelected,setLocalSelected]=useState(false);
- const cells=Children.toArray(children).filter(child=>isValidElement<any>(child)&&child.type==='td');
+ const cells=Children.toArray(children).filter(child=>isValidElement<any>(child)&&nativeTag(child)==='td');
  const hasActions=cells.length>1&&hasAction((cells.at(-1) as any)?.props.children);
  const selected=selection?.selected!=null?selection.selected===id:localSelected||/(?:^|\s)(?:[\w-]*-)?selected(?:\s|$)/.test(className);
  const classes=selection?.selected!=null?className.split(/\s+/).filter(c=>!/(?:^|-)selected$/.test(c)).join(' '):className;
@@ -36,7 +38,7 @@ export function InspectableRow({onInspect,className='',children,...props}:Omit<C
  const activate=(row:HTMLTableRowElement)=>{choose();if(!hasActions)onInspect(row)};
  let first=true;
  const content=Children.map(children,child=>{
-  if(!isValidElement<any>(child)||child.type!=='td')return child;
+  if(!isValidElement<any>(child)||nativeTag(child)!=='td')return child;
   const isFirst=first;first=false;
   return cloneElement(child,{},rowContent((child as any).props.children,isFirst));
  });
