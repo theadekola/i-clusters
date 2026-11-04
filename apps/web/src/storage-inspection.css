@@ -55,3 +55,17 @@
 @media(max-width:600px){.disk-use-options{gap:6px}.disk-configuration .disk-use-fieldset{padding:8px}.storage-contents .header-actions{align-items:stretch}.storage-contents .btn{white-space:normal}}
 
 @media(max-width:360px){.modal.modal .disk-configuration .disk-use-options .checkbox-option{gap:3px}}
+
+/* Resource inspection is opened explicitly from the table eye action. */
+.content .storage-pools-full-width,.content .disk-list-full-width{grid-template-columns:minmax(0,1fr)}
+.modal:has(.storage-pool-inspection),.modal:has(.disk-detail-card){max-width:760px}
+.storage-pool-inspection{display:grid;gap:20px;min-width:0}
+.storage-inspected-pool{min-width:0}
+.storage-inspected-pool .task-details dd,.modal .disk-details dd{overflow-wrap:anywhere;min-width:0}
+.modal .disk-detail-card .header-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.modal .disk-detail-card .header-actions>.btn{min-height:44px;white-space:normal}
+.modal .storage-resource-edit{align-items:start}
+.storage-resource-edit>p.muted{grid-column:1/-1;margin:0;line-height:1.6}
+.storage-resource-edit>.storage-edit-actions{grid-column:1/-1;display:flex;align-items:center;justify-content:flex-end;gap:12px;padding-top:8px}
+.storage-edit-actions>.btn{flex:0 1 auto;min-height:44px;padding:12px 18px;white-space:normal}
+@media(max-width:480px){.storage-edit-actions>.btn{flex:1;min-width:0}.storage-resource-edit>.storage-edit-actions{gap:8px;align-items:stretch}.modal .disk-detail-card .header-actions>.btn{flex:1}}

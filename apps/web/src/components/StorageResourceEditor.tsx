@@ -35,7 +35,7 @@ export default function StorageResourceEditor({resource,onClose,onSaved}:{resour
   <p className="storage-edit-target"><strong>{resource.name}</strong><br/>{resource.node||resource.provider}</p>
   {loading&&<ReportLoading message="Loading current storage settings…"/>}
   {error&&<p role="alert" className="error">{error}</p>}
-  {success?<><p role="status">{success}</p><button type="button" className="btn primary" disabled={guestBusy} onClick={onClose}>Done</button></>:model&&<form className="form-grid" onSubmit={submit}>
+  {success?<><p role="status">{success}</p><button type="button" className="btn primary" disabled={guestBusy} onClick={onClose}>Done</button></>:model&&<form className="form-grid storage-resource-edit" onSubmit={submit}>
    {model.provider==='proxmox'?<>
     <p>Current allocated size: {(model.size/GiB).toLocaleString()} GiB · {model.disk}</p>
     <label>New total size (GiB)<input name="sizeGiB" type="number" step="1" min={Math.floor(model.size/GiB)+1} required placeholder={String(Math.floor(model.size/GiB)+1)}/></label>
@@ -45,7 +45,7 @@ export default function StorageResourceEditor({resource,onClose,onSaved}:{resour
     <label>Compression<select name="compression" defaultValue=""><option value="">Keep current ({model.compression||'not reported'})</option>{['LZ4','ZSTD','OFF','INHERIT'].map(v=><option key={v}>{v}</option>)}</select></label>
     <label>Read-only mode<select name="readonly" defaultValue=""><option value="">Keep current ({model.readonly||'not reported'})</option><option value="ON">On</option><option value="OFF">Off</option><option value="INHERIT">Inherit</option></select></label>
    </>}
-   <div className="header-actions"><button type="button" className="btn secondary" disabled={busy||guestBusy} onClick={onClose}>Cancel</button><button className="btn primary" type="submit" disabled={busy||guestBusy} aria-busy={busy}>{busy?'Saving…':'Save Changes'}</button></div>
+   <div className="storage-edit-actions"><button type="button" className="btn secondary" disabled={busy||guestBusy} onClick={onClose}>Cancel</button><button className="btn primary" type="submit" disabled={busy||guestBusy} aria-busy={busy}>{busy?'Saving…':'Save Changes'}</button></div>
   </form>}
   {model?.type==='VM Volume'&&<GuestStorageAllocation resource={resource} onSaved={onSaved} disabled={busy} onBusy={setGuestBusy}/>}
  </Modal>;

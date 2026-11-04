@@ -26,7 +26,16 @@ const sample={
  images:[{id:'image1',tags:['postgres:16'],size:1024**3}],
  ...Object.fromEntries(['errors','alerts','networks','volumes','pools','datasets','disks','shares','interfaces','devices','routes','dns','rules','history','jobs','points','tasks','logs','users','connections','notifications','destinations','schedules','policies'].map(k=>[k,[]]))
 };
+const popupPools=['node01','node02'].map((node,index)=>({id:node+'/backup-ssd',name:'backup-ssd',provider:'proxmox',node,type:'dir',status:'online',applicable:true,capacity:(index+1)*1024**4,used:100*1024**3,available:(index+1)*1024**4-100*1024**3,usage:10,path:'/mnt/pve/backup-ssd',content:['backup']}));
+const popupVolumes=[{id:'vm-volume',resourceId:'local-lvm:vm-103-disk-0',name:'local-lvm:vm-103-disk-0',node:'node01',vmid:103,provider:'proxmox',type:'VM Volume',pool:'local-lvm',size:150*1024**3,editable:true},{id:'dataset',resourceId:'tank/data',name:'tank/data',provider:'truenas',type:'Dataset',pool:'tank',mountpoint:'/mnt/tank/data',editable:true}];
 function fixture(path){
+ if(process.env.LAYOUT_STORAGE_POPUPS){
+  if(path==='/storage')return {...sample,pools:popupPools,summary:{pools:2,online:2,capacity:3*1024**4,distribution:popupPools.map(row=>({...row,key:row.provider+':'+row.id}))}};
+  if(path==='/storage/disks')return {...sample,resources:['node01','node02'].map((node,index)=>({id:node+'/sda',name:'/dev/sda',node,provider:'proxmox',type:'ssd',size:1024**4,health:'PASSED',model:'Fixture disk '+node,serial:'serial-'+node,wearout:87,gpt:true}))};
+  if(path.includes('/smart'))return {report:{health:'PASSED',attributes:[],text:'Read-only fixture S.M.A.R.T. report'},sampledAt:now};
+  if(path==='/storage/datasets')return {...sample,resources:popupVolumes,truenasEnabled:true};
+ }
+
  if(path==='/dashboard'&&process.env.LAYOUT_CHART_HISTORY)return {...sample,metrics:process.env.LAYOUT_CHART_HISTORY==='empty'?[]:sample.metrics.slice(-1)};
  if(path==='/auth/setup')return {registrationOpen:false};
  if(aiFixture&&path==='/configuration/ai')return aiFixture;
@@ -109,6 +118,9 @@ try{
     if(route.request().method()==='PUT')clusterSaves++;else clusterTests++;
     return route.fulfill({json:{ok:true,nodes:[{name:'node01',status:'online'}],management:{verified:true,power:true,configuration:true}}});
    }
+  }
+  if(process.env.LAYOUT_STORAGE_POPUPS&&path==='/storage/datasets/edit'&&route.request().method()==='GET'){
+   const resourceId=new URL(route.request().url()).searchParams.get('resourceId'),resource=popupVolumes.find(row=>row.resourceId===resourceId);assert.ok(resource);return route.fulfill({json:{...resource,revision:'fixture-revision',connectionScope:'fixture-scope',disk:'scsi0',quota:0,compression:'LZ4',readonly:'OFF'}});
   }
   // The audit must never reach an actual provider or perform a management write.
   if(route.request().method()!=='GET'&&path!=='/ssh/fingerprint'&&!(checkRefresh&&path==='/docker/updates/check'))failures.push(`Unexpected write: ${path}`);
@@ -317,6 +329,21 @@ try{
    }
    assert.ok(await page.locator('.shell-host').first().evaluate(element=>{const style=getComputedStyle(element);return style.backgroundImage!=='none'||style.backgroundColor!=='rgba(0, 0, 0, 0)'}),'Resource cards retain their surface');
    if(process.env.LAYOUT_SCREENSHOTS){mkdirSync(process.env.LAYOUT_SCREENSHOTS,{recursive:true});await page.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-transparent-shell.png`,fullPage:true});await page.locator('.nav-toggle').hover();await page.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-icon-hover.png`});}
+  }
+  if(process.env.LAYOUT_STORAGE_POPUPS){
+   await page.goto(base+'storage');await page.locator('.storage-pool-table tbody tr').nth(1).waitFor();assert.equal(await page.locator('.storage-overview-grid aside,.storage-inline-inspect,.storage-distribution').count(),0);
+   const poolEye=page.locator('.storage-pool-table tbody tr').nth(1).locator('.table-action').first();await poolEye.click();let popup=page.getByRole('dialog',{name:copy('Inspect Pool'),exact:true});await popup.waitFor();assert.ok(await popup.locator('.storage-distribution').isVisible());assert.ok((await popup.locator('.storage-inspected-pool').innerText()).includes('node02'));assert.equal(await popup.locator('.distribution-summary-legend button').count(),2);
+   const inViewport=async locator=>{const box=await locator.boundingBox();assert.ok(box.x>=0&&box.x+box.width<=width+1,'Storage popup stays inside viewport');assert.equal(await locator.evaluate(e=>e.scrollWidth<=e.clientWidth+1),true,'Storage popup content does not overflow')};await inViewport(popup);
+   if(process.env.LAYOUT_SCREENSHOTS)await popup.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-pool-popup.png`});await page.keyboard.press('Escape');await popup.waitFor({state:'detached'});assert.equal(await poolEye.evaluate(e=>e===document.activeElement),true);
+   await page.goto(base+'storage?tab=Disks');await page.locator('.disk-layout tbody tr').nth(1).waitFor();assert.equal(await page.locator('.disk-detail-card').count(),0);const diskEye=page.locator('.disk-layout tbody tr').nth(1).locator('.table-action');await diskEye.click();popup=page.getByRole('dialog',{name:copy('Disk Details'),exact:true});await popup.waitFor();assert.ok((await popup.innerText()).includes('serial-node02'));assert.ok(!(await popup.innerText()).includes('serial-node01'));await inViewport(popup);
+   await popup.getByRole('button',{name:copy('Refresh S.M.A.R.T.'),exact:true}).click();await page.locator('.disk-smart pre').waitFor();await popup.getByRole('button',{name:copy('View Details'),exact:true}).click();const report=page.getByRole('dialog',{name:copy('Disk Report'),exact:true});await report.waitFor();assert.ok((await report.locator('pre').innerText()).includes('serial-node02'));await page.keyboard.press('Escape');await report.waitFor({state:'detached'});assert.ok(await popup.isVisible());
+   if(process.env.LAYOUT_SCREENSHOTS)await popup.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-disk-popup.png`});await page.keyboard.press('Escape');await popup.waitFor({state:'detached'});assert.equal(await diskEye.evaluate(e=>e===document.activeElement),true);
+   await page.goto(base+'storage?tab='+encodeURIComponent('Datasets / Volumes'));await page.locator('.dataset-layout tbody tr').nth(1).waitFor();
+   for(const resource of popupVolumes){
+    const row=page.locator('.dataset-layout tbody tr').filter({hasText:resource.name});await row.getByRole('button',{name:new RegExp('^'+copy('Edit')+' ')}).click();popup=page.getByRole('dialog',{name:copy('Edit Dataset / Volume'),exact:true});await popup.locator('.storage-resource-edit').waitFor();await inViewport(popup);
+    const actions=popup.locator('.storage-edit-actions'),cancel=actions.getByRole('button',{name:copy('Cancel'),exact:true}),save=actions.getByRole('button',{name:copy('Save Changes'),exact:true}),a=await cancel.boundingBox(),b=await save.boundingBox(),form=await popup.locator('form').boundingBox();assert.ok(Math.abs(a.y-b.y)<2,'Cancel and Save share one row');assert.ok(a.height>=40&&a.height<=64&&b.height>=40&&b.height<=64,'Edit buttons have normal touch target heights');assert.ok(a.x>=form.x&&b.x+b.width<=form.x+form.width+1);assert.equal(await actions.evaluate(e=>getComputedStyle(e).gridColumn),'1 / -1','Edit actions span both form columns');
+    if(process.env.LAYOUT_SCREENSHOTS&&resource.provider==='proxmox')await popup.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-dataset-actions.png`});await cancel.click();await popup.waitFor({state:'detached'});
+   }
   }
   if(process.env.LAYOUT_CHECK_HEADER_LANGUAGE==='1'){
    await page.goto(base);await page.locator('#header-language').waitFor();
