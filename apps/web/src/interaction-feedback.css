@@ -49,3 +49,6 @@
  :root tbody tr:not([aria-disabled="true"]):not([inert]):not([inert] *):hover>td,
  :root tbody tr:not([aria-disabled="true"]):not([inert]):not([inert] *):focus-within>td{background:var(--theme-highlight,#173b56)!important}
 }
+
+.resource-identity-action{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;overflow-wrap:anywhere;line-height:inherit}
+.resource-identity-action>.docker-image{flex-basis:100%}

@@ -38,7 +38,7 @@ test('event details open only from View, close without reopening, and retain sel
   await page.click(button(page.container,'View'));assert.match(panel().textContent,/Command prepared/);
   await page.click(page.container.querySelector('[aria-label="Close event details"]'));
   await page.click(button(page.container,'Event Log'));
-  const views=[...page.container.querySelectorAll('tbody button')];await page.click(views[1]);assert.match(panel().textContent,/non-zero exit/);
+  const views=[...page.container.querySelectorAll('tbody button:not(.resource-identity-action)')];await page.click(views[1]);assert.match(panel().textContent,/non-zero exit/);
   await page.render({host:{hostname:'node02'}});assert.equal(panel(),null);
  }finally{await page.close()}
 });
