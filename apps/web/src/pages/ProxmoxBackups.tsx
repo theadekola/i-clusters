@@ -1,3 +1,4 @@
+import {isActionCancelled} from '../action-cancellation';
 import RefreshButton from '../components/RefreshButton';
 import {cardValue} from '../components/ReportLoading';
 import DistributionSummary from '../components/DistributionSummary';
@@ -39,9 +40,9 @@ export default function ProxmoxBackups({navigation,role,hours,onTasks,onStorage}
  const pages=Math.max(1,Math.ceil(filtered.length/size)),actual=Math.min(page,pages-1),shown=filtered.slice(actual*size,(actual+1)*size);
  useEffect(()=>setPage(0),[search,node,status,view,kind,size]);
  const refresh=reports.refresh;
- const runJob=async(j:any)=>{if(busy||!operator||live.error||!j.node)return;setBusy(true);setError('');try{const r=await confirmedApi(`/backups/${encodeURIComponent(j.id)}/run`,{method:'POST'});setMessage(`Backup submitted: ${r.result?.task||'request accepted'}. Inspect Tasks & Logs for completion.`);await tasks.refresh();}catch(e:any){setError(e.message);}finally{setBusy(false);}};
- const toggle=async(j:any)=>{if(busy||!admin||live.error)return;setBusy(true);setError('');try{await confirmedApi(`/schedules/${encodeURIComponent(j.id)}/toggle`,{method:'POST'});await Promise.all([live.refresh(),jobReport.refresh()]);}catch(e:any){setError(e.message);}finally{setBusy(false);}};
- const submit=async(e:any)=>{e.preventDefault();if(busy||!operator||guests.error||stores.error||!nodeTargets.length||!nodeGuests.length)return;const body=Object.fromEntries(new FormData(e.currentTarget));setBusy(true);setError('');try{const r=await confirmedApi('/proxmox/backup',{method:'POST',body:JSON.stringify(body)});setMessage(`Backup submitted: ${r.result?.task||'request accepted'}. Check Tasks & Logs.`);setModal(null);await refresh();}catch(e:any){setError(e.message);}finally{setBusy(false);}};
+ const runJob=async(j:any)=>{if(busy||!operator||live.error||!j.node)return;setBusy(true);setError('');try{const r=await confirmedApi(`/backups/${encodeURIComponent(j.id)}/run`,{method:'POST'});setMessage(`Backup submitted: ${r.result?.task||'request accepted'}. Inspect Tasks & Logs for completion.`);await tasks.refresh();}catch(e:any){if(isActionCancelled(e))return;setError(e.message);}finally{setBusy(false);}};
+ const toggle=async(j:any)=>{if(busy||!admin||live.error)return;setBusy(true);setError('');try{await confirmedApi(`/schedules/${encodeURIComponent(j.id)}/toggle`,{method:'POST'});await Promise.all([live.refresh(),jobReport.refresh()]);}catch(e:any){if(isActionCancelled(e))return;setError(e.message);}finally{setBusy(false);}};
+ const submit=async(e:any)=>{e.preventDefault();if(busy||!operator||guests.error||stores.error||!nodeTargets.length||!nodeGuests.length)return;const body=Object.fromEntries(new FormData(e.currentTarget));setBusy(true);setError('');try{const r=await confirmedApi('/proxmox/backup',{method:'POST',body:JSON.stringify(body)});setMessage(`Backup submitted: ${r.result?.task||'request accepted'}. Check Tasks & Logs.`);setModal(null);await refresh();}catch(e:any){if(isActionCancelled(e))return;setError(e.message);}finally{setBusy(false);}};
  const storageData=Object.entries(points.reduce((a:any,p:any)=>{if(Number.isFinite(p.size)&&p.size>=0)a[p.storage]=(a[p.storage]||0)+p.size;return a;},{})).map(([name,value])=>({name,value}));
  const targets=resources.filter((r:any)=>node==='all'||r.node===node).filter((r:any)=>String(r.content||'').split(',').includes('backup')).filter((r:any,i:number,a:any[])=>!r.shared||a.findIndex(s=>s.shared&&s.name===r.name)===i);
  const allGuests=[...(guests.data?.vms||[]),...(guests.data?.lxc||[])];

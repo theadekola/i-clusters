@@ -1,3 +1,4 @@
+import {isActionCancelled} from '../action-cancellation';
 import RefreshButton from './RefreshButton';
 import {useState} from 'react';
 import {useApi} from '../hooks';
@@ -6,7 +7,7 @@ import {confirmedApi} from '../api';
 export default function GuestCreateFields({kind,node,role}:{kind:'vm'|'ct';node:string;role?:string}){
  const options=useApi<any>(`/proxmox/create-options/${encodeURIComponent(node)}`,{pools:[],bridges:[],nextId:null,errors:[]},0),admin=['admin','owner'].includes(role||'');
  const [unprivileged,setUnprivileged]=useState(true),[noNetwork,setNoNetwork]=useState(false),[ipv4,setIpv4]=useState('dhcp'),[ipv6,setIpv6]=useState('none'),[sshKey,setSshKey]=useState(''),[error,setError]=useState('');
- const loadKey=async(e:any)=>{const file=e.target.files?.[0];if(!file)return;setError('');try{if(file.size>65536)throw Error('Public key file must be at most 64 KiB.');const key=await file.text();if(key.includes('PRIVATE KEY')||!key.trim().split('\n').every((line:string)=>/^(ssh-|ecdsa-|sk-)/.test(line.trim())))throw Error('Select a public SSH key file, not a private key.');setSshKey(key.trim());}catch(e:any){setError(e.message)}finally{e.target.value=''}};
+ const loadKey=async(e:any)=>{const file=e.target.files?.[0];if(!file)return;setError('');try{if(file.size>65536)throw Error('Public key file must be at most 64 KiB.');const key=await file.text();if(key.includes('PRIVATE KEY')||!key.trim().split('\n').every((line:string)=>/^(ssh-|ecdsa-|sk-)/.test(line.trim())))throw Error('Select a public SSH key file, not a private key.');setSshKey(key.trim());}catch(e:any){if(isActionCancelled(e))return;setError(e.message)}finally{e.target.value=''}};
  return <>
  <h4 className="cluster-wide">General options</h4><label>{kind==='vm'?'VM':'CT'} ID<input name="guestId" type="number" min={100} max={999999999} placeholder={options.data.nextId?`Automatic (${options.data.nextId} suggested)`:'Automatic'}/><small>Leave blank to allocate an available ID. Existing guests cannot be replaced.</small></label>
  <label>Resource pool<select name="pool"><option value="">No resource pool</option>{(options.data.pools||[]).map((p:any)=><option key={p.id} value={p.id}>{p.id}</option>)}</select></label>
@@ -27,6 +28,6 @@ export default function GuestCreateFields({kind,node,role}:{kind:'vm'|'ct';node:
 
 export function CreationHa({created,onUpdate}:{created:any;onUpdate:(value:any)=>void}){
  const [busy,setBusy]=useState(false),[error,setError]=useState('');if(!created?.ha)return null;
- const complete=async()=>{setBusy(true);setError('');try{const response=await confirmedApi(`/proxmox/creation/${encodeURIComponent(created.ha.receipt)}/ha`,{method:'POST',body:'{}'});onUpdate({...created,ha:{...created.ha,...response.result}});}catch(e:any){setError(e.message)}finally{setBusy(false)}};
+ const complete=async()=>{setBusy(true);setError('');try{const response=await confirmedApi(`/proxmox/creation/${encodeURIComponent(created.ha.receipt)}/ha`,{method:'POST',body:'{}'});onUpdate({...created,ha:{...created.ha,...response.result}});}catch(e:any){if(isActionCancelled(e))return;setError(e.message)}finally{setBusy(false)}};
  return <div><p role="status">{created.ha.message}</p>{created.ha.state==='pending'&&<RefreshButton indicator className="btn secondary" aria-busy={busy} disabled={busy} onClick={complete}>{busy?'Checking creation…':'Recheck & Add to HA'}</RefreshButton>}{error&&<p role="alert" className="login-error">{error}</p>}</div>;
 }

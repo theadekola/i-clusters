@@ -1,3 +1,4 @@
+import {isActionCancelled} from '../action-cancellation';
 import RefreshButton from '../components/RefreshButton';
 import ReportLoading from '../components/ReportLoading';
 import Pagination from '../components/Pagination';
@@ -21,7 +22,7 @@ export default function AlertRules({rules,alerts,admin,owner=false,refresh,onHis
  const reset=()=>{setEdit(null);setVersion(v=>v+1);setError('')};
  const create=()=>{reset();window.setTimeout(()=>nameInput.current?.focus(),0)};
  useEffect(()=>{if(params.get('action')==='create'){create();const next=new URLSearchParams(params);next.delete('action');setParams(next,{replace:true});}},[params.get('action')]);
- const run=async(path:string,method:string,body:any,message:string,clear=false)=>{setBusy(true);setError('');try{await confirmedApi(path,{method,...(body!==undefined?{body:JSON.stringify(body)}:{})});setMessage(message);if(clear)reset();setDeleteRow(null);await refresh()}catch(e:any){setError(e.message)}finally{setBusy(false)}};
+ const run=async(path:string,method:string,body:any,message:string,clear=false)=>{setBusy(true);setError('');try{await confirmedApi(path,{method,...(body!==undefined?{body:JSON.stringify(body)}:{})});setMessage(message);if(clear)reset();setDeleteRow(null);await refresh()}catch(e:any){if(isActionCancelled(e))return;setError(e.message)}finally{setBusy(false)}};
  const submit=(e:any)=>{e.preventDefault();if(stale||!admin||unavailable)return;run(edit?`/alerts/rules/${encodeURIComponent(edit.id)}`:'/alerts/rules',edit?'PUT':'POST',Object.fromEntries(new FormData(e.currentTarget)),edit?'Rule updated.':'Rule created.',true)};
  const counts=rules.map(r=>({id:r.id,name:r.name,count:alerts.filter(a=>a.ruleId===r.id||(!a.ruleId&&a.key?.startsWith(`rule:${r.id}:`))).length})).sort((a,b)=>b.count-a.count).slice(0,5),on=rules.filter(enabled).length,off=rules.length-on;
  const openEdit=(r:any)=>{setEdit({...r});setVersion(v=>v+1);setError('');window.setTimeout(()=>nameInput.current?.focus(),0)};

@@ -1,3 +1,4 @@
+import {isActionCancelled} from '../action-cancellation';
 import GuestStorageAllocation from './GuestStorageAllocation';
 import {useEffect,useRef,useState} from 'react';
 import {api,confirmedApi} from '../api';
@@ -28,7 +29,7 @@ export default function StorageResourceEditor({resource,onClose,onSaved}:{resour
    if(!alive.current)return;
    setSuccess(response.result?.task?'Resize task accepted. Check Proxmox task history for completion.':'Storage change accepted by the provider. Refresh the inventory to verify the result.');
    onSaved();
-  }catch(e:any){if(alive.current)setError(e.message)}finally{pending.current=false;if(alive.current)setBusy(false)}
+  }catch(e:any){if(isActionCancelled(e))return;if(alive.current)setError(e.message)}finally{pending.current=false;if(alive.current)setBusy(false)}
  };
  return <Modal open title="Edit Dataset / Volume" closeDisabled={busy||guestBusy} onClose={onClose}>
   <p className="storage-edit-target"><strong>{resource.name}</strong><br/>{resource.node||resource.provider}</p>

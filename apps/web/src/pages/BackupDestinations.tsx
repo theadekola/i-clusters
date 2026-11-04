@@ -1,3 +1,4 @@
+import {isActionCancelled} from '../action-cancellation';
 import RefreshButton from '../components/RefreshButton';
 import {cardValue} from '../components/ReportLoading';
 import ReportLoading from '../components/ReportLoading';
@@ -55,7 +56,7 @@ export default function BackupDestinations({navigation}:{navigation?:import('rea
   const controller=new AbortController();run.current=controller;setChecks([]);setError('');setModal('test');setBusy(true);
   try{for(let offset=0;offset<list.length&&!controller.signal.aborted;offset+=4){
    const results=await Promise.all(list.slice(offset,offset+4).map(async row=>{
-    try{const result=await api<any>(`/proxmox/storage/${encodeURIComponent(row.node)}/${encodeURIComponent(row.name)}?history=0`,{signal:controller.signal});const issue=(result.errors||[]).find((value:string)=>value.startsWith('status:'));return {name:row.name,node:row.node,state:issue?'Error':[0,false,'0'].includes(result.status?.enabled)?'Disabled':[1,true,'1'].includes(result.status?.active)?'Active':[0,false,'0'].includes(result.status?.active)?'Inactive':'Unknown',error:issue||''}}catch(e:any){return {name:row.name,node:row.node,state:'Error',error:e.message}}
+    try{const result=await api<any>(`/proxmox/storage/${encodeURIComponent(row.node)}/${encodeURIComponent(row.name)}?history=0`,{signal:controller.signal});const issue=(result.errors||[]).find((value:string)=>value.startsWith('status:'));return {name:row.name,node:row.node,state:issue?'Error':[0,false,'0'].includes(result.status?.enabled)?'Disabled':[1,true,'1'].includes(result.status?.active)?'Active':[0,false,'0'].includes(result.status?.active)?'Inactive':'Unknown',error:issue||''}}catch(e:any){if(isActionCancelled(e))return;return {name:row.name,node:row.node,state:'Error',error:e.message}}
    }));if(!controller.signal.aborted)setChecks(old=>[...old,...results]);
   }}finally{if(run.current===controller){run.current=null;if(!controller.signal.aborted)setBusy(false)}}
  };
@@ -101,7 +102,7 @@ function DestinationDetails({current,detail,admin,inventoryError,refresh,onClose
  const reading=destinationReading(statusError?{}:{capacity:status.total??current.capacity,used:status.used??current.used,available:status.avail??current.available});
  const content=(Array.isArray(detail.data?.content)?detail.data.content:[]).filter((row:any)=>row.content==='backup'||String(row.volid||'').includes(':backup/')||String(row.volid||'').includes('/vzdump-'));
  const reportedEnabled=[true,1,'1'].includes(status.enabled)?true:[false,0,'0'].includes(status.enabled)?false:current.status==='disabled'?false:null;
- const toggle=async()=>{if(!admin||busy||inventoryError)return;setBusy(true);setError('');try{await confirmedApi(`/proxmox/storage/${encodeURIComponent(current.name)}/enabled`,{method:'PUT',body:JSON.stringify({enabled:reportedEnabled===false})});setMessage('Storage configuration updated.');await refresh()}catch(e:any){setError(e.message)}finally{setBusy(false)}};
+ const toggle=async()=>{if(!admin||busy||inventoryError)return;setBusy(true);setError('');try{await confirmedApi(`/proxmox/storage/${encodeURIComponent(current.name)}/enabled`,{method:'PUT',body:JSON.stringify({enabled:reportedEnabled===false})});setMessage('Storage configuration updated.');await refresh()}catch(e:any){if(isActionCancelled(e))return;setError(e.message)}finally{setBusy(false)}};
  const check=async()=>{setTested(true);await detail.refresh()};
  return <Card className="destination-details"><div className="widget-title"><h3>Destination Details</h3><button className="btn secondary" onClick={()=>setTab('Settings')}><Pencil size={13}/> Edit</button><button className="destination-icon-button" aria-label="Close destination details" onClick={onClose}><X size={14}/></button></div><div className="destination-identity"><span className="destination-point-icon"><Database size={28}/></span><div><b>{current.name} <Badge tone="blue">{category(current)}</Badge></b><small>{current.shared?'Shared backup storage':'Backup storage'} · {current.node}</small></div><Badge tone={tone(current.status)}><i className="destination-status-dot"/>{label(current.status)}</Badge></div><Tabs items={['Overview','Usage','Health','Settings']} active={tab} onChange={setTab}/>
   <div className="destination-detail-body">{error&&<p className="error" role="alert">{error}</p>}{message&&<p role="status">{message}</p>}{detail.error&&<p className="error" role="alert">Details unavailable: {detail.error}</p>}

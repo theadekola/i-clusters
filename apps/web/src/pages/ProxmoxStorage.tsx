@@ -1,3 +1,4 @@
+import {isActionCancelled} from '../action-cancellation';
 import ProxmoxSectionHeader from '../components/ProxmoxSectionHeader';
 import PageIcon from '../components/PageIcon';
 import RefreshButton from '../components/RefreshButton';
@@ -27,7 +28,7 @@ export default function ProxmoxStorage({navigation,role,clusterUrl}:{navigation?
  const capacity=storageCapacity(rows),distribution=storageDistribution(rows),nodeCount=live.data?.nodes?.length||new Set(rows.map((r:any)=>r.node)).size;
  const selectStorage=(resource:any)=>{setNode('all');setType('all');setSearch('');setSelected(resource.id)};
  const add=(kind:string)=>{setAddType(kind);setError('');setModal(true);};
- const toggle=async()=>{if(!current||current.applicable===false||current.scopeVerified===false)return;setBusy(true);setError('');try{await confirmedApi(`/proxmox/storage/${encodeURIComponent(current.name)}/enabled`,{method:'PUT',body:JSON.stringify({enabled:current.status==='disabled'})});setMessage('Storage configuration updated.');await live.refresh();}catch(e:any){setError(e.message);}finally{setBusy(false);}};
+ const toggle=async()=>{if(!current||current.applicable===false||current.scopeVerified===false)return;setBusy(true);setError('');try{await confirmedApi(`/proxmox/storage/${encodeURIComponent(current.name)}/enabled`,{method:'PUT',body:JSON.stringify({enabled:current.status==='disabled'})});setMessage('Storage configuration updated.');await live.refresh();}catch(e:any){if(isActionCancelled(e))return;setError(e.message);}finally{setBusy(false);}};
  const offline=rows.filter((r:any)=>r.status==='offline').length,warnings=rows.filter((r:any)=>r.usage>=80).length,healthy=rows.filter((r:any)=>r.status==='online'&&r.usage!=null&&r.usage<80).length;
  return <section className="vm-manager pve-storage"><ProxmoxSectionHeader title={<><PageIcon name="storage" className="page-title-icon"/>Storage</>} description="Manage storage resources and monitor capacity across your Proxmox cluster." actions={<>{!navigation&&<RefreshButton className="btn secondary" aria-busy={live.loading} disabled={live.loading} onClick={live.refresh}><RefreshCw size={14}/>Refresh</RefreshButton>}{admin&&<button className="btn primary" onClick={()=>add('dir')}><Plus size={14}/>Add Storage</button>}</>}/>
  {(live.error||error)&&<p role="alert" className="login-error">{error||live.error}</p>}{message&&<p role="status" className="vm-message">{message}</p>}

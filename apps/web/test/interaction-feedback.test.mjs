@@ -26,7 +26,7 @@ test('navigation, action controls, native selectors and inspectable rows have ho
   assert.ok(feedback(id,'hover')['border-color'],id+' hover');assert.ok(feedback(id,'active')['box-shadow'],id+' press');
  }
  for(const id of ['field','text'])assert.ok(feedback(id,'hover')['border-color']);
- for(const id of ['card','anchor']){assert.deepEqual(feedback(id,'hover'),{});assert.deepEqual(feedback(id,'active'),{});}
+ assert.ok(feedback('card','hover')['border-color']);assert.deepEqual(feedback('card','active'),{});assert.deepEqual(feedback('anchor','hover'),{});assert.deepEqual(feedback('anchor','active'),{});
 });
 test('disabled controls and inert or disabled ancestors receive no interaction effects',()=>{
  for(const id of ['disabled','fieldset','fieldset-input','aria','aria-child','inert','inert-child']){

@@ -127,3 +127,14 @@ test('published endpoints keep reported host bindings distinct from container IP
  assert.deepEqual(display({portBindings:[{hostIp:'::',hostPort:8080,containerPort:80}]},{}),['Docker host:8080 → 80/tcp (all host IPv6 interfaces)']);
  }finally{built.cleanup()}
 });
+
+test('intentional action cancellation is quiet and never produces a success or write retry',async()=>{
+ for(const message of ['Authentication cancelled','Confirmation cancelled','Permission denied']){
+  let writes=0;const data={host:{hostname:'fixture'},networks:[],containers:[]};const page=await mounted('pages/DockerNetworks.tsx',{data,enabled:true,admin:true,refresh:async()=>{}},async()=>{writes++;throw Error(message)});
+  try{await page.click(button(page.container,'Prune Networks'));assert.equal(writes,1);assert.equal(button(page.container,'Prune Networks').disabled,false);assert.equal(page.container.querySelector('[role=status]'),null);assert.equal(page.container.querySelector('[role=alert]')?.textContent||'',message==='Permission denied'?message:'')}finally{await page.close()}
+ }
+});
+
+test('quiet cancellation matching retains host-change, transport and authentication failures',async()=>{
+ const built=await component('action-cancellation.ts');try{const quiet=built.module.isActionCancelled;for(const message of ['Authentication cancelled','Confirmation cancelled'])assert.equal(quiet(Error(message)),true);for(const value of [null,undefined,Error('Authentication failed'),Error('Docker host changed. Action cancelled.'),Error('Connection was cancelled by the server'),Error('Failed to fetch')])assert.equal(quiet(value),false)}finally{built.cleanup()}
+});

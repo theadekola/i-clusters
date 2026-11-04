@@ -1,3 +1,4 @@
+import {isActionCancelled} from '../action-cancellation';
 import RefreshButton from '../components/RefreshButton';
 import {cardValue} from '../components/ReportLoading';
 import DistributionSummary from '../components/DistributionSummary';
@@ -40,7 +41,7 @@ export default function Storage(){
  const filtered=rows.filter((r:any)=>(provider==='all'||r.provider===provider)&&(availability==='all'||(availability==='online'?online(r):availability==='not-assigned'?r.applicable===false||r.status==='not-assigned':!online(r)&&r.applicable!==false&&r.status!=='not-assigned'))&&(type==='all'||r.type===type)&&(node==='all'||r.node===node)&&`${r.name} ${r.node||''} ${r.provider||''} ${r.model||''} ${storageLocation(r)} ${storageUses(r)} ${storageAssignment(r)}`.toLowerCase().includes(search.toLowerCase()));
  const count=Math.max(1,Math.ceil(filtered.length/rowsPerPage)),actual=Math.min(page,count-1),shown=filtered.slice(actual*rowsPerPage,actual*rowsPerPage+rowsPerPage),current=(tab==='Storage Pools'?filtered:pools).find((r:any)=>`${r.provider}:${r.id}`===selected)||(tab==='Storage Pools'?filtered:pools).find((r:any)=>r.provider==='proxmox'&&online(r))||(tab==='Storage Pools'?filtered:pools)[0];
  const change=(value:string)=>{const next=new URLSearchParams(params);next.set('tab',tabs.includes(value)?value:'Storage Pools');setParams(next);setSearch('');setType('all');setNode('all');setProvider('all');setAvailability('all');setPage(0)};
- const execute=async(path:string,method='POST',body:any={})=>{setBusy(true);setError('');try{const r=await confirmedApi(path,{method,body:JSON.stringify(body)});setMessage(r.message||'Operation completed.');await live.refresh();return r;}catch(e:any){setError(e.message);return null;}finally{setBusy(false)}};
+ const execute=async(path:string,method='POST',body:any={})=>{setBusy(true);setError('');try{const r=await confirmedApi(path,{method,body:JSON.stringify(body)});setMessage(r.message||'Operation completed.');await live.refresh();return r;}catch(e:any){if(isActionCancelled(e))return;setError(e.message);return null;}finally{setBusy(false)}};
  const submit=async(e:any)=>{e.preventDefault();const body=Object.fromEntries(new FormData(e.currentTarget));const path=modal==='Create Dataset'?'/truenas/dataset':'/truenas/snapshot';if(await execute(path,'POST',body))setModal('')};
  const storageTasks=(tasks.error?[]:tasks.data.tasks||[]).filter((t:any)=>/vzdump|restore|snapshot|prune|imgcopy|move_volume/i.test(t.type||'')).slice(0,5);
  const truenas=d?.services?.find((s:any)=>s.provider==='truenas')&&['reachable','partial'].includes(d.services.find((s:any)=>s.provider==='truenas')?.status);
