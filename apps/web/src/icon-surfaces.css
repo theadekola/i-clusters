@@ -1,0 +1,87 @@
+/* Icons sit directly on their surrounding surface. Keep the existing dimensions
+   so removing a painted tile does not reduce a control's hit target. */
+:root[data-preset][data-theme][data-appearance] :is(
+  [data-icon-control],.icon-btn,.active-alert-icon-button,.audit-icon,.destination-icon-button,
+  .history-icon-button,.monitor-icon,.notification-icon-button,.report-icon-button,
+  .restore-icon-button,.retention-icon-button,.rule-icon-button,.schedule-icon-button,
+  .users-icon,.settings-section-action,.table-action,.nav-item,.profile-trigger,
+  .vm-layout button,.restore-layout button,.retention-layout button,
+  .stat-icon,.overview-stat-icon,.vm-stat-icon,.guest-kind-icon,.shell-host-icon,
+  .image-stat-icon,.volume-stat-icon,.compose-stat-icon,.compose-app-icon,
+  .restore-stat-icon,.restore-point-icon,.schedule-stat-icon,.schedule-point-icon,
+  .retention-heading-icon,.retention-stat-icon,.retention-point-icon,.retention-rule-icon,
+  .destination-stat-icon,.destination-point-icon,.report-stat-icon,.report-tool-icon,
+  .active-alert-stat-icon,.active-alert-icon,.active-alert-notification-icon,
+  .history-stat-icon,.rule-stat-icon,.rule-metric-icon,.notification-stat-icon,
+  .notification-channel-icon,.notification-settings-icon,.users-stat-icon,.audit-stat-icon,
+  .monitor-stat-icon,.monitor-alert-icon,.monitor-event-icon,.docker-section-stat-icon,
+  .connection-stat-icon,.connection-title-icon,.connection-provider-icon,
+  .brand-icon,.about-logo,.integration-logo,.topology-system-icon,
+  .brand-mark,.page-image-icon,.appearance-choice-check,.security-account-avatar
+) {
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
+
+/* These icon holders predate the shared icon classes. */
+:root[data-preset][data-theme][data-appearance] :is(
+  .settings-card-heading>span,.settings-about-brand>span,
+  .vm-stat>svg,.pve-stat>i,.pve-page .pve-quick button svg,
+  .metric-grid>*>svg,.metric-grid>.card>span:has(>svg),
+  .connection-overview.metric-grid>button>svg,
+  .dataset-title>svg,.disk-title>svg,.storage-top>i,
+  .vm-detail-head>div>svg,.nodes-stat>svg,.pve-node-name>svg,
+  .pve-net-name>svg,.pve-interface-modal-head>svg,
+  .rule-channel>span:first-child,.storage-health-banner svg,
+  .task-operation svg,.task-selected-operation svg,.device-selected-title svg,
+  .mobile-scan-steps svg
+) {
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
+
+/* White glyphs previously relied on a saturated gradient tile for contrast. */
+:root[data-preset][data-theme][data-appearance] :is(
+  .schedule-v2 .schedule-stat-icon,.retention-v2 .retention-stat-icon,
+  .destination-unified .destination-stat-icon,.report-unified .report-stat-icon,
+  .report-tool-icon,.appearance-choice-check
+) {color:var(--theme-icon,var(--app-accent))!important}
+
+:root[data-preset][data-theme][data-appearance] :is(
+  [data-icon-control],.icon-btn,.active-alert-icon-button,.audit-icon,.destination-icon-button,
+  .history-icon-button,.monitor-icon,.notification-icon-button,.report-icon-button,
+  .restore-icon-button,.retention-icon-button,.rule-icon-button,.schedule-icon-button,
+  .users-icon,.settings-section-action,.table-action,.nav-item,.profile-trigger,
+  .vm-layout button,.restore-layout button,.retention-layout button
+):not(:disabled):not([aria-disabled=true]):is(:hover,:focus-visible,:active) {
+  background:var(--theme-highlight)!important;
+  border-color:transparent!important;
+}
+
+:root[data-preset][data-theme][data-appearance] :is(
+  [data-icon-control],.icon-btn,.active-alert-icon-button,.audit-icon,.destination-icon-button,
+  .history-icon-button,.monitor-icon,.notification-icon-button,.report-icon-button,
+  .restore-icon-button,.retention-icon-button,.rule-icon-button,.schedule-icon-button,
+  .users-icon,.settings-section-action,.table-action,.nav-item,.profile-trigger,
+  .vm-layout button,.restore-layout button,.retention-layout button
+):focus-visible {
+  outline:2px solid var(--app-accent);
+  outline-offset:2px;
+}
+
+/* Retain a current-page cue without a permanent coloured navigation tile. */
+:root[data-preset][data-theme][data-appearance] .nav-item {border-inline-start:2px solid transparent}
+:root[data-preset][data-theme][data-appearance] .sidebar .nav-item.active {
+  border-inline-start-color:var(--app-accent)!important;
+  color:var(--theme-icon)!important;
+}
+:root[data-preset][data-theme][data-appearance] :is(
+  .users-icon,.audit-icon,.monitor-icon,.vm-layout button,
+  .restore-layout button,.retention-layout button
+):is(.active,[aria-pressed=true]) {color:var(--theme-icon)!important}
+
+/* Icon-only primary actions no longer have a filled button behind white glyphs. */
+:root[data-preset][data-theme][data-appearance] [data-icon-control]{color:var(--theme-text)!important}
+:root[data-preset][data-theme][data-appearance] [data-icon-control].primary{color:var(--theme-icon)!important}
