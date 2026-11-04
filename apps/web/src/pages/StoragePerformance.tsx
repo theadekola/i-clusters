@@ -2,7 +2,7 @@ import RefreshButton from '../components/RefreshButton';
 import {storageTabs} from '../storage-navigation';
 import PageIcon from '../components/PageIcon';
 import {useState} from 'react';
-import {Cpu,MemoryStick,HardDrive,Network,Clock,RefreshCw,Download} from '../icons';
+import {Cpu,MemoryStick,HardDrive,Network,Clock,RefreshCw,Download} from 'lucide-react';
 import {ResponsiveContainer,AreaChart,Area,XAxis,YAxis,Tooltip,Legend,CartesianGrid} from 'recharts';
 import {useApi} from '../hooks';
 import {Card,Stat} from '../components/UI';

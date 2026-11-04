@@ -12,7 +12,7 @@ import {
   LayoutDashboard, Boxes, Container, Database, Network, HardDriveDownload,
   CalendarClock, History, RotateCcw, Activity, Bell, Sparkles, Users, Settings,
   Terminal, FolderOpen, Menu, X, Cloud, ChevronDown, LogOut
-} from '../icons';
+} from 'lucide-react';
 import { useState,useEffect,useRef } from 'react';
 import UpdateButton from './UpdateButton';
 import { useApi,configureRefresh } from '../hooks';

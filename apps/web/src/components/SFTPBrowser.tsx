@@ -4,7 +4,7 @@ import Pagination from './Pagination';
 import {useSSHSession} from '../ssh-session';
 import {collectSFTPDownload,uploadSFTPFiles} from '../ssh-transfer';
 import {useEffect,useRef,useState} from 'react';
-import {Folder,File,Upload,Download,Plus,Pencil,Trash2,ArrowLeft,ArrowRight,ArrowUp,RefreshCw} from '../icons';
+import {Folder,File,Upload,Download,Plus,Pencil,Trash2,ArrowLeft,ArrowRight,ArrowUp,RefreshCw} from 'lucide-react';
 import {api} from '../api';
 import {Modal} from './UI';
 const join=(base:string,name:string)=>(base==='/'?'':base)+'/'+name;

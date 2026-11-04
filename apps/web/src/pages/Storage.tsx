@@ -19,7 +19,7 @@ import StorageDatasets from './StorageDatasets';
 import StorageDisks from './StorageDisks';
 import {useState,useEffect} from 'react';
 import {Link,useSearchParams} from 'react-router-dom';
-import {Play,Pause,RefreshCw as ScrubIcon,Database,HardDrive,Folder,Camera,Activity,RefreshCw,Plus,Shield,Search,AlertTriangle,CheckCircle,Eye,Layers,ListChecks,X} from '../icons';
+import {Play,Pause,RefreshCw as ScrubIcon,Database,HardDrive,Folder,Camera,Activity,RefreshCw,Plus,Shield,Search,AlertTriangle,CheckCircle,Eye,Layers,ListChecks,X} from 'lucide-react';
 import {ResponsiveContainer,PieChart,Pie,Cell,AreaChart,Area,XAxis,YAxis,Tooltip} from 'recharts';
 import {useApi,useResourceRefresh} from '../hooks';
 import {confirmedApi} from '../api';

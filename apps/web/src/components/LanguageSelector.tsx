@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import {Check,ChevronDown,Globe} from '../icons';
+import {Check,ChevronDown,Globe} from 'lucide-react';
 import {languages,setLocale,useLocale,type Locale} from '../i18n/locale';
 export default function LanguageSelector(){
  const locale=useLocale(),selected=languages.find(language=>language.id===locale)!;

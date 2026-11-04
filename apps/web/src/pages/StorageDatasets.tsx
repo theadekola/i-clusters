@@ -11,7 +11,7 @@ import PageIcon from '../components/PageIcon';
 import {Link} from 'react-router-dom';
 import {useEffect,useState} from 'react';
 import {useStorageDialog} from '../storage-dialog';
-import {Database,HardDrive,Folder,Camera,Plus,RefreshCw,Search,Copy,Shield,Download,Pencil} from '../icons';
+import {Database,HardDrive,Folder,Camera,Plus,RefreshCw,Search,Copy,Shield,Download,Pencil} from 'lucide-react';
 import {ResponsiveContainer,PieChart,Pie,Cell,Tooltip} from 'recharts';
 import {useApi} from '../hooks';
 import {api,confirmedApi} from '../api';

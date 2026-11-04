@@ -9,7 +9,7 @@ import PageIcon from '../components/PageIcon';
 import {useSearchParams} from 'react-router-dom';
 import Audit from './Audit';
 import {useEffect,useState} from 'react';
-import {Users as UsersIcon,UserCheck,ShieldCheck,User,UserX,Search,RefreshCw,Plus,LayoutGrid,List,Eye,X,Shield,Clock,CheckCircle,Info,ChevronLeft,ChevronRight} from '../icons';
+import {Users as UsersIcon,UserCheck,ShieldCheck,User,UserX,Search,RefreshCw,Plus,LayoutGrid,List,Eye,X,Shield,Clock,CheckCircle,Info,ChevronLeft,ChevronRight} from 'lucide-react';
 import {useApi,useResourceRefresh} from '../hooks';
 import {confirmedApi} from '../api';
 import {canToggleAccount} from '../permissions';

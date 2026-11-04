@@ -3,7 +3,7 @@ import ContainerSSHApproval from './ContainerSSHApproval';
 import {lazy,Suspense,useEffect,useRef,useState} from 'react';
 import {api} from '../api';
 import {Modal,ConnectionSuccess} from './UI';
-import {Eye,EyeOff,Maximize,Copy,ClipboardPaste,TextSelect,Terminal as TerminalIcon} from '../icons';
+import {Eye,EyeOff,Maximize,Copy,ClipboardPaste,TextSelect,Terminal as TerminalIcon} from 'lucide-react';
 export function SSHApproval(){
  const [request,setRequest]=useState<any>(null),complete=useRef<(token?:string,serial?:number)=>void>(()=>{});
  useEffect(()=>{

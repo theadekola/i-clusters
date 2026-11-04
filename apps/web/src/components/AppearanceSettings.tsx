@@ -1,7 +1,7 @@
 import {translate,useLocale} from '../i18n/locale';
 import LanguageSelector from './LanguageSelector';
 import {useState} from 'react';
-import {Palette,Paintbrush,PanelLeft,Sun,Moon,Monitor,Check,Pencil,Save} from '../icons';
+import {Palette,Paintbrush,PanelLeft,Sun,Moon,Monitor,Check,Pencil,Save} from 'lucide-react';
 import {appearanceDefaults,themePresets,type AppearanceSettings} from '../appearance';
 import {Card} from './UI';
 function Block({title,detail,icon:Icon,children,className='',editing,onEdit,onSave,error,disabled}:any){return <Card className={`settings-overview-card appearance-settings-card ${className}`}><div className="settings-card-heading"><span><Icon size={23}/></span><div><h2>{title}</h2><p>{detail}</p></div>{onEdit&&<button type="button" className="btn secondary settings-section-action" aria-label={`${editing?'Save':'Edit'} ${title}`} title={`${editing?'Save':'Edit'} ${title}`} disabled={disabled} onClick={editing?onSave:onEdit}>{editing?<Save size={18}/>:<Pencil size={18}/>}</button>}</div>{children}{error&&<p className="error" role="alert">{error}</p>}</Card>}

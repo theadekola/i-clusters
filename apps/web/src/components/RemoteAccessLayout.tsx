@@ -1,5 +1,5 @@
 import {useState,type ReactNode} from 'react';
-import {Camera,Copy,ExternalLink,Monitor,ShieldCheck,Smartphone} from '../icons';
+import {Camera,Copy,ExternalLink,Monitor,ShieldCheck,Smartphone} from 'lucide-react';
 import {dashboardLink,gatewayState} from '../mobile-access';
 import AccessQR from './AccessQR';
 import './remote-access.css';

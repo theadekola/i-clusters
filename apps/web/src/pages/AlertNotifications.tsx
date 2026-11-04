@@ -12,7 +12,7 @@ import BrandIcon from '../components/BrandIcon';
 import {useNavigate} from 'react-router-dom';
 import {useEffect,useState} from 'react';
 import {BarChart,Bar,XAxis,YAxis,CartesianGrid,Tooltip,ResponsiveContainer} from 'recharts';
-import {Bell,Mail,MessageCircle,Send,Clock,Search,RefreshCw,Play,Settings,Eye,Info,ArrowRight} from '../icons';
+import {Bell,Mail,MessageCircle,Send,Clock,Search,RefreshCw,Play,Settings,Eye,Info,ArrowRight} from 'lucide-react';
 import {useApi} from '../hooks';
 import {confirmedApi} from '../api';
 import {Card,Badge,Modal} from '../components/UI';

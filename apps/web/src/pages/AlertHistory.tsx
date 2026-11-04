@@ -6,7 +6,7 @@ import Pagination from '../components/Pagination';
 import {InspectableRow,SelectionBody} from '../components/TableActions';
 import {useEffect,useState} from 'react';
 import {ComposedChart,Bar,Line,XAxis,YAxis,Tooltip,ResponsiveContainer,CartesianGrid} from 'recharts';
-import {AlertTriangle,XCircle,Info,CheckCircle,Download,RefreshCw,Search,Eye,ArrowDownUp,Calendar,ArrowRight} from '../icons';
+import {AlertTriangle,XCircle,Info,CheckCircle,Download,RefreshCw,Search,Eye,ArrowDownUp,Calendar,ArrowRight} from 'lucide-react';
 import {Card,Badge,Modal} from '../components/UI';
 import {alertTime,alertDuration,historyBounds,historyTimeline} from '../alert-history';
 const colors=['#ff536b','#ffad24','#398dff','#9c79e8'];

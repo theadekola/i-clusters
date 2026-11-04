@@ -1,5 +1,5 @@
 import React from 'react';
-import {Eye} from '../icons';
+import {Eye} from 'lucide-react';
 import {InspectableRow,SelectionBody} from './TableActions';
 export function DataTable({columns,rows,onInspect,rowLabel}:{columns:{key:string;label:string;render?:(row:any)=>React.ReactNode}[];rows:any[];onInspect?:(row:any)=>void;rowLabel?:(row:any)=>string}) {
   const addAction=!!onInspect&&!columns.some(c=>c.key==='actions'||c.key==='action');

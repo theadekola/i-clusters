@@ -3,7 +3,7 @@ import Pagination from '../components/Pagination';
 import {InspectableRow,SelectionBody} from '../components/TableActions';
 import {useEffect,useState} from 'react';
 import {Link} from 'react-router-dom';
-import {AlertTriangle,Info,CheckCircle,Search,Eye,CheckCheck,Bell,Mail,ArrowRight,SlidersHorizontal} from '../icons';
+import {AlertTriangle,Info,CheckCircle,Search,Eye,CheckCheck,Bell,Mail,ArrowRight,SlidersHorizontal} from 'lucide-react';
 import {useApi} from '../hooks';
 import {Card,Badge} from '../components/UI';
 const severityColor=(value:string)=>value==='critical'?'#ff536b':value==='warning'?'#ffad24':'#398dff';

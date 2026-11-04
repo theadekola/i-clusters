@@ -9,7 +9,7 @@ import {storageTabs} from '../storage-navigation';
 import PageIcon from '../components/PageIcon';
 import {useEffect,useState} from 'react';
 import {Link,useNavigate} from 'react-router-dom';
-import {Camera,Database,HardDrive,Clock,Calendar,RefreshCw,Plus} from '../icons';
+import {Camera,Database,HardDrive,Clock,Calendar,RefreshCw,Plus} from 'lucide-react';
 import {ResponsiveContainer,PieChart,Pie,Cell,Tooltip} from 'recharts';
 import {useApi} from '../hooks';
 import {api,confirmedApi} from '../api';

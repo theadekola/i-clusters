@@ -11,7 +11,7 @@ import {serviceGuidance} from '../service-guidance';
 import {overviewData} from '../overview-data';
 import {useEffect,useState} from 'react';
 import {Link,useNavigate,useSearchParams} from 'react-router-dom';
-import {Server,Monitor,Container,Bell,Archive,Plus,Activity,ShieldCheck,Network,RefreshCw,Download,Sparkles,Box,Database,Globe,ChevronRight} from '../icons';
+import {Server,Monitor,Container,Bell,Archive,Plus,Activity,ShieldCheck,Network,RefreshCw,Download,Sparkles,Box,Database,Globe,ChevronRight} from 'lucide-react';
 import {AreaChart,Area,ResponsiveContainer,XAxis,YAxis,Tooltip} from 'recharts';
 import {useApi} from '../hooks';
 import {api} from '../api';

@@ -11,7 +11,7 @@ import ProviderJobs from '../components/ProviderJobs';
 import {useState,useRef} from 'react';
 import {Link,useSearchParams} from 'react-router-dom';
 import {AreaChart,Area,XAxis,YAxis,Tooltip,ResponsiveContainer,CartesianGrid} from 'recharts';
-import {CheckCircle,Clock,Boxes,Bell,Server,RefreshCw,Download,Settings,Search,ArrowRight,ArrowDown,ArrowUp,AlertTriangle,Cpu,MemoryStick,HardDrive,Network,Eye,Info} from '../icons';
+import {CheckCircle,Clock,Boxes,Bell,Server,RefreshCw,Download,Settings,Search,ArrowRight,ArrowDown,ArrowUp,AlertTriangle,Cpu,MemoryStick,HardDrive,Network,Eye,Info} from 'lucide-react';
 import {useApi,refreshResources} from '../hooks';
 import {api} from '../api';
 import {Card,Badge,Modal,usePopupSuccess} from '../components/UI';

@@ -3,7 +3,7 @@ import ReportLoading from '../components/ReportLoading';
 import PageIcon from '../components/PageIcon';
 import {useEffect,useState} from 'react';
 import {AreaChart,Area,ResponsiveContainer,XAxis,YAxis,Tooltip,Legend} from 'recharts';
-import {ArrowDownUp,Download,Upload,RefreshCw} from '../icons';
+import {ArrowDownUp,Download,Upload,RefreshCw} from 'lucide-react';
 import {useApi,useResourceRefresh,refreshResources} from '../hooks';
 import {Card,Stat} from '../components/UI';
 const rate=(v:any)=>typeof v==='number'&&Number.isFinite(v)&&v>=0?`${(v/125000).toFixed(2)} Mbps`:'Unavailable';
