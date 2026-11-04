@@ -41,3 +41,5 @@ import './interaction-feedback.css';
 
 import {startWorkerUpdates} from './service-worker';
 startWorkerUpdates();
+
+import './icon-surfaces.css';

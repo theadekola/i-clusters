@@ -74,6 +74,7 @@ try{
  browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE}:{}),args:['--no-sandbox','--disable-dev-shm-usage']});
  const page=await browser.newPage({ignoreHTTPSErrors:!!process.env.LAYOUT_HTTPS_CERT});if(process.env.LAYOUT_CONNECTION_CHOICES)page.on('dialog',dialog=>dialog.accept());
  await page.addInitScript(locale=>{if(!localStorage.getItem('iclusters_language'))localStorage.setItem('iclusters_language',locale);if(!sessionStorage.getItem('language-login-audit'))localStorage.setItem('iclusters_access_token','layout-fixture');localStorage.setItem('iclusters_last_activity',String(Date.now()));},auditLocale);
+ await page.addInitScript(theme=>{if(theme)localStorage.setItem('iclusters_appearance',JSON.stringify({theme,preset:'ocean'}))},process.env.LAYOUT_THEME||'');
  await page.route('**/api/**',async route=>{
   readCount++;if(checkRefresh)await new Promise(resolve=>setTimeout(resolve,150));
   const path=new URL(route.request().url()).pathname.replace('/api','');
@@ -122,6 +123,25 @@ try{
     const images=page.locator('.page-image-icon img,.brand-mark img');assert.ok(await images.count()>0,route+': original page or brand images are rendered');
     const failures=await images.evaluateAll(async elements=>{await Promise.all(elements.map(image=>image.decode().catch(()=>{})));return elements.filter(image=>!image.complete||!image.naturalWidth||!image.getAttribute('src').startsWith('data:image/png;base64,')).map(image=>image.closest('[data-page-icon],[data-brand]')?.outerHTML.slice(0,160))});
     assert.deepEqual(failures,[],route+': every original bundled image loads');
+   }
+   if(process.env.LAYOUT_CHECK_ICON_SURFACES==='1'){
+    await page.mouse.move(0,0);
+    const painted=await page.evaluate(()=>{
+     const clear=color=>color==='transparent'||color==='rgba(0, 0, 0, 0)'||/rgba\([^)]*,\s*0\)$/.test(color);
+     const findings=new Set();
+     for(const icon of document.querySelectorAll('svg,.page-image-icon img,.brand-mark img')){
+      if(icon.closest('.recharts-wrapper,.access-qr,.vpn-profile-qr'))continue;
+      let element=icon;
+      for(let depth=0;element&&depth<4;depth++,element=element.parentElement){
+       if(element.matches('td,th,tr')||element instanceof SVGElement&&element.tagName.toLowerCase()!=='svg')break;
+       const box=element.getBoundingClientRect();if(box.width>120||box.height>120||!box.width||!box.height||element.textContent.trim()&&!element.matches('.icon-btn'))break;
+       const style=getComputedStyle(element);
+       if(!clear(style.backgroundColor)||style.backgroundImage!=='none')findings.add(element.tagName.toLowerCase()+'.'+(element.getAttribute('class')||'')+' background='+style.backgroundColor+' image='+style.backgroundImage);
+      }
+     }
+     return [...findings];
+    });
+    failures.push(...painted.map(issue=>`${width}px ${route}: painted icon surface ${issue}`));
    }
    const problems=await page.evaluate(()=>{
     const issues=[];
@@ -248,6 +268,29 @@ try{
    assert.match(await page.locator('.connection-success').innerText(),/power and configuration access verified/);
    assert.equal(clusterSaves,beforeSaves+1);assert.equal(await page.getByLabel('Proxmox administrator password',{exact:true}).count(),0);
    await page.waitForFunction(()=>!document.querySelector('.cluster-form'));
+  }
+  if(process.env.LAYOUT_CHECK_ICON_INTERACTIONS==='1'){
+   await page.goto(base+'tools/shell');await page.locator('.nav-toggle').waitFor();await page.waitForTimeout(200);
+   const clear=value=>value==='rgba(0, 0, 0, 0)'||value==='transparent';
+   for(const selector of ['.nav-toggle','.notification-bell','.shell-saved']){
+    const control=page.locator(selector).first();if(!await control.count())throw Error('Missing representative icon control: '+selector);
+    await page.mouse.move(0,0);await control.evaluate(element=>element.blur());await page.waitForTimeout(220);
+    const before=await control.boundingBox();assert.ok(clear(await control.evaluate(element=>getComputedStyle(element).backgroundColor)),selector+': transparent at rest');
+    await control.hover();await page.waitForTimeout(220);assert.ok(!clear(await control.evaluate(element=>getComputedStyle(element).backgroundColor)),selector+': hover highlight is visible');
+    const after=await control.boundingBox();assert.equal(after.width,before.width,selector+': hover keeps width');assert.equal(after.height,before.height,selector+': hover keeps height');
+    await page.mouse.move(0,0);await page.keyboard.press('Tab');await control.focus();await page.waitForTimeout(220);
+    assert.equal(await control.evaluate(element=>getComputedStyle(element).outlineStyle),'solid',selector+': keyboard focus remains visible');
+    assert.ok(!clear(await control.evaluate(element=>getComputedStyle(element).backgroundColor)),selector+': keyboard focus has a highlight');
+    await control.evaluate(element=>{element.blur();element.disabled=true});await control.hover({force:true});await page.waitForTimeout(220);
+    assert.ok(clear(await control.evaluate(element=>getComputedStyle(element).backgroundColor)),selector+': disabled controls do not acquire a hover background');
+    await control.evaluate(element=>element.disabled=false);await page.mouse.move(0,0);
+   }
+   assert.ok(!clear(await page.locator('.notification-bell-count').evaluate(element=>getComputedStyle(element).backgroundColor)),'Notification badge remains visible');
+   for(const selector of ['.shell-host-icon','.shell-host-icon.node','.shell-host-icon.ct']){
+    const icon=page.locator(selector).first();if(await icon.count())assert.ok(clear(await icon.evaluate(element=>getComputedStyle(element).backgroundColor)),selector+': no decorative background');
+   }
+   assert.ok(await page.locator('.shell-host').first().evaluate(element=>{const style=getComputedStyle(element);return style.backgroundImage!=='none'||style.backgroundColor!=='rgba(0, 0, 0, 0)'}),'Resource cards retain their surface');
+   if(process.env.LAYOUT_SCREENSHOTS){mkdirSync(process.env.LAYOUT_SCREENSHOTS,{recursive:true});await page.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-transparent-shell.png`,fullPage:true});await page.locator('.nav-toggle').hover();await page.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-icon-hover.png`});}
   }
   if(process.env.LAYOUT_CHECK_LANGUAGES==='1'){
    for(const [locale,country,title] of [['fr-FR','fr','Vue d’ensemble'],['es-ES','es','Resumen'],['de-DE','de','Übersicht'],['pt-PT','pt','Visão geral'],['en-GB','gb','Overview']]){

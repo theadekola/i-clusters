@@ -4,6 +4,8 @@ Developer: **The Adekola** · Company: **ATT-Tech**.
 
 ## Unreleased
 
+- Remove resting icon backgrounds throughout the interface and retain hover and keyboard-focus highlights.
+
 - Restore the original page and system image icons used before PR #191.
 - Add five complete bundled interface language packs with regional flag images, persistent live switching and build-time coverage checks.
 
