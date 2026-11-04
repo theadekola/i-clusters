@@ -111,9 +111,9 @@ test('Compose filters replace hidden selection and power action targets the visi
  try{const select=page.container.querySelector('[aria-label="Stack status"]');await act(async()=>{select.value='Stopped';select.dispatchEvent(new page.dom.window.Event('change',{bubbles:true}))});assert.ok(page.container.querySelector('.compose-details').textContent.includes('stopped-app'));assert.ok(!page.container.querySelector('.compose-details').textContent.includes('running-app'));await page.click(button(page.container,'Start'));assert.deepEqual(writes,['/docker/stack/b/start'])}finally{await page.close()}
 });
 
-test('Docker exposes all seven resource tabs and preserves summary navigation',async()=>{
+test('Docker exposes six resource tabs and preserves summary navigation',async()=>{
  const page=await mounted('pages/Docker.tsx',{},async p=>p==='/auth/me'?{user:{role:'owner'}}:p==='/docker'?{host:{hostname:'fixture'},containers:[],images:[],volumes:[],networks:[],stacks:[]}:p==='/docker/hosts'?{hosts:[],directEnabled:true}:p==='/docker/volumes/usage'?{volumes:[]}:{nodes:[]});
- try{for(const [tab,selector] of [['Containers','.docker-stats'],['Images','.image-summary'],['Volumes','.volume-summary'],['Compose Stacks','.volume-summary']]){await page.click([...page.container.querySelectorAll('[role=tab]')].find(b=>b.textContent===tab));assert.deepEqual([...page.container.querySelectorAll('[role=tab]')].map(b=>b.textContent),['Containers','Images','Volumes','Networks','Compose Stacks','Events','Updates']);assert.ok(page.container.querySelector(selector).compareDocumentPosition(page.container.querySelector('[role=tablist]'))&4)}}finally{await page.close()}
+ try{for(const [tab,selector] of [['Containers','.docker-stats'],['Images','.image-summary'],['Volumes','.volume-summary'],['Compose Stacks','.volume-summary']]){await page.click([...page.container.querySelectorAll('[role=tab]')].find(b=>b.textContent===tab));assert.deepEqual([...page.container.querySelectorAll('[role=tab]')].map(b=>b.textContent),['Containers','Images','Volumes','Compose Stacks','Events','Updates']);assert.ok(page.container.querySelector(selector).compareDocumentPosition(page.container.querySelector('[role=tablist]'))&4)}}finally{await page.close()}
 });
 
 test('Storage Pools skips offline history and filtering selects an online visible pool',async()=>{

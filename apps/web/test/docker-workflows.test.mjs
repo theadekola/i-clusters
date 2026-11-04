@@ -64,7 +64,7 @@ test('Docker deep links select supported tabs and invalid tabs fall back to Cont
 
 
 test('every Docker resource tab places host selection in its heading before its own metrics and navigation',async()=>{
- const cases=[['Containers','Docker Host: host-a',5],['Images','Docker Images',3],['Volumes','Docker Volumes',4],['Networks','Docker Networks',4],['Compose Stacks','Compose Stacks',4],['Events','Events',5]];
+ const cases=[['Containers','Docker Host: host-a',5],['Images','Docker Images',3],['Volumes','Docker Volumes',4],['Compose Stacks','Compose Stacks',4],['Events','Events',5]];
  for(const [tab,title,count] of cases){
   const page=await mounted('pages/Docker.tsx',{},dockerFixture,true,['/docker?tab='+encodeURIComponent(tab)]);
   try{
@@ -81,12 +81,6 @@ test('update notification deep links verify the exact host before opening its up
  const calls=[];const page=await mounted('pages/Docker.tsx',{},async(p,init)=>{calls.push(p);if(p==='/docker/hosts/host-b/verify')return {host:{version:'29'}};if(p==='/docker/updates')return {rows:[],settings:{enabled:true,intervalHours:6}};return dockerFixture(p,init)},true,['/docker?tab=Updates&host=host-b']);
  try{await act(async()=>new Promise(r=>setTimeout(r,10)));assert.ok(calls.includes('/docker/hosts/host-b/verify'));assert.equal(localStorage.getItem('iclusters_docker_host'),'host-b');assert.ok(page.container.querySelector('.docker-updates'));assert.equal(page.container.querySelector('[data-location]').getAttribute('data-location'),'/docker?tab=Updates')}finally{await page.close()}
 });
-test('network table shows endpoint IPs and View opens a closable side panel without permanent cards',async()=>{
- const data={host:{hostname:'Fixture'},networks:[{id:'net-a',name:'app-network',driver:'bridge',scope:'local',subnets:'172.20.0.0/16',gateways:'172.20.0.1'},{id:'host',name:'host',driver:'host'}],containers:[{id:'c1',name:'app',status:'running',networks:{'app-network':{IPAddress:'172.20.0.2',GlobalIPv6Address:'fd00::2'}}},{id:'c2',name:'host-app',status:'running',networks:{host:{IPAddress:''}}}]},reads=[];
- const page=await mounted('pages/DockerNetworks.tsx',{data,enabled:true,admin:true,refresh:async()=>{}},async(p)=>{reads.push(p);return {Id:'net-a',Name:'app-network'}});
- try{assert.equal(page.container.querySelector('.docker-network-details'),null);assert.ok(!reads.length);const table=page.container.querySelector('table');assert.match(table.textContent,/Container IPs/);assert.match(table.textContent,/172.20.0.2/);assert.match(table.textContent,/fd00::2/);assert.match(table.textContent,/no separate container IP/);assert.doesNotMatch(table.textContent,/172.20.0.0\/16|172.20.0.1/);assert.equal(page.container.querySelector('.docker-side'),null);const view=[...page.container.querySelectorAll('button')].find(b=>b.textContent==='View');await page.click(view);assert.match(page.container.querySelector('.docker-network-details').textContent,/172.20.0.0\/16/);assert.match(page.container.querySelector('.docker-network-details').textContent,/172.20.0.1/);await page.click(page.container.querySelector('[aria-label="Close network details"]'));assert.equal(page.container.querySelector('.docker-network-details'),null);assert.equal(page.dom.window.document.activeElement,view);}finally{await page.close()}
-});
-
 test('volume inspection opens only from its action button',async()=>{
  const calls=[];const data={host:{hostname:'docker'},containers:[],volumes:[{id:'vol-one',name:'app-data',mountpoint:'/var/lib/docker/volumes/app-data'}]};
  const page=await mounted('pages/DockerVolumes.tsx',{data,enabled:true,admin:true,refresh:async()=>{}},async p=>{calls.push(p);return {Name:'app-data'}});
@@ -97,12 +91,6 @@ test('volume inspection opens only from its action button',async()=>{
  assert.equal(page.container.querySelector('.modal'),null);assert.equal(calls.filter(p=>p==='/docker/volume/vol-one').length,0);
  await page.click(row.querySelector('[aria-label="Inspect app-data"]'));assert.ok(page.container.querySelector('.modal'));assert.equal(calls.filter(p=>p==='/docker/volume/vol-one').length,1);
  }finally{await page.close()}
-});
-
-test('only the network action opens details and preserves actual endpoint addresses',async()=>{
- const data={host:{hostname:'docker'},networks:[{id:'net-one',name:'app-net',driver:'bridge',scope:'local',subnets:'172.20.0.0/16'}],containers:[{id:'app',name:'homepage',portBindings:[{hostIp:'192.0.2.10',hostPort:8080,containerPort:80,protocol:'tcp'}],networks:{'app-net':{IPAddress:'172.20.0.7/16'}}}]};
- const page=await mounted('pages/DockerNetworks.tsx',{data,enabled:true,admin:true,refresh:async()=>{}},async()=>({}));
- try{const row=page.container.querySelector('[aria-label="Inspect network app-net"]');const pair=row.querySelector('.network-container-addresses div');assert.equal(pair.querySelector('b').textContent,'homepage');assert.equal(pair.querySelector('small').textContent,'172.20.0.7');assert.equal(pair.querySelector('.network-published-endpoint').textContent,'Published: 192.0.2.10:8080 → 80/tcp');assert.doesNotMatch(pair.textContent,/172.20.0.0/);await page.click(row.querySelectorAll('td')[1]);await page.click(row.querySelector('.resource-identity'));assert.equal(page.container.querySelector('[aria-label="Network Details"]'),null);await page.click(button(row,'View'));assert.ok(page.container.querySelector('[aria-label="Network Details"]'));await page.click(page.container.querySelector('[aria-label="Close network details"]'));assert.equal(page.container.querySelector('[aria-label="Network Details"]'),null)}finally{await page.close()}
 });
 
 test('image display uses one repository reference and keeps digests in technical details',async()=>{
@@ -130,11 +118,15 @@ test('published endpoints keep reported host bindings distinct from container IP
 
 test('intentional action cancellation is quiet and never produces a success or write retry',async()=>{
  for(const message of ['Authentication cancelled','Confirmation cancelled','Permission denied']){
-  let writes=0;const data={host:{hostname:'fixture'},networks:[],containers:[]};const page=await mounted('pages/DockerNetworks.tsx',{data,enabled:true,admin:true,refresh:async()=>{}},async()=>{writes++;throw Error(message)});
-  try{await page.click(button(page.container,'Prune Networks'));assert.equal(writes,1);assert.equal(button(page.container,'Prune Networks').disabled,false);assert.equal(page.container.querySelector('[role=status]'),null);assert.equal(page.container.querySelector('[role=alert]')?.textContent||'',message==='Permission denied'?message:'')}finally{await page.close()}
+  let writes=0;const data={host:{hostname:'fixture'},volumes:[],containers:[]};const page=await mounted('pages/DockerVolumes.tsx',{data,enabled:true,admin:true,refresh:async()=>{}},async()=>{writes++;throw Error(message)});
+  try{await page.click(button(page.container,'Prune Unused Anonymous Volumes'));assert.equal(writes,1);assert.equal(button(page.container,'Prune Unused Anonymous Volumes').disabled,false);assert.equal(page.container.querySelector('[role=status]'),null);assert.equal(page.container.querySelector('[role=alert]')?.textContent||'',message==='Permission denied'?message:'')}finally{await page.close()}
  }
 });
 
 test('quiet cancellation matching retains host-change, transport and authentication failures',async()=>{
  const built=await component('action-cancellation.ts');try{const quiet=built.module.isActionCancelled;for(const message of ['Authentication cancelled','Confirmation cancelled'])assert.equal(quiet(Error(message)),true);for(const value of [null,undefined,Error('Authentication failed'),Error('Docker host changed. Action cancelled.'),Error('Connection was cancelled by the server'),Error('Failed to fetch')])assert.equal(quiet(value),false)}finally{built.cleanup()}
+});
+
+test('removed Docker Networks tab is absent and old links fall back to Containers',async()=>{
+ const page=await mounted('pages/Docker.tsx',{},dockerFixture,true,['/docker?tab=Networks']);try{assert.equal([...page.container.querySelectorAll('[role=tab]')].some(el=>el.textContent==='Networks'),false);assert.ok(page.container.querySelector('.docker-table'));assert.equal(page.container.querySelector('.docker-networks'),null)}finally{await page.close()}
 });
