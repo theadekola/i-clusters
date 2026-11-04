@@ -43,3 +43,8 @@ test('touch presses work outside hover media queries and reduced-motion users re
  });assert.ok(active);assert.ok(reduced);
  for(const theme of ['light','dark']){dom.window.document.documentElement.dataset.theme=theme;assert.match(feedback('button','hover').background,/var\(--theme-highlight/);assert.match(feedback('button','active').background,/var\(--app-accent/);}
 });
+
+test('shared feedback works without a selected appearance preset',()=>{
+ const root=dom.window.document.documentElement,preset=root.getAttribute('data-preset');root.removeAttribute('data-preset');
+ try{for(const id of ['button','link','tab','select']){assert.ok(feedback(id,'hover')['border-color']);assert.ok(feedback(id,'active')['box-shadow']);}}finally{root.setAttribute('data-preset',preset)}
+});
