@@ -1,3 +1,4 @@
+import {isActionCancelled} from '../action-cancellation';
 import RefreshButton from '../components/RefreshButton';
 import {reportValue} from '../components/ReportLoading';
 import PageIcon from '../components/PageIcon';
@@ -19,7 +20,7 @@ export default function Alerts(){
  const alerts=live.data?.alerts||[],rules=live.data?.rules||[],role=session.data?.user?.role,admin=['admin','owner'].includes(role),operator=admin||role==='operator',active=alerts.filter((r:any)=>['active','acknowledged'].includes(r.status)),available=!!live.data&&!live.error;
  useEffect(()=>{const id=params.get('alert');if(id&&live.data){const row=alerts.find((a:any)=>a.id===id);if(row)setSelected(row);else{setSelected(null);setError('This alert is no longer in retained history. Refresh the alert list.');}}},[params.get('alert'),live.data]);
  const changeTab=(value:string)=>{const next=new URLSearchParams(params);next.set('tab',value);setParams(next)};
- const run=async(path:string,method='POST',body:any={})=>{setBusy(true);setError('');try{const result=await confirmedApi(path,{method,...(method==='DELETE'?{}:{body:JSON.stringify(body)})});setMessage(path.endsWith('/resolve')?'Alert resolved manually. Monitoring can raise a new alert if the condition is detected again.':path.endsWith('/acknowledge')?'Alert acknowledged. Use Resolve after the issue has been addressed.':'Alert rule created.');await live.refresh()}catch(e:any){setError(e.message)}finally{setBusy(false)}};
+ const run=async(path:string,method='POST',body:any={})=>{setBusy(true);setError('');try{const result=await confirmedApi(path,{method,...(method==='DELETE'?{}:{body:JSON.stringify(body)})});setMessage(path.endsWith('/resolve')?'Alert resolved manually. Monitoring can raise a new alert if the condition is detected again.':path.endsWith('/acknowledge')?'Alert acknowledged. Use Resolve after the issue has been addressed.':'Alert rule created.');await live.refresh()}catch(e:any){if(isActionCancelled(e))return;setError(e.message)}finally{setBusy(false)}};
  const openCreate=()=>{setError('');setParams({tab:'Alert Rules',action:'create'})};
  const current=selected?(alerts.find((r:any)=>r.id===selected.id)||selected):null;
  if(params.get('tab')==='Notifications')return <Navigate replace to="/settings?tab=Connections&section=notifications"/>;

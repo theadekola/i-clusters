@@ -1,3 +1,4 @@
+import {isActionCancelled} from '../action-cancellation';
 import {useEffect,useRef,useState} from 'react';
 import {api,confirmedApi} from '../api';
 const size=(bytes:number)=>(bytes/1024**3).toLocaleString(undefined,{maximumFractionDigits:2})+' GiB';
@@ -9,7 +10,7 @@ export default function GuestStorageAllocation({resource,onSaved,disabled,onBusy
   if(disabled||pending.current||!alive.current)return;
   pending.current=true;setBusy(true);onBusy(true);setError('');setInspection(null);setResult(null);
   try{const query=new URLSearchParams({provider:'proxmox',resourceId:resource.resourceId,node:resource.node,vmid:String(resource.vmid)});const data=await api('/storage/datasets/guest-layout?'+query);if(alive.current)setInspection(data)}
-  catch(e:any){if(alive.current)setError(e.message)}finally{pending.current=false;if(alive.current){setBusy(false);onBusy(false)}}
+  catch(e:any){if(isActionCancelled(e))return;if(alive.current)setError(e.message)}finally{pending.current=false;if(alive.current){setBusy(false);onBusy(false)}}
  };
  const expand=async()=>{
   if(disabled||pending.current||!alive.current||!inspection?.plan?.supported)return;
@@ -18,7 +19,7 @@ export default function GuestStorageAllocation({resource,onSaved,disabled,onBusy
   try{
    const response:any=await confirmedApi('/storage/datasets/guest-expand',{method:'PUT',body:JSON.stringify({provider:'proxmox',resourceId:model.resourceId,node:model.node,vmid:model.vmid,revision:model.revision,connectionScope,guestToken:plan.token})},{title:'Expand guest filesystem',description:`Make the existing allocation usable by VM ${model.vmid} on ${model.node}. Expand the root partition, physical volume, logical volume and filesystem where applicable. All free space in a supported single-volume LVM group will be assigned to the root filesystem. Take a backup before continuing. No disk size increase is requested.`});
    if(alive.current){setResult(response.result);setInspection(null);onSaved()}
-  }catch(e:any){if(alive.current){setError(e.message);setInspection(null)}}finally{pending.current=false;if(alive.current){setBusy(false);onBusy(false)}}
+  }catch(e:any){if(isActionCancelled(e))return;if(alive.current){setError(e.message);setInspection(null)}}finally{pending.current=false;if(alive.current){setBusy(false);onBusy(false)}}
  };
  return <section className="storage-guest-allocation" aria-label="Guest filesystem allocation">
   <h3>Make allocated space usable</h3>
