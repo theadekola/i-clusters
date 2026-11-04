@@ -32,11 +32,20 @@ for scenario in before-pause after-snapshot rollback-db rollback-config rollback
  printf 'original-state\n' > "$project/runtime/state.json"
  touch "$project/.env" "$project/docker-compose.yml" "$project/deployment/Caddyfile"
  export LOG="$project/commands" CASE="$scenario"
+ printf '{"state":"updating","current":"original","latest":"new"}\n' > "$project/update-status.json"
  set +e
- PATH="$stage/bin:$PATH" ICLUSTERS_INSTALL_DIR="$project" ICLUSTERS_MAINTENANCE_LOCK="$project/lock" ICLUSTERS_UPGRADE_RECOVERY_ROOT="$project/recovery" bash "$script" > "$project/output" 2>&1
+ PATH="$stage/bin:$PATH" ICLUSTERS_UPDATE_STATUS_FILE="$project/update-status.json" ICLUSTERS_INSTALL_DIR="$project" ICLUSTERS_MAINTENANCE_LOCK="$project/lock" ICLUSTERS_UPGRADE_RECOVERY_ROOT="$project/recovery" bash "$script" > "$project/output" 2>&1
  result=$?
  set -e
  test "$result" -ne 0
+ python3 - "$project/update-status.json" <<'CHECK'
+import json,sys,os,stat
+assert stat.S_IMODE(os.stat(sys.argv[1]).st_mode)==0o644
+status=json.load(open(sys.argv[1]))
+assert status['progress']['percent']==25
+assert status['progress']['stage']=='Update failed; restoring previous deployment'
+assert status['current']=='original'
+CHECK
  if [[ $scenario == rollback-* || $scenario == restart-api ]]; then
    test -e "$project/runtime/maintenance.json"
    grep -q 'recoveryRequired' "$project/runtime/maintenance.json"

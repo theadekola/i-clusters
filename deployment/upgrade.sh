@@ -11,6 +11,26 @@ exec 9>"${ICLUSTERS_MAINTENANCE_LOCK:-/run/lock/iclusters-maintenance.lock}"
 flock -n 9 || { echo 'Controller maintenance is already running.' >&2; exit 1; }
 [[ ! -e runtime/maintenance.json ]] || { echo 'Inspect the existing maintenance operation before retrying.' >&2; exit 1; }
 umask 077
+# Publish confirmed stage milestones to the existing updater status file.
+# The API may be offline during rebuilding; the browser holds its last report.
+report_progress(){
+ [[ -n ${ICLUSTERS_UPDATE_STATUS_FILE:-} ]] || return 0
+ python3 - "$ICLUSTERS_UPDATE_STATUS_FILE" "$1" "$2" <<'PROGRESS' || true
+import datetime,json,os,sys,tempfile
+filename,percent,stage=sys.argv[1:]
+try:
+    with open(filename) as source: status=json.load(source)
+    now=datetime.datetime.now(datetime.timezone.utc).isoformat()
+    status.update(state='updating',checkedAt=now,progress={'percent':int(percent),'stage':stage,'updatedAt':now})
+    fd,temporary=tempfile.mkstemp(dir=os.path.dirname(filename),prefix='.progress-')
+    os.fchmod(fd,os.stat(filename).st_mode & 0o777)
+    with os.fdopen(fd,'w') as output: json.dump(status,output,separators=(',',':'))
+    os.replace(temporary,filename)
+except (OSError,ValueError):
+    pass
+PROGRESS
+}
+report_progress 10 'Creating recovery point'
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
 recovery="${ICLUSTERS_UPGRADE_RECOVERY_ROOT:-/var/backups/iclusters}/upgrade-$stamp"
 mkdir -m 0700 -p "$recovery"
@@ -33,6 +53,7 @@ snapshot=0
 rollback(){
  local result=$?
  trap - ERR
+ report_progress 25 'Update failed; restoring previous deployment'
  echo 'Upgrade failed; restoring the previous controller deployment.' >&2
  set +e
  if ((paused)) && ! docker compose stop api; then
@@ -81,19 +102,24 @@ rollback(){
 trap rollback ERR
 # First upgrade from an older release may not yet contain the maintenance check.
 docker compose exec -T api node -e "if(require('fs').existsSync('scripts/check-maintenance.mjs'))import('./scripts/check-maintenance.mjs')"
+report_progress 20 'Pausing services and backing up the database'
 paused=1
 docker compose stop api
 docker compose exec -T postgres sh -c 'pg_dump --format=custom --no-owner -U "$POSTGRES_USER" -d "$POSTGRES_DB"' > "$recovery/database.dump"
 cp -a runtime "$recovery/"
 snapshot=1
+report_progress 35 'Downloading the reviewed release'
 git pull --ff-only
 grep -q '^WEB_PORT=' .env || echo 'WEB_PORT=80' >> .env
 grep -q '^HTTPS_PORT=' .env || echo 'HTTPS_PORT=443' >> .env
 python3 deployment/configure-https.py
 docker compose config --quiet
 source deployment/build-env.sh
+report_progress 50 'Building updated services'
 docker compose build --pull
+report_progress 80 'Starting services and checking health'
 docker compose up -d --wait --wait-timeout 180
+report_progress 95 'Finishing installation'
 install -m 0755 deployment/iclusters /usr/local/bin/iclusters
 install -m 0644 deployment/i-clusters.service /etc/systemd/system/i-clusters.service
 bash deployment/setup-updater.sh

@@ -1,3 +1,4 @@
+import PasswordInput from './PasswordInput';
 import ReportLoading from './ReportLoading';
 import RefreshButton from './RefreshButton';
 import {useEffect,useRef,useState} from 'react';
@@ -21,7 +22,7 @@ export default function AutomaticNodePairing({node,onComplete,onBusy,kind='proxm
  {!secure&&<p className="cluster-wide error" role="alert">Open i-Clusters over HTTPS before entering SSH credentials.</p>}
  {target&&<><div className="ssh-dialog-row ssh-address-row"><label>Node SSH address<input aria-label="Node SSH address" value={target.host} readOnly/></label><label>SSH port<input aria-label="SSH port" type="number" min="1" max="65535" required value={port} disabled={busy||!!job} onChange={e=>setPort(e.target.value)}/></label></div>
  <p className="cluster-wide muted">Controller: {target.controller}</p>
- <div className="ssh-dialog-row ssh-credentials-row"><label>SSH username<input aria-label="SSH username" required value={username} disabled={busy||!!job||!secure} onChange={e=>setUsername(e.target.value)} autoComplete="username"/></label><label>SSH / sudo password<input aria-label="SSH / sudo password" type="password" required value={password} disabled={busy||!!job||!secure} onChange={e=>setPassword(e.target.value)} autoComplete="new-password"/></label></div>
+ <div className="ssh-dialog-row ssh-credentials-row"><label>SSH username<input aria-label="SSH username" required value={username} disabled={busy||!!job||!secure} onChange={e=>setUsername(e.target.value)} autoComplete="username"/></label><label>SSH / sudo password<PasswordInput aria-label="SSH / sudo password" required value={password} disabled={busy||!!job||!secure} onChange={e=>setPassword(e.target.value)} autoComplete="new-password"/></label></div>
  <div className="cluster-wide ssh-fingerprint"><SSHFingerprintValue loading={checking} key={fingerprint} fingerprint={fingerprint} pending={checking?'Reading SSH fingerprint…':'Fingerprint is not available yet.'}><label><input aria-label="Verify SSH host identity" type="checkbox" required checked={verified} disabled={!fingerprint||busy||!!job} onChange={e=>setVerified(e.target.checked)}/><span>I verified this fingerprint through a trusted console.</span></label></SSHFingerprintValue></div>
  <label className="cluster-wide"><span><input aria-label="Approve automatic node pairing" type="checkbox" required checked={consent} disabled={busy||!!job} onChange={e=>setConsent(e.target.checked)}/> Install the connector and start its service on {node}.</span></label></>}
  {job&&<p role="status" className="cluster-wide">{!['completed','failed','unverified'].includes(job.state)&&<ReportLoading inline/>}{job.message}</p>}{error&&<p role="alert" className="cluster-wide error">{error}</p>}
