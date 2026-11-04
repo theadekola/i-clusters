@@ -32,7 +32,7 @@ export default function UpdateButton({showLabel=false}:{showLabel?:boolean}){
  const running=busy||status?.pending||status?.state==='updating'||isSoftwareUpdating();
  const installable=status?.enabled&&status?.available&&!['failed','error'].includes(status?.state);
  const awake=useInstallationWakeLock(!!running);
- const percent=['updating','completed','failed'].includes(status?.state)&&typeof status?.progress?.percent==='number'&&Number.isFinite(status.progress.percent)?Math.max(0,Math.min(100,status.progress.percent)):undefined;
+ const percent=status?.state==='completed'&&!status?.available?100:['updating','failed'].includes(status?.state)&&typeof status?.progress?.percent==='number'&&Number.isFinite(status.progress.percent)?Math.max(0,Math.min(100,status.progress.percent)):undefined;
  const completed=status?.state==='completed'&&!status?.available;
  const stage=reconnecting?'Waiting for the server to reconnect':(running&&status?.state!=='updating'?'Waiting for Ubuntu updater':status?.progress?.stage)||(running?'Waiting for updater progress':scanning?'Checking for updates':'');
  if(!open&&!showLabel&&!running&&(!status?.available||!status?.enabled||!!statusError))return null;
