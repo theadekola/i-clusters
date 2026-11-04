@@ -119,12 +119,12 @@ test('Docker exposes six resource tabs and preserves summary navigation',async()
 test('Storage Pools skips offline history and filtering selects an online visible pool',async()=>{
  const calls=[],GiB=1024**3;const pools=[{id:'a/off',name:'off',node:'a',provider:'proxmox',status:'offline',type:'dir'},{id:'b/local',name:'local',node:'b',provider:'proxmox',status:'online',type:'dir',capacity:GiB,used:GiB/2,available:GiB/2,usage:50}];
  const page=await mounted('pages/Storage.tsx',{},async p=>{calls.push(p);if(p==='/auth/me')return {user:{role:'viewer'}};if(p==='/storage?view=pools')return {pools,summary:{pools:2,online:1,capacity:GiB,used:GiB/2,available:GiB/2,distribution:[{...pools[1],key:'proxmox:b/local'}]},snapshots:[],alerts:[],services:[],errors:[]};if(p.startsWith('/proxmox/tasks'))return {tasks:[]};return {history:[],content:[],hosts:[]}});
- try{assert.ok(calls.some(p=>p.startsWith('/proxmox/storage/b/local')));assert.ok(!calls.some(p=>p.startsWith('/proxmox/storage/a/off')));const node=page.container.querySelector('[aria-label="Storage node"]');await act(async()=>{node.value='a';node.dispatchEvent(new page.dom.window.Event('change',{bubbles:true}))});assert.ok(!calls.some(p=>p.startsWith('/proxmox/storage/a/off')));await page.click(page.container.querySelector('button[aria-label^="Inspect "]'));assert.ok(page.container.querySelector('.storage-inline-inspect').textContent.includes('Live history and contents are unavailable'))}finally{await page.close()}
+ try{assert.ok(calls.some(p=>p.startsWith('/proxmox/storage/b/local')));assert.ok(!calls.some(p=>p.startsWith('/proxmox/storage/a/off')));const node=page.container.querySelector('[aria-label="Storage node"]');await act(async()=>{node.value='a';node.dispatchEvent(new page.dom.window.Event('change',{bubbles:true}))});assert.ok(!calls.some(p=>p.startsWith('/proxmox/storage/a/off')));await page.click(page.container.querySelector('button[aria-label^="Inspect "]'));assert.ok(page.container.querySelector('[role=dialog] .storage-inspected-pool').textContent.includes('Live history and contents are unavailable'))}finally{await page.close()}
 });
 
 test('Disk host filter switches details and SMART request to the visible host',async()=>{
  const calls=[];const page=await mounted('pages/StorageDisks.tsx',{onTab(){}},async p=>{calls.push(p);return p==='/storage/disks'?{resources:[{id:'a',name:'/dev/sda',node:'a',provider:'proxmox',size:100,health:'PASSED'},{id:'b',name:'/dev/sda',node:'b',provider:'proxmox',size:200,health:'PASSED'}]}:{report:{health:'PASSED',attributes:[]},sampledAt:new Date().toISOString()}});
- try{const host=page.container.querySelector('[aria-label="Disk host"]');await act(async()=>{host.value='b';host.dispatchEvent(new page.dom.window.Event('change',{bubbles:true}))});assert.ok(page.container.querySelector('.disk-details').textContent.includes('b'));await page.click(button(page.container,'Read S.M.A.R.T.'));assert.ok(calls.includes('/storage/disks/b/smart?disk=%2Fdev%2Fsda'));assert.ok(!calls.includes('/storage/disks/a/smart?disk=%2Fdev%2Fsda'))}finally{await page.close()}
+ try{const host=page.container.querySelector('[aria-label="Disk host"]');await act(async()=>{host.value='b';host.dispatchEvent(new page.dom.window.Event('change',{bubbles:true}))});assert.equal(page.container.querySelector('.disk-details'),null);await page.click(page.container.querySelector('button[aria-label="Inspect /dev/sda on b"]'));assert.ok(page.container.querySelector('[role=dialog] .disk-details').textContent.includes('b'));await page.click(button(page.container,'Read S.M.A.R.T.'));assert.ok(calls.includes('/storage/disks/b/smart?disk=%2Fdev%2Fsda'));assert.ok(!calls.includes('/storage/disks/a/smart?disk=%2Fdev%2Fsda'))}finally{await page.close()}
 });
 
 test('Dataset filtering keeps details and snapshot actions tied to the visible resource',async()=>{
@@ -571,7 +571,7 @@ test('storage power icons preserve the target without opening inspection',async(
   const power=page.container.querySelector('button[aria-label="Enable store on node (all assigned nodes)"]');
   assert.equal(power.textContent.trim(),'');await page.click(power.querySelector('svg'));
   assert.deepEqual(writes,[{path:'/proxmox/storage/store/enabled',body:{enabled:true}}]);
-  assert.ok(page.container.querySelector('.storage-inline-inspect').textContent.includes('Select a pool row'));
+  assert.equal(page.container.querySelector('.storage-inline-inspect'),null);assert.equal(page.container.querySelector('[role=dialog]'),null);
  }finally{await page.close()}
 });
 

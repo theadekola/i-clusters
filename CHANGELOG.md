@@ -4,6 +4,8 @@ Developer: **The Adekola** · Company: **ATT-Tech**.
 
 ## Unreleased
 
+- Open storage pool and disk inspection in eye-action popups, expand the tables, and align dataset editor actions in a dedicated footer.
+
 - Add a country-flag language dropdown between header alerts and the user profile, sharing the saved interface language with Settings.
 
 - Restore CPU, memory and Resource Usage charts by preserving chart children and SVG definitions through localization.
