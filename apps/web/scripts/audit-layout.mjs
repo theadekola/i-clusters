@@ -51,7 +51,7 @@ function fixture(path){
 const routes=['/','/proxmox','/docker','/storage','/network','/backups','/monitoring','/alerts','/ai','/users','/settings','/tools/sftp','/tools/shell'];
 for(const [page,tabs] of Object.entries({
  proxmox:['Overview','Nodes','Virtual Machines','LXC Containers','Storage','Networks','Tasks & Logs'],
- docker:['Images','Volumes','Networks','Compose Stacks','Events','Updates'],
+ docker:['Images','Volumes','Compose Stacks','Events','Updates'],
  storage:['Configuration','Disks','Datasets / Volumes','Snapshots','Shares','Performance'],
  network:['Interfaces','Devices','Routing','DNS','Traffic Analysis','Docker Networks'],
  backups:['Restore Points','Schedules','Retention Policies','Destinations','Reports','Recovery Tests'],

@@ -44,10 +44,8 @@
 .node-details-target{scroll-margin-top:100px;margin-bottom:12px;min-width:0}
 .node-details-target:focus-visible{outline:2px solid var(--app-accent,#38bdf8);outline-offset:3px;border-radius:12px}
 
-/* App-wide surface feedback also covers plain tables and passive summary panels. */
+/* Individual table-row feedback; whole sections and summary panels stay unchanged. */
 @media(hover:hover) and (pointer:fine){
  :root tbody tr:not([aria-disabled="true"]):not([inert]):not([inert] *):hover>td,
  :root tbody tr:not([aria-disabled="true"]):not([inert]):not([inert] *):focus-within>td{background:var(--theme-highlight,#173b56)!important}
- :root :is(.card,.settings-overview-card,.operational-panel,.metric-grid>div,.vm-stat,.nodes-stat,.image-stat,.volume-stat):not([aria-disabled="true"]):not([aria-disabled="true"] *):not([inert]):not([inert] *):hover{border-color:var(--app-accent,#38bdf8)!important;box-shadow:inset 0 0 0 1px var(--app-accent,#38bdf8);background:color-mix(in srgb,var(--app-accent,#38bdf8) 8%,var(--theme-surface,#0b2035))!important}
- :root :is(.metric-grid>div,.vm-stat,.nodes-stat,.image-stat,.volume-stat):not([aria-disabled="true"]):not([aria-disabled="true"] *):not([inert]):not([inert] *):hover{background:var(--theme-highlight,#173b56)!important}
 }

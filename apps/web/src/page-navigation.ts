@@ -9,7 +9,7 @@ export function settingsCategory(raw:string){
 export function settingsTitle(category:string){return category==='About'?'About i-Clusters':category==='Connections'?'Connections':`${category} Settings`;}
 const sections:Record<string,{name:string;tabs?:string[]}>= {
  '/proxmox':{name:'Proxmox',tabs:['Overview','Nodes','Virtual Machines','LXC Containers','Storage','Networks','Tasks & Logs']},
- '/docker':{name:'Docker',tabs:['Containers','Images','Volumes','Networks','Compose Stacks','Events','Updates']},
+ '/docker':{name:'Docker',tabs:['Containers','Images','Volumes','Compose Stacks','Events','Updates']},
  '/storage':{name:'Storage',tabs:storageTabs},
  '/network':{name:'Network',tabs:['Network Map','Interfaces','Devices','Routing','DNS','Traffic Analysis','Docker Networks']},
  '/backups':{name:'Backups',tabs:['Backup Jobs','Restore Points','Schedules','Retention Policies','Destinations','Reports','Recovery Tests']},

@@ -16,7 +16,7 @@ test('nested connection sections and legacy Settings links resolve to the real p
  assert.deepEqual(labels('/settings','?tab=Backup%20%26%20Restore'),['Settings','System']);
 });
 test('Docker paths retain host context across every resource tab',()=>{
- for(const tab of ['Containers','Images','Volumes','Networks','Compose Stacks','Events','Updates'])assert.deepEqual(labels('/docker',`?tab=${encodeURIComponent(tab)}`,'control-vm'),['Docker','control-vm',tab]);
+ for(const tab of ['Containers','Images','Volumes','Compose Stacks','Events','Updates'])assert.deepEqual(labels('/docker',`?tab=${encodeURIComponent(tab)}`,'control-vm'),['Docker','control-vm',tab]);
 });
 test('all other pages show their current section and reject unknown tabs',()=>{
  for(const [route,tab] of Object.entries({proxmox:'Nodes',storage:'Datasets / Volumes',network:'Traffic Analysis',backups:'Reports',monitoring:'Provider Jobs',alerts:'Alert History',users:'Audit Logs'})){
