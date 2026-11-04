@@ -5,13 +5,14 @@ import PersistentShell from './PersistentShell';
 import PageIcon, {pageIconForPath} from './PageIcon';
 import BrandIcon from './BrandIcon';
 import HeaderNotifications from './HeaderNotifications';
+import LanguageSelector from './LanguageSelector';
 import {canAccessPage} from '../permissions';
 import {applyAppearance,watchSystemTheme} from '../appearance';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Boxes, Container, Database, Network, HardDriveDownload,
   CalendarClock, History, RotateCcw, Activity, Bell, Sparkles, Users, Settings,
-  Terminal, FolderOpen, Menu, X, Cloud, ChevronDown, LogOut
+  Terminal, FolderOpen, Menu, X, Cloud, LogOut, CircleUserRound
 } from 'lucide-react';
 import { useState,useEffect,useRef } from 'react';
 import UpdateButton from './UpdateButton';
@@ -49,7 +50,8 @@ export default function Layout() {
   const {data:session}=useApi<any>('/auth/me',null);
   const {data:configuration}=useApi<any>('/settings',null);
   useEffect(()=>{if(configuration?.settings)configureRefresh(configuration.settings.refresh);},[configuration?.settings?.refresh]);
-  useEffect(()=>{const close=(event:MouseEvent)=>{if(!profileRef.current?.contains(event.target as Node))setProfileOpen(false)};const key=(event:KeyboardEvent)=>{if(event.key==='Escape')setProfileOpen(false)};document.addEventListener('mousedown',close);document.addEventListener('keydown',key);return()=>{document.removeEventListener('mousedown',close);document.removeEventListener('keydown',key)}},[]);
+  useEffect(()=>{const close=(event:MouseEvent)=>{if(!profileRef.current?.contains(event.target as Node))setProfileOpen(false)};const key=(event:KeyboardEvent)=>{if(event.key==='Escape'&&profileOpen){setProfileOpen(false);profileRef.current?.querySelector('button')?.focus({preventScroll:true})}};document.addEventListener('mousedown',close);document.addEventListener('keydown',key);return()=>{document.removeEventListener('mousedown',close);document.removeEventListener('keydown',key)}},[profileOpen]);
+  useEffect(()=>{if(profileOpen)profileRef.current?.querySelector<HTMLElement>('[role=menuitem]')?.focus({preventScroll:true})},[profileOpen]);
   useEffect(()=>{if(menuOpen)toggleRef.current?.focus({preventScroll:true});setMenuOpen(false);setProfileOpen(false);},[location.pathname]);
   useEffect(()=>{
     if(!mobile||!menuOpen)return;
@@ -85,7 +87,7 @@ export default function Layout() {
     <div className="main-shell" inert={mobile&&menuOpen}>
       <header className="topbar">
         <button ref={toggleRef} className="icon-btn nav-toggle" aria-label={mobile?(menuOpen?'Close navigation':'Open navigation'):(collapsed?'Expand navigation':'Collapse navigation')} aria-controls="primary-navigation" aria-expanded={mobile?menuOpen:!collapsed} onClick={()=>mobile?setMenuOpen(v=>!v):setCollapsed(v=>!v)}><Menu size={19}/></button>
-        <div className="top-actions"><HeaderNotifications/>{session?.user?.role==='owner' && <UpdateButton/>}<div className="profile-menu" ref={profileRef}><button className="profile-trigger" aria-haspopup="menu" aria-expanded={profileOpen} onClick={()=>setProfileOpen(v=>!v)}><span className="profile"><b>{session?.user?.name||'Signed in'}</b><span>{session?.user?.role||''}</span></span><ChevronDown size={15}/></button>{profileOpen&&<div className="profile-dropdown" role="menu"><button role="menuitem" onClick={signOut}><LogOut size={15}/>Sign out</button></div>}</div></div>
+        <div className="top-actions">{session?.user?.role==='owner' && <UpdateButton/>}<HeaderNotifications/><LanguageSelector compact/><div className="profile-menu" ref={profileRef} onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget as Node))setProfileOpen(false)}}><button type="button" className="profile-trigger" aria-label="User profile" aria-haspopup="menu" aria-controls={profileOpen?'header-profile-options':undefined} aria-expanded={profileOpen} onKeyDown={event=>{if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();setProfileOpen(true)}}} onClick={()=>setProfileOpen(v=>!v)}><CircleUserRound size={23} aria-hidden="true"/></button>{profileOpen&&<div id="header-profile-options" className="profile-dropdown" role="menu"><div className="profile-dropdown-identity"><b translate="no">{session?.user?.name||'Signed in'}</b><small>{session?.user?.role||''}</small></div><button role="menuitem" onClick={signOut}><LogOut size={15}/>Sign out</button></div>}</div></div>
       </header>
       <main className="content"><PageBreadcrumbs/><PersistentShell authorized={['admin','owner'].includes(session?.user?.role)}/><div key={location.pathname}><Outlet/></div></main>
     </div>

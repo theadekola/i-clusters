@@ -4,6 +4,8 @@ Developer: **The Adekola** · Company: **ATT-Tech**.
 
 ## Unreleased
 
+- Add a country-flag language dropdown between header alerts and the user profile, sharing the saved interface language with Settings.
+
 - Restore CPU, memory and Resource Usage charts by preserving chart children and SVG definitions through localization.
 
 - Remove resting icon backgrounds throughout the interface and retain hover and keyboard-focus highlights.
