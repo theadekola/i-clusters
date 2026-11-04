@@ -1,3 +1,8 @@
+import {mkdtempSync as trustTemp,rmSync as trustRemove} from 'node:fs';
+import {tmpdir as trustTmpdir} from 'node:os';
+import {after as trustAfter} from 'node:test';
+const trustOriginalDir=process.env.DATA_DIR,trustFixtureDir=trustTemp(trustTmpdir()+'/iclusters-known-host-fixture-');process.env.DATA_DIR=trustFixtureDir;
+trustAfter(()=>{if(trustOriginalDir===undefined)delete process.env.DATA_DIR;else process.env.DATA_DIR=trustOriginalDir;trustRemove(trustFixtureDir,{recursive:true,force:true})});
 import ssh2 from 'ssh2';
 import test from 'node:test';import assert from 'node:assert/strict';import {EventEmitter} from 'node:events';import crypto from 'node:crypto';import {spawnSync} from 'node:child_process';
 import {createConnectionActions,executeConnectionAction} from '../src/connection-actions.js';

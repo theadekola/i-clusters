@@ -1,6 +1,6 @@
 # Password approval for protected actions
 
-Protected actions with a verified node or guest target open the SSH password dialog rather than asking the user to copy a typed confirmation phrase. The dialog identifies the target and action. It requires a freshly entered SSH account password, trusted host fingerprint, and root or verified sudo privileges on that host. Saved SSH passwords cannot authorize protected actions, and approval passwords are not saved.
+Protected actions with a verified node or guest target open the SSH password dialog rather than asking the user to copy a typed confirmation phrase. The dialog identifies the target and action. It requires a freshly entered SSH account password, automatically checked and pinned host fingerprint, and root or verified sudo privileges on that host. Saved SSH passwords cannot authorize protected actions, and approval passwords are not saved.
 
 | Action | Password target |
 | --- | --- |
@@ -21,3 +21,5 @@ Installations still require SSH connectivity and the target's supported password
 Direct Docker API, standalone connectors without a verifiable Proxmox SSH mapping, TrueNAS and other unrelated integrations retain their existing confirmation flow. i-Clusters does not guess an SSH identity or substitute another machine's password. Permissions, Proxmox API-token restrictions, existing installer eligibility checks and audit logging remain in force.
 
 Update the API and frontend together. Tests use local fixtures and do not install software or change live hosts.
+
+Host checks follow the [automatic SSH known-host policy](docs/automatic-ssh-host-verification.md). New endpoints use first-contact trust, saved verified fingerprints are retained, and changed keys are blocked. There is no manual fingerprint checkbox in the approval dialog.

@@ -32,3 +32,6 @@
 .docker-update-card .volume-toolbar{margin:0;gap:8px}
 .docker-update-card .volume-toolbar p{margin:8px 0 0}
 .docker-update-card code{margin-top:8px}
+
+.content.content .docker-update-grid{grid-auto-rows:auto;align-items:start}
+.content.content .docker-update-grid>.docker-update-card{align-self:start;min-height:0;height:auto}

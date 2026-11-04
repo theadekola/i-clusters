@@ -1,3 +1,8 @@
+import {mkdtempSync as trustTemp,rmSync as trustRemove} from 'node:fs';
+import {tmpdir as trustTmpdir} from 'node:os';
+import {after as trustAfter} from 'node:test';
+const trustOriginalDir=process.env.DATA_DIR,trustFixtureDir=trustTemp(trustTmpdir()+'/iclusters-known-host-fixture-');process.env.DATA_DIR=trustFixtureDir;
+trustAfter(()=>{if(trustOriginalDir===undefined)delete process.env.DATA_DIR;else process.env.DATA_DIR=trustOriginalDir;trustRemove(trustFixtureDir,{recursive:true,force:true})});
 import test from 'node:test';import assert from 'node:assert/strict';import {EventEmitter} from 'node:events';import crypto from 'node:crypto';import ssh2 from 'ssh2';
 import {bootstrapGuest,bootstrapIdentity,enableAgentOption} from '../src/guest-bootstrap.js';
 const mac='52:54:00:12:34:56',config={net0:'virtio='+mac,agent:'enabled=0,freeze-fs-on-backup=0',digest:'fixture-digest'};
