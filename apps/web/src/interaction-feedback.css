@@ -52,3 +52,9 @@
 
 .resource-identity-action{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;overflow-wrap:anywhere;line-height:inherit}
 .resource-identity-action>.docker-image{flex-basis:100%}
+
+/* A selected record has one row highlight, without an inner name-button box. */
+:root tbody .inspectable-row[aria-selected="true"]>td{background:var(--theme-highlight,#173b56)!important}
+.row-content-name{display:inline-flex;align-items:center;gap:8px;color:inherit;font:inherit;text-align:left;max-width:100%;overflow-wrap:anywhere}
+.row-content-name.pve-node-name{display:flex;align-items:center;gap:10px}
+:root tbody .resource-name-action:is(:hover,:active){background:transparent!important;border-color:transparent!important;box-shadow:none!important}

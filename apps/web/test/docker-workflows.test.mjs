@@ -81,26 +81,17 @@ test('update notification deep links verify the exact host before opening its up
  const calls=[];const page=await mounted('pages/Docker.tsx',{},async(p,init)=>{calls.push(p);if(p==='/docker/hosts/host-b/verify')return {host:{version:'29'}};if(p==='/docker/updates')return {rows:[],settings:{enabled:true,intervalHours:6}};return dockerFixture(p,init)},true,['/docker?tab=Updates&host=host-b']);
  try{await act(async()=>new Promise(r=>setTimeout(r,10)));assert.ok(calls.includes('/docker/hosts/host-b/verify'));assert.equal(localStorage.getItem('iclusters_docker_host'),'host-b');assert.ok(page.container.querySelector('.docker-updates'));assert.equal(page.container.querySelector('[data-location]').getAttribute('data-location'),'/docker?tab=Updates')}finally{await page.close()}
 });
-test('volume content, keyboard, identity and action open the correct details once',async()=>{
+test('volume cells and keyboard select without inspection and its action opens details once',async()=>{
  const calls=[];const data={host:{hostname:'docker'},containers:[],volumes:[{id:'vol-one',name:'app-data',mountpoint:'/var/lib/docker/volumes/app-data'}]};
  const page=await mounted('pages/DockerVolumes.tsx',{data,enabled:true,admin:true,refresh:async()=>{}},async p=>{calls.push(p);return {Name:'app-data'}});
- try{
- const row=page.container.querySelector('[aria-label="Inspect volume app-data"]');assert.equal(row.tabIndex,0);
- const close=async()=>page.click(page.container.querySelector('.modal [aria-label="Close dialog"]'));
- await page.click(row.querySelectorAll('td')[2]);assert.ok(page.container.querySelector('.modal'));await close();
- await act(async()=>row.dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true})));assert.ok(page.container.querySelector('.modal'));await close();
- await page.click(row.querySelector('.resource-identity'));assert.ok(page.container.querySelector('.modal'));await close();
- await page.click(button(row,'Inspect'));assert.ok(page.container.querySelector('.modal'));
- assert.equal(calls.filter(p=>p==='/docker/volume/vol-one').length,4);
- }finally{await page.close()}
+ try{const row=page.container.querySelector('[aria-label="Inspect volume app-data"]');assert.equal(row.tabIndex,0);await page.click(row.querySelectorAll('td')[2]);await act(async()=>row.dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true})));await page.click(row.querySelector('.resource-identity'));assert.equal(page.container.querySelector('.modal'),null);assert.equal(row.getAttribute('aria-selected'),'true');assert.equal(calls.filter(p=>p==='/docker/volume/vol-one').length,0);assert.equal(row.firstElementChild.querySelectorAll('button').length,0);await page.click(button(row,'Inspect'));assert.ok(page.container.querySelector('.modal'));assert.equal(calls.filter(p=>p==='/docker/volume/vol-one').length,1)}finally{await page.close()}
 });
 
 test('image display uses one repository reference and keeps digests in technical details',async()=>{
  const digest='a'.repeat(64),reads=[];const image={id:'sha256:'+digest,name:`postgres:16, postgres@sha256:${digest}`,tags:['postgres:16',`postgres@sha256:${digest}`],digests:[`postgres@sha256:${digest}`],size:1024,created:1};
  const page=await mounted('pages/DockerImages.tsx',{data:{host:{},images:[image],containers:[]},enabled:true,admin:true,refresh:async()=>{}},async p=>{reads.push(p);return {Id:image.id,RepoDigests:image.digests,Architecture:'amd64',Os:'linux'}});
  try{const row=page.container.querySelector('tbody tr');assert.doesNotMatch(row.textContent,/sha256|a{64}/);assert.match(row.textContent,/postgres:16/);assert.ok(row.querySelector('[data-brand="postgresql"]'));
- await page.click(row.querySelectorAll('td')[1]);assert.ok(page.container.querySelector('.modal'));assert.equal(reads.length,1);await page.click(page.container.querySelector('.modal [aria-label="Close dialog"]'));
- await page.click(row.querySelector('.resource-identity'));assert.equal(reads[0],'/docker/image/'+encodeURIComponent(image.id));assert.equal(page.container.querySelector('.image-inspection h3').textContent,'postgres:16');assert.doesNotMatch(page.container.querySelector('.task-details').textContent,/sha256/);assert.match(page.container.querySelectorAll('.modal details')[1].textContent,/sha256/);
+ await page.click(row.querySelectorAll('td')[1]);await page.click(row.querySelector('.resource-identity'));assert.equal(page.container.querySelector('.modal'),null);assert.equal(reads.length,0);await page.click(button(row,'Inspect'));assert.equal(reads[0],'/docker/image/'+encodeURIComponent(image.id));assert.equal(page.container.querySelector('.image-inspection h3').textContent,'postgres:16');assert.doesNotMatch(page.container.querySelector('.task-details').textContent,/sha256/);assert.match(page.container.querySelectorAll('.modal details')[1].textContent,/sha256/);
  }finally{await page.close()}
 });
 
@@ -133,7 +124,7 @@ test('removed Docker Networks tab is absent and old links fall back to Container
  const page=await mounted('pages/Docker.tsx',{},dockerFixture,true,['/docker?tab=Networks']);try{assert.equal([...page.container.querySelectorAll('[role=tab]')].some(el=>el.textContent==='Networks'),false);assert.ok(page.container.querySelector('.docker-table'));assert.equal(page.container.querySelector('.docker-networks'),null)}finally{await page.close()}
 });
 
-test('container identity opens its details without a write and action controls retain the exact container',async()=>{
+test('container cells select, actions open the popup and operations retain the exact target',async()=>{
  const writes=[],page=await mounted('pages/Docker.tsx',{},async(p,init)=>{if(init?.method){writes.push(p);return {}}return dockerFixture(p)});
- try{const identity=page.container.querySelector('[aria-label="Open details: Container old-app"]');assert.equal(identity.tagName,'BUTTON');const row=identity.closest('tr');for(const cell of [...row.querySelectorAll('td')].slice(1,5)){await page.click(cell);assert.match(page.container.querySelector('.modal').textContent,/old-app/);await page.click(page.container.querySelector('.modal [aria-label="Close dialog"]'));assert.deepEqual(writes,[])}await page.click(page.container.querySelector('[aria-label="Actions for old-app"]'));assert.match(page.container.querySelector('.modal').textContent,/old-app/);await page.click(page.container.querySelector('.modal [aria-label="Close dialog"]'));await page.click(identity.querySelector('svg'));assert.match(page.container.querySelector('.modal').textContent,/old-app/);assert.match(page.container.querySelector('.modal').textContent,/old:latest/);assert.deepEqual(writes,[]);assert.equal(page.container.querySelectorAll('button button').length,0);await page.click(button(page.container,'stop'));assert.deepEqual(writes,['/actions/docker/container/old-container/stop'])}finally{await page.close()}
+ try{const row=page.container.querySelector('[aria-label="Container old-app"]');for(const cell of [...row.querySelectorAll('td')].slice(0,5)){await page.click(cell);assert.equal(page.container.querySelector('.modal'),null);assert.equal(row.getAttribute('aria-selected'),'true');assert.deepEqual(writes,[])}assert.equal(row.firstElementChild.querySelectorAll('button').length,0);await page.click(page.container.querySelector('[aria-label="Actions for old-app"]'));assert.match(page.container.querySelector('.modal').textContent,/old-app/);assert.match(page.container.querySelector('.modal').textContent,/old:latest/);await page.click(button(page.container,'stop'));assert.deepEqual(writes,['/actions/docker/container/old-container/stop'])}finally{await page.close()}
 });
