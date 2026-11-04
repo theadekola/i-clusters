@@ -118,8 +118,8 @@ test('published endpoints keep reported host bindings distinct from container IP
 
 test('intentional action cancellation is quiet and never produces a success or write retry',async()=>{
  for(const message of ['Authentication cancelled','Confirmation cancelled','Permission denied']){
-  let writes=0;const data={host:{hostname:'fixture'},volumes:[],containers:[]};const page=await mounted('pages/DockerVolumes.tsx',{data,enabled:true,admin:true,refresh:async()=>{}},async()=>{writes++;throw Error(message)});
-  try{await page.click(button(page.container,'Prune Unused Anonymous Volumes'));assert.equal(writes,1);assert.equal(button(page.container,'Prune Unused Anonymous Volumes').disabled,false);assert.equal(page.container.querySelector('[role=status]'),null);assert.equal(page.container.querySelector('[role=alert]')?.textContent||'',message==='Permission denied'?message:'')}finally{await page.close()}
+  let writes=0;const data={host:{hostname:'fixture'},volumes:[],containers:[]};const page=await mounted('pages/DockerVolumes.tsx',{data,enabled:true,admin:true,refresh:async()=>{}},async(p,init)=>{if(!init?.method)return {volumes:[]};writes++;throw Error(message)});
+  try{await page.click(button(page.container,'Prune Unused Anonymous Volumes'));assert.equal(writes,1);assert.equal(button(page.container,'Prune Unused Anonymous Volumes').disabled,false);assert.equal(page.container.querySelector('[role=status]'),null);assert.equal(page.container.querySelector('.error')?.textContent||'',message==='Permission denied'?message:'')}finally{await page.close()}
  }
 });
 
