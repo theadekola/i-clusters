@@ -201,3 +201,7 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
 .network-overview,.network-overview>.pve-network{grid-template-columns:minmax(0,1fr)}
 .network-overview>.pve-network,.network-overview>.pve-network>*{min-inline-size:0;max-inline-size:100%}
 .interface-focused .vm-title,.interface-focused .vm-title>div:last-child{min-inline-size:0;max-inline-size:100%;flex-wrap:wrap}
+
+.overview-resources .resource-history-empty{display:flex;align-items:center;min-height:72px;font-size:11px}
+
+.content .overview-v2 .resource-tile>.recharts-responsive-container{display:block}

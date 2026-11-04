@@ -4,6 +4,8 @@ Developer: **The Adekola** · Company: **ATT-Tech**.
 
 ## Unreleased
 
+- Restore CPU, memory and Resource Usage charts by preserving chart children and SVG definitions through localization.
+
 - Remove resting icon backgrounds throughout the interface and retain hover and keyboard-focus highlights.
 
 - Restore the original page and system image icons used before PR #191.

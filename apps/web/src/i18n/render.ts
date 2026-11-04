@@ -30,4 +30,6 @@ export function LocalizedElement({as,...original}:any){
 }
 LocalizedElement.localeTag=true;
 export function LocalizedChildren({value}:{value:any}){const locale=useLocale(),verbatim=useContext(Verbatim);return verbatim?value:textChildren(value,locale)}
-export function componentProps(props:any){return props&&(typeof props.children==='string'||Array.isArray(props.children)&&props.children.some((item:any)=>typeof item==='string'))?{...props,children:React.createElement(LocalizedChildren,{value:props.children})}:props}
+// Formatting whitespace is structural: wrapping chart children hides axes and series
+// from libraries that inspect their direct React children.
+export function componentProps(props:any){return props&&(typeof props.children==='string'&&props.children.trim().length>0||Array.isArray(props.children)&&props.children.some((item:any)=>typeof item==='string'&&item.trim().length>0))?{...props,children:React.createElement(LocalizedChildren,{value:props.children})}:props}

@@ -21,12 +21,13 @@ const sample={
  cluster:{name:'Homelab',url:'https://192.0.2.10:8006'},
  storage:[{id:'local',name:'local',node:'node01',status:'online',usage:28}],resources:guests,
  services:[{name:'Proxmox',provider:'proxmox',status:'reachable'},{name:'Docker',provider:'docker',status:'reachable'}],
- metrics:Array.from({length:24},(_,i)=>({time:new Date(Date.now()-(23-i)*3600000).toISOString(),cpu:5+i%4,memory:71})),
+ metrics:Array.from({length:24},(_,i)=>({time:new Date(Date.now()-(23-i)*3600000).toISOString(),cpu:5+i%4,memory:71,nodes:[{name:'node01',cpu:5+i%4,memory:71}]})),
  containers:[{id:'c1',name:'zabbix-postgres',image:'postgres:16',status:'running',cpu:2,memory:128*1024**2,ports:[],networks:[]}],
  images:[{id:'image1',tags:['postgres:16'],size:1024**3}],
  ...Object.fromEntries(['errors','alerts','networks','volumes','pools','datasets','disks','shares','interfaces','devices','routes','dns','rules','history','jobs','points','tasks','logs','users','connections','notifications','destinations','schedules','policies'].map(k=>[k,[]]))
 };
 function fixture(path){
+ if(path==='/dashboard'&&process.env.LAYOUT_CHART_HISTORY)return {...sample,metrics:process.env.LAYOUT_CHART_HISTORY==='empty'?[]:sample.metrics.slice(-1)};
  if(path==='/auth/setup')return {registrationOpen:false};
  if(aiFixture&&path==='/configuration/ai')return aiFixture;
  if(process.env.LAYOUT_PROXMOX_SAVE&&path==='/connections/proxmox')return {cluster:null};
@@ -142,6 +143,31 @@ try{
      return [...findings];
     });
     failures.push(...painted.map(issue=>`${width}px ${route}: painted icon surface ${issue}`));
+   }
+   if(process.env.LAYOUT_CHECK_CHARTS==='1'&&route==='/'){
+    const mode=process.env.LAYOUT_CHART_HISTORY||'normal',history=page.locator('.overview-history');
+    if(mode==='empty'){
+     assert.equal(await history.locator('.recharts-wrapper').count(),0,'No history must not produce a fake plot');
+     assert.ok((await history.innerText()).includes(copy('Waiting for CPU and memory measurements. Check Proxmox token permissions below.')));
+     assert.equal(await page.locator('.resource-history-empty').count(),2,'CPU and memory tiles explain missing history');
+    }else{
+     const assertPlot=async()=>{
+      const plots=page.locator('.overview-resources .resource-tile .recharts-wrapper,.overview-history .recharts-wrapper');
+      await page.waitForFunction(()=>{const plots=[...document.querySelectorAll('.overview-resources .recharts-wrapper,.overview-history .recharts-wrapper')];return plots.length===3&&plots.every(plot=>plot.querySelector('.recharts-area-curve,.recharts-area-dot'))});
+      assert.equal(await plots.count(),3,'CPU, memory and historical resource plots render');
+      const shapes=await plots.locator('.recharts-area-curve,.recharts-area-dot').evaluateAll(elements=>elements.map(element=>({d:element.getAttribute('d'),cx:element.getAttribute('cx'),cy:element.getAttribute('cy')})));
+      assert.ok(shapes.length>=4,'Both CPU and memory series have visible geometry');for(const shape of shapes)assert.doesNotMatch(JSON.stringify(shape),/NaN|undefined/);
+      assert.ok(await history.locator('.recharts-xAxis .recharts-cartesian-axis-tick').count()>0,'Time axis renders');assert.ok(await history.locator('.recharts-yAxis .recharts-cartesian-axis-tick').count()>0,'Percent axis renders');
+     };
+     await assertPlot();
+     await history.scrollIntoViewIfNeeded();const box=await history.locator('.recharts-surface').boundingBox();await page.mouse.move(box.x+box.width*.6,box.y+box.height*.5);
+     await page.waitForFunction(()=>document.querySelector('.overview-history .recharts-tooltip-wrapper')?.textContent.includes('71'));
+     const tooltip=await history.locator('.recharts-tooltip-wrapper').innerText();assert.ok(tooltip.includes(copy('CPU %')));assert.ok(tooltip.includes(copy('Memory %')));assert.match(tooltip,/71/,'Tooltip reports the fixture memory measurement');
+     await page.getByLabel(copy('Select node'),{exact:true}).selectOption('node01');await assertPlot();await page.getByLabel(copy('History period'),{exact:true}).selectOption('1');await assertPlot();
+     await page.getByLabel(copy('History period'),{exact:true}).selectOption('24');await page.getByLabel(copy('Select node'),{exact:true}).selectOption('');await assertPlot();await page.mouse.move(0,0);
+    }
+    const downloadEvent=page.waitForEvent('download');await page.getByRole('button',{name:copy('Export overview report'),exact:true}).click();const download=await downloadEvent,report=JSON.parse(readFileSync(await download.path(),'utf8'));
+    assert.ok(Array.isArray(report.history),'Export contains the selected history');assert.equal(report.history.length,mode==='empty'?0:mode==='single'?1:24);if(report.history.length)assert.equal(report.history.at(-1).memory,71,'Export uses actual measurements');
    }
    const problems=await page.evaluate(()=>{
     const issues=[];
