@@ -17,6 +17,7 @@ EOF
 cat > "$temporary/bin/iclusters" <<'EOF'
 #!/usr/bin/env bash
 [[ $1 == update ]] || exit 1
+[[ $ICLUSTERS_UPDATE_STATUS_FILE == "$FIXTURE/status/update-status.json" ]] || exit 1
 [[ ! -e "$FIXTURE/repo/runtime/update-request.json" ]] || exit 1
 grep -q '"state":"updating"' "$FIXTURE/status/update-status.json"
 if [[ -e "$FIXTURE/fail" ]]; then exit 1; fi
@@ -41,6 +42,7 @@ rm "$temporary/retain" "$temporary/fail-fetch"
 echo '{}' > "$temporary/repo/runtime/update-request.json"
 bash "$temporary/worker"
 grep -q '"state":"completed"' "$temporary/status/update-status.json"
+python3 -c 'import json,sys; s=json.load(open(sys.argv[1])); assert s["progress"]["percent"]==100; assert "health checks passed" in s["progress"]["stage"]' "$temporary/status/update-status.json"
 grep -q '"available":false' "$temporary/status/update-status.json"
 echo '{"checkId":"fixture-check"}' > "$temporary/repo/runtime/update-check.json"
 bash "$temporary/worker"

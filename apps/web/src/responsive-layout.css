@@ -188,3 +188,11 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
  .modal.modal .task-details dd{text-align:start;margin:0}
 }
 .content.content .inspectable-row{cursor:default}
+
+.modal.modal .password-input{display:flex;position:relative;align-items:center;min-inline-size:0;inline-size:100%}
+.modal.modal .password-input input{inline-size:100%;padding-inline-end:48px}
+.modal.modal .password-input .icon-btn{position:absolute;inset-inline-end:3px;inset-block-start:50%;transform:translateY(-50%);min-width:40px;min-height:40px;display:grid;place-items:center}
+.software-install-progress{padding:14px;border:1px solid var(--theme-border,#334155);border-radius:12px;margin-block:16px;min-inline-size:0}
+.software-install-progress>div{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.software-install-progress progress{display:block;inline-size:100%;block-size:14px;margin-block:12px;accent-color:var(--app-accent,#3985ff)}
+.software-install-progress p{margin-block:8px;font-size:14px}
