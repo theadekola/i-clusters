@@ -1,5 +1,5 @@
 import {nativeTag,nativeChildren,isValueElement} from '../i18n/element-type';
-import {Children,cloneElement,createContext,isValidElement,useContext,useId,useState,type ButtonHTMLAttributes,type ComponentProps,type ReactNode} from 'react';
+import {Fragment,Children,cloneElement,createContext,isValidElement,useContext,useId,useState,type ButtonHTMLAttributes,type ComponentProps,type ReactNode,type ReactElement} from 'react';
 
 const RowSelection=createContext<{selected:string|null;select:(id:string)=>void}|null>(null);
 
@@ -13,6 +13,11 @@ function hasAction(value:ReactNode):boolean {
  return Children.toArray(value).some(child=>isValidElement<any>(child)&&(
   nativeTag(child)==='button'||nativeTag(child)==='a'||typeof (child as any).props.onClick==='function'||hasAction(nativeChildren(child))
  ));
+}
+// Conditional cell groups can be fragments or wrapped resource values.
+// Inspect the complete cell list before deciding whether a row has actions.
+function rowCells(value:ReactNode):ReactElement<any>[] {
+ return Children.toArray(value).flatMap(child=>!isValidElement<any>(child)?[]:nativeTag(child)==='td'?[child]:child.type===Fragment||isValueElement(child)?rowCells(nativeChildren(child)):[]);
 }
 const identityClasses=/\b(resource-name-action|history-alert-name|history-message|retention-name|schedule-name|restore-row-name|rule-name)\b/;
 // Row names are ordinary selectable content, rather than a second action button.
@@ -30,7 +35,7 @@ function rowContent(value:ReactNode,firstCell=false):ReactNode {
 
 export function InspectableRow({onInspect,className='',children,...props}:Omit<ComponentProps<'tr'>,'onClick'|'onKeyDown'> & {onInspect:(row:HTMLTableRowElement)=>void}){
  const id=useId(),selection=useContext(RowSelection),[localSelected,setLocalSelected]=useState(false);
- const cells=Children.toArray(children).filter(child=>isValidElement<any>(child)&&nativeTag(child)==='td');
+ const cells=rowCells(children);
  const hasActions=cells.length>1&&hasAction((cells.at(-1) as any)?.props.children);
  const selected=selection?.selected!=null?selection.selected===id:localSelected||/(?:^|\s)(?:[\w-]*-)?selected(?:\s|$)/.test(className);
  const classes=selection?.selected!=null?className.split(/\s+/).filter(c=>!/(?:^|-)selected$/.test(c)).join(' '):className;
