@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {build} from 'esbuild';
 const built=await build({entryPoints:[new URL('../src/cluster-topology.ts',import.meta.url).pathname],bundle:true,format:'esm',write:false});
-const {clusterTopology,topologyState,topologyPercent}=await import('data:text/javascript;base64,'+Buffer.from(built.outputFiles[0].text).toString('base64'));
+const {clusterTopology,topologyState,topologyPercent,topologyGuestName}=await import('data:text/javascript;base64,'+Buffer.from(built.outputFiles[0].text).toString('base64'));
 test('topology groups guests under reported nodes with scoped identities and no fictional resources',()=>{
  const input={clusterStatus:[{type:'cluster',name:'Example cluster'}],nodes:[{name:'two',status:'offline'},{name:'one',status:'online'}],vms:[{id:'100',name:'app',node:'one',status:'running'},{id:'200',node:'two',status:'running'}],lxc:[{id:'100',name:'service',node:'one',status:'running'}]};
  const view=clusterTopology(input);assert.equal(view.name,'Example cluster');assert.deepEqual(view.nodes.map(n=>n.name),['one','two']);assert.equal(view.nodes[0].guests.length,2);assert.notEqual(view.nodes[0].guests[0].key,view.nodes[0].guests[1].key);assert.equal(topologyState(view.nodes[1].guests[0],view.nodes[1].status),'unknown');assert.equal(topologyPercent(null),'Unavailable');assert.equal(topologyPercent(0),'0%');assert.equal(topologyPercent(101),'Unavailable');
@@ -19,3 +19,5 @@ test('verified membership never recreates a departed node from stale guest rows 
  assert.deepEqual(clusterTopology(input).nodes.map(n=>n.name),['node01','offline']);assert.equal(clusterTopology(input).nodes[1].guests.length,1);assert.deepEqual(clusterTopology(input,'node02').nodes,[]);assert.deepEqual(clusterTopology({...input,nodeInventory:{complete:true,members:[]}}).nodes,[]);
 });
 test('unverified membership retains a guest-referenced unknown node without claiming its removal',()=>{assert.equal(clusterTopology({nodeInventory:{complete:false,members:[]},vms:[{node:'node02',id:200}]}).nodes[0].name,'node02')});
+
+test('guest display names never fall back to VM or CT numbers',()=>{assert.equal(topologyGuestName({id:100,name:'Control VM',kind:'qemu'}),'Control VM');assert.equal(topologyGuestName({id:100,name:'100',kind:'qemu'}),'Unnamed virtual machine');assert.equal(topologyGuestName({id:130,kind:'lxc'}),'Unnamed container')});

@@ -1,3 +1,4 @@
+export function topologyGuestName(guest:any){const name=String(guest.name||'').trim();return name&&name!==String(guest.id)?name:guest.kind==='lxc'?'Unnamed container':'Unnamed virtual machine';}
 export function topologyPercent(value:any){return typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=100?`${value.toFixed(0)}%`:'Unavailable';}
 export function topologyState(resource:any,parent?:string){if(parent&&parent!=='online'||resource.nodeAvailable===false)return 'unknown';if(['online','running'].includes(resource.status))return resource.status;if(['offline','stopped','paused','suspended'].includes(resource.status))return resource.status;return 'unknown';}
 export function clusterTopology(data:any,search=''){
