@@ -2,3 +2,14 @@
 @media(max-width:480px){.language-trigger>small,.language-options>button>small{max-width:30%;font-size:11px}.language-options>button{gap:8px;padding:12px 8px}}
 
 .language-trigger:focus-visible,.language-options>button:focus-visible{outline:2px solid var(--app-accent);outline-offset:2px}.language-options>button:hover{background:var(--theme-highlight)}
+
+/* Quick language access shares the Settings picker and saved preference. */
+.topbar .header-language-picker{margin:0;flex:none}
+.header-language-picker>.language-trigger{width:44px;height:44px;min-width:44px;min-height:44px;padding:8px;justify-content:center;gap:0}
+.header-language-picker>.language-options{inset-inline-start:auto;inset-inline-end:0;width:min(320px,calc(100vw - 24px));max-height:min(330px,calc(100dvh - 86px));margin-top:10px}
+.header-language-picker>.language-error{position:absolute;inset-inline-end:0;top:100%;z-index:31;width:min(320px,calc(100vw - 24px));padding:12px;border:1px solid var(--theme-border);border-radius:8px;background:var(--theme-raised)}
+.topbar .profile-trigger{width:44px;height:44px;min-width:44px;min-height:44px;justify-content:center;padding:8px}
+.topbar .profile-dropdown{width:min(240px,calc(100vw - 24px))}
+.profile-dropdown-identity{display:flex;flex-direction:column;gap:5px;padding:10px;overflow-wrap:anywhere;border-bottom:1px solid var(--theme-border);margin-bottom:4px}
+.profile-dropdown-identity small{color:var(--theme-muted)}
+@media(max-width:600px){.header-language-picker>.language-options,.header-language-picker>.language-error{position:fixed;top:66px;inset-inline-end:12px;max-width:calc(100% - 24px)}.topbar .top-actions{gap:6px;flex:none}}

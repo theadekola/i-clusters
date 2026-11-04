@@ -5690,6 +5690,7 @@
   "User management sections": "Secciones de gestión de usuarios",
   "User not found": "No se ha encontrado el usuario",
   "User or group key": "Clave de usuario o grupo",
+  "User profile": "Perfil de usuario",
   "User-confirmed recovery evidence recorded. The isolated test VM is retained; stop and remove it explicitly when finished.": "Se ha registrado la evidencia de recuperación confirmada por el usuario. La prueba aislada VM se mantiene; detenga y retírela explícitamente cuando haya terminado.",
   "Username": "Nombre de usuario",
   "Username must be 3–64 characters: letters, numbers, dots, underscores or hyphens, starting with a letter or number.": "El nombre de usuario debe ser 3–64 caracteres: letras, números, puntos, guiones o guiones, comenzando con una letra o número.",

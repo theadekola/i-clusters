@@ -11,3 +11,6 @@
 :root[data-preset] :is(.header-notification-item.unread,.header-notification-item:hover){background:var(--theme-highlight)}
 :root[data-preset] .header-notification-item.unread{border-left-color:var(--app-accent)}
 :root[data-preset] .header-notification-footer a{color:var(--theme-icon)}
+
+/* Header controls now include language and profile buttons to the right of alerts. */
+@media(max-width:600px){.topbar .header-notification-panel{position:fixed;right:12px;top:66px;max-width:calc(100% - 24px)}}
