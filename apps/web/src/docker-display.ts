@@ -12,3 +12,14 @@ export function containerAddresses(container:any,network:any):string[] {
  const endpoint=container.networks?.[network.name];
  return [...new Set([endpoint?.IPAddress,endpoint?.GlobalIPv6Address].filter((v:any)=>typeof v==='string'&&v).map((v:string)=>v.split('/')[0]))];
 }
+
+// A published host binding is different from the container's network address.
+export function publishedEndpoints(container:any,host:any):string[] {
+ const format=(value:string)=>value.includes(':')?`[${value}]`:value;
+ return [...new Set((container.portBindings||[]).filter((p:any)=>Number.isInteger(p.hostPort)&&p.hostPort>0&&p.hostPort<=65535&&Number.isInteger(p.containerPort)&&p.containerPort>0&&p.containerPort<=65535).map((p:any)=>{
+  const ip=String(p.hostIp||''),wildcard=!ip||ip==='0.0.0.0'||ip==='::';
+  const address=wildcard?(host?.hostname||'Docker host'):ip;
+  const scope=wildcard?` (${ip==='::'?'all host IPv6 interfaces':ip==='0.0.0.0'?'all host IPv4 interfaces':'host interfaces'})`:ip==='127.0.0.1'||ip==='::1'?' (host loopback only)':'';
+  return `${format(address)}:${p.hostPort} → ${p.containerPort}/${p.protocol||'tcp'}${scope}`;
+ }))] as string[];
+}

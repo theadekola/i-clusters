@@ -5,7 +5,7 @@ import http from 'node:http';
 test('Docker connector handles pulls, port mappings, conflicts and log frames',async()=>{
   let created,buildBody,starts=0;
   const server=http.createServer(async(req,res)=>{
-    if(req.url==='/containers/json?all=1')return res.end(JSON.stringify([{Id:'container',Names:['/app'],State:'exited',Mounts:[{Type:'volume',Name:'app_data',Destination:'/data',RW:true}]}]));
+    if(req.url==='/containers/json?all=1')return res.end(JSON.stringify([{Id:'container',Names:['/app'],State:'exited',Ports:[{IP:'192.0.2.10',PublicPort:8080,PrivatePort:80,Type:'tcp'},{IP:'0.0.0.0',PublicPort:5353,PrivatePort:53,Type:'udp'},{PrivatePort:9000,Type:'tcp'}],Mounts:[{Type:'volume',Name:'app_data',Destination:'/data',RW:true}]}]));
     if(req.url==='/images/json'||req.url==='/networks')return res.end('[]');
     if(req.url==='/info')return res.end('{"Name":"docker-test"}');
     if(req.url==='/volumes')return res.end(JSON.stringify({Volumes:[{Name:'app_data',Driver:'local',Mountpoint:'/volumes/app_data',CreatedAt:'2026-01-01T00:00:00Z',Labels:{backup:'true'},Options:{type:'none'}}]}));
@@ -31,6 +31,7 @@ test('Docker connector handles pulls, port mappings, conflicts and log frames',a
     assert.equal(inventory.volumes[0].created,'2026-01-01T00:00:00Z');
     assert.deepEqual(inventory.volumes[0].labels,{});assert.equal(inventory.volumes[0].options,undefined);
     assert.equal(inventory.containers[0].mounts[0].Destination,'/data');
+    assert.deepEqual(inventory.containers[0].portBindings,[{hostIp:'192.0.2.10',hostPort:8080,containerPort:80,protocol:'tcp'},{hostIp:'0.0.0.0',hostPort:5353,containerPort:53,protocol:'udp'}]);
     const result=await connector.dockerCreateContainer({name:'test',image:'nginx',ports:'8080:80'});
     assert.equal(result.Id,'test');assert.equal(starts,0);await connector.dockerCreateContainer({name:'test',image:'nginx',start:true});assert.equal(starts,1);await connector.dockerCreateContainer({name:'test',image:'nginx',ports:'8080:80',start:false});assert.equal(starts,1);
     await connector.dockerBuildImage({tag:'test:latest',dockerfile:'FROM scratch\n'});

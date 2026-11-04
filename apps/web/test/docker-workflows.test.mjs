@@ -100,9 +100,9 @@ test('volume inspection opens only from its action button',async()=>{
 });
 
 test('only the network action opens details and preserves actual endpoint addresses',async()=>{
- const data={host:{hostname:'docker'},networks:[{id:'net-one',name:'app-net',driver:'bridge',scope:'local',subnets:'172.20.0.0/16'}],containers:[{id:'app',name:'homepage',networks:{'app-net':{IPAddress:'172.20.0.7/16'}}}]};
+ const data={host:{hostname:'docker'},networks:[{id:'net-one',name:'app-net',driver:'bridge',scope:'local',subnets:'172.20.0.0/16'}],containers:[{id:'app',name:'homepage',portBindings:[{hostIp:'192.0.2.10',hostPort:8080,containerPort:80,protocol:'tcp'}],networks:{'app-net':{IPAddress:'172.20.0.7/16'}}}]};
  const page=await mounted('pages/DockerNetworks.tsx',{data,enabled:true,admin:true,refresh:async()=>{}},async()=>({}));
- try{const row=page.container.querySelector('[aria-label="Inspect network app-net"]');const pair=row.querySelector('.network-container-addresses div');assert.equal(pair.querySelector('b').textContent,'homepage');assert.equal(pair.querySelector('small').textContent,'172.20.0.7');await page.click(row.querySelectorAll('td')[1]);await page.click(row.querySelector('.resource-identity'));assert.equal(page.container.querySelector('[aria-label="Network Details"]'),null);await page.click(button(row,'View'));assert.ok(page.container.querySelector('[aria-label="Network Details"]'));await page.click(page.container.querySelector('[aria-label="Close network details"]'));assert.equal(page.container.querySelector('[aria-label="Network Details"]'),null)}finally{await page.close()}
+ try{const row=page.container.querySelector('[aria-label="Inspect network app-net"]');const pair=row.querySelector('.network-container-addresses div');assert.equal(pair.querySelector('b').textContent,'homepage');assert.equal(pair.querySelector('small').textContent,'172.20.0.7');assert.equal(pair.querySelector('.network-published-endpoint').textContent,'Published: 192.0.2.10:8080 → 80/tcp');assert.doesNotMatch(pair.textContent,/172.20.0.0/);await page.click(row.querySelectorAll('td')[1]);await page.click(row.querySelector('.resource-identity'));assert.equal(page.container.querySelector('[aria-label="Network Details"]'),null);await page.click(button(row,'View'));assert.ok(page.container.querySelector('[aria-label="Network Details"]'));await page.click(page.container.querySelector('[aria-label="Close network details"]'));assert.equal(page.container.querySelector('[aria-label="Network Details"]'),null)}finally{await page.close()}
 });
 
 test('image display uses one repository reference and keeps digests in technical details',async()=>{
@@ -118,4 +118,12 @@ test('anonymous volume display explains its container and folder without changin
  const name='a'.repeat(64),reads=[];const page=await mounted('pages/DockerVolumes.tsx',{data:{host:{},volumes:[{id:name,name,mountpoint:'/var/lib/docker/volumes/'+name+'/_data'}],containers:[{id:'wiki',name:'wikijs',mounts:[{Type:'volume',Name:name,Destination:'/wiki/data/content',RW:true}]}]},enabled:true,admin:true,refresh:async()=>{}},async p=>{reads.push(p);return p==='/docker/volumes/usage'?{volumes:[]}:{Name:name,Mountpoint:'/var/lib/docker/volumes/'+name+'/_data'}});
  try{const row=page.container.querySelector('tbody tr');assert.match(row.textContent,/wikijs · \/wiki\/data\/content/);assert.doesNotMatch(row.textContent,/a{64}|\/var\/lib/);await page.click(button(row,'Inspect'));assert.ok(reads.includes('/docker/volume/'+name));assert.equal(page.container.querySelector('.volume-inspection h3').textContent,'wikijs · /wiki/data/content');assert.doesNotMatch(page.container.querySelector('.task-details').textContent,/a{64}/);assert.match(page.container.querySelector('.modal details').textContent,/a{64}/);
  }finally{await page.close()}
+});
+
+test('published endpoints keep reported host bindings distinct from container IPs',async()=>{
+ const built=await component('docker-display.ts');try{const display=built.module.publishedEndpoints;
+ assert.deepEqual(display({portBindings:[{hostIp:'2001:db8::10',hostPort:8443,containerPort:443,protocol:'tcp'},{hostIp:'0.0.0.0',hostPort:5353,containerPort:53,protocol:'udp'},{hostIp:'127.0.0.1',hostPort:9000,containerPort:9000,protocol:'tcp'},{hostPort:70000,containerPort:80}]},{hostname:'control-vm'}),['[2001:db8::10]:8443 → 443/tcp','control-vm:5353 → 53/udp (all host IPv4 interfaces)','127.0.0.1:9000 → 9000/tcp (host loopback only)']);
+ assert.deepEqual(display({networks:{app:{IPAddress:'172.20.0.2'}},ports:'80'},{}),[]);
+ assert.deepEqual(display({portBindings:[{hostIp:'::',hostPort:8080,containerPort:80}]},{}),['Docker host:8080 → 80/tcp (all host IPv6 interfaces)']);
+ }finally{built.cleanup()}
 });
