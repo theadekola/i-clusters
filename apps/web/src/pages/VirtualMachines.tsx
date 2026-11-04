@@ -13,7 +13,7 @@ import {CreationHa} from '../components/GuestCreateFields';
 import {inventoryComplete} from '../proxmox-state';
 import {useEffect,useMemo,useState} from 'react';
 import {useSearchParams,useNavigate} from 'react-router-dom';
-import {Archive,Box,Columns3,Cpu,ExternalLink,Grid2X2,HardDrive,MemoryStick,Monitor,MoreHorizontal,Play,Power,RefreshCw,RotateCw,Search,Tag,Network,ArrowDown,ArrowUp,Server,Settings2,Terminal as ShellIcon} from 'lucide-react';
+import {Archive,Box,Columns3,Cpu,ExternalLink,Grid2X2,HardDrive,MemoryStick,Monitor,MoreHorizontal,Play,Power,RefreshCw,RotateCw,Search,Tag,Network,ArrowDown,ArrowUp,Server,Settings2,Terminal as ShellIcon} from '../icons';
 import {api,confirmedApi} from '../api';
 import {useApi} from '../hooks';
 import {installationConsoleUrl} from '../vm-installation';

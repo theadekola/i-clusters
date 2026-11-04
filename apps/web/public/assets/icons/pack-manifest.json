@@ -1,0 +1,492 @@
+[
+  {
+    "section": "Overview",
+    "filename": "dashboard.svg",
+    "label": "Dashboard",
+    "pictogram": "dashboard",
+    "palette": "blue"
+  },
+  {
+    "section": "Overview",
+    "filename": "infrastructure.svg",
+    "label": "Infrastructure",
+    "pictogram": "server",
+    "palette": "blue"
+  },
+  {
+    "section": "Overview",
+    "filename": "topology.svg",
+    "label": "Topology",
+    "pictogram": "network",
+    "palette": "teal"
+  },
+  {
+    "section": "Overview",
+    "filename": "clusters.svg",
+    "label": "Clusters",
+    "pictogram": "cubes",
+    "palette": "purple"
+  },
+  {
+    "section": "Overview",
+    "filename": "nodes.svg",
+    "label": "Nodes",
+    "pictogram": "server",
+    "palette": "blue"
+  },
+  {
+    "section": "Overview",
+    "filename": "proxmox.svg",
+    "label": "Proxmox",
+    "pictogram": "server",
+    "palette": "amber"
+  },
+  {
+    "section": "Compute",
+    "filename": "virtual-machines.svg",
+    "label": "Virtual Machines",
+    "pictogram": "screen",
+    "palette": "blue"
+  },
+  {
+    "section": "Compute",
+    "filename": "lxc-containers.svg",
+    "label": "LXC Containers",
+    "pictogram": "cube",
+    "palette": "purple"
+  },
+  {
+    "section": "Compute",
+    "filename": "docker.svg",
+    "label": "Docker",
+    "pictogram": "containers",
+    "palette": "cyan"
+  },
+  {
+    "section": "Compute",
+    "filename": "docker-containers.svg",
+    "label": "Docker Containers",
+    "pictogram": "containers",
+    "palette": "cyan"
+  },
+  {
+    "section": "Compute",
+    "filename": "compose-stacks.svg",
+    "label": "Compose Stacks",
+    "pictogram": "cubes",
+    "palette": "teal"
+  },
+  {
+    "section": "Compute",
+    "filename": "applications.svg",
+    "label": "Applications",
+    "pictogram": "apps",
+    "palette": "purple"
+  },
+  {
+    "section": "Compute",
+    "filename": "images.svg",
+    "label": "Images",
+    "pictogram": "image",
+    "palette": "cyan"
+  },
+  {
+    "section": "Compute",
+    "filename": "volumes.svg",
+    "label": "Volumes",
+    "pictogram": "database",
+    "palette": "blue"
+  },
+  {
+    "section": "Compute",
+    "filename": "docker-networks.svg",
+    "label": "Docker Networks",
+    "pictogram": "network",
+    "palette": "cyan"
+  },
+  {
+    "section": "Compute",
+    "filename": "events.svg",
+    "label": "Events",
+    "pictogram": "calendar",
+    "palette": "orange"
+  },
+  {
+    "section": "Operations",
+    "filename": "tasks.svg",
+    "label": "Tasks",
+    "pictogram": "checklist",
+    "palette": "teal"
+  },
+  {
+    "section": "Operations",
+    "filename": "logs.svg",
+    "label": "Logs",
+    "pictogram": "document",
+    "palette": "blue"
+  },
+  {
+    "section": "Operations",
+    "filename": "shell.svg",
+    "label": "Shell",
+    "pictogram": "terminal",
+    "palette": "purple"
+  },
+  {
+    "section": "Operations",
+    "filename": "sftp.svg",
+    "label": "SFTP",
+    "pictogram": "folder",
+    "palette": "teal"
+  },
+  {
+    "section": "Operations",
+    "filename": "file-manager.svg",
+    "label": "File Manager",
+    "pictogram": "folder",
+    "palette": "amber"
+  },
+  {
+    "section": "Operations",
+    "filename": "ai-assistant.svg",
+    "label": "AI Assistant",
+    "pictogram": "brain",
+    "palette": "purple"
+  },
+  {
+    "section": "Operations",
+    "filename": "remote-access.svg",
+    "label": "Remote Access",
+    "pictogram": "remote",
+    "palette": "blue"
+  },
+  {
+    "section": "Storage",
+    "filename": "storage.svg",
+    "label": "Storage",
+    "pictogram": "drive",
+    "palette": "blue"
+  },
+  {
+    "section": "Storage",
+    "filename": "disks.svg",
+    "label": "Disks",
+    "pictogram": "disk",
+    "palette": "purple"
+  },
+  {
+    "section": "Storage",
+    "filename": "datasets.svg",
+    "label": "Datasets",
+    "pictogram": "database",
+    "palette": "teal"
+  },
+  {
+    "section": "Storage",
+    "filename": "snapshots.svg",
+    "label": "Snapshots",
+    "pictogram": "layers",
+    "palette": "purple"
+  },
+  {
+    "section": "Storage",
+    "filename": "shares.svg",
+    "label": "Shares",
+    "pictogram": "folder",
+    "palette": "amber"
+  },
+  {
+    "section": "Storage",
+    "filename": "smb-shares.svg",
+    "label": "SMB Shares",
+    "pictogram": "folder",
+    "palette": "amber"
+  },
+  {
+    "section": "Storage",
+    "filename": "nfs-shares.svg",
+    "label": "NFS Shares",
+    "pictogram": "folder",
+    "palette": "teal"
+  },
+  {
+    "section": "Storage",
+    "filename": "truenas.svg",
+    "label": "TrueNAS",
+    "pictogram": "drive",
+    "palette": "teal"
+  },
+  {
+    "section": "Storage",
+    "filename": "zimaos.svg",
+    "label": "ZimaOS",
+    "pictogram": "screen",
+    "palette": "orange"
+  },
+  {
+    "section": "Backups",
+    "filename": "backups.svg",
+    "label": "Backups",
+    "pictogram": "vault",
+    "palette": "blue"
+  },
+  {
+    "section": "Backups",
+    "filename": "restore-points.svg",
+    "label": "Restore Points",
+    "pictogram": "clock",
+    "palette": "teal"
+  },
+  {
+    "section": "Backups",
+    "filename": "backup-schedules.svg",
+    "label": "Backup Schedules",
+    "pictogram": "calendar",
+    "palette": "blue"
+  },
+  {
+    "section": "Backups",
+    "filename": "retention.svg",
+    "label": "Retention",
+    "pictogram": "hourglass",
+    "palette": "amber"
+  },
+  {
+    "section": "Backups",
+    "filename": "destinations.svg",
+    "label": "Destinations",
+    "pictogram": "pin",
+    "palette": "teal"
+  },
+  {
+    "section": "Backups",
+    "filename": "backup-reports.svg",
+    "label": "Backup Reports",
+    "pictogram": "document",
+    "palette": "blue"
+  },
+  {
+    "section": "Backups",
+    "filename": "backup-restore.svg",
+    "label": "Backup & Restore",
+    "pictogram": "drive",
+    "palette": "purple"
+  },
+  {
+    "section": "Networking",
+    "filename": "network.svg",
+    "label": "Network",
+    "pictogram": "network",
+    "palette": "teal"
+  },
+  {
+    "section": "Networking",
+    "filename": "interfaces.svg",
+    "label": "Interfaces",
+    "pictogram": "ethernet",
+    "palette": "blue"
+  },
+  {
+    "section": "Networking",
+    "filename": "devices.svg",
+    "label": "Devices",
+    "pictogram": "router",
+    "palette": "purple"
+  },
+  {
+    "section": "Networking",
+    "filename": "routing.svg",
+    "label": "Routing",
+    "pictogram": "route",
+    "palette": "teal"
+  },
+  {
+    "section": "Networking",
+    "filename": "firewall.svg",
+    "label": "Firewall",
+    "pictogram": "shield",
+    "palette": "orange"
+  },
+  {
+    "section": "Networking",
+    "filename": "dns.svg",
+    "label": "DNS",
+    "pictogram": "globe",
+    "palette": "blue"
+  },
+  {
+    "section": "Networking",
+    "filename": "traffic-analysis.svg",
+    "label": "Traffic Analysis",
+    "pictogram": "chart",
+    "palette": "cyan"
+  },
+  {
+    "section": "Networking",
+    "filename": "vlans.svg",
+    "label": "VLANs",
+    "pictogram": "layers",
+    "palette": "purple"
+  },
+  {
+    "section": "Networking",
+    "filename": "vpn.svg",
+    "label": "VPN",
+    "pictogram": "globe",
+    "palette": "blue"
+  },
+  {
+    "section": "Networking",
+    "filename": "network-map.svg",
+    "label": "Network Map",
+    "pictogram": "network",
+    "palette": "green"
+  },
+  {
+    "section": "Monitoring",
+    "filename": "monitoring.svg",
+    "label": "Monitoring",
+    "pictogram": "monitor",
+    "palette": "blue"
+  },
+  {
+    "section": "Monitoring",
+    "filename": "performance.svg",
+    "label": "Performance",
+    "pictogram": "gauge",
+    "palette": "teal"
+  },
+  {
+    "section": "Monitoring",
+    "filename": "alerts.svg",
+    "label": "Alerts",
+    "pictogram": "bell",
+    "palette": "amber"
+  },
+  {
+    "section": "Monitoring",
+    "filename": "alert-history.svg",
+    "label": "Alert History",
+    "pictogram": "bell",
+    "palette": "orange"
+  },
+  {
+    "section": "Monitoring",
+    "filename": "alert-rules.svg",
+    "label": "Alert Rules",
+    "pictogram": "bell",
+    "palette": "purple"
+  },
+  {
+    "section": "Monitoring",
+    "filename": "notifications.svg",
+    "label": "Notifications",
+    "pictogram": "bell",
+    "palette": "amber"
+  },
+  {
+    "section": "Monitoring",
+    "filename": "service-health.svg",
+    "label": "Service Health",
+    "pictogram": "heart",
+    "palette": "green"
+  },
+  {
+    "section": "Monitoring",
+    "filename": "audit-logs.svg",
+    "label": "Audit Logs",
+    "pictogram": "document",
+    "palette": "purple"
+  },
+  {
+    "section": "Administration",
+    "filename": "users.svg",
+    "label": "Users",
+    "pictogram": "people",
+    "palette": "blue"
+  },
+  {
+    "section": "Administration",
+    "filename": "roles.svg",
+    "label": "Roles",
+    "pictogram": "people",
+    "palette": "purple"
+  },
+  {
+    "section": "Administration",
+    "filename": "permissions.svg",
+    "label": "Permissions",
+    "pictogram": "key",
+    "palette": "amber"
+  },
+  {
+    "section": "Administration",
+    "filename": "security.svg",
+    "label": "Security",
+    "pictogram": "shield",
+    "palette": "green"
+  },
+  {
+    "section": "Administration",
+    "filename": "integrations.svg",
+    "label": "Integrations",
+    "pictogram": "puzzle",
+    "palette": "teal"
+  },
+  {
+    "section": "Administration",
+    "filename": "api-tokens.svg",
+    "label": "API Tokens",
+    "pictogram": "key",
+    "palette": "blue"
+  },
+  {
+    "section": "Administration",
+    "filename": "settings.svg",
+    "label": "Settings",
+    "pictogram": "gear",
+    "palette": "purple"
+  },
+  {
+    "section": "Administration",
+    "filename": "appearance.svg",
+    "label": "Appearance",
+    "pictogram": "palette",
+    "palette": "purple"
+  },
+  {
+    "section": "Administration",
+    "filename": "advanced.svg",
+    "label": "Advanced",
+    "pictogram": "sliders",
+    "palette": "blue"
+  },
+  {
+    "section": "Administration",
+    "filename": "system-info.svg",
+    "label": "System Info",
+    "pictogram": "chip",
+    "palette": "teal"
+  },
+  {
+    "section": "Administration",
+    "filename": "updates.svg",
+    "label": "Updates",
+    "pictogram": "sync",
+    "palette": "green"
+  },
+  {
+    "section": "Administration",
+    "filename": "mobile-access.svg",
+    "label": "Mobile Access",
+    "pictogram": "phone",
+    "palette": "cyan"
+  },
+  {
+    "section": "Administration",
+    "filename": "about.svg",
+    "label": "About",
+    "pictogram": "info",
+    "palette": "blue"
+  }
+]

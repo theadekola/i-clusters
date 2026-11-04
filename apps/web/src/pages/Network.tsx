@@ -10,7 +10,7 @@ import NetworkDevices from './NetworkDevices';
 import ProxmoxNetworks from './ProxmoxNetworks';
 import {useState} from 'react';
 import {Link,useSearchParams} from 'react-router-dom';
-import {Network as NetworkIcon,Server,Shield,RefreshCw,Download,Layers} from 'lucide-react';
+import {Network as NetworkIcon,Server,Shield,RefreshCw,Download,Layers} from '../icons';
 import {useApi} from '../hooks';
 import {Card,PageHeader,Stat,Tabs,Modal} from '../components/UI';
 import DockerHostSelector from '../components/DockerHostSelector';

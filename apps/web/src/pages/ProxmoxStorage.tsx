@@ -10,7 +10,7 @@ import StorageRegistration from '../components/StorageRegistration';
 import {storageCapacity,storageDistribution} from '../storage-presentation';
 import {distinctStorage,inventoryComplete} from '../proxmox-state';
 import {useEffect,useMemo,useState} from 'react';
-import {Database,HardDrive,Folder,Search,RefreshCw,Plus,ShieldCheck,ExternalLink,Network,Layers,Server,CheckCircle2,AlertTriangle,Eye} from 'lucide-react';
+import {Database,HardDrive,Folder,Search,RefreshCw,Plus,ShieldCheck,ExternalLink,Network,Layers,Server,CheckCircle2,AlertTriangle,Eye} from '../icons';
 import {Tooltip,ResponsiveContainer,PieChart,Pie,Cell} from 'recharts';
 import {useApi} from '../hooks';
 import {confirmedApi} from '../api';

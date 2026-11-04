@@ -5,7 +5,7 @@ import Pagination from '../components/Pagination';
 import PageIcon from '../components/PageIcon';
 import {InspectableRow,SelectionBody} from '../components/TableActions';
 import {useEffect,useState} from 'react';
-import {FileText,ChartNoAxesColumn,CheckCircle,AlertTriangle,Users,Search,RefreshCw,Download,Plus,Eye,X,Calendar,ChevronLeft,ChevronRight,Info,ArrowRight,Activity} from 'lucide-react';
+import {FileText,ChartNoAxesColumn,CheckCircle,AlertTriangle,Users,Search,RefreshCw,Download,Plus,Eye,X,Calendar,ChevronLeft,ChevronRight,Info,ArrowRight,Activity} from '../icons';
 import {useApi} from '../hooks';
 import {Card,Badge,Modal} from '../components/UI';
 const timestamp=(v:any)=>{const n=Date.parse(v);return Number.isFinite(n)?n:null};

@@ -6,7 +6,7 @@ import ReportLoading from '../components/ReportLoading';
 import {InspectableRow,TableAction,SelectionBody} from '../components/TableActions';
 import {useState} from 'react';
 import {Link,useNavigate} from 'react-router-dom';
-import {Database,Plus,RefreshCw,Search,Eye,Play,Pause} from 'lucide-react';
+import {Database,Plus,RefreshCw,Search,Eye,Play,Pause} from '../icons';
 import {useApi} from '../hooks';
 import {confirmedApi} from '../api';
 import {Card,Badge,Modal} from '../components/UI';

@@ -1,6 +1,6 @@
 import {productLogo} from '../product-logo';
 import { useEffect, useState } from 'react';
-import { ArrowRight, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, Lock, User, Eye, EyeOff } from '../icons';
 import { api, setTokens } from '../api';
 
 export default function Login({onLogin}:{onLogin:()=>void}){

@@ -9,7 +9,7 @@ import '@xterm/xterm/css/xterm.css';
 import './ssh-terminal.css';
 import {api} from '../api';
 import {Modal} from './UI';
-import {Maximize,Minimize,Copy,ClipboardPaste,TextSelect,Terminal as TerminalIcon} from 'lucide-react';
+import {Maximize,Minimize,Copy,ClipboardPaste,TextSelect,Terminal as TerminalIcon} from '../icons';
 import {SSHLogin} from './SSHAccess';
 export default function SSHTerminal({target,host,sessionId,onDisconnect,active=true,name}:{target:string;host?:string;sessionId?:string;active?:boolean;name?:string;onDisconnect?:()=>void}){
  const [expanded,setExpanded]=useState(false);

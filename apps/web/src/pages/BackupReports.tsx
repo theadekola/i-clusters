@@ -9,7 +9,7 @@ import {archiveInventoryComplete} from '../proxmox-state';
 import PageIcon from '../components/PageIcon';
 import {useEffect,useState} from 'react';
 import {Link} from 'react-router-dom';
-import {Database,CheckCircle,XCircle,Clock,HardDrive,RefreshCw,Download,Search,FileText,Calendar,Eye,Activity,Plus,ChevronLeft,ChevronRight,Info,ArrowUpRight} from 'lucide-react';
+import {Database,CheckCircle,XCircle,Clock,HardDrive,RefreshCw,Download,Search,FileText,Calendar,Eye,Activity,Plus,ChevronLeft,ChevronRight,Info,ArrowUpRight} from '../icons';
 import {ResponsiveContainer,BarChart,Bar,AreaChart,Area,XAxis,YAxis,Tooltip,CartesianGrid} from 'recharts';
 import {useApi} from '../hooks';
 import {backupActivity,backupCsv,backupDuration,backupOutcome,backupSummary,distinctReportTasks,reportArchives,reportTaskType,reportCsv} from '../backup-reports';

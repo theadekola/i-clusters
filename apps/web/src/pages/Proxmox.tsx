@@ -11,7 +11,7 @@ import BrandIcon from '../components/BrandIcon';
 import ProxmoxTasks from './ProxmoxTasks';
 import {useEffect,useState} from 'react';
 import {Link,useNavigate,useSearchParams} from 'react-router-dom';
-import {Server,Monitor,Box,Cpu,MemoryStick,HardDrive,ShieldCheck,RefreshCw,Plus,Terminal,Archive,ListChecks,ExternalLink} from 'lucide-react';
+import {Server,Monitor,Box,Cpu,MemoryStick,HardDrive,ShieldCheck,RefreshCw,Plus,Terminal,Archive,ListChecks,ExternalLink} from '../icons';
 import {AreaChart,Area,ResponsiveContainer,PieChart,Pie,Cell,Tooltip} from 'recharts';
 import {useApi,refreshResources} from '../hooks';
 import {taskState,inventoryComplete} from '../proxmox-state';

@@ -3,7 +3,7 @@ import ReportLoading from '../components/ReportLoading';
 import PageIcon from '../components/PageIcon';
 import {useEffect,useRef,useState} from 'react';
 import {Link,useSearchParams} from 'react-router-dom';
-import {Settings as SettingsIcon,Server,Shield,Link2,Palette,Archive,SlidersHorizontal,Globe,LayoutGrid,Gauge,Info,Search,Download,Upload,ExternalLink,CheckCircle} from 'lucide-react';
+import {Settings as SettingsIcon,Server,Shield,Link2,Palette,Archive,SlidersHorizontal,Globe,LayoutGrid,Gauge,Info,Search,Download,Upload,ExternalLink,CheckCircle} from '../icons';
 import {useApi,clearApiCache} from '../hooks';
 import {api} from '../api';
 import {appearanceDefaults,loadAppearance,saveAppearanceWithSidebar} from '../appearance';

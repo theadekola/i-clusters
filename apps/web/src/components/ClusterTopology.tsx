@@ -1,6 +1,6 @@
 import {useState,useLayoutEffect,useRef} from 'react';
 import {Link} from 'react-router-dom';
-import {Cloud,Server,Monitor,Box,Search,Minus,Plus,Maximize} from 'lucide-react';
+import {Cloud,Server,Monitor,Box,Search,Minus,Plus,Maximize} from '../icons';
 import {Card,Modal} from './UI';
 import ReportLoading from './ReportLoading';
 import {clusterTopology,topologyState,topologyPercent,topologyGuestName} from '../cluster-topology';

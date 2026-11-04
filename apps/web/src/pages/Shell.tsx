@@ -3,7 +3,7 @@ import PageIcon from '../components/PageIcon';
 import {useSearchParams} from 'react-router-dom';
 import SFTPBrowser from '../components/SFTPBrowser';
 import {useState,useEffect,useRef} from 'react';
-import {Server,Monitor,Box,Search,RefreshCw,LayoutGrid,List,Bookmark,Plus,X} from 'lucide-react';
+import {Server,Monitor,Box,Search,RefreshCw,LayoutGrid,List,Bookmark,Plus,X} from '../icons';
 import {useApi,useResourceRefresh} from '../hooks';
 import {api} from '../api';
 import {Card,Badge,Modal} from '../components/UI';

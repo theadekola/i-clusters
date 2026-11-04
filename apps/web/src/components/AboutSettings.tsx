@@ -1,7 +1,7 @@
 import {productLogo} from '../product-logo';
 import BrandIcon from './BrandIcon';
 import {brandAssets} from '../brand-assets';
-import {Cloud,Package,Link2,BookOpen,Github,Bug,Lightbulb,Heart,Atom,Server,Container,Code2,Database,Shield,User,FileText,Headphones,Globe,ExternalLink,Activity,Lock} from 'lucide-react';
+import {Cloud,Package,Link2,BookOpen,Github,Bug,Lightbulb,Heart,Atom,Server,Container,Code2,Database,Shield,User,FileText,Headphones,Globe,ExternalLink,Activity,Lock} from '../icons';
 import {Card,Badge} from './UI';
 import UpdateButton from './UpdateButton';
 const repository='https://github.com/theadekola/i-clusters';

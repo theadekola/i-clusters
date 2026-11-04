@@ -1,7 +1,7 @@
 import ReportLoading from './ReportLoading';
 import BrandIcon from './BrandIcon';
 import {Link} from 'react-router-dom';
-import {Workflow,Puzzle,ExternalLink} from 'lucide-react';
+import {Workflow,Puzzle,ExternalLink} from '../icons';
 import {useApi} from '../hooks';
 import {Card,Badge} from './UI';
 function Block({title,detail,icon:Icon,children}:any){return <Card className="settings-overview-card integrations-settings-card"><div className="settings-card-heading"><span><Icon size={23}/></span><div><h2>{title}</h2><p>{detail}</p></div></div>{children}</Card>}

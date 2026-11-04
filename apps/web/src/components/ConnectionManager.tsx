@@ -10,7 +10,7 @@ import BrandIcon from './BrandIcon';
 import ConfigurationDialog from './ConfigurationDialog';
 import {useEffect,useState,type ReactNode} from 'react';
 import {Link,useNavigate,useSearchParams} from 'react-router-dom';
-import {Plus,Search,Check,ArrowUpRight,Settings,LayoutGrid,List,RefreshCw,Wifi,AlertCircle,Bell} from 'lucide-react';
+import {Plus,Search,Check,ArrowUpRight,Settings,LayoutGrid,List,RefreshCw,Wifi,AlertCircle,Bell} from '../icons';
 import {useApi} from '../hooks';
 import {api,setDockerHost} from '../api';
 import {Card,Badge,Modal} from './UI';

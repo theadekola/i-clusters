@@ -7,7 +7,7 @@ import {notificationChannels,notificationNames} from '../notification-channels';
 import PageIcon from '../components/PageIcon';
 import {useSearchParams} from 'react-router-dom';
 import {useEffect,useRef,useState} from 'react';
-import {Settings,CheckCircle,PauseCircle,AlertTriangle,Bell,Search,RotateCcw,Eye,Pencil,Copy,Trash2,Plus,FileText,Cpu,Database,MemoryStick,Mail,ArrowRight,Info} from 'lucide-react';
+import {Settings,CheckCircle,PauseCircle,AlertTriangle,Bell,Search,RotateCcw,Eye,Pencil,Copy,Trash2,Plus,FileText,Cpu,Database,MemoryStick,Mail,ArrowRight,Info} from '../icons';
 import {confirmedApi} from '../api';
 import {useApi} from '../hooks';
 import {Card,Badge,Modal} from '../components/UI';

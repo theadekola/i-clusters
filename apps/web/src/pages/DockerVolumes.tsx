@@ -7,7 +7,7 @@ import {InspectableRow,SelectionBody} from '../components/TableActions';
 import ReportLoading from '../components/ReportLoading';
 import Pagination from '../components/Pagination';
 import {useEffect,useState} from 'react';
-import {Database,HardDrive,Archive,Trash2,Eye,Plus,RefreshCw,Search} from 'lucide-react';
+import {Database,HardDrive,Archive,Trash2,Eye,Plus,RefreshCw,Search} from '../icons';
 import {useApi} from '../hooks';
 import {api,confirmedApi} from '../api';
 import {Card,Badge,Modal,usePopupSuccess} from '../components/UI';

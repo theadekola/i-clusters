@@ -10,7 +10,7 @@ import {taskCategory,taskLabel,taskHistory,taskStatusColor} from '../task-presen
 import {taskState,inventoryComplete} from '../proxmox-state';
 import {useEffect,useRef,useState} from 'react';
 import {useNavigate} from 'react-router-dom';
-import {Play,CheckCircle,AlertTriangle,Clock,RefreshCw,Download,ExternalLink,Search,FileText,Monitor,Box,Archive,X,Eye,ChevronLeft,ChevronRight} from 'lucide-react';
+import {Play,CheckCircle,AlertTriangle,Clock,RefreshCw,Download,ExternalLink,Search,FileText,Monitor,Box,Archive,X,Eye,ChevronLeft,ChevronRight} from '../icons';
 import {PieChart,Pie,Cell,Tooltip,ResponsiveContainer,BarChart,Bar,XAxis,YAxis,Legend} from 'recharts';
 import {useApi,useResourceRefresh,useRefreshHandler} from '../hooks';
 import {api,confirmedApi} from '../api';

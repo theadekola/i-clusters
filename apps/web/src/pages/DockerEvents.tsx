@@ -6,7 +6,7 @@ import {InspectableRow,SelectionBody} from '../components/TableActions';
 import ReportLoading from '../components/ReportLoading';
 import Pagination from '../components/Pagination';
 import {useCallback,useEffect,useRef,useState} from 'react';
-import {Activity,Calendar,Info,TriangleAlert,OctagonAlert,X} from 'lucide-react';
+import {Activity,Calendar,Info,TriangleAlert,OctagonAlert,X} from '../icons';
 import {api} from '../api';
 import {describeDockerEvent} from '../docker-event-presentation';
 import {Card,Badge} from '../components/UI';

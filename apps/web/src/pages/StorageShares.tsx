@@ -10,7 +10,7 @@ import PageIcon from '../components/PageIcon';
 import {useEffect,useState} from 'react';
 import {useStorageDialog} from '../storage-dialog';
 import {Link} from 'react-router-dom';
-import {Folder,Users,Network,Shield,RefreshCw,Plus,Search,Eye,Pencil,Trash2,FileText,CheckCircle} from 'lucide-react';
+import {Folder,Users,Network,Shield,RefreshCw,Plus,Search,Eye,Pencil,Trash2,FileText,CheckCircle} from '../icons';
 import {ResponsiveContainer,PieChart,Pie,Cell,Tooltip} from 'recharts';
 import {useApi} from '../hooks';
 import {api,confirmedApi} from '../api';

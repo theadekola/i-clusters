@@ -10,7 +10,7 @@ import PageIcon from '../components/PageIcon';
 import StorageRegistration from '../components/StorageRegistration';
 import {useEffect,useRef,useState} from 'react';
 import {Link,useSearchParams} from 'react-router-dom';
-import {Database,Server,CheckCircle,AlertTriangle,PieChart as PieIcon,Search,RefreshCw,Plus,Play,FileText,HardDrive,Network,Folder,Pencil,Eye,X,ChevronLeft,ChevronRight,Info,Clock,ArrowUpRight} from 'lucide-react';
+import {Database,Server,CheckCircle,AlertTriangle,PieChart as PieIcon,Search,RefreshCw,Plus,Play,FileText,HardDrive,Network,Folder,Pencil,Eye,X,ChevronLeft,ChevronRight,Info,Clock,ArrowUpRight} from '../icons';
 import {ResponsiveContainer,AreaChart,Area,XAxis,YAxis,CartesianGrid,Tooltip} from 'recharts';
 import {useApi,refreshResources,useResourceRefresh} from '../hooks';
 import {api,confirmedApi} from '../api';

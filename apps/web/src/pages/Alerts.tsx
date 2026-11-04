@@ -7,7 +7,7 @@ import AlertHistory from './AlertHistory';
 import ActiveAlerts from './ActiveAlerts';
 import {useEffect,useState} from 'react';
 import {Navigate,useNavigate,useSearchParams} from 'react-router-dom';
-import {AlertTriangle,Bell,CheckCircle,Info,RefreshCw,Settings,Plus} from 'lucide-react';
+import {AlertTriangle,Bell,CheckCircle,Info,RefreshCw,Settings,Plus} from '../icons';
 import {useApi,useResourceRefresh} from '../hooks';
 import {confirmedApi} from '../api';
 import {Card,Tabs,Badge,Modal} from '../components/UI';
