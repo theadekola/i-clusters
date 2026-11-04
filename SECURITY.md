@@ -21,7 +21,7 @@ There is no formal long-term-support or backport commitment. Use the latest revi
 - Current account status and role checked on authenticated requests. Roles are viewer, auditor, operator, admin and owner; interface visibility alone is not the authorization boundary.
 - Rate limiting, Helmet headers, configured origins and payload validation. These do not replace a deployment firewall or identity gateway.
 - Supported connection/configuration popups are owner-only. Saved secret values are masked on reads and encrypted with AES-256-GCM using deployment key protection. Preserve the original signing/encryption key material for recovery.
-- Resource- and payload-bound approval for sensitive infrastructure actions, with target SSH authentication where supported. SSH host identity must be verified. Do not blindly accept an unverified fingerprint.
+- Resource- and payload-bound approval for sensitive infrastructure actions, with target SSH authentication where supported. SSH host keys are checked automatically against persistent known-host records. New endpoints use trust on first use; first contact establishes trust and is not independent proof of identity. Existing verified saved keys constrain enrollment, and changed keys are blocked. Use trusted networks for first enrollment.
 - Proxmox restore targets must use unused guest IDs; i-Clusters does not request force overwrite.
 - API and PostgreSQL ports are not published by the standard Compose deployment. The API filesystem is read-only apart from designated runtime and temporary mounts. Its container has no host Docker socket mount.
 - Caddy HTTPS, including local CA support for LAN installations. Browser/node trust must be configured correctly. HTTPS transport alone does not certify deployment security.
@@ -54,7 +54,7 @@ Automated regression tests use isolated provider fixtures and exercise approvals
 ## Connector maintenance through Connections
 
 Connector update status and actions require the owner role. The SSH popup uses
-fresh credentials without saving them, a pinned user-verified host fingerprint,
+fresh credentials without saving them, a persistently pinned host fingerprint checked automatically,
 and explicit consent. A fixed remote script verifies the selected connector's
 pairing ID and token hash locally before writing its own script. The raw pairing
 token is never returned. Only the connector bundled with the running i-Clusters

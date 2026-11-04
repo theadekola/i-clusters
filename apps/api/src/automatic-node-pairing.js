@@ -1,3 +1,4 @@
+import {verifySSHHostKey} from './ssh-host-trust.js';
 import {Client} from 'ssh2';
 import crypto from 'node:crypto';
 import {readFileSync,existsSync} from 'node:fs';
@@ -28,7 +29,7 @@ export function createAutomaticNodePairing({config=clusterConfig,query=pve,nodes
  const read=id=>{const job=jobs.get(id);if(!job)throw fail('Installation status is no longer available. Check the node connector before retrying.',404);if(job.state==='unverified'&&fresh(job))Object.assign(job,{state:'completed',message:'Node connector installed, paired and fresh heartbeat verified.'});return {...job}};
  async function perform(job,input){let client,registered,installed=false;try{
   if(binding()!==input.connectionId)throw fail('The Proxmox connection changed. Reopen setup.',409);
-  client=clientFactory();await new Promise((resolve,reject)=>{client.once('ready',resolve);client.once('error',()=>reject(fail('SSH authentication or host verification failed. Check the node address, fingerprint and password.',422)));client.connect({host:input.host,port:input.port,username:input.username,...passwordAuthentication(client,input.password),readyTimeout:12000,hostVerifier:key=>'SHA256:'+crypto.createHash('sha256').update(key).digest('base64').replace(/=+$/,'')===input.fingerprint})});
+  client=clientFactory();await new Promise((resolve,reject)=>{client.once('ready',resolve);client.once('error',()=>reject(fail('SSH authentication or host verification failed. Check the node address, fingerprint and password.',422)));client.connect({host:input.host,port:input.port,username:input.username,...passwordAuthentication(client,input.password),readyTimeout:12000,hostVerifier:key=>verifySSHHostKey(input,key)})});
   if(binding()!==input.connectionId)throw fail('The Proxmox connection changed. Reopen setup.',409);
   const resolved=await readTarget(job.node);if(resolved.host!==input.host)throw fail('Host address changed. Reopen setup.',409);const base={mode:'probe',node:job.node,kind,url:controller(),ca:ca(),...(resolved.identity?{identity:resolved.identity}:{})};
   Object.assign(job,{state:'checking',message:'Checking the selected node, root access and controller HTTPS trust.'});
