@@ -43,3 +43,9 @@
 .resource-name-action.pve-node-name{display:flex;align-items:center;gap:10px}
 .node-details-target{scroll-margin-top:100px;margin-bottom:12px;min-width:0}
 .node-details-target:focus-visible{outline:2px solid var(--app-accent,#38bdf8);outline-offset:3px;border-radius:12px}
+
+/* Passive rows and status cards highlight on hover without implying an action. */
+@media(hover:hover) and (pointer:fine){
+ :root .inspectable-row:hover>td,:root .inspectable-row:focus-within>td{background:var(--theme-highlight,#173b56)!important}
+ :root :is(.docker-update-card,.docker-section-stat):hover{border-color:var(--app-accent,#38bdf8)!important;box-shadow:inset 0 0 0 1px var(--app-accent,#38bdf8);background:var(--theme-highlight,#173b56)!important}
+}
