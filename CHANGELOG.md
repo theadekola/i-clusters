@@ -4,6 +4,8 @@ Developer: **The Adekola** · Company: **ATT-Tech**.
 
 ## Unreleased
 
+- Keep storage row, keyboard and capacity selections separate from inspection; only explicit eye actions open pool and disk popups.
+
 - Open storage pool and disk inspection in eye-action popups, expand the tables, and align dataset editor actions in a dedicated footer.
 
 - Add a country-flag language dropdown between header alerts and the user profile, sharing the saved interface language with Settings.
