@@ -392,7 +392,7 @@ test('Restore exports filtered source metadata and keeps snapshot protection unk
  const captured=[],original=URL.createObjectURL,revoke=URL.revokeObjectURL;URL.createObjectURL=b=>{captured.push(b);return 'blob:restore'};URL.revokeObjectURL=()=>{};const page=await mounted('pages/Restore.tsx',{},unifiedRestoreApi());const click=page.dom.window.HTMLAnchorElement.prototype.click;page.dom.window.HTMLAnchorElement.prototype.click=()=>{};try{const protection=page.container.querySelector('[aria-label="Restore point protection"]');await act(async()=>{protection.value='unknown';protection.dispatchEvent(new page.dom.window.Event('change',{bubbles:true}));});assert.equal(page.container.querySelectorAll('.restore-table tbody tr').length,1);await page.click(page.container.querySelector('[aria-label="Export restore points"]'));const output=JSON.parse(await captured[0].text());assert.equal(output.points.length,1);assert.equal(output.points[0].provider,'truenas');assert.equal(output.points[0].__key,undefined);assert.equal(output.coverage.complete,true);assert.equal(output.points[0].id,'tank/data@before-change');await page.click(page.container.querySelector('[aria-label="Reset restore filters"]'));assert.equal(page.container.querySelectorAll('.restore-table tbody tr').length,3);}finally{page.dom.window.HTMLAnchorElement.prototype.click=click;await page.close();URL.createObjectURL=original;URL.revokeObjectURL=revoke;}
 });
 test('Restore list pagination and detail closing preserve the selected source',async()=>{
- const data={points:Array.from({length:12},(_,i)=>({...restoreFixture.points[0],id:'archive-'+i,volid:'backup:backup/point-'+i,created:new Date(Date.now()-i*60000).toISOString()})),snapshots:[],errors:[]};const page=await mounted('pages/Restore.tsx',{},async p=>p==='/restore'?data:p==='/auth/me'?{user:{role:'viewer'}}:{tasks:[]});try{assert.equal(page.container.querySelectorAll('.restore-table tbody tr').length,10);await page.click(button(page.container,'Next'));assert.equal(page.container.querySelectorAll('.restore-table tbody tr').length,2);await page.click(page.container.querySelector('[aria-label="Close restore point details"]'));assert.equal(page.container.querySelector('.restore-detail-card'),null);await page.click(page.container.querySelector('.restore-row-name'));assert.ok(page.container.querySelector('.restore-detail-card'));assert.equal(button(page.container,'Restore to New Guest').disabled,true);await page.click(page.container.querySelector('[aria-label="Reset restore filters"]'));assert.equal(page.container.querySelectorAll('.restore-table tbody tr').length,10);}finally{await page.close();}
+ const data={points:Array.from({length:12},(_,i)=>({...restoreFixture.points[0],id:'archive-'+i,volid:'backup:backup/point-'+i,created:new Date(Date.now()-i*60000).toISOString()})),snapshots:[],errors:[]};const page=await mounted('pages/Restore.tsx',{},async p=>p==='/restore'?data:p==='/auth/me'?{user:{role:'viewer'}}:{tasks:[]});try{assert.equal(page.container.querySelectorAll('.restore-table tbody tr').length,10);await page.click(button(page.container,'Next'));assert.equal(page.container.querySelectorAll('.restore-table tbody tr').length,2);await page.click(page.container.querySelector('[aria-label="Close restore point details"]'));assert.equal(page.container.querySelector('.restore-detail-card'),null);await page.click(page.container.querySelector('.restore-row-name'));assert.equal(page.container.querySelector('.restore-detail-card'),null);await page.click(page.container.querySelector('[aria-label^="View restore point"]'));assert.ok(page.container.querySelector('.restore-detail-card'));assert.equal(button(page.container,'Restore to New Guest').disabled,true);await page.click(page.container.querySelector('[aria-label="Reset restore filters"]'));assert.equal(page.container.querySelectorAll('.restore-table tbody tr').length,10);}finally{await page.close();}
 });
 
 const unifiedScheduleFixture=()=>{const now=new Date(),next=new Date(now.getFullYear(),now.getMonth(),Math.min(now.getDate()+1,new Date(now.getFullYear(),now.getMonth()+1,0).getDate()),23,59).getTime()/1000;return {items:[{id:'backup',comment:'Daily Production',node:'n1',vmid:'101',storage:'backup',schedule:'02:00',enabled:true,'next-run':String(next)},{id:'old',comment:'Stale next reading',node:'n1',enabled:true,'next-run':Date.now()/1000-3600},{id:'disabled',comment:'Disabled Future',node:'n1',enabled:false,'next-run':next}],truenas:[{id:1,dataset:'tank/data',enabled:true,schedule:{hour:'3',minute:'0'}}],errors:[]}};
@@ -507,7 +507,7 @@ test('Reports paginate and clamp results when outcome cards filter the table',as
 });
 
 
-test('resource cells, keyboard and explicit actions inspect the correct resource',async()=>{
+test('resource cells and keyboard select while explicit actions inspect the correct resource',async()=>{
  const stamp=new Date().toISOString();
  const alerts=['first','second'].map(id=>({id,title:id,severity:'warning',status:'active',source:id,triggered:stamp}));
  const resources=['first','second'].map(id=>({id,name:id,node:id,provider:'proxmox',size:100,health:'PASSED'}));
@@ -521,14 +521,16 @@ test('resource cells, keyboard and explicit actions inspect the correct resource
    const rows=[...page.container.querySelectorAll('tbody .inspectable-row')];assert.equal(rows.length,2,file);
    assert.equal(rows[0].tabIndex,0,file);
    await page.click(rows[1].querySelectorAll('td')[1]);
-   if(['ActiveAlerts','AlertHistory'].includes(file))assert.deepEqual(details,['second'],file);
+   if(['ActiveAlerts','AlertHistory'].includes(file))assert.deepEqual(details,[],file);
+   assert.equal(rows[1].getAttribute('aria-selected'),'true',file);assert.equal(rows[0].getAttribute('aria-selected'),'false',file);
    await page.click(rows[1].lastElementChild.querySelector('button'));
-   if(['ActiveAlerts','AlertHistory'].includes(file))assert.deepEqual(details,['second','second'],file);
+   if(['ActiveAlerts','AlertHistory'].includes(file))assert.deepEqual(details,['second'],file);
    else assert.ok(rows[1].className.includes('selected'),file+' action selects second row');
    await act(async()=>{rows[0].dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}))});
-   if(['ActiveAlerts','AlertHistory'].includes(file))assert.deepEqual(details,['second','second','first'],file);
+   if(['ActiveAlerts','AlertHistory'].includes(file))assert.deepEqual(details,['second'],file);
+   assert.equal(rows[0].getAttribute('aria-selected'),'true',file);assert.equal(rows[1].getAttribute('aria-selected'),'false',file);
    await page.click(rows[0].lastElementChild.querySelector('button'));
-   if(['ActiveAlerts','AlertHistory'].includes(file))assert.deepEqual(details,['second','second','first','first'],file);
+   if(['ActiveAlerts','AlertHistory'].includes(file))assert.deepEqual(details,['second','first'],file);
    else assert.ok(rows[0].className.includes('selected'),file+' action selects first row');
    const actions=rows[0].lastElementChild.querySelectorAll('button');
    for(const action of actions){assert.equal(action.textContent.trim(),'',file+' action is icon only');assert.ok(action.getAttribute('aria-label'),file+' action has accessible name');assert.ok(action.title,file+' action has tooltip')}
@@ -551,8 +553,8 @@ test('alert acknowledgement and history checkboxes do not bubble into row inspec
    assert.deepEqual(details,[]);
    const row=page.container.querySelector('tbody .inspectable-row');
    await act(async()=>row.dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:' ',bubbles:true,cancelable:true})));
-   assert.deepEqual(details,['fixture']);
-   const inspect=row.lastElementChild.querySelector('button');await page.click(inspect.querySelector('svg'));assert.deepEqual(details,['fixture','fixture']);
+   assert.deepEqual(details,[]);
+   const inspect=row.lastElementChild.querySelector('button');await page.click(inspect.querySelector('svg'));assert.deepEqual(details,['fixture']);
   }finally{await page.close()}
  }
 });
@@ -734,21 +736,21 @@ test('workspace refresh includes the independently loaded Docker Events report',
  try{await page.click(button(page.container,'Events'));const before=calls.length;await act(async()=>{const detail={prefixes:['/docker'],requests:[]};window.dispatchEvent(new CustomEvent('iclusters-resource-refresh',{detail}));await Promise.all(detail.requests)});assert.ok(calls.slice(before).includes('/docker'));assert.ok(calls.slice(before).includes('/docker/events?hours=24'));}finally{await page.close()}
 });
 
-test('node content, identity and View actions select and focus the correct details',async()=>{
+test('node content selects while View opens and focuses the node details',async()=>{
  const data={nodes:[{name:'alpha',ip:'192.0.2.10',status:'online'},{name:'beta',ip:'192.0.2.11',status:'online'}],vms:[],lxc:[],storage:[],nodeServices:[{id:'beta-cron',node:'beta',name:'cron',status:'running'}]};
  const page=await mounted('pages/ClusterNodes.tsx',{data,metrics:[],tasks:[],network:{},hours:'24',role:'viewer',refresh:async()=>{}},async p=>({node:p.includes('beta')?'beta':'alpha',errors:[]}));
- try{const beta=page.container.querySelector('[aria-label="Open node beta"]');assert.equal(beta.tagName,'BUTTON');await page.click(beta.closest('tr').querySelectorAll('td')[1]);assert.match(page.container.querySelector('[data-location]').getAttribute('data-location'),/node=beta/);await page.click(beta);assert.match(page.container.querySelector('[data-location]').getAttribute('data-location'),/node=beta/);assert.equal(page.dom.window.document.activeElement,page.container.querySelector('[aria-label="Node details for beta"]'));await page.click(page.container.querySelector('[aria-label="View node alpha"]'));assert.equal(page.dom.window.document.activeElement,page.container.querySelector('[aria-label="Node details for alpha"]'));await page.click(page.container.querySelector('.node-service-pills button'));assert.match(page.container.querySelector('[data-location]').getAttribute('data-location'),/nodeTab=Services/);assert.equal(page.dom.window.document.activeElement,page.container.querySelector('[aria-label="Node details for beta"]'))}finally{await page.close()}
+ try{const beta=page.container.querySelector('[aria-label="Inspect node beta"]');await page.click(beta.querySelectorAll('td')[1]);assert.equal(beta.getAttribute('aria-selected'),'true');assert.doesNotMatch(page.container.querySelector('[data-location]').getAttribute('data-location'),/node=beta/);await page.click(beta.querySelector('.row-content-name'));assert.equal(beta.firstElementChild.querySelectorAll('button').length,0);await page.click(page.container.querySelector('[aria-label="View node beta"]'));assert.match(page.container.querySelector('[data-location]').getAttribute('data-location'),/node=beta/);assert.equal(page.dom.window.document.activeElement,page.container.querySelector('[aria-label="Node details for beta"]'));await page.click(page.container.querySelector('[aria-label="View node alpha"]'));assert.equal(page.dom.window.document.activeElement,page.container.querySelector('[aria-label="Node details for alpha"]'));await page.click(page.container.querySelector('.node-service-pills button'));assert.match(page.container.querySelector('[data-location]').getAttribute('data-location'),/nodeTab=Services/);assert.equal(page.dom.window.document.activeElement,page.container.querySelector('[aria-label="Node details for beta"]'))}finally{await page.close()}
 });
 test('Proxmox overview node identity opens the selected node overview',async()=>{
  const data={resourceInventoryComplete:true,nodes:[{name:'alpha',ip:'192.0.2.10',status:'online'}],vms:[],lxc:[],storage:[],errors:[]};const page=await mounted('pages/Proxmox.tsx',{},async p=>p==='/auth/me'?{user:{role:'viewer'}}:p.includes('/tasks')?{tasks:[]}:p.includes('/details')?{node:'alpha'}:p==='/proxmox'?data:{});
- try{await page.click(page.container.querySelector('[aria-label="Open node alpha"]'));const url=page.container.querySelector('[data-location]').getAttribute('data-location');assert.match(url,/tab=Nodes/);assert.match(url,/node=alpha/);assert.match(url,/nodeTab=Overview/);assert.ok(page.container.querySelector('[aria-label="Node details for alpha"]'))}finally{await page.close()}
+ try{await page.click(page.container.querySelector('[aria-label="Inspect node alpha"] td:last-child button'));const url=page.container.querySelector('[data-location]').getAttribute('data-location');assert.match(url,/tab=Nodes/);assert.match(url,/node=alpha/);assert.match(url,/nodeTab=Overview/);assert.ok(page.container.querySelector('[aria-label="Node details for alpha"]'))}finally{await page.close()}
 });
 
 
 test('alert rule content is readable by viewers and management buttons remain independent',async()=>{
  const writes=[],props={rules:ruleRedesignFixture,alerts:[],admin:false,refresh:async()=>{},onHistory(){}};
  const page=await mounted('pages/AlertRules.tsx',props,async(p,init)=>{if(init?.method)writes.push(p);return {}});
- try{const row=page.container.querySelector('[aria-label="Alert rule CPU high"]');await page.click(row.querySelectorAll('td')[3]);assert.match(page.container.querySelector('.modal').textContent,/CPU high/);assert.match(page.container.querySelector('.modal').textContent,/80%/);assert.equal(page.container.querySelector('[aria-label="Edit rule rule-cpu"]').disabled,true);await page.click(page.container.querySelector('[aria-label="Close dialog"]'));await page.click(page.container.querySelector('[aria-label="View rule rule-storage"]'));assert.match(page.container.querySelector('.modal').textContent,/Storage high/);assert.deepEqual(writes,[])}finally{await page.close()}
+ try{const row=page.container.querySelector('[aria-label="Alert rule CPU high"]');await page.click(row.querySelectorAll('td')[3]);assert.equal(page.container.querySelector('.modal'),null);assert.equal(row.getAttribute('aria-selected'),'true');await page.click(page.container.querySelector('[aria-label="View rule rule-cpu"]'));assert.match(page.container.querySelector('.modal').textContent,/CPU high/);assert.match(page.container.querySelector('.modal').textContent,/80%/);assert.equal(page.container.querySelector('[aria-label="Edit rule rule-cpu"]').disabled,true);await page.click(page.container.querySelector('[aria-label="Close dialog"]'));await page.click(page.container.querySelector('[aria-label="View rule rule-storage"]'));assert.match(page.container.querySelector('.modal').textContent,/Storage high/);assert.deepEqual(writes,[])}finally{await page.close()}
 });
 
 test('backup schedules, retention and destinations select content without submitting operations',async()=>{
@@ -756,4 +758,16 @@ test('backup schedules, retention and destinations select content without submit
   const writes=[],page=await mounted('pages/'+file+'.tsx',{},async(p,init)=>{if(init?.method)writes.push(p);return api(p,init)});
   try{const rows=[...page.container.querySelectorAll('tbody .inspectable-row')];assert.ok(rows.length>1,file);const row=rows.at(-1);await page.click(row.querySelectorAll('td')[2]);assert.ok(row.classList.contains('selected'),file+' content selects its own record');await act(async()=>rows[0].dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:' ',bubbles:true,cancelable:true})));assert.ok(rows[0].classList.contains('selected'),file+' keyboard selects its own record');assert.deepEqual(writes,[],file+' inspection must not run, edit or delete anything')}finally{await page.close()}
  }
+});
+
+test('selection is exclusive within a table, independent across tables, and actionless rows open directly',async()=>{
+ const source=fs.mkdtempSync(path.join(rootPath,'src','audit-selection-'));
+ fs.writeFileSync(path.join(source,'index.tsx'),`import React from 'react';import {SelectionBody,InspectableRow} from '../components/TableActions';export default function Probe({inspect,action}){return <>{['first','second'].map(table=><table key={table} aria-label={table}><SelectionBody>{['alpha','beta'].map(name=><InspectableRow key={name} aria-label={table+' '+name} onInspect={()=>inspect(table+' '+name)}><td><button className="resource-name-action" onClick={()=>inspect(name)}>{name}</button><label><input type="checkbox"/>Keep</label></td><td>running</td><td>{table==='first'?<button aria-label={'View '+name} disabled={name==='beta'} onClick={()=>action(name)}>View</button>:'No actions'}</td></InspectableRow>)}</SelectionBody></table>)}</>}`);
+ const inspections=[],actions=[],page=await mounted(path.relative(path.join(rootPath,'src'),path.join(source,'index.tsx')),{inspect:x=>inspections.push(x),action:x=>actions.push(x)},async()=>({}));
+ try{const first=page.container.querySelector('table[aria-label=first]'),second=page.container.querySelector('table[aria-label=second]'),[a,b]=first.querySelectorAll('tbody tr'),other=second.querySelector('tbody tr');
+ await page.click(a.querySelector('td'));await page.click(b.querySelector('td'));assert.equal(a.getAttribute('aria-selected'),'false');assert.equal(b.getAttribute('aria-selected'),'true');assert.deepEqual(inspections,[]);assert.deepEqual(actions,[]);assert.equal(first.querySelectorAll('td:first-child button').length,0);
+ await page.click(b.querySelector('input'));assert.deepEqual(inspections,[]);await page.click(b.querySelector('td:last-child button'));assert.deepEqual(actions,[]);assert.deepEqual(inspections,[]);
+ await page.click(a.querySelector('td:last-child button'));assert.deepEqual(actions,['alpha']);assert.deepEqual(inspections,[]);assert.equal(a.getAttribute('aria-selected'),'true');assert.equal(b.getAttribute('aria-selected'),'false');
+ await page.click(other.querySelector('td'));assert.deepEqual(inspections,['second alpha']);assert.equal(other.getAttribute('aria-selected'),'true');assert.equal(a.getAttribute('aria-selected'),'true');await act(async()=>other.dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true})));assert.deepEqual(inspections,['second alpha','second alpha']);
+ }finally{await page.close();fs.rmSync(source,{recursive:true,force:true})}
 });
