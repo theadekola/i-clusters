@@ -68,4 +68,4 @@
 .storage-resource-edit>p.muted{grid-column:1/-1;margin:0;line-height:1.6}
 .storage-resource-edit>.storage-edit-actions{grid-column:1/-1;display:flex;align-items:center;justify-content:flex-end;gap:12px;padding-top:8px}
 .storage-edit-actions>.btn{flex:0 1 auto;min-height:44px;padding:12px 18px;white-space:normal}
-@media(max-width:480px){.storage-edit-actions>.btn{flex:1;min-width:0}.storage-resource-edit>.storage-edit-actions{gap:8px;align-items:stretch}.modal .disk-detail-card .header-actions>.btn{flex:1}}
+@media(max-width:480px){.storage-edit-actions>.btn{flex:1;min-width:0;padding:12px 10px}.storage-edit-actions>.btn.primary{flex:1.5}.storage-resource-edit>.storage-edit-actions{gap:8px;align-items:stretch}.modal .disk-detail-card .header-actions>.btn{flex:1}}
