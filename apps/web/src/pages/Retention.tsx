@@ -11,7 +11,7 @@ import {retentionRule,policyMatchesArchive} from '../retention-presentation';
 import {distinctBackupPoints} from '../backup-selection';
 import {useEffect,useRef,useState} from 'react';
 import {Link} from 'react-router-dom';
-import {ShieldCheck,CheckCircle,Pause,Database,Clock,Calendar,Search,RefreshCw,Plus,Pencil,Play,Info,Box,LayoutGrid,List,FileText,Eye,X,HardDrive,Trash2,Download} from '../icons';
+import {ShieldCheck,CheckCircle,Pause,Database,Clock,Calendar,Search,RefreshCw,Plus,Pencil,Play,Info,Box,LayoutGrid,List,FileText,Eye,X,HardDrive,Trash2,Download} from 'lucide-react';
 import {useApi,refreshResources,useResourceRefresh} from '../hooks';
 import {confirmedApi} from '../api';
 import {inventoryComplete} from '../proxmox-state';

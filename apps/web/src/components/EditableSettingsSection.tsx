@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState,type ReactNode} from 'react';
-import {Pencil,Save} from '../icons';
+import {Pencil,Save} from 'lucide-react';
 import {Card} from './UI';
 
 /** Section drafts remain independent; autosave never submits invalid or unchanged values. */

@@ -2,7 +2,7 @@ import {translate} from '../i18n/locale';
 import RefreshButton from './RefreshButton';
 import {OSIcon} from './BrandIcon';
 import {Link} from 'react-router-dom';
-import {Monitor,Settings,Database,Wrench,RefreshCw,ExternalLink} from '../icons';
+import {Monitor,Settings,Database,Wrench,RefreshCw,ExternalLink} from 'lucide-react';
 import {Card,Badge} from './UI';
 import {safeLocale} from '../regional';
 const uptime=(value:any)=>typeof value==='number'&&Number.isFinite(value)?`${Math.floor(value/86400)}d ${Math.floor(value%86400/3600)}h ${Math.floor(value%3600/60)}m`:'Not reported';

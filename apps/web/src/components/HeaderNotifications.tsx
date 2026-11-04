@@ -2,7 +2,7 @@ import RefreshButton from './RefreshButton';
 import ReportLoading from './ReportLoading';
 import {useEffect,useRef,useState} from 'react';
 import {Link,useLocation} from 'react-router-dom';
-import {Bell,AlertTriangle,Check,RefreshCw,X,Activity} from '../icons';
+import {Bell,AlertTriangle,Check,RefreshCw,X,Activity} from 'lucide-react';
 import {api} from '../api';
 import {useApi} from '../hooks';
 const stamp=(value:string)=>value&&!Number.isNaN(Date.parse(value))?new Date(value).toLocaleString():'Time not reported';

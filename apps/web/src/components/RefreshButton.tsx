@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState,type ButtonHTMLAttributes,type MouseEvent} from 'react';
-import {RefreshCw} from '../icons';
+import {RefreshCw} from 'lucide-react';
 
 type Props=Omit<ButtonHTMLAttributes<HTMLButtonElement>,'onClick'> & {
  onClick?:(event:MouseEvent<HTMLButtonElement>)=>unknown;

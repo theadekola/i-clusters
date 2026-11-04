@@ -3,7 +3,7 @@ import RefreshButton from './RefreshButton';
 import './docker-updates.css';
 import {useInstallationWakeLock} from '../installation-wake-lock';
 import {useEffect,useRef,useState} from 'react';
-import {Download,RefreshCw,AlertCircle} from '../icons';
+import {Download,RefreshCw,AlertCircle} from 'lucide-react';
 import {useApi} from '../hooks';
 import {api,confirmedApi} from '../api';
 import {Card,Badge,Modal,PageHeader} from './UI';

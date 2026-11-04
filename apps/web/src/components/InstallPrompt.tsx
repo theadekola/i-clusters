@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react';
-import {Download,Share2,X} from '../icons';
+import {Download,Share2,X} from 'lucide-react';
 import './install-prompt.css';
 type InstallEvent=Event&{prompt:()=>Promise<void>;userChoice:Promise<{outcome:string}>};
 export default function InstallPrompt(){

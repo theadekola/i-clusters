@@ -1,4 +1,4 @@
-import {RefreshCw} from '../icons';
+import {RefreshCw} from 'lucide-react';
 import type {ReactNode} from 'react';
 import {reportValue as readingValue,reportPending,summaryValue} from '../report-value';
 export default function ReportLoading({message,label='Report pending',inline=false}:{message?:string;label?:string;inline?:boolean}){

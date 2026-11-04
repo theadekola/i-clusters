@@ -9,7 +9,7 @@ import ConfigurationDialog from './ConfigurationDialog';
 import {useEffect,useState} from 'react';
 import {useNotificationPreferences} from './useNotificationPreferences';
 import {Link,useSearchParams} from 'react-router-dom';
-import {Bell,Send,Mail,MessageCircle,Clock,Activity,Settings,Play,RefreshCw,SlidersHorizontal,Info} from '../icons';
+import {Bell,Send,Mail,MessageCircle,Clock,Activity,Settings,Play,RefreshCw,SlidersHorizontal,Info} from 'lucide-react';
 import {useApi} from '../hooks';
 import {confirmedApi} from '../api';
 import {Card,Badge} from './UI';

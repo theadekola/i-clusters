@@ -10,7 +10,7 @@ import {networkAddress,networkMetric} from '../network-readings';
 import {networkConfig,sameNetworkConfig} from '../network-config';
 import {inventoryComplete} from '../proxmox-state';
 import {useEffect,useMemo,useState} from 'react';
-import {Network,Layers,ArrowDownUp,Globe,Search,RefreshCw,Plus,ExternalLink,Shield,Settings,Wrench,Server,ArrowDown,ArrowUp,Eye,Pencil,CheckCircle2} from '../icons';
+import {Network,Layers,ArrowDownUp,Globe,Search,RefreshCw,Plus,ExternalLink,Shield,Settings,Wrench,Server,ArrowDown,ArrowUp,Eye,Pencil,CheckCircle2} from 'lucide-react';
 import {PieChart,Pie,Cell,AreaChart,Area,XAxis,YAxis,Tooltip,ResponsiveContainer} from 'recharts';
 import {useApi,useResourceRefresh} from '../hooks';
 import {api,confirmedApi} from '../api';

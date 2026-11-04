@@ -6,7 +6,7 @@ import PageIcon from '../components/PageIcon';
 import {InspectableRow,TableAction,SelectionBody} from '../components/TableActions';
 import {useState} from 'react';
 import {Link} from 'react-router-dom';
-import {Server,Monitor,RefreshCw,Download,Container,Eye,Search,ExternalLink} from '../icons';
+import {Server,Monitor,RefreshCw,Download,Container,Eye,Search,ExternalLink} from 'lucide-react';
 import {setDockerHost} from '../api';
 import {useApi} from '../hooks';
 import {Card,Badge,Stat,Tabs} from '../components/UI';

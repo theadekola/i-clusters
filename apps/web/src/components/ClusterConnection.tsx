@@ -1,5 +1,5 @@
 import { useEffect,useRef,useState } from 'react';
-import { Server,ChevronDown } from '../icons';
+import { Server,ChevronDown } from 'lucide-react';
 import { api } from '../api';
 import { useApi } from '../hooks';
 import { Card, Modal } from './UI';

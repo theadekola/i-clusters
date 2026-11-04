@@ -11,7 +11,7 @@ import {backupOutcome} from '../backup-reports';
 import {inventoryComplete,archiveInventoryComplete,sourceInventoryComplete} from '../proxmox-state';
 import {useEffect,useState} from 'react';
 import {useNavigate,useSearchParams} from 'react-router-dom';
-import {Archive,CheckCircle,AlertTriangle,Database,Calendar,RefreshCw,Plus,Play,RotateCcw,ShieldCheck,Search} from '../icons';
+import {Archive,CheckCircle,AlertTriangle,Database,Calendar,RefreshCw,Plus,Play,RotateCcw,ShieldCheck,Search} from 'lucide-react';
 import {PieChart,Pie,Cell,Tooltip,ResponsiveContainer,BarChart,Bar,XAxis,YAxis,CartesianGrid} from 'recharts';
 import {useApi,useResourceRefresh} from '../hooks';
 import {confirmedApi} from '../api';

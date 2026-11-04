@@ -10,7 +10,7 @@ import {ResponsiveContainer,BarChart,Bar,XAxis,YAxis,Tooltip,CartesianGrid} from
 import {backupOutcome} from '../backup-reports';
 import {useEffect,useState} from 'react';
 import {Link,useSearchParams} from 'react-router-dom';
-import {Archive,Database,Calendar,RefreshCw,Search,Monitor,Box,ShieldCheck,RotateCcw,Plus,FileText,LayoutGrid,List,HardDrive,Clock,ArrowRight,X,Eye,Info,Download} from '../icons';
+import {Archive,Database,Calendar,RefreshCw,Search,Monitor,Box,ShieldCheck,RotateCcw,Plus,FileText,LayoutGrid,List,HardDrive,Clock,ArrowRight,X,Eye,Info,Download} from 'lucide-react';
 import {useApi} from '../hooks';
 import {distinctBackupPoints} from '../backup-selection';
 import {confirmedApi} from '../api';

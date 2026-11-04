@@ -6,7 +6,7 @@ import {InspectableRow,TableAction,SelectionBody} from '../components/TableActio
 import {dnsConfig,sameDnsConfig} from '../dns-config';
 import {useState} from 'react';
 import {Link} from 'react-router-dom';
-import {Globe,Server,RefreshCw,Eye,Pencil,Search,FileText,Shield,Activity} from '../icons';
+import {Globe,Server,RefreshCw,Eye,Pencil,Search,FileText,Shield,Activity} from 'lucide-react';
 import {useApi} from '../hooks';
 import {api,confirmedApi} from '../api';
 import {Card,Stat,Modal,usePopupSuccess} from '../components/UI';

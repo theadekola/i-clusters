@@ -118,12 +118,10 @@ try{
   await page.setViewportSize({width,height:1000});
   for(const route of selectedRoutes){
    errors=[];await page.goto(base.replace(/\/$/,'')+route);await page.locator('.content h1,.content h2').first().waitFor({timeout:15000}).catch(async()=>{throw Error(`Page did not render: ${route}; ${errors.join('; ')}; ${(await page.locator('body').innerText()).slice(0,300)}`)});await page.waitForTimeout(350);
-   if(process.env.LAYOUT_CHECK_ICONS==='1'){
-    const sources=await page.locator('svg[data-fluent-icon] image,.page-image-icon img,.brand-mark img').evaluateAll(elements=>[...new Set(elements.map(element=>element.getAttribute('href')||element.getAttribute('src')))]);
-    assert.ok(sources.length>0,route+': icons are rendered');
-    for(const source of sources)assert.match(source,/^\/assets\/icons\/[a-z0-9-]+\.svg$/,route+': local Fluent SVG path');
-    const loaded=await page.evaluate(sources=>Promise.all(sources.map(src=>new Promise(resolve=>{const image=new Image();image.onload=()=>resolve({src,ok:image.naturalWidth>0});image.onerror=()=>resolve({src,ok:false});image.src=src}))),sources);
-    assert.deepEqual(loaded.filter(image=>!image.ok),[],route+': every icon loads');
+   if(process.env.LAYOUT_CHECK_IMAGES==='1'){
+    const images=page.locator('.page-image-icon img,.brand-mark img');assert.ok(await images.count()>0,route+': original page or brand images are rendered');
+    const failures=await images.evaluateAll(async elements=>{await Promise.all(elements.map(image=>image.decode().catch(()=>{})));return elements.filter(image=>!image.complete||!image.naturalWidth||!image.getAttribute('src').startsWith('data:image/png;base64,')).map(image=>image.closest('[data-page-icon],[data-brand]')?.outerHTML.slice(0,160))});
+    assert.deepEqual(failures,[],route+': every original bundled image loads');
    }
    const problems=await page.evaluate(()=>{
     const issues=[];

@@ -4,9 +4,8 @@ Developer: **The Adekola** · Company: **ATT-Tech**.
 
 ## Unreleased
 
+- Restore the original page and system image icons used before PR #191.
 - Add five complete bundled interface language packs with regional flag images, persistent live switching and build-time coverage checks.
-
-- Replace interface icons with the supplied Fluent-inspired SVG pack and matching dimensional controls and system identity tiles.
 
 ## v1.0.0 — release-notes baseline, 29 October 2026
 

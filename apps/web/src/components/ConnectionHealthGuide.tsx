@@ -4,7 +4,7 @@ import ConnectionActionDialog,{type ConnectionAction} from './ConnectionActionDi
 import GuestPermissionRepair from './GuestPermissionRepair';
 import {useState} from 'react';
 import {Link} from 'react-router-dom';
-import {RefreshCw,ShieldCheck,ArrowRight} from '../icons';
+import {RefreshCw,ShieldCheck,ArrowRight} from 'lucide-react';
 import {Modal} from './UI';
 import {serviceGuidance} from '../service-guidance';
 export default function ConnectionHealthGuide({row,busy,error,message,onClose,onRecheck,onSetup,onUpdate,onEdit,onRemove}:{row:any;busy:boolean;error?:string;message?:string;onClose:()=>void;onRecheck:()=>void;onSetup:()=>void;onUpdate?:()=>void;onEdit?:()=>void;onRemove?:()=>void}){

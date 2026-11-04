@@ -2,7 +2,7 @@ import {createPortal} from 'react-dom';
 import {Modal} from './UI';
 import {isSoftwareUpdating,setSoftwareUpdating,updatingMessage} from '../software-update-state';
 import {useInstallationWakeLock} from '../installation-wake-lock';
-import {Download,LoaderCircle} from '../icons';
+import {Download,LoaderCircle} from 'lucide-react';
 import {useEffect,useRef,useState} from 'react';
 import {api} from '../api';
 import {version as bundledVersion} from '../../package.json';
