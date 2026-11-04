@@ -127,7 +127,7 @@ test('Settings import previews only whitelisted fields and requires explicit res
 });
 
 test('Settings regional preview tolerates nonstandard embedded-browser locale tags',async()=>{
- const page=await settingsPage();try{Object.defineProperty(page.dom.window.navigator,'language',{value:'en-US@posix',configurable:true});await page.render({});assert.equal(page.container.querySelectorAll('.settings-overview-card').length,5);assert.match(page.container.textContent,/en-US@posix/);}finally{await page.close()}
+ const page=await settingsPage();try{Object.defineProperty(page.dom.window.navigator,'language',{value:'en-US@posix',configurable:true});await page.render({});assert.equal(page.container.querySelectorAll('.settings-overview-card').length,5);assert.match(page.container.textContent,/LanguageEnglish/);}finally{await page.close()}
 });
 
 test('Site and refresh fields are directly editable without edit or save controls',async()=>{
@@ -212,7 +212,7 @@ test('Invalid imports remain uncommitted and dashboard toggle failures preserve 
 
 test('Removed settings URLs redirect to their canonical replacement without restoring removed tabs',async()=>{for(const [old,replacement] of [['Integrations','Connections'],['Advanced','System'],['Backup & Restore','System']]){const page=await settingsPage('owner',false,false,false,false,false,`/settings?tab=${encodeURIComponent(old)}`);try{const active=page.container.querySelector('.settings-overview-tabs [aria-current="page"]');assert.equal(active.textContent,replacement);for(const name of ['Integrations','Advanced','Backup & Restore'])assert.ok(!button(page,name));if(replacement==='System')assert.ok(page.container.querySelector('#backup-restore'));else assert.ok(page.container.querySelector('.connections-page'));assert.ok(!page.calls.some(c=>c.init?.method==='PUT'||c.init?.method==='POST'));}finally{await page.close()}}});
 
-test('Removed appearance sections and Security Status stay absent',async()=>{const page=await settingsPage();try{await page.click(button(page,'Appearance'));assert.deepEqual([...page.container.querySelectorAll('h2')].map(h=>h.textContent),['Theme Mode','Sidebar','Theme Colour']);assert.equal(page.container.querySelector('[aria-label="Custom appearance colour"]'),null);await page.click(button(page,'Security'));assert.ok(![...page.container.querySelectorAll('h2')].some(h=>h.textContent==='Security Status'));}finally{await page.close()}});
+test('Removed appearance sections and Security Status stay absent',async()=>{const page=await settingsPage();try{await page.click(button(page,'Appearance'));assert.deepEqual([...page.container.querySelectorAll('h2')].map(h=>h.textContent),['Theme Mode','Sidebar','Interface Language','Theme Colour']);assert.equal(page.container.querySelector('[aria-label="Custom appearance colour"]'),null);await page.click(button(page,'Security'));assert.ok(![...page.container.querySelectorAll('h2')].some(h=>h.textContent==='Security Status'));}finally{await page.close()}});
 
 const headerFixture=()=>({attention:[{id:'a',title:'Docker host offline',message:'Media server',severity:'critical',status:'acknowledged',time:new Date().toISOString(),link:'/alerts'}],attentionCount:1,activity:[{id:'e',sequence:1,title:'VM #106 start: queued',message:'Completion has not been verified.',status:'queued',unread:true,time:new Date().toISOString(),link:'/proxmox'}],unreadCount:1,badgeCount:2,latestSequence:1});
 test('header bell keeps acknowledged alerts after reading activity and supports keyboard dismissal',async()=>{

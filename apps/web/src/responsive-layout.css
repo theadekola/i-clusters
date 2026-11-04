@@ -196,3 +196,8 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
 .software-install-progress>div{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .software-install-progress progress{display:block;inline-size:100%;block-size:14px;margin-block:12px;accent-color:var(--app-accent,#3985ff)}
 .software-install-progress p{margin-block:8px;font-size:14px}
+
+/* Translated labels must not widen the nested network grids. */
+.network-overview,.network-overview>.pve-network{grid-template-columns:minmax(0,1fr)}
+.network-overview>.pve-network,.network-overview>.pve-network>*{min-inline-size:0;max-inline-size:100%}
+.interface-focused .vm-title,.interface-focused .vm-title>div:last-child{min-inline-size:0;max-inline-size:100%;flex-wrap:wrap}

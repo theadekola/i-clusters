@@ -224,3 +224,7 @@ Use [GitHub Issues](https://github.com/theadekola/i-clusters/issues) for reprodu
 Developer: **The Adekola** · Company: **ATT-Tech**. The existing repository owner and Ubuntu service/path names remain compatibility identifiers.
 
 Existing installations are migrated during the normal update. See [i-Clusters name migration](docs/brand-migration.md) for preserved data and compatibility aliases.
+
+### Interface languages
+
+Switch the full interface in Settings → Appearance → Interface Language. Bundled English, French, Spanish, German and European Portuguese packs include local country flags and saved browser preferences. See [language maintenance and coverage](docs/interface-languages.md).

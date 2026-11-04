@@ -1,8 +1,15 @@
 import {defineConfig} from 'vite';
 import react from '@vitejs/plugin-react';
+import {fileURLToPath} from 'node:url';
+import {localizeSource} from './scripts/i18n-source.mjs';
 
 export default defineConfig({
- plugins:[react()],
+ resolve:{alias:{'@iclusters/i18n':fileURLToPath(new URL('./src/i18n',import.meta.url))}},
+ optimizeDeps:{exclude:['@iclusters/i18n/jsx-runtime','@iclusters/i18n/jsx-dev-runtime']},
+ plugins:[{name:'protect-resource-copy',enforce:'pre',transform:localizeSource,
+  // Keep the JSX runtime and application on the same live locale store.
+  configResolved(config){config.optimizeDeps.include=(config.optimizeDeps.include||[]).filter(id=>!id.startsWith('@iclusters/i18n/'))}
+ },react({jsxImportSource:'@iclusters/i18n'})],
  build:{rollupOptions:{output:{manualChunks(id){if(id.endsWith('/bundled-icon-images.ts'))return 'system-icons';}}}},
  server:{proxy:{'/api':{target:process.env.ICLUSTERS_DEV_API_URL||process.env.HOMECLOUD_DEV_API_URL||'http://127.0.0.1:6000',changeOrigin:true}}}
 });
