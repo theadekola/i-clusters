@@ -88,7 +88,7 @@ test('Proxmox network interfaces fill the workspace and retain traffic and inspe
 test('task charts filter reported operations and explicit View loads matching status and log',async()=>{
  const calls=[],now=Math.floor(Date.now()/1000);const tasks=[{upid:'UPID:a:one',node:'a',type:'qmstart',id:'100',user:'root@pam',status:'OK',starttime:now-60,endtime:now-30},{upid:'UPID:a:two',node:'a',type:'vzclone',id:'130',user:'root@pam',status:'ERROR',starttime:now-120,endtime:now-110}];
  const page=await mounted('pages/ProxmoxTasks.tsx',{role:'viewer',hours:'24',data:{vms:[{id:'100',node:'a',name:'actual-vm'}]}},async p=>{calls.push(p);if(p.startsWith('/proxmox/tasks'))return {tasks,nodes:[{node:'a'}],errors:[]};if(p.includes('/log'))return {logs:[{n:1,t:p.includes('two')?'second task output':'first task output'}]};return {status:'stopped',exitstatus:p.includes('two')?'ERROR':'OK'}});
- try{assert.equal(page.container.querySelectorAll('.distribution-summary').length,2);assert.equal(page.container.querySelector('.task-detail-card'),null);await page.click(page.container.querySelectorAll('.task-table tbody button')[0]);assert.ok(page.container.querySelector('.task-detail-card').textContent.includes('actual-vm'));await page.click(page.container.querySelectorAll('.task-table tbody button')[1]);assert.ok(page.container.querySelector('.task-log').textContent.includes('second task output'));assert.ok(page.container.querySelector('.task-detail-card').textContent.includes('Failed'));assert.equal(page.container.querySelector('.task-detail-card .btn.danger').disabled,true);await page.click([...page.container.querySelectorAll('.task-ring-card')].find(c=>c.textContent.includes('Task Status')).querySelector('.distribution-summary-legend button'));assert.ok(page.container.querySelectorAll('.task-table tbody tr').length<2);assert.ok(calls.some(p=>p==='/proxmox/tasks?hours=168'));}finally{await page.close();}
+ try{assert.equal(page.container.querySelectorAll('.distribution-summary').length,2);assert.equal(page.container.querySelector('.task-detail-card'),null);await page.click(page.container.querySelector('[aria-label="View task UPID:a:one"]'));assert.ok(page.container.querySelector('.task-detail-card').textContent.includes('actual-vm'));await page.click(page.container.querySelector('[aria-label="View task UPID:a:two"]'));assert.ok(page.container.querySelector('.task-log').textContent.includes('second task output'));assert.ok(page.container.querySelector('.task-detail-card').textContent.includes('Failed'));assert.equal(page.container.querySelector('.task-detail-card .btn.danger').disabled,true);await page.click([...page.container.querySelectorAll('.task-ring-card')].find(c=>c.textContent.includes('Task Status')).querySelector('.distribution-summary-legend button'));assert.ok(page.container.querySelectorAll('.task-table tbody tr').length<2);assert.ok(calls.some(p=>p==='/proxmox/tasks?hours=168'));}finally{await page.close();}
 });
 
 test('Docker host selection precedes cards and setup links to central Connections',async()=>{
@@ -507,7 +507,7 @@ test('Reports paginate and clamp results when outcome cards filter the table',as
 });
 
 
-test('resource rows remain passive and explicit action controls open details',async()=>{
+test('resource cells, keyboard and explicit actions inspect the correct resource',async()=>{
  const stamp=new Date().toISOString();
  const alerts=['first','second'].map(id=>({id,title:id,severity:'warning',status:'active',source:id,triggered:stamp}));
  const resources=['first','second'].map(id=>({id,name:id,node:id,provider:'proxmox',size:100,health:'PASSED'}));
@@ -519,16 +519,16 @@ test('resource rows remain passive and explicit action controls open details',as
   const page=await mounted('pages/'+file+'.tsx',props,async p=>p==='/auth/me'?{user:{role:'owner'}}:p==='/docker/hosts'?{hosts:[]}:data);
   try{
    const rows=[...page.container.querySelectorAll('tbody .inspectable-row')];assert.equal(rows.length,2,file);
-   assert.equal(rows[0].tabIndex,-1,file);
+   assert.equal(rows[0].tabIndex,0,file);
    await page.click(rows[1].querySelectorAll('td')[1]);
-   if(['ActiveAlerts','AlertHistory'].includes(file))assert.deepEqual(details,[],file);
-   await page.click(rows[1].lastElementChild.querySelector('button'));
    if(['ActiveAlerts','AlertHistory'].includes(file))assert.deepEqual(details,['second'],file);
+   await page.click(rows[1].lastElementChild.querySelector('button'));
+   if(['ActiveAlerts','AlertHistory'].includes(file))assert.deepEqual(details,['second','second'],file);
    else assert.ok(rows[1].className.includes('selected'),file+' action selects second row');
    await act(async()=>{rows[0].dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}))});
-   if(['ActiveAlerts','AlertHistory'].includes(file))assert.deepEqual(details,['second'],file);
+   if(['ActiveAlerts','AlertHistory'].includes(file))assert.deepEqual(details,['second','second','first'],file);
    await page.click(rows[0].lastElementChild.querySelector('button'));
-   if(['ActiveAlerts','AlertHistory'].includes(file))assert.deepEqual(details,['second','first'],file);
+   if(['ActiveAlerts','AlertHistory'].includes(file))assert.deepEqual(details,['second','second','first','first'],file);
    else assert.ok(rows[0].className.includes('selected'),file+' action selects first row');
    const actions=rows[0].lastElementChild.querySelectorAll('button');
    for(const action of actions){assert.equal(action.textContent.trim(),'',file+' action is icon only');assert.ok(action.getAttribute('aria-label'),file+' action has accessible name');assert.ok(action.title,file+' action has tooltip')}
@@ -551,8 +551,8 @@ test('alert acknowledgement and history checkboxes do not bubble into row inspec
    assert.deepEqual(details,[]);
    const row=page.container.querySelector('tbody .inspectable-row');
    await act(async()=>row.dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:' ',bubbles:true,cancelable:true})));
-   assert.deepEqual(details,[]);
-   const inspect=row.lastElementChild.querySelector('button');await page.click(inspect.querySelector('svg'));assert.deepEqual(details,['fixture']);
+   assert.deepEqual(details,['fixture']);
+   const inspect=row.lastElementChild.querySelector('button');await page.click(inspect.querySelector('svg'));assert.deepEqual(details,['fixture','fixture']);
   }finally{await page.close()}
  }
 });
@@ -734,12 +734,26 @@ test('workspace refresh includes the independently loaded Docker Events report',
  try{await page.click(button(page.container,'Events'));const before=calls.length;await act(async()=>{const detail={prefixes:['/docker'],requests:[]};window.dispatchEvent(new CustomEvent('iclusters-resource-refresh',{detail}));await Promise.all(detail.requests)});assert.ok(calls.slice(before).includes('/docker'));assert.ok(calls.slice(before).includes('/docker/events?hours=24'));}finally{await page.close()}
 });
 
-test('node identity and View actions select and focus details while rows stay passive',async()=>{
+test('node content, identity and View actions select and focus the correct details',async()=>{
  const data={nodes:[{name:'alpha',ip:'192.0.2.10',status:'online'},{name:'beta',ip:'192.0.2.11',status:'online'}],vms:[],lxc:[],storage:[],nodeServices:[{id:'beta-cron',node:'beta',name:'cron',status:'running'}]};
  const page=await mounted('pages/ClusterNodes.tsx',{data,metrics:[],tasks:[],network:{},hours:'24',role:'viewer',refresh:async()=>{}},async p=>({node:p.includes('beta')?'beta':'alpha',errors:[]}));
- try{const beta=page.container.querySelector('[aria-label="Open node beta"]');assert.equal(beta.tagName,'BUTTON');await page.click(beta.closest('tr').querySelectorAll('td')[1]);assert.doesNotMatch(page.container.querySelector('[data-location]').getAttribute('data-location'),/node=beta/);await page.click(beta);assert.match(page.container.querySelector('[data-location]').getAttribute('data-location'),/node=beta/);assert.equal(page.dom.window.document.activeElement,page.container.querySelector('[aria-label="Node details for beta"]'));await page.click(page.container.querySelector('[aria-label="View node alpha"]'));assert.equal(page.dom.window.document.activeElement,page.container.querySelector('[aria-label="Node details for alpha"]'));await page.click(page.container.querySelector('.node-service-pills button'));assert.match(page.container.querySelector('[data-location]').getAttribute('data-location'),/nodeTab=Services/);assert.equal(page.dom.window.document.activeElement,page.container.querySelector('[aria-label="Node details for beta"]'))}finally{await page.close()}
+ try{const beta=page.container.querySelector('[aria-label="Open node beta"]');assert.equal(beta.tagName,'BUTTON');await page.click(beta.closest('tr').querySelectorAll('td')[1]);assert.match(page.container.querySelector('[data-location]').getAttribute('data-location'),/node=beta/);await page.click(beta);assert.match(page.container.querySelector('[data-location]').getAttribute('data-location'),/node=beta/);assert.equal(page.dom.window.document.activeElement,page.container.querySelector('[aria-label="Node details for beta"]'));await page.click(page.container.querySelector('[aria-label="View node alpha"]'));assert.equal(page.dom.window.document.activeElement,page.container.querySelector('[aria-label="Node details for alpha"]'));await page.click(page.container.querySelector('.node-service-pills button'));assert.match(page.container.querySelector('[data-location]').getAttribute('data-location'),/nodeTab=Services/);assert.equal(page.dom.window.document.activeElement,page.container.querySelector('[aria-label="Node details for beta"]'))}finally{await page.close()}
 });
 test('Proxmox overview node identity opens the selected node overview',async()=>{
  const data={resourceInventoryComplete:true,nodes:[{name:'alpha',ip:'192.0.2.10',status:'online'}],vms:[],lxc:[],storage:[],errors:[]};const page=await mounted('pages/Proxmox.tsx',{},async p=>p==='/auth/me'?{user:{role:'viewer'}}:p.includes('/tasks')?{tasks:[]}:p.includes('/details')?{node:'alpha'}:p==='/proxmox'?data:{});
  try{await page.click(page.container.querySelector('[aria-label="Open node alpha"]'));const url=page.container.querySelector('[data-location]').getAttribute('data-location');assert.match(url,/tab=Nodes/);assert.match(url,/node=alpha/);assert.match(url,/nodeTab=Overview/);assert.ok(page.container.querySelector('[aria-label="Node details for alpha"]'))}finally{await page.close()}
+});
+
+
+test('alert rule content is readable by viewers and management buttons remain independent',async()=>{
+ const writes=[],props={rules:ruleRedesignFixture,alerts:[],admin:false,refresh:async()=>{},onHistory(){}};
+ const page=await mounted('pages/AlertRules.tsx',props,async(p,init)=>{if(init?.method)writes.push(p);return {}});
+ try{const row=page.container.querySelector('[aria-label="Alert rule CPU high"]');await page.click(row.querySelectorAll('td')[3]);assert.match(page.container.querySelector('.modal').textContent,/CPU high/);assert.match(page.container.querySelector('.modal').textContent,/80%/);assert.equal(page.container.querySelector('[aria-label="Edit rule rule-cpu"]').disabled,true);await page.click(page.container.querySelector('[aria-label="Close dialog"]'));await page.click(page.container.querySelector('[aria-label="View rule rule-storage"]'));assert.match(page.container.querySelector('.modal').textContent,/Storage high/);assert.deepEqual(writes,[])}finally{await page.close()}
+});
+
+test('backup schedules, retention and destinations select content without submitting operations',async()=>{
+ for(const [file,api] of [['Schedules',scheduleApi],['Retention',retentionApi],['BackupDestinations',destinationApi]]){
+  const writes=[],page=await mounted('pages/'+file+'.tsx',{},async(p,init)=>{if(init?.method)writes.push(p);return api(p,init)});
+  try{const rows=[...page.container.querySelectorAll('tbody .inspectable-row')];assert.ok(rows.length>1,file);const row=rows.at(-1);await page.click(row.querySelectorAll('td')[2]);assert.ok(row.classList.contains('selected'),file+' content selects its own record');await act(async()=>rows[0].dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:' ',bubbles:true,cancelable:true})));assert.ok(rows[0].classList.contains('selected'),file+' keyboard selects its own record');assert.deepEqual(writes,[],file+' inspection must not run, edit or delete anything')}finally{await page.close()}
+ }
 });
