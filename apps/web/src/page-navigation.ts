@@ -12,7 +12,7 @@ const sections:Record<string,{name:string;tabs?:string[]}>= {
  '/docker':{name:'Docker',tabs:['Containers','Images','Volumes','Compose Stacks','Events','Updates']},
  '/storage':{name:'Storage',tabs:storageTabs},
  '/network':{name:'Network',tabs:['Network Map','Interfaces','Devices','Routing','DNS','Traffic Analysis','Docker Networks']},
- '/backups':{name:'Backups',tabs:['Backup Jobs','Restore Points','Schedules','Retention Policies','Destinations','Reports','Recovery Tests']},
+ '/backups':{name:'Backups',tabs:['Backup Jobs','Backup Archives','Restore Points','Schedules','Retention Policies','Destinations','Reports']},
  '/monitoring':{name:'Monitoring',tabs:['Overview','Provider Jobs','Hardware & Diagnostics']},
  '/alerts':{name:'Alerts',tabs:['Active Alerts','Alert History','Alert Rules']},
  '/users':{name:'Users',tabs:['Accounts','Audit Logs']},

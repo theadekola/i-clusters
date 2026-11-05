@@ -1,0 +1,16 @@
+.content .restore-workspace,.content .retention-workspace,.content .destination-workspace{grid-template-columns:minmax(0,1fr)}
+.backup-row-actions{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap}
+.backup-row-actions>button{flex:none}
+.modal:has(.restore-detail-card),.modal:has(.retention-details),.modal:has(.destination-details),.modal:has(.recovery-tests){width:min(880px,calc(100vw - 32px));max-width:880px}
+.modal .restore-detail-card,.modal .retention-details,.modal .destination-details{min-width:0;max-height:none;position:static}
+.modal :is(.restore-facts,.retention-facts,.destination-facts) dd{overflow-wrap:anywhere;min-width:0}
+.content .backup-archives-workspace{grid-template-columns:minmax(0,1fr)}
+.backup-archives-workspace .backup-side{display:none}
+.backup-manager .page-header>.header-actions{display:flex;flex-wrap:wrap;gap:10px}
+@media(max-width:600px){.backup-manager .page-header>.header-actions>.btn{flex:1 1 140px}.modal .destination-detail-actions{display:flex;flex-wrap:wrap;gap:8px}}
+
+.backup-grid-card{min-width:0;border:1px solid var(--theme-border);border-radius:12px;background:var(--theme-surface);padding:12px}
+.backup-grid-card.selected{border-color:var(--app-accent)}
+.backup-grid-select{display:grid;gap:8px;width:100%;text-align:start;border:0;background:transparent;color:var(--theme-text);padding:8px;overflow-wrap:anywhere}
+.backup-grid-card>.backup-row-actions{justify-content:flex-end;padding-top:8px}
+.modal:has(.operational-panel){width:min(920px,calc(100vw - 32px));max-width:920px}
