@@ -1,7 +1,7 @@
 /* Every Docker resource view uses the same title, host and action positions. */
 .content .docker-manager .docker-page-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.5fr) minmax(200px, 240px) minmax(0, 1fr);
   grid-template-areas: "title host actions";
   align-items: center;
   gap: 16px;
@@ -48,7 +48,7 @@
   text-align: center;
   overflow-wrap: anywhere;
 }
-@media (max-width: 1099px) {
+@media (max-width: 1399px) {
   .content .docker-manager .docker-page-header {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas: "title title" "host actions";
@@ -91,3 +91,9 @@
   align-items: flex-start;
 }
 .content.content .docker-manager :is(.docker-images, .docker-volumes) table .btn { white-space: nowrap; }
+
+/* Keep connection status beside the host title, including long host names. */
+.content .docker-host-heading { display:flex;align-items:center;gap:10px;min-width:0; }
+.content .docker-host-heading > h1 { display:flex;align-items:center;gap:8px;flex-wrap:nowrap;min-width:0; }
+.content .docker-host-heading .docker-host-name { min-width:0;overflow-wrap:anywhere;font:inherit; }
+.content .docker-host-heading > .badge { flex:none; }

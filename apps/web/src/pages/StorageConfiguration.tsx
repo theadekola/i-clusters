@@ -6,10 +6,10 @@ import ReportLoading from '../components/ReportLoading';
 import {InspectableRow,TableAction,SelectionBody} from '../components/TableActions';
 import {useState} from 'react';
 import {Link,useNavigate} from 'react-router-dom';
-import {Database,Plus,RefreshCw,Search,Eye,Play,Pause} from 'lucide-react';
+import {Database,Plus,RefreshCw,Search,Eye,Play,Pause,CheckCircle2,Network,Archive} from 'lucide-react';
 import {useApi} from '../hooks';
 import {confirmedApi} from '../api';
-import {Card,Badge,Modal} from '../components/UI';
+import {Card,Badge,Modal,Stat} from '../components/UI';
 import StorageRegistration from '../components/StorageRegistration';
 import {storageTabs} from '../storage-navigation';
 
@@ -18,10 +18,12 @@ export default function StorageConfiguration({onTab,admin,onChanged}:{onTab:(tab
  const navigate=useNavigate();
  const live=useApi<any>('/proxmox/storage/configuration',null),[search,setSearch]=useState(''),[selected,setSelected]=useState<any>(null),[adding,setAdding]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
  const rows=Array.isArray(live.data?.resources)?live.data.resources:[],filtered=rows.filter((row:any)=>[row.id,row.type,configurationLocation(row),...(row.content||[]),...(row.nodes||[])].join(' ').toLowerCase().includes(search.toLowerCase()));
+ const countReported=(known:(row:any)=>boolean,matches:(row:any)=>boolean)=>{const count=rows.filter(matches).length;return rows.every(known)?count:rows.some(known)?`${count} reported`:'Unknown'};
  const refresh=async()=>{await live.refresh();onChanged()};
  const toggle=async(row:any)=>{if(!admin||busy||typeof row.enabled!=='boolean')return;setBusy(true);setError('');setMessage('');try{await confirmedApi(`/proxmox/storage/${encodeURIComponent(row.id)}/enabled`,{method:'PUT',body:JSON.stringify({enabled:!row.enabled})});setMessage(`${row.id} ${row.enabled?'disabled':'enabled'} in the cluster configuration. Node availability is checked separately.`);await refresh()}catch(e:any){if(isActionCancelled(e))return;setError(e.message||'Storage configuration could not be changed.')}finally{setBusy(false)}};
  if(selected)return <StorageContents storage={selected} admin={admin} onBack={()=>setSelected(null)}/>;
  return <section className="storage-configuration storage-overview"><div className="page-header"><div><h1><Database className="page-title-icon"/>Storage Configuration</h1><p className="muted">Cluster-wide Proxmox storage registrations, shown once per storage ID.</p></div><div className="header-actions"><RefreshButton className="btn secondary" aria-busy={live.loading||busy} disabled={live.loading||busy} onClick={refresh}><RefreshCw size={15}/>Refresh</RefreshButton>{admin&&<button className="btn primary" aria-busy={busy} disabled={busy} onClick={()=>{setError('');setAdding(true)}}><Plus size={15}/>Configure Disk</button>}</div></div>
+ <div className="storage-configuration-stats metric-grid"><Stat reading={live} label="Storage Registrations" value={rows.length} sub="Cluster-wide storage IDs" icon={<Database/>}/><Stat reading={live} label="Enabled Registrations" value={countReported(row=>typeof row.enabled==='boolean',row=>row.enabled===true)} sub="Configuration flags only; node availability is separate" icon={<CheckCircle2/>}/><Stat reading={live} label="Shared Registrations" value={countReported(row=>typeof row.shared==='boolean',row=>row.shared===true)} sub="Only explicitly shared storage IDs" icon={<Network/>}/><Stat reading={live} label="Backup Targets" value={countReported(row=>Array.isArray(row.content),row=>row.content?.includes('backup'))} sub="Storage IDs accepting backup content" icon={<Archive/>}/></div>
  <div className="tabs" role="tablist">{storageTabs.map(tab=><button key={tab} role="tab" aria-selected={tab==='Configuration'} className={tab==='Configuration'?'active':''} onClick={()=>onTab(tab)}>{tab}</button>)}</div>
 
  {(error||live.error)&&<p className="error" role="alert">{error||live.error}</p>}{message&&<p className="storage-feedback" role="status">{message}</p>}

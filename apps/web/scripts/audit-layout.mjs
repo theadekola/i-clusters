@@ -57,6 +57,7 @@ function fixture(path){
  if(process.env.LAYOUT_STORAGE_CLEANUP&&path==='/configuration/truenas')return {id:'truenas',name:'TrueNAS',fields:[{key:'TRUENAS_URL',label:'HTTPS endpoint',type:'url',required:true,value:'',hasValue:false},{key:'TRUENAS_API_KEY',label:'API key',type:'password',required:true,value:'',hasValue:false}]};
  if(path==='/settings')return {settings:{refresh:30,siteName:'i-Clusters'},system:{},security:{},notifications:{},connections:[]};
  if(path==='/backups')return {...sample,archiveInventory:{configured:true,complete:true}};
+ if(path==='/proxmox/storage/configuration')return {resources:[{id:'local',type:'dir',enabled:true,shared:false,path:'/var/lib/vz',content:['iso','vztmpl']},{id:'local-lvm',type:'lvmthin',enabled:true,shared:null,vgname:'pve',thinpool:'data',content:['images','rootdir']},{id:'backup-ssd',type:'dir',enabled:true,shared:true,path:'/mnt/pve/backup-ssd',content:['backup'],nodes:['node01']}],sampledAt:new Date().toISOString()};
  if(path==='/docker/hosts')return {hosts:[{id:'docker-fixture',name:'control-vm',online:true}]};
  if(path==='/users')return {users:[{id:'owner',name:'Layout Review',email:'review@example.test',role:'owner',status:'active'}]};
  if(path==='/ssh/connections')return {};
@@ -190,8 +191,12 @@ try{
      const issues=[],visible=el=>!!el.getBoundingClientRect().width,root=parseFloat(getComputedStyle(document.documentElement).fontSize),pageSize=root*(innerWidth<=600?1.5:1.75);
      const heading=[...document.querySelectorAll('.content h1,.content h2')].find(visible);
      if(!heading||Math.abs(parseFloat(getComputedStyle(heading).fontSize)-pageSize)>.1)issues.push('Primary page title does not use the shared scale: '+heading?.textContent);
-     for(const tab of document.querySelectorAll('.content .tabs>button,.content .pve-tabbar [role=tab],.content [role=tablist]>[role=tab]'))if(visible(tab)&&Math.abs(parseFloat(getComputedStyle(tab).fontSize)-root*.875)>.1)issues.push('Tab label size differs: '+tab.textContent);
+     for(const tab of document.querySelectorAll('.content .tabs>button,.content .pve-tabbar [role=tab],.content [role=tablist]>[role=tab]'))if(visible(tab)&&(Math.abs(parseFloat(getComputedStyle(tab).fontSize)-root*.875)>.1||getComputedStyle(tab).fontWeight!=='600'))issues.push('Tab label typography differs: '+tab.textContent);
      for(const title of document.querySelectorAll('.content .card h3'))if(visible(title)&&Math.abs(parseFloat(getComputedStyle(title).fontSize)-root)>.1)issues.push('Panel title size differs: '+title.textContent);
+     const hostHeading=document.querySelector('.docker-host-heading');
+     if(hostHeading){const title=hostHeading.querySelector('h1').getBoundingClientRect(),badge=hostHeading.querySelector('.badge').getBoundingClientRect();if(Math.abs((title.top+title.height/2)-(badge.top+badge.height/2))>1)issues.push('Docker connection badge leaves the host title row');if(innerWidth>=768&&hostHeading.querySelector('.docker-host-name').textContent.length<=40&&title.height>parseFloat(getComputedStyle(hostHeading.querySelector('h1')).lineHeight)+1)issues.push('Short Docker host title wraps at desktop width');}
+     const summaries=document.querySelector('.storage-configuration-stats');if(summaries&&summaries.getBoundingClientRect().bottom>document.querySelector('.storage-configuration>[role=tablist]').getBoundingClientRect().top)issues.push('Storage configuration summaries must precede tabs');
+     if(['/tools/shell','/tools/sftp','/users'].includes(location.pathname)&&[...document.querySelectorAll('.page-header small')].some(el=>/Tools[ ]?›|Management[ ]?\//.test(el.textContent)))issues.push('Legacy duplicate breadcrumb remains');
      for(const link of document.querySelectorAll('.nav-item'))if(!link.getAttribute('aria-label')?.trim())issues.push('Navigation link lacks an accessible label');
      return issues;
     });failures.push(...findings.map(issue=>`${width}px ${route}: ${issue}`));

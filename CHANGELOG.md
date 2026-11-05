@@ -4,6 +4,8 @@ Developer: **The Adekola** · Company: **ATT-Tech**.
 
 ## Unreleased
 
+- Keep Docker connection status beside its host title, add Storage Configuration summary cards with explicit data coverage, remove duplicate Shell/SFTP/Users paths, and remove legacy Docker/Network tab font overrides.
+
 - Align Monitoring provider links with its actions; standardize typography throughout pages, tabs, cards and controls; name collapsed navigation links; clarify evaluation status and record live audit/commercial acceptance limits. Patch Vite to 6.4.5 and require full responsive route checks in CI.
 
 - Keep acknowledged conditions in the Active Alerts view until resolution, align alert filter rows on desktop, and omit PR-number suffixes from software update notes.

@@ -69,7 +69,7 @@ test('every Docker resource tab places host selection in its heading before its 
   const page=await mounted('pages/Docker.tsx',{},dockerFixture,true,['/docker?tab='+encodeURIComponent(tab)]);
   try{
    const heading=page.container.querySelector('h1,h2'),picker=page.container.querySelector('.docker-host-selector.compact'),metrics=page.container.querySelectorAll('.metric-grid'),nav=page.container.querySelector('[aria-label="Docker resources"]');
-   assert.ok(heading.textContent.startsWith(title),tab+' heading');assert.equal(metrics.length,1,tab+' has only its own metrics');assert.equal(metrics[0].children.length,count,tab+' metrics');
+   assert.ok(heading.textContent.startsWith(title),tab+' heading');if(tab==='Containers'){const group=heading.closest('.docker-host-heading');assert.ok(group);assert.equal(group.querySelector(':scope>.badge').textContent,'Connected');assert.equal(heading.querySelector('.badge'),null);}assert.equal(metrics.length,1,tab+' has only its own metrics');assert.equal(metrics[0].children.length,count,tab+' metrics');
    assert.ok(heading.compareDocumentPosition(picker)&4,tab+' heading precedes host selection');
    assert.ok(picker.compareDocumentPosition(metrics[0])&4,tab+' host selection precedes metrics');
    assert.ok(metrics[0].compareDocumentPosition(nav)&4,tab+' metrics precede tabs');
