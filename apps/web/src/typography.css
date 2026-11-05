@@ -1,0 +1,35 @@
+/* A shared hierarchy for pages, subpages and dialogs. Font-family and density
+   preferences remain independent of the type scale. */
+:root{
+ --type-page:1.75rem;
+ --type-section:1.25rem;
+ --type-panel:1rem;
+ --type-body:.875rem;
+ --type-label:.8125rem;
+ --type-caption:.75rem;
+ --type-tab:.875rem;
+}
+.content h1,.content :is(.page-header,.volume-header,.vm-heading,.vm-title,.nodes-title,.overview-toolbar,.pve-heading,.network-panel-head,.docker-page-header,.settings-overview-heading) h2,.content h2:has(>.page-title-icon){
+ font-size:var(--type-page)!important;line-height:1.25;letter-spacing:-.025em;font-weight:700;
+}
+.content h2{font-size:var(--type-section)!important;line-height:1.35}
+.content h3,.content .card :is(h2,h3),.content :is(.widget-title,.widget-heading,.monitor-panel-head,.settings-card-heading) :is(h2,h3){font-size:var(--type-panel)!important;line-height:1.4;font-weight:600}
+.content :is(h4,h5,h6){font-size:var(--type-body);line-height:1.4}
+.content :is(.tabs>button,.pve-tabbar [role=tab],[role=tablist]>[role=tab]){font-size:var(--type-tab)!important;line-height:1.4;font-weight:600;min-height:2.5rem}
+.content :is(.btn,button){font-size:var(--type-body)!important;line-height:1.4}
+.content :is(p,li,dd){font-size:var(--type-body)!important;line-height:1.5}
+.content :is(small,.small){font-size:var(--type-caption)!important;line-height:1.5}
+.content :is(label,dt),.content .table-wrap th{font-size:var(--type-label)!important;line-height:1.5}
+.content .table-wrap td{font-size:var(--type-label)!important;line-height:1.5}
+.content :is(input:not([type=checkbox]):not([type=radio]),select,textarea):not(.xterm-helper-textarea){font-size:var(--type-body)!important}
+.modal :is(p,li,dt,dd,label,.btn){font-size:var(--type-body);line-height:1.5}
+.modal.modal .modal-head>h3{font-size:var(--type-section)!important;line-height:1.35}
+.content .monitoring-overview>.page-header>.monitoring-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.content .monitoring-actions>.btn{display:inline-flex;align-items:center;justify-content:center}
+@media(max-width:768px){.content :is(input:not([type=checkbox]):not([type=radio]),select,textarea):not(.xterm-helper-textarea){font-size:1rem!important}}
+@media(max-width:600px){
+ :root{--type-page:1.5rem}
+ .content :is(.tabs>button,.pve-tabbar [role=tab],[role=tablist]>[role=tab]){min-height:2.75rem}
+ .content .monitoring-actions{width:100%}
+ .content .monitoring-actions>.btn,.content .monitoring-actions>select{flex:1 1 150px;min-width:0}
+}

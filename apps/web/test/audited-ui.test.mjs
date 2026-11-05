@@ -778,3 +778,27 @@ test('selection is exclusive within a table, independent across tables, and acti
  await page.click(other.querySelector('td'));assert.deepEqual(inspections,['second alpha']);assert.equal(other.getAttribute('aria-selected'),'true');assert.equal(a.getAttribute('aria-selected'),'true');await act(async()=>other.dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true})));assert.deepEqual(inspections,['second alpha','second alpha']);
  }finally{await page.close();fs.rmSync(source,{recursive:true,force:true})}
 });
+
+
+test('Monitoring groups provider links with its controls and keeps diagnostics restricted',async()=>{
+ for(const role of ['owner','viewer']){const page=await mounted('pages/Monitoring.tsx',{},monitoringRedesignApi(monitoringRedesignFixture(),role));try{
+  const actions=page.container.querySelector('.monitoring-actions');assert.ok(actions);
+  assert.ok(actions.querySelector('a[href="/monitoring?tab=Provider%20Jobs"]'));
+  assert.equal(Boolean(actions.querySelector('a[href="/monitoring?tab=Hardware%20%26%20Diagnostics"]')),role==='owner');
+  assert.ok(actions.querySelector('[aria-label="Monitoring period"]'));assert.ok(button(actions,'Customize'));assert.ok(actions.querySelector('[aria-label="Refresh monitoring"]'));
+  assert.equal(page.container.querySelector('.page-header>div:first-child a'),null);
+ }finally{await page.close();}}
+});
+test('Collapsed navigation retains accessible names and hover labels',async()=>{
+ const page=await mounted('components/Layout.tsx',{},async()=>({user:{role:'owner'}}),false);try{
+  await page.click(page.container.querySelector('.nav-toggle'));
+  assert.ok(page.container.querySelector('.sidebar.collapsed'));
+  const links=[...page.container.querySelectorAll('nav[aria-label="Pages"] a')];assert.ok(links.length>=10);
+  for(const link of links){assert.ok(link.getAttribute('aria-label')?.trim());assert.equal(link.title,link.getAttribute('aria-label'));}
+ }finally{await page.close();}
+});
+test('A plain version number does not claim commercial release acceptance',async()=>{
+ const page=await mounted('components/AboutSettings.tsx',{data:{system:{version:'1.0.0'}},owner:false,search:''},async()=>({}));try{
+  assert.ok(page.container.textContent.includes('Evaluation build'));assert.ok(page.container.textContent.includes('Commercial release acceptance is pending.'));assert.equal(page.container.textContent.includes('Versioned release'),false);
+ }finally{await page.close();}
+});

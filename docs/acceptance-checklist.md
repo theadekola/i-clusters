@@ -23,3 +23,5 @@ Copy this checklist into a private customer record. Do not commit customer addre
 CI exercises a separate empty-provider controller, authentication, encrypted restore and bounded concurrent read probes. It does not fill in this customer record. General-availability approval must identify who accepted the evidence and when.
 
 Use the [private record template](acceptance-record.example.json) and [commercial acceptance procedure](commercial-acceptance.md). Run `node deployment/acceptance-gate.mjs /private/path/acceptance.json` after review. The supplied template deliberately fails until every required field and evidence record is supplied. Do not treat the checker as evidence collection or certification.
+
+Latest scoped review: [2026-11-05 live interface and commercial preparation](audits/2026-11-05-live-interface-and-commercial-review.md). Its read-only findings and fixture tests do not change the customer gate statuses above.

@@ -50,3 +50,5 @@ import './motion.css';
 import './backup-layout.css';
 
 import './alert-layout.css';
+
+import './typography.css';

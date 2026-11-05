@@ -6,8 +6,11 @@ import {mkdirSync,readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import {createServer,preview} from 'vite';
 const auditLocale=process.env.LAYOUT_LOCALE||'en-GB',code=auditLocale.split('-')[0],pack=code==='en'?{}:JSON.parse(readFileSync(new URL('../src/i18n/packs/'+code+'.json',import.meta.url),'utf8')),copy=value=>pack[value]||value;
-import {fileURLToPath} from 'node:url';
-const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
+import {fileURLToPath,pathToFileURL} from 'node:url';
+import path from 'node:path';
+const browserTools=process.env.ICLUSTERS_BROWSER_TOOLS;
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||(browserTools?pathToFileURL(path.join(browserTools,'playwright-core/index.mjs')).href:'playwright'));
+const browserExecutable=process.env.CHROMIUM_EXECUTABLE||(browserTools?await(await import(pathToFileURL(path.join(browserTools,'@sparticuz/chromium/build/index.js')).href)).default.executablePath():undefined);
 const root=fileURLToPath(new URL('../',import.meta.url));
 const aiMetadata=process.env.LAYOUT_CONNECTION_CHOICES?(await import('../../api/src/ai-providers.js')).publicAIProviders():null;
 const aiSchema=process.env.LAYOUT_CONNECTION_CHOICES?(await import('../../api/src/runtime-configuration.js')).configurationSchemas.ai:null;
@@ -81,7 +84,7 @@ let updateWrites=0;
 let browser,clusterSaves=0,clusterTests=0,aiModelReads=0,aiTests=0,aiSaves=0;
 try{
  if(server.listen)await server.listen();const base=server.resolvedUrls.local[0];
- browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE}:{}),args:['--no-sandbox','--disable-dev-shm-usage']});
+ browser=await chromium.launch({headless:true,...(browserExecutable?{executablePath:browserExecutable}:{}),args:['--no-sandbox','--disable-dev-shm-usage',...(browserTools?['--no-zygote','--single-process']:[])]});
  const page=await browser.newPage({ignoreHTTPSErrors:!!process.env.LAYOUT_HTTPS_CERT});if(process.env.LAYOUT_CONNECTION_CHOICES)page.on('dialog',dialog=>dialog.accept());
  await page.addInitScript(locale=>{if(!localStorage.getItem('iclusters_language'))localStorage.setItem('iclusters_language',locale);if(!sessionStorage.getItem('language-login-audit'))localStorage.setItem('iclusters_access_token','layout-fixture');localStorage.setItem('iclusters_last_activity',String(Date.now()));},auditLocale);
  await page.addInitScript(theme=>{if(theme)localStorage.setItem('iclusters_appearance',JSON.stringify({theme,preset:'ocean'}))},process.env.LAYOUT_THEME||'');
@@ -131,6 +134,7 @@ try{
   console.log('Checking '+auditLocale+' at '+width+'px.');
   await page.setViewportSize({width,height:1000});
   for(const route of selectedRoutes){
+   console.log('  '+width+'px '+route);
    errors=[];await page.goto(base.replace(/\/$/,'')+route);await page.locator('.content h1,.content h2').first().waitFor({timeout:15000}).catch(async()=>{throw Error(`Page did not render: ${route}; ${errors.join('; ')}; ${(await page.locator('body').innerText()).slice(0,300)}`)});await page.waitForTimeout(350);
    if(process.env.LAYOUT_CHECK_IMAGES==='1'){
     const images=page.locator('.page-image-icon img,.brand-mark img');assert.ok(await images.count()>0,route+': original page or brand images are rendered');
@@ -180,6 +184,17 @@ try{
     }
     const downloadEvent=page.waitForEvent('download');await page.getByRole('button',{name:copy('Export overview report'),exact:true}).click();const download=await downloadEvent,report=JSON.parse(readFileSync(await download.path(),'utf8'));
     assert.ok(Array.isArray(report.history),'Export contains the selected history');assert.equal(report.history.length,mode==='empty'?0:mode==='single'?1:24);if(report.history.length)assert.equal(report.history.at(-1).memory,71,'Export uses actual measurements');
+   }
+   if(process.env.LAYOUT_CHECK_TYPOGRAPHY==='1'){
+    const findings=await page.evaluate(()=>{
+     const issues=[],visible=el=>!!el.getBoundingClientRect().width,root=parseFloat(getComputedStyle(document.documentElement).fontSize),pageSize=root*(innerWidth<=600?1.5:1.75);
+     const heading=[...document.querySelectorAll('.content h1,.content h2')].find(visible);
+     if(!heading||Math.abs(parseFloat(getComputedStyle(heading).fontSize)-pageSize)>.1)issues.push('Primary page title does not use the shared scale: '+heading?.textContent);
+     for(const tab of document.querySelectorAll('.content .tabs>button,.content .pve-tabbar [role=tab],.content [role=tablist]>[role=tab]'))if(visible(tab)&&Math.abs(parseFloat(getComputedStyle(tab).fontSize)-root*.875)>.1)issues.push('Tab label size differs: '+tab.textContent);
+     for(const title of document.querySelectorAll('.content .card h3'))if(visible(title)&&Math.abs(parseFloat(getComputedStyle(title).fontSize)-root)>.1)issues.push('Panel title size differs: '+title.textContent);
+     for(const link of document.querySelectorAll('.nav-item'))if(!link.getAttribute('aria-label')?.trim())issues.push('Navigation link lacks an accessible label');
+     return issues;
+    });failures.push(...findings.map(issue=>`${width}px ${route}: ${issue}`));
    }
    const problems=await page.evaluate(()=>{
     const issues=[];
