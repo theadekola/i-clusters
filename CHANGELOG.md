@@ -4,6 +4,8 @@ Developer: **The Adekola** · Company: **ATT-Tech**.
 
 ## Unreleased
 
+- Add browser certificate setup under Security with bounded public-root download, SHA-256 verification and device trust instructions. Keep device trust explicit and preserve the existing Caddy authority.
+
 - Remove text underlines from buttons and button links in all interaction states, preserving keyboard focus and ordinary text links.
 
 - Add a dedicated Backup Archives tab and recovery-test popup, simplify backup overview actions, use popup inspection and discovered restore destination selectors.

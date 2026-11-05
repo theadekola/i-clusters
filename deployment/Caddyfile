@@ -6,6 +6,16 @@
   {$CADDY_TLS}
   encode zstd gzip
 
+  # Fixed public CA export only. No directory browsing or private-key access.
+  handle /local-ca.crt {
+    rewrite * /root.crt
+    root * /data/caddy/pki/authorities/local
+    header Content-Type application/x-x509-ca-cert
+    header Content-Disposition "attachment; filename=i-clusters-root.crt"
+    header Cache-Control "no-store"
+    file_server
+  }
+
   @api path /api/*
   handle @api {
     reverse_proxy api:6000

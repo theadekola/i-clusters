@@ -84,6 +84,7 @@ jobs:
           curl --fail --show-error --cacert /tmp/iclusters-ci-root.crt https://localhost:6002/api/health
           NODE_EXTRA_CA_CERTS=/tmp/iclusters-ci-root.crt node deployment/check-registration.mjs
           NODE_EXTRA_CA_CERTS=/tmp/iclusters-ci-root.crt node deployment/check-mobile-assets.mjs
+          NODE_EXTRA_CA_CERTS=/tmp/iclusters-ci-root.crt node deployment/check-browser-certificate.mjs
       - name: Check deployed Caddy security dependencies
         run: |
           docker compose exec -T caddy caddy build-info > /tmp/iclusters-caddy-build-info.txt

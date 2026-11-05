@@ -222,6 +222,8 @@ fresh browser to inspect the direct health endpoint. A QR code is an address, no
 proof that a remote device can reach it. MikroTik and other existing VPNs remain
 independent of the optional i-Clusters WireGuard gateway.
 
+Settings → Security → **Browser Certificate Setup** provides an explicit public-root check, SHA-256 fingerprint and download, with device installation instructions. Compare the fingerprint using the server command below before trusting it. This does not modify device trust or bypass a browser warning; the dashboard must first be reachable. The fixed `/local-ca.crt` endpoint serves only Caddy’s public root and returns unavailable when no local root exists. It never serves private keys.
+
 To export only the current public Caddy root on an updated Ubuntu installation:
 
 ```bash
