@@ -628,6 +628,7 @@
   "Browser Certificate Setup": "Browserzertifikat einrichten",
   "Browser Certificate Setup HTTPS TLS trust": "Browserzertifikat einrichten HTTPS TLS Vertrauen",
   "Browser downloads are limited to 32 MiB. Use an SFTP client for larger files.": "Browser-Downloads sind auf 32 MiB beschränkt. Verwenden Sie einen SFTP Client für größere Dateien.",
+  "Browser hashing is unavailable. Compare the downloaded certificate’s SHA-256 fingerprint with the server using your certificate tools.": "Die Hashberechnung im Browser ist nicht verfügbar. Vergleichen Sie den SHA-256-Fingerabdruck des heruntergeladenen Zertifikats mithilfe Ihrer Zertifikatwerkzeuge mit dem Server.",
   "Browser maintenance tools.": "Browser-Wartungswerkzeuge.",
   "Browser origin does not match this controller.": "Browser Herkunft passt nicht zu diesem Controller.",
   "Browser push notifications": "Browser Push-Benachrichtigungen",

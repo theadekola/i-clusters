@@ -3,7 +3,7 @@ import {Card} from './UI';
 import {Shield,Download} from 'lucide-react';
 import {readBrowserCertificate} from '../browser-certificate';
 export default function BrowserCertificateSetup(){
- const [certificate,setCertificate]=useState<{pem:string;fingerprint:string}|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const [certificate,setCertificate]=useState<{pem:string;fingerprint:string|null}|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const request=useRef<AbortController|null>(null);
  useEffect(()=>()=>{request.current?.abort();request.current=null},[]);
  const check=async()=>{if(busy)return;const controller=new AbortController(),view=window;request.current=controller;setBusy(true);setError('');setCertificate(null);const timer=view.setTimeout(()=>controller.abort(),8000);
@@ -15,7 +15,7 @@ export default function BrowserCertificateSetup(){
  <button type="button" className="btn secondary" disabled={busy||window.location.protocol!=='https:'} aria-busy={busy} onClick={()=>void check()}>Check Local Certificate</button>
  {window.location.protocol!=='https:'&&<p role="status">Open the HTTPS address before downloading a certificate.</p>}
  {error&&<p role="alert" className="error">{error}</p>}
- {certificate&&<><p>Compare this SHA-256 fingerprint with the server before trusting the certificate.</p><code style={{display:'block',overflowWrap:'anywhere'}} translate="no">{certificate.fingerprint}</code><button type="button" className="btn secondary" onClick={download}><Download size={16}/>Download Public Certificate</button></>}
+ {certificate&&<>{certificate.fingerprint?<><p>Compare this SHA-256 fingerprint with the server before trusting the certificate.</p><code style={{display:'block',overflowWrap:'anywhere'}} translate="no">{certificate.fingerprint}</code></>:<p>Browser hashing is unavailable. Compare the downloaded certificate’s SHA-256 fingerprint with the server using your certificate tools.</p>}<button type="button" className="btn secondary" onClick={download}><Download size={16}/>Download Public Certificate</button></>}
  <details><summary>Verify on the server</summary><pre style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}} translate="no"><code>{'sudo iclusters certificate > iclusters-root.crt\nopenssl x509 -in iclusters-root.crt -noout -fingerprint -sha256'}</code></pre><p>Use a trusted channel to compare fingerprints. Install only the public root from your own server. Never distribute private keys.</p></details>
  <details><summary>Device installation instructions</summary><ul>
  <li>Windows: open the certificate, choose Install Certificate, Current User, then Trusted Root Certification Authorities. Restart the browser.</li>

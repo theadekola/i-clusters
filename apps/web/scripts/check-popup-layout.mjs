@@ -98,6 +98,7 @@ try{
   await page.getByText('Verify on the server',{exact:true}).click();await page.getByText('Device installation instructions',{exact:true}).click();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`certificate setup overflows at ${width}`);
   await page.screenshot({path:path.join(output,`certificate-setup-${width}.png`)});
+  await page.evaluate(()=>Object.defineProperty(globalThis.crypto,'subtle',{value:undefined,configurable:true}));await page.getByRole('button',{name:'Check Local Certificate',exact:true}).click();await page.getByText('Browser hashing is unavailable.',{exact:false}).waitFor();await page.getByRole('button',{name:'Download Public Certificate',exact:true}).waitFor();await page.evaluate(()=>delete globalThis.crypto.subtle);
   console.log(`Popup geometry passed at ${width}px`);await page.evaluate(()=>window.disposeSample());
  }
 }finally{await browser.close()}

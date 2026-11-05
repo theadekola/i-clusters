@@ -9,6 +9,6 @@ export async function readBrowserCertificate(signal:AbortSignal){
  if(!match)throw Error('Unexpected certificate response.');
  const binary=atob(match[1].replace(/\s/g,'')),der=Uint8Array.from(binary,c=>c.charCodeAt(0));
  if(!der.length||der[0]!==0x30)throw Error('Unexpected certificate response.');
- const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',der));
- return {pem:pem+'\n',fingerprint:Array.from(digest,b=>b.toString(16).padStart(2,'0').toUpperCase()).join(':')};
+ let fingerprint:string|null=null;try{if(globalThis.crypto?.subtle){const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',der));fingerprint=Array.from(digest,b=>b.toString(16).padStart(2,'0').toUpperCase()).join(':')}}catch{}
+ return {pem:pem+'\n',fingerprint};
 }

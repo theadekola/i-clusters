@@ -628,6 +628,7 @@
   "Browser Certificate Setup": "Configuração do certificado do navegador",
   "Browser Certificate Setup HTTPS TLS trust": "Configuração do certificado do navegador HTTPS TLS confiança",
   "Browser downloads are limited to 32 MiB. Use an SFTP client for larger files.": "Os downloads do navegador são limitados a 32 MiB. Use um cliente SFTP para ficheiros maiores.",
+  "Browser hashing is unavailable. Compare the downloaded certificate’s SHA-256 fingerprint with the server using your certificate tools.": "O cálculo da impressão digital no navegador está indisponível. Compare a impressão digital SHA-256 do certificado transferido com a do servidor usando as suas ferramentas de certificados.",
   "Browser maintenance tools.": "Ferramentas de manutenção do navegador.",
   "Browser origin does not match this controller.": "A origem do navegador não corresponde a este controlador.",
   "Browser push notifications": "Notificações de empurrão do navegador",

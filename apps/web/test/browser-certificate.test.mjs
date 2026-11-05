@@ -18,3 +18,7 @@ test('oversized certificate bodies stop reading and cancel the response stream',
  let cancelled=false;globalThis.fetch=async()=>new Response(new ReadableStream({pull(controller){controller.enqueue(new Uint8Array(40000))},cancel(){cancelled=true}}));
  await assert.rejects(readBrowserCertificate(new AbortController().signal),/Unexpected/);assert.equal(cancelled,true);
 });
+test('missing browser Web Crypto still permits a public certificate download without claiming a computed fingerprint',async()=>{
+ const descriptor=Object.getOwnPropertyDescriptor(globalThis,'crypto');Object.defineProperty(globalThis,'crypto',{value:{},configurable:true});globalThis.fetch=async()=>new Response(pem);
+ try{const result=await readBrowserCertificate(new AbortController().signal);assert.equal(result.pem,pem);assert.equal(result.fingerprint,null)}finally{if(descriptor)Object.defineProperty(globalThis,'crypto',descriptor);else delete globalThis.crypto}
+});
