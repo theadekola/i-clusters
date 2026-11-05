@@ -2725,7 +2725,6 @@
   "Managed by host": "Géré par l'hôte",
   "Managed by host or proxy": "Géré par hôte ou proxy",
   "Managed by reverse proxy": "Géré par proxy inversé",
-  "Management / Users / Audit Logs": "Gestion / Utilisateurs / Logs d'audit",
   "Management opens the device’s provider page. Hardware and addresses appear only when reported.": "La gestion ouvre la page fournisseur de périphérique. Le matériel et les adresses apparaissent seulement lorsque signalé.",
   "Manual channel test": "Essai manuel de la voie",
   "Manually closed by a user. This does not verify that the underlying problem was repaired.": "Fermé manuellement par un utilisateur. Cela ne vérifie pas que le problème sous-jacent a été réparé.",
