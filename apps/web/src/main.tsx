@@ -1,3 +1,4 @@
+import InterfaceMotion from './components/InterfaceMotion';
 import {initializeLocale} from './i18n/locale';
 import './i18n/language.css';
 import InstallPrompt from './components/InstallPrompt';
@@ -24,7 +25,7 @@ applyAppearance();
 
 void initializeLocale().then(()=>ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter><PageBoundary><App /><InstallPrompt/></PageBoundary></BrowserRouter>
+    <BrowserRouter><InterfaceMotion/><PageBoundary><App /><InstallPrompt/></PageBoundary></BrowserRouter>
   </React.StrictMode>
 ));
 
@@ -43,3 +44,5 @@ import {startWorkerUpdates} from './service-worker';
 startWorkerUpdates();
 
 import './icon-surfaces.css';
+
+import './motion.css';

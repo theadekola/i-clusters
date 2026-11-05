@@ -1,0 +1,11 @@
+/* Short interactions preserve stable charts, tables and hit targets. */
+@media(prefers-reduced-motion:no-preference){
+ .sidebar{transition:width 200ms ease,transform 200ms ease}
+ .main-shell{transition:margin-left 200ms ease,width 200ms ease}
+ .btn,.icon-btn,.profile-trigger{transition:background-color 140ms ease,border-color 140ms ease,color 140ms ease,filter 140ms ease,translate 140ms ease}
+ .btn:not(:disabled):active,.icon-btn:not(:disabled):active,.profile-trigger:active{translate:0 1px}
+ .tabs>button{transition:background-color 180ms ease,color 180ms ease,border-color 180ms ease}
+}
+@media(prefers-reduced-motion:reduce){
+ .sidebar,.main-shell,.btn,.icon-btn,.profile-trigger,.tabs>button,.language-options,.profile-dropdown,.header-notification-panel{transition:none!important;animation:none!important}
+}
