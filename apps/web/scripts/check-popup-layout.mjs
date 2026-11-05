@@ -24,6 +24,15 @@ window.renderTopology=()=>root.render(<MemoryRouter><main className="content"><C
 const assets=await fs.readdir(path.join(web,'dist/assets'));const css=(await Promise.all(assets.filter(p=>p.endsWith('.css')).map(p=>fs.readFile(path.join(web,'dist/assets',p),'utf8')))).join('\n');
 const page=await browser.newPage();await page.route('**/*',route=>route.request().resourceType()==='document'?route.fulfill({contentType:'text/html',body:'<html><body></body></html>'}):route.abort());await page.goto('https://layout-fixture.test/');
 try{
+ // Shared button links must match buttons at rest, on hover and on keyboard focus.
+ await page.setContent(`<style>${css}</style><a class="btn secondary" href="#jobs">Provider Jobs</a><a class="btn secondary" href="#hardware">Hardware &amp; Diagnostics</a><button role="button">Action</button><div class="report-chart-key"><button aria-pressed="true">Successful</button></div><a href="#ordinary">Ordinary link</a>`);
+ for(const control of await page.locator('.btn,button').all()){
+  assert.equal(await control.evaluate(el=>getComputedStyle(el).textDecorationLine),'none');
+  await control.hover();assert.equal(await control.evaluate(el=>getComputedStyle(el).textDecorationLine),'none');
+  await page.keyboard.press('Tab');await control.focus();assert.equal(await control.evaluate(el=>getComputedStyle(el).textDecorationLine),'none');
+  assert.notEqual(await control.evaluate(el=>getComputedStyle(el).outlineStyle),'none','Keyboard focus stays visible');
+ }
+ assert.equal(await page.locator('a:not(.btn)').evaluate(el=>getComputedStyle(el).textDecorationLine),'underline','Ordinary text links retain their default styling');
  for(const width of [320,390,430,768,1280]){
   await page.setViewportSize({width,height:900});
   await page.setContent(`<style>${css}</style><div id="root"></div>`);await page.addScriptTag({content:bundle.outputFiles[0].text});
