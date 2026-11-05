@@ -76,7 +76,7 @@ test('configuration power action sends the chosen cluster enable state and failu
 });
 test('configuration read errors can be retried without reporting any fabricated enabled storage',async()=>{
  let reads=0;const page=await mounted('pages/StorageConfiguration.tsx',{admin:false,onTab(){},onChanged(){}},async()=>{if(++reads===1)throw Error('Storage configuration unavailable');return {resources:clusterConfigurations}});
- try{assert.ok(page.container.querySelector('[role=alert]'));assert.equal(page.container.querySelectorAll('tbody tr').length,0);await page.click(button(page.container,'Refresh'));assert.equal(page.container.querySelectorAll('tbody tr').length,4);assert.equal(page.container.querySelector('[role=alert]'),null);}finally{await page.close()}
+ try{assert.ok(page.container.querySelector('[role=alert]'));assert.equal(page.container.querySelectorAll('tbody tr').length,0);assert.ok([...page.container.querySelectorAll('.storage-configuration-stats .stat-value')].every(el=>el.textContent==='Unknown'));await page.click(button(page.container,'Refresh'));assert.equal(page.container.querySelectorAll('tbody tr').length,4);assert.equal(page.container.querySelector('[role=alert]'),null);}finally{await page.close()}
 });
 
 test('storage pools hide foreign node registrations and open TrueNAS setup directly without the scope note',async()=>{
@@ -167,4 +167,19 @@ test('disk details stay off the page until the chosen eye opens its popup and th
   assert.equal(page.container.querySelector('.disk-detail-card'),null);await page.click([...page.container.querySelectorAll('.disk-capacity-list button')].find(button=>button.textContent.includes('/dev/sdb')));assert.ok(!page.container.querySelector('[role=dialog]'),'Selecting a capacity item must not inspect it');const eye=page.container.querySelector('button[aria-label="Inspect /dev/sdb on b"]'),row=eye.closest('tr');await page.click(row.querySelector('.storage-resource-name'));assert.equal(row.getAttribute('aria-selected'),'true');assert.ok(!page.container.querySelector('[role=dialog]'));eye.focus();await page.click(eye);const modal=page.container.querySelector('[role=dialog]');assert.match(modal.textContent,/Disk Details/);assert.match(modal.textContent,/serial-b/);assert.ok(!modal.textContent.includes('serial-a'));assert.ok(button(modal,'Refresh S.M.A.R.T.'));
   await page.click(button(modal,'View Details'));assert.equal(page.container.querySelectorAll('[role=dialog]').length,2);const report=[...page.container.querySelectorAll('[role=dialog]')].at(-1);assert.match(report.textContent,/serial-b/);await page.click(report.querySelector('[aria-label="Close dialog"]'));assert.equal(page.container.querySelectorAll('[role=dialog]').length,1);await page.click(modal.querySelector('[aria-label="Close dialog"]'));assert.ok(!page.container.querySelector('[role=dialog]'));assert.ok(document.activeElement===eye);
  }finally{await page.close()}
+});
+
+
+test('configuration summaries precede tabs and count only explicit enabled and shared flags',async()=>{
+ const resources=[{id:'local',enabled:true,shared:false,content:['iso']},{id:'archive',enabled:false,shared:true,content:['backup']},{id:'unknown',enabled:null,shared:null,content:[]}];
+ const page=await mounted('pages/StorageConfiguration.tsx',{admin:false,onTab(){},onChanged(){}},async()=>({resources}));try{
+  const metrics=page.container.querySelector('.storage-configuration-stats');assert.ok(metrics.compareDocumentPosition(page.container.querySelector('[role=tablist]'))&4);
+  assert.deepEqual([...metrics.querySelectorAll('.stat-value')].map(el=>el.textContent),['3','1 reported','1 reported','1']);
+ }finally{await page.close();}
+});
+
+test('configuration summaries distinguish a complete empty inventory from missing flags',async()=>{
+ for(const resources of [[],[{id:'unknown'}]]){const page=await mounted('pages/StorageConfiguration.tsx',{admin:false,onTab(){},onChanged(){}},async()=>({resources}));try{
+  assert.deepEqual([...page.container.querySelectorAll('.storage-configuration-stats .stat-value')].map(el=>el.textContent),resources.length?['1','Unknown','Unknown','Unknown']:['0','0','0','0']);
+ }finally{await page.close();}}
 });
