@@ -1,0 +1,13 @@
+/* Keep the main alert filters in one desktop row without intrinsic select widths. */
+@media(min-width:1000px){
+ .alerts-active .active-alert-toolbar{display:grid;grid-template-columns:minmax(150px,1.5fr) repeat(5,minmax(0,1fr)) auto}
+ .history-redesign .history-toolbar{display:grid;grid-template-columns:minmax(160px,1.7fr) minmax(0,1fr) minmax(0,1.3fr) repeat(2,minmax(0,1fr))}
+ .history-redesign .history-date-controls{grid-column:1/-1}
+}
+.alerts-active .active-alert-toolbar>label,.history-redesign .history-toolbar>.history-search{min-width:0;max-width:100%}
+.alerts-active .active-alert-toolbar>select,.history-redesign .history-toolbar>select{min-width:0;max-width:100%;width:100%;box-sizing:border-box}
+@media(max-width:999px){
+ .alerts-active .active-alert-toolbar,.history-redesign .history-toolbar{display:flex;flex-wrap:wrap}
+ .alerts-active .active-alert-toolbar>label,.history-redesign .history-toolbar>.history-search{flex:1 1 100%}
+ .alerts-active .active-alert-toolbar>select,.history-redesign .history-toolbar>select{flex:1 1 130px;width:auto}
+}

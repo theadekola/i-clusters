@@ -4,6 +4,8 @@ Developer: **The Adekola** · Company: **ATT-Tech**.
 
 ## Unreleased
 
+- Keep acknowledged conditions in the Active Alerts view until resolution, align alert filter rows on desktop, and omit PR-number suffixes from software update notes.
+
 - Consolidate Traffic Analysis refresh with its filters, remove traffic export buttons, and place backup period selectors beside actions without redundant Browse Archives shortcuts.
 
 - Add browser certificate setup under Security with bounded public-root download, SHA-256 verification and device trust instructions. Keep device trust explicit and preserve the existing Caddy authority.
