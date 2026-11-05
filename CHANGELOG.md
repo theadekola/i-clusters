@@ -4,6 +4,8 @@ Developer: **The Adekola** · Company: **ATT-Tech**.
 
 ## Unreleased
 
+- Remove text underlines from buttons and button links in all interaction states, preserving keyboard focus and ordinary text links.
+
 - Add a dedicated Backup Archives tab and recovery-test popup, simplify backup overview actions, use popup inspection and discovered restore destination selectors.
 
 - Add Motion-powered popup and dropdown entrances, smooth sidebar transitions and button feedback with reduced-motion support.

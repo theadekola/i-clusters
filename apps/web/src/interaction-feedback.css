@@ -58,3 +58,9 @@
 .row-content-name{display:inline-flex;align-items:center;gap:8px;color:inherit;font:inherit;text-align:left;max-width:100%;overflow-wrap:anywhere}
 .row-content-name.pve-node-name{display:flex;align-items:center;gap:10px}
 :root tbody .resource-name-action:is(:hover,:active){background:transparent!important;border-color:transparent!important;box-shadow:none!important}
+
+/* Button links and action controls keep the same typography in every state. */
+:root :is(button,.btn,[role="button"]),
+:root :is(button,.btn,[role="button"]):is(:link,:visited,:hover,:focus,:focus-visible,:active,[aria-pressed="true"],[aria-selected="true"]){
+ text-decoration:none!important;
+}
