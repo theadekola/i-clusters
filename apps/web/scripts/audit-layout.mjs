@@ -66,7 +66,7 @@ for(const [page,tabs] of Object.entries({
  docker:['Images','Volumes','Compose Stacks','Events','Updates'],
  storage:['Configuration','Disks','Datasets / Volumes','Snapshots','Shares','Performance'],
  network:['Interfaces','Devices','Routing','DNS','Traffic Analysis','Docker Networks'],
- backups:['Restore Points','Schedules','Retention Policies','Destinations','Reports','Recovery Tests'],
+ backups:['Backup Archives','Restore Points','Schedules','Retention Policies','Destinations','Reports'],
  monitoring:['Provider Jobs','Hardware & Diagnostics'],
  alerts:['Alert History','Alert Rules'],users:['Audit Logs'],
  settings:['General','System','Security','Connections','Appearance','About']

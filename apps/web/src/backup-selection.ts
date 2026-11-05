@@ -8,3 +8,5 @@ export function distinctBackupPoints(points:any[],preferredId=''){
  for(const point of points){const key=JSON.stringify([point.shared===true?'shared':'local',point.shared===true?'':point.node,point.storage,point.volid||point.id]);if(!groups.has(key)||point.id===preferredId)groups.set(key,point);}
  return Array.from(groups.values());
 }
+
+export function backupArchivesLocation(storage?:string,node?:string){const params=new URLSearchParams({tab:'Backup Archives'});if(storage)params.set('storage',storage);if(node)params.set('node',node);return '/backups?'+params;}
