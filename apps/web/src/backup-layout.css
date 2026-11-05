@@ -14,3 +14,7 @@
 .backup-grid-select{display:grid;gap:8px;width:100%;text-align:start;border:0;background:transparent;color:var(--theme-text);padding:8px;overflow-wrap:anywhere}
 .backup-grid-card>.backup-row-actions{justify-content:flex-end;padding-top:8px}
 .modal:has(.operational-panel){width:min(920px,calc(100vw - 32px));max-width:920px}
+
+.backup-manager .page-header>.header-actions,.network-traffic>.network-panel-head>.header-actions{align-items:center;flex-wrap:wrap;min-width:0}
+.backup-manager .page-header>.header-actions>select{width:auto;flex:none}
+@media(max-width:600px){.backup-manager .page-header>.header-actions>select{flex:1 1 160px;min-width:0}.network-traffic>.network-panel-head>.header-actions{width:100%}}
