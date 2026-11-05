@@ -66,6 +66,7 @@ jobs:
         run: |
           npm install --prefix /tmp/iclusters-browser-tools --no-save --ignore-scripts playwright-core@1.62.1 @sparticuz/chromium@153.0.0
           ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules node apps/web/scripts/check-popup-layout.mjs
+          ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_CHECK_TYPOGRAPHY=1 LAYOUT_WIDTHS=1280,768,390,320 node apps/web/scripts/audit-layout.mjs
       - name: Save popup layout screenshots on failure
         if: failure()
         uses: actions/upload-artifact@v4
