@@ -4,6 +4,8 @@ Developer: **The Adekola** · Company: **ATT-Tech**.
 
 ## Unreleased
 
+- Add Motion-powered popup and dropdown entrances, smooth sidebar transitions and button feedback with reduced-motion support.
+
 - Keep storage row, keyboard and capacity selections separate from inspection; only explicit eye actions open pool and disk popups.
 
 - Open storage pool and disk inspection in eye-action popups, expand the tables, and align dataset editor actions in a dedicated footer.

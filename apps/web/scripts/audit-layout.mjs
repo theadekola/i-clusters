@@ -330,6 +330,14 @@ try{
    assert.ok(await page.locator('.shell-host').first().evaluate(element=>{const style=getComputedStyle(element);return style.backgroundImage!=='none'||style.backgroundColor!=='rgba(0, 0, 0, 0)'}),'Resource cards retain their surface');
    if(process.env.LAYOUT_SCREENSHOTS){mkdirSync(process.env.LAYOUT_SCREENSHOTS,{recursive:true});await page.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-transparent-shell.png`,fullPage:true});await page.locator('.nav-toggle').hover();await page.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-icon-hover.png`});}
   }
+  if(process.env.LAYOUT_CHECK_MOTION==='1'){
+   await page.goto(base);await page.locator('#header-language').waitFor();
+   for(const reduced of [false,true]){
+    await page.emulateMedia({reducedMotion:reduced?'reduce':'no-preference'});await page.locator('#header-language').click();const options=page.locator('#header-language-options');await options.waitFor();await page.waitForFunction(e=>Number(getComputedStyle(e).opacity)===1&&getComputedStyle(e).transform==='none',await options.elementHandle());await page.keyboard.press('Escape');assert.equal(await options.count(),0);
+    await page.getByRole('button',{name:copy('Add Widget')}).click();const modal=page.getByRole('dialog');await modal.waitFor();await page.waitForFunction(e=>Number(getComputedStyle(e).opacity)===1&&getComputedStyle(e).transform==='none',await modal.elementHandle());await page.keyboard.press('Escape');await modal.waitFor({state:'detached'});
+   }
+   await page.emulateMedia({reducedMotion:'no-preference'});await page.locator('#header-language').click();await page.emulateMedia({reducedMotion:'reduce'});await page.waitForFunction(e=>Number(getComputedStyle(e).opacity)===1&&getComputedStyle(e).transform==='none',await page.locator('#header-language-options').elementHandle());await page.keyboard.press('Escape');await page.emulateMedia({reducedMotion:'no-preference'});
+  }
   if(process.env.LAYOUT_STORAGE_POPUPS){
    await page.goto(base+'storage');await page.locator('.storage-pool-table tbody tr').nth(1).waitFor();assert.equal(await page.locator('.storage-overview-grid aside,.storage-inline-inspect,.storage-distribution').count(),0);
    const selectWithoutPopup=async row=>{
