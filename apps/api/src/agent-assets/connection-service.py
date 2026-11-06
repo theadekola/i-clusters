@@ -92,14 +92,14 @@ def diagnose(payload,root=pathlib.Path('/'),run=execute):
     starting=action.endswith('-start');docker=action.startswith('docker-');unit='docker.service' if docker else connector_unit(root)
     if config.read_bytes()!=original: raise RuntimeError('Pairing changed; no action was performed')
     if action=='monitoring-tools':
-        packages=('smartmontools','nut-client','nftables')
+        packages=('smartmontools','nut-client')
         def installed():
             try:output=run(['dpkg-query','-W','-f=${Package} ${Status}\n',*packages],timeout=10)
             except RuntimeError:return False
             return all(package+' install ok installed' in output.splitlines() for package in packages)
         if installed():return {'action':action,'target':'node','installed':True,'message':'Monitoring tools are already installed and package status verified. No package changes were required.'}
         run(['apt-get','update'],timeout=120)
-        run(['apt-get','install','-y','smartmontools','nut-client','nftables'],timeout=180)
+        run(['apt-get','install','-y','smartmontools','nut-client'],timeout=180)
         if not installed():raise MonitoringInstallError('PACKAGE_VERIFY_FAILED','package-verification')
         return {'action':action,'target':'node','installed':True,'message':'Monitoring tools installed and package status verified. Measurements refresh within one minute. UPS readings require an existing local NUT server; no UPS shutdown policy was changed.'}
     output=guest_run(target,service_script(unit,starting,docker),run)

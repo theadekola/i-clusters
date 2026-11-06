@@ -17,7 +17,7 @@ test('navigation failures and server errors return a self-contained responsive s
  const events={};let status=502;
  vm.runInNewContext(source,{self:{addEventListener:(name,fn)=>events[name]=fn},fetch:async()=>new Response('upstream error',{status}),Response,URL,AbortController,setTimeout,clearTimeout});
  let response;events.fetch({request:{mode:'navigate',url:'https://host/'},respondWith:p=>response=p});const fallback=await response,html=await fallback.text();
- assert.equal(fallback.status,503);assert.match(html,/viewport-fit=cover/);assert.match(html,/prefers-color-scheme:light/);assert.match(html,/safe-area-inset/);assert.match(html,/Unable to reach i-Clusters/);assert.match(html,/Your VPN stays managed in its own app/);assert.doesNotMatch(html,/<link[^>]+rel="stylesheet"|<img[^>]+src=/);assert.match(html,/rel="apple-touch-icon"/);assert.equal(fallback.headers.get('Cache-Control'),'no-store');
+ assert.equal(fallback.status,503);assert.match(html,/viewport-fit=cover/);assert.match(html,/prefers-color-scheme:light/);assert.match(html,/safe-area-inset/);assert.match(html,/Unable to reach i-Clusters/);assert.match(html,/Your dashboard data is not stored offline/);assert.doesNotMatch(html,/<link[^>]+rel="stylesheet"|<img[^>]+src=/);assert.match(html,/rel="apple-touch-icon"/);assert.equal(fallback.headers.get('Cache-Control'),'no-store');
  status=403;events.fetch({request:{mode:'navigate',url:'https://host/'},respondWith:p=>response=p});assert.equal((await response).status,403);
 });
 test('retry probes public health without credentials or cache and reloads only after verified recovery',async()=>{

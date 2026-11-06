@@ -219,8 +219,7 @@ reset of only the root-scoped service worker. No cookies, credentials or server
 records are cleared. Close other dashboard tabs before resetting and reopen after.
 An older worker may still mask a TLS error until browser trust is repaired; use a
 fresh browser to inspect the direct health endpoint. A QR code is an address, not
-proof that a remote device can reach it. MikroTik and other existing VPNs remain
-independent of the optional i-Clusters WireGuard gateway.
+proof that a remote device can reach it.
 
 Settings → Security → **Browser Certificate Setup** provides an explicit public-root check, SHA-256 fingerprint and download, with device installation instructions. Compare the fingerprint using the server command below before trusting it. This does not modify device trust or bypass a browser warning; the dashboard must first be reachable. The fixed `/local-ca.crt` endpoint serves only Caddy’s public root and returns unavailable when no local root exists. It never serves private keys.
 

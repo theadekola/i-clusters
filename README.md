@@ -228,3 +228,7 @@ Existing installations are migrated during the normal update. See [i-Clusters na
 ### Interface languages
 
 Switch the full interface in Settings → Appearance → Interface Language. Bundled English, French, Spanish, German and European Portuguese packs include local country flags and saved browser preferences. See [language maintenance and coverage](docs/interface-languages.md).
+
+### Upgrading a previously configured gateway
+
+The controller and connector version 10 remove built-in WireGuard management. Update each paired connector after updating the controller. If a previous release configured a gateway, its host service, peer profiles, firewall rules and router forwarding can remain active independently. Plan host-side retirement with local console access before withdrawing a route you depend on. Updating i-Clusters alone does not revoke existing peers.

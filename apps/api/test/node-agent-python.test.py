@@ -180,27 +180,6 @@ class AgentTests(unittest.TestCase):
     self.assertEqual(result['status'],200);self.assertTrue(observed);self.assertLess(len(result['body']),1000);self.assertTrue(release.is_set())
    finally:release.set();server.shutdown();server.server_close();thread.join(timeout=2)
 class OperationalTests(unittest.TestCase):
- def test_new_gateway_guards_forwarding_before_start_and_persists_guard(self):
-  with tempfile.TemporaryDirectory() as directory:
-   root=pathlib.Path(directory);config=root/'icvpn.conf';policy=root/'policy.json';helper=root/'routing.py';events=[]
-   def command(args,**kwargs):
-    events.append(args)
-    if args==['wg','genkey']:return 'private-fixture'
-    return ''
-   with patch.object(agent,'VPN_CONFIG',config),patch.object(agent,'VPN_POLICY',policy),patch.object(agent,'VPN_HELPER',helper),patch.object(agent,'command_json',return_value=[]),patch.object(agent,'run',side_effect=command),patch.object(agent,'apply_vpn_firewall',side_effect=lambda *args:events.append('guard')) as firewall:
-    agent.operations_job(self.job({'action':'vpn-setup','address':'10.77.0.1/24','port':51820}))
-   self.assertLess(events.index('guard'),events.index(['systemctl','enable','--now','wg-quick@icvpn']))
-   firewall.assert_called_once_with({'authorized':True,'rules':[],'clientNetworks':[]},{})
-   self.assertEqual(json.loads(policy.read_text())['rules'],[])
-   self.assertIn('PreUp = /usr/bin/python3 '+str(helper)+' --vpn-firewall',config.read_text())
-   for item in (config,policy,helper):self.assertEqual(item.stat().st_mode&0o777,0o600)
-   self.assertNotIn('sysctl',str(events))
- def test_new_gateway_never_starts_when_isolation_guard_fails(self):
-  with tempfile.TemporaryDirectory() as directory:
-   root=pathlib.Path(directory)
-   with patch.object(agent,'VPN_CONFIG',root/'icvpn.conf'),patch.object(agent,'VPN_POLICY',root/'policy.json'),patch.object(agent,'VPN_HELPER',root/'routing.py'),patch.object(agent,'command_json',return_value=[]),patch.object(agent,'run',return_value='key') as run,patch.object(agent,'apply_vpn_firewall',side_effect=RuntimeError('nft rejected')):
-    with self.assertRaisesRegex(RuntimeError,'isolation or startup failed'):agent.operations_job(self.job({'action':'vpn-setup','address':'10.77.0.1/24','port':51820}))
-    self.assertFalse(any(call.args[0][0]=='systemctl' for call in run.call_args_list))
  def job(self,body,host='node'):
   return {'host':host,'body':base64.b64encode(json.dumps(body).encode()).decode()}
  def test_invalid_operational_actions_never_run_a_command(self):
@@ -214,69 +193,6 @@ class OperationalTests(unittest.TestCase):
    response=agent.operations_job(self.job({'action':'network-check','url':'http://untrusted'}));data=json.loads(base64.b64decode(response['body']))
    self.assertEqual(len(data['checks']),3);self.assertEqual(data['checks'][0]['dnsMilliseconds'],10)
    for call in run.call_args_list:self.assertTrue(call.args[0][-1].startswith('https://'));self.assertNotIn('untrusted',str(call))
- def test_gateway_never_overwrites_an_existing_configuration(self):
-  with patch.object(agent.pathlib.Path,'exists',return_value=True),patch.object(agent,'run') as run:
-   with self.assertRaisesRegex(RuntimeError,'will not be overwritten'):agent.operations_job(self.job({'action':'vpn-setup','address':'10.77.0.1/24','port':51820}))
-   run.assert_not_called()
-class LanPolicyTests(unittest.TestCase):
- def setUp(self):
-  self.key='A'*43+'=';self.peers={self.key:'10.77.0.2/32'};self.gateway=agent.ipaddress.ip_interface('10.77.0.1/24')
-  self.routes=[{'dst':'192.168.20.0/24','dev':'vmbr0'},{'dst':'192.168.30.0/24','dev':'vmbr0.30'}]
-  self.rule={'publicKey':self.key,'destination':'192.168.20.10/32','protocol':'tcp','port':8006,'interface':'vmbr0','nat':False}
- def policy(self,**extra):return {'authorized':True,'rules':[dict(self.rule)],**extra}
- def test_routes_protocols_ports_authorization_and_network_overlap(self):
-  self.assertEqual(agent.vpn_policy(self.policy(),self.gateway,self.peers,self.routes)['rules'],[self.rule])
-  for change in [{'destination':'0.0.0.0/0'},{'destination':'192.168.20.0/24'},{'destination':'10.77.0.3/32'},{'destination':'8.8.8.8/32'},{'interface':'vmbr0.30'},{'interface':'vmbr0;reboot'},{'port':0},{'protocol':'all'},{'publicKey':'unknown'},{'nat':'yes'}]:
-   with self.subTest(change=change),self.assertRaises(Exception):agent.vpn_policy(self.policy(rules=[{**self.rule,**change}]),self.gateway,self.peers,self.routes)
-  for body in [self.policy(authorized=False),self.policy(clientNetworks=['192.168.20.0/24']),self.policy(clientNetworks=['10.77.0.0/24'])]:
-   with self.assertRaises(Exception):agent.vpn_policy(body,self.gateway,self.peers,self.routes)
-  with self.assertRaises(Exception):agent.vpn_policy(self.policy(),self.gateway,self.peers,[{'dst':'default','dev':'vmbr0'}])
-  with self.assertRaises(Exception):agent.vpn_policy(self.policy(),self.gateway,self.peers,self.routes+[{'dst':'10.77.0.0/16','dev':'eth0'}])
- def test_vlan_rules_are_explicit_and_revoked_peers_have_no_rules(self):
-  rule={**self.rule,'destination':'192.168.30.10/32','interface':'vmbr0.30','nat':True}
-  policy=agent.vpn_policy(self.policy(rules=[rule]),self.gateway,self.peers,self.routes)
-  script=agent.vpn_firewall(policy,self.peers)
-  self.assertIn('oifname "vmbr0.30"',script);self.assertIn('tcp dport 8006',script);self.assertIn('masquerade',script)
-  self.assertIn('iifname "icvpn" drop',script);self.assertIn('oifname "icvpn" drop',script)
-  self.assertNotIn('192.168.20.10',script);self.assertNotIn('flush ruleset',script)
-  revoked=agent.vpn_firewall(policy,{})
-  self.assertNotIn('8006',revoked);self.assertNotIn('masquerade',revoked);self.assertIn('iifname "icvpn" drop',revoked)
- def test_nft_validation_failure_does_not_apply_transaction(self):
-  with patch.object(agent.subprocess,'run') as process,patch.object(agent,'run',side_effect=RuntimeError('invalid nft')) as run:
-   process.return_value.returncode=0
-   with self.assertRaises(RuntimeError):agent.apply_vpn_firewall(self.policy(),self.peers)
-   self.assertEqual(run.call_count,1);self.assertIn('--check',run.call_args.args[0]);self.assertTrue(run.call_args.kwargs['input_data'].startswith('delete table inet iclusters_lan'))
- def test_failed_persistence_restores_previous_firewall_and_policy(self):
-  with tempfile.TemporaryDirectory() as directory:
-   root=pathlib.Path(directory);config=root/'icvpn.conf';policy=root/'lan.json';helper=root/'routing.py'
-   original='[Interface]\nAddress = 10.77.0.1/24\nPrivateKey = PRIVATE\n';config.write_text(original);policy.write_text('{"rules":[]}')
-   real_replace=pathlib.Path.replace
-   def replace(source,target):
-    if target==config:raise OSError('disk failure')
-    return real_replace(source,target)
-   with patch.object(agent,'VPN_CONFIG',config),patch.object(agent,'VPN_POLICY',policy),patch.object(agent,'VPN_HELPER',helper),patch.object(agent,'vpn_peers',return_value=self.peers),patch.object(agent,'command_json',side_effect=[self.routes,[],[{'dev':'vmbr0'}]]),patch.object(agent,'run',return_value='0'),patch.object(agent,'apply_vpn_firewall') as firewall,patch.object(pathlib.Path,'replace',replace):
-    with self.assertRaisesRegex(OSError,'disk failure'):agent.vpn_lan_change(self.policy())
-    self.assertEqual(config.read_text(),original);self.assertEqual(json.loads(policy.read_text()),{'rules':[]})
-    self.assertEqual(firewall.call_count,2);self.assertEqual(firewall.call_args.args[0],{'rules':[]})
- def test_revocation_persists_removal_even_if_live_peer_removal_fails(self):
-  with tempfile.TemporaryDirectory() as directory:
-   root=pathlib.Path(directory);config=root/'icvpn.conf';policy=root/'lan.json'
-   config.write_text('[Interface]\nAddress = 10.77.0.1/24\nPrivateKey = SECRET\n[Peer]\nPublicKey = '+self.key+'\nAllowedIPs = 10.77.0.2/32\n')
-   policy.write_text(json.dumps(self.policy()))
-   def command(args,**kwargs):
-    if args[:2]==['wg','show']:return self.key+'\t10.77.0.2/32'
-    if args[:2]==['wg','set']:
-     self.assertNotIn(self.key,config.read_text());self.assertEqual(json.loads(policy.read_text())['rules'],[])
-     raise RuntimeError('live removal failed')
-    raise AssertionError(args)
-   job={'host':'node','body':base64.b64encode(json.dumps({'action':'vpn-remove','publicKey':self.key}).encode()).decode()}
-   with patch.object(agent,'VPN_CONFIG',config),patch.object(agent,'VPN_POLICY',policy),patch.object(agent,'run',side_effect=command),patch.object(agent,'apply_vpn_firewall') as firewall:
-    with self.assertRaisesRegex(RuntimeError,'live removal failed'):agent.operations_job(job)
-    self.assertEqual(firewall.call_args.args[1],{});self.assertNotIn(self.key,config.read_text())
- def test_disable_retains_guard_and_does_not_reset_shared_forwarding(self):
-  script=agent.vpn_firewall({'rules':[]},self.peers)
-  self.assertIn('iifname "icvpn" drop',script);self.assertNotIn('masquerade',script)
-
 class OperationsCollectionTests(unittest.TestCase):
  def test_disk_health_does_not_request_or_return_temperature(self):
   from unittest.mock import patch

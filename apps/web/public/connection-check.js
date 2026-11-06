@@ -10,9 +10,9 @@ check.addEventListener('click',async()=>{
   if(response.ok&&data?.ok===true){
    const shell=await fetch('/',{cache:'no-store',credentials:'omit',redirect:'error',signal:controller.signal});
    const html=await shell.text();
-   result.textContent=shell.ok&&/text\/html/i.test(shell.headers.get('content-type')||'')&&html.includes('id="root"')?'Connected. This browser reached the HTTPS dashboard, API and database. This does not identify which VPN or network route was used.':'The API and database are reachable, but the dashboard is unavailable. Check the web container; resetting a VPN will not fix a frontend server error.';
+   result.textContent=shell.ok&&/text\/html/i.test(shell.headers.get('content-type')||'')&&html.includes('id="root"')?'Connected. This browser reached the HTTPS dashboard, API and database.':'The API and database are reachable, but the dashboard is unavailable. Check the web container.';
   }else if(response.status===503&&data?.ok===false){result.textContent='HTTPS is reachable, but the application database is unavailable. Check the API and database containers.';}
-  else result.textContent='The server returned HTTP '+response.status+'. Check the application or reverse proxy. This is not evidence that your VPN is disconnected.';
+  else result.textContent='The server returned HTTP '+response.status+'. Check the application or reverse proxy.';
  }catch{result.textContent='The check failed or timed out. This may be a network route, firewall, HTTPS trust or server problem. Open the direct health check for the browser error.';}
  finally{clearTimeout(timeout);check.disabled=false;}
 });
