@@ -96,7 +96,7 @@ Check the per-node state and fresh heartbeat after enabling. A completed state v
 
 ## Mobile dashboard and installation
 
-The Remote Access tab includes a local QR encoder and a responsive mobile-access card. The dashboard QR contains only an HTTPS origin and `/?install=1`, never a session token, password. Scanning opens the normal dashboard sign-in in the phone browser. Use the same Wi-Fi, and a dashboard name/address reachable from that phone with a trusted TLS certificate. A QR code does not provide public hosting, certificate trust.
+The Remote Access tab includes a local QR encoder and a responsive mobile-access card. The dashboard QR contains the HTTPS dashboard root URL, including the configured port. Scanning opens the dashboard or, when signed out, the sign-in screen. Use the same Wi-Fi, and a dashboard name/address reachable from that phone with a trusted TLS certificate. A QR code does not provide public hosting, certificate trust.
 
 Android offers an explicit **Install i-Clusters** action when the browser supplies its installation event. The event is used only after a user gesture and is single-use. If unavailable, the page provides browser-menu instructions. iPhone/iPad show **Share → Add to Home Screen**, with **Open as Web App** when available. Installed/standalone windows suppress the prompt. The prompt is also available before sign-in for scanned links. Installation remains subject to device/browser eligibility and trusted HTTPS.
 
