@@ -12,5 +12,5 @@ for(const language of ['fr','es','de','pt']){
  const pack=read('packs/'+language+'.json');assert.equal(Object.keys(pack).length,keys.length,language+' has an incomplete catalogue.');assert.deepEqual(Object.keys(pack),keys,language+' has missing or obsolete keys.');
  for(const key of keys){assert.ok(typeof pack[key]==='string'&&pack[key].trim(),language+' has empty copy: '+key);assert.deepEqual(placeholders(pack[key]),placeholders(key),language+' changed substitutions: '+key)}
 }
-for(const country of ['gb','fr','es','de','pt']){const svg=fs.readFileSync(new URL('public/flags/'+country+'.svg',root),'utf8');assert.match(svg,/<svg\b/);assert.doesNotMatch(svg,/<(?:script|foreignObject)\b|(?:href|src)=["'](?:https?:|\/\/|data:)/i)}
-console.log('Validated '+keys.length+' messages in all five bundled languages and five local flag images.');
+for(const country of ['gb','us','fr','es','de','pt']){const svg=fs.readFileSync(new URL('public/flags/'+country+'.svg',root),'utf8');assert.match(svg,/<svg\b/);assert.doesNotMatch(svg,/<(?:script|foreignObject)\b|(?:href|src)=["'](?:https?:|\/\/|data:)/i)}
+console.log('Validated '+keys.length+' messages in all five bundled languages and six regional locale choices.');
