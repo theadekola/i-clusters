@@ -9,7 +9,7 @@
 button:not(:disabled):active{filter:brightness(.9);box-shadow:inset 0 0 0 2px currentColor}a[href]:active{opacity:.8}
 </style><script src="/recovery-languages.js" defer></script><script src="/connection-check.js" defer></script></head>
 <body><main><h1>Check your i-Clusters connection</h1><p>Installation: <code id="address"></code></p>
-<p>This checks the server from this browser. It cannot detect which VPN you use or switch a VPN on.</p>
+<p>This checks the server from this browser.</p>
 <button id="check">Check connection</button><p id="result" role="status" aria-live="polite">Choose Check connection to test HTTPS, the application and its database.</p>
 <p><a href="/api/health" target="_blank" rel="noopener">Open the direct health check</a> · <a href="/">Open dashboard</a></p>
 <details><summary>Certificate warning or network failure</summary><p>A browser request failure cannot distinguish an untrusted certificate from a routing or firewall problem. Open the direct health check to see the browser's own error. Do not bypass certificate verification.</p>
@@ -18,6 +18,5 @@ openssl x509 -in iclusters-root.crt -noout -fingerprint -sha256</pre>
 <p>Transfer only that public certificate through a trusted channel. Compare its SHA-256 fingerprint before installing it. Never distribute a private key.</p>
 <p>iPhone/iPad: install the certificate profile in Settings → General → VPN &amp; Device Management. Then enable it under General → About → Certificate Trust Settings. Android: install it as a CA certificate. Windows: import into Trusted Root Certification Authorities. Firefox may require its own Authorities import.</p>
 <p>Trust survives routine renewal while the same root CA and certificate storage are retained. A public domain with automated DNS validation is another option; it does not require publishing the dashboard.</p></details>
-<details><summary>Already using MikroTik or another VPN?</summary><p>Keep your existing VPN. You do not need to create an i-Clusters WireGuard gateway. Test with Wi-Fi off and the existing VPN connected. It must route to this installation's address and allow its HTTPS port, including the return traffic.</p></details>
 <details><summary>Old offline screen or stale browser version?</summary><p>Close other i-Clusters tabs first. Reset browser recovery removes only this installation's root service worker. It preserves accounts, cookies, saved credentials and server records. The dashboard registers its current worker when it opens again.</p><button id="reset">Reset browser recovery</button></details>
 </main></body></html>

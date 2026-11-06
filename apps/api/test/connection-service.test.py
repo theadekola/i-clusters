@@ -21,9 +21,9 @@ class Services(unittest.TestCase):
   root,p=self.fixture();calls=[];before=(root/'etc/iclusters-node-agent.json').read_bytes()
   def run(args,**kw):
    calls.append((args,kw))
-   return ''.join(package+' install ok installed\n' for package in ('smartmontools','nut-client','nftables')) if args[0]=='dpkg-query' and len(calls)>1 else ''
+   return ''.join(package+' install ok installed\n' for package in ('smartmontools','nut-client')) if args[0]=='dpkg-query' and len(calls)>1 else ''
   result=m.diagnose({**p,'action':'monitoring-tools'},root,run)
-  self.assertTrue(result['installed']);self.assertEqual(len(calls),4);self.assertEqual(calls[1][0],['apt-get','update']);self.assertEqual(calls[2][0],['apt-get','install','-y','smartmontools','nut-client','nftables']);self.assertEqual(before,(root/'etc/iclusters-node-agent.json').read_bytes());self.assertNotIn('restart',str(calls))
+  self.assertTrue(result['installed']);self.assertEqual(len(calls),4);self.assertEqual(calls[1][0],['apt-get','update']);self.assertEqual(calls[2][0],['apt-get','install','-y','smartmontools','nut-client']);self.assertEqual(before,(root/'etc/iclusters-node-agent.json').read_bytes());self.assertNotIn('restart',str(calls))
   calls.clear()
   with self.assertRaises(RuntimeError):m.diagnose({**p,'action':'monitoring-tools','target':'qemu/100'},root,run)
   self.assertEqual(calls,[])
@@ -67,7 +67,7 @@ class Services(unittest.TestCase):
  def test_installed_packages_skip_repository_updates(self):
   root,p=self.fixture();calls=[]
   def run(args,**kw):
-   calls.append(args);return ''.join(package+' install ok installed\n' for package in ('smartmontools','nut-client','nftables'))
+   calls.append(args);return ''.join(package+' install ok installed\n' for package in ('smartmontools','nut-client'))
   result=m.diagnose({**p,'action':'monitoring-tools'},root,run)
   self.assertTrue(result['installed']);self.assertEqual(len(calls),1);self.assertEqual(calls[0][0],'dpkg-query')
  def test_package_errors_are_classified_without_exposing_output(self):

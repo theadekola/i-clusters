@@ -148,7 +148,7 @@ try{
      const clear=color=>color==='transparent'||color==='rgba(0, 0, 0, 0)'||/rgba\([^)]*,\s*0\)$/.test(color);
      const findings=new Set();
      for(const icon of document.querySelectorAll('svg,.page-image-icon img,.brand-mark img')){
-      if(icon.closest('.recharts-wrapper,.access-qr,.vpn-profile-qr'))continue;
+      if(icon.closest('.recharts-wrapper,.access-qr'))continue;
       let element=icon;
       for(let depth=0;element&&depth<4;depth++,element=element.parentElement){
        if(element.matches('td,th,tr')||element instanceof SVGElement&&element.tagName.toLowerCase()!=='svg')break;

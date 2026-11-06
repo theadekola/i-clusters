@@ -18,4 +18,4 @@ Developer: **The Adekola** · Company: **ATT-Tech** · Current release baseline:
 | Interface consistency | [Typography scale](interface-typography.md) |
 | Policies and contribution | [Security](../SECURITY.md), [privacy](../PRIVACY.md), [terms](../TERMS.md), [contributing](../CONTRIBUTING.md), [notices](../THIRD_PARTY_NOTICES.md) |
 
-Operational tools: [Hardware, network diagnostics, recovery tests and WireGuard remote access](operations-and-remote-access.md).
+Operational tools: [Hardware, network diagnostics, recovery tests and mobile dashboard access](operations-and-remote-access.md).

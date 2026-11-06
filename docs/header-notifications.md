@@ -8,7 +8,7 @@ Active and acknowledged alerts remain in the bell until the monitoring engine co
 
 ## Recent activity
 
-The feed records meaningful i-Clusters mutation requests: infrastructure actions, backups, storage, network and VPN changes, alert administration, settings, connections and connector configuration. It includes safe success/failure summaries and identifies accepted asynchronous work as queued, without claiming the remote job finished. Sign-ins and remote access actions are private. Routine reads, polling, shell keystrokes and repeated successful upload chunks are excluded. A file upload entry confirms its first chunk, not the entire transfer.
+The feed records meaningful i-Clusters mutation requests: infrastructure actions, backups, storage, network changes, alert administration, settings, connections and connector configuration. It includes safe success/failure summaries and identifies accepted asynchronous work as queued, without claiming the remote job finished. Sign-ins and remote access actions are private. Routine reads, polling, shell keystrokes and repeated successful upload chunks are excluded. A file upload entry confirms its first chunk, not the entire transfer.
 
 Existing monitoring scans add observed provider, node, VM, CT, Docker container and storage job state transitions, plus confirmed alert recoveries. The first sample establishes a baseline. Events outside i-Clusters become visible only when covered by the existing monitoring. This feed is not a complete audit log or a replacement for provider task history.
 

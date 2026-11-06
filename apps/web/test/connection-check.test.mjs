@@ -10,7 +10,7 @@ function page(fetch,registration){
 }
 test('diagnostics distinguishes healthy connection, failed frontend, database outage and proxy errors',async()=>{
  for(const [health,shell,message] of [
-  [new Response('{"ok":true}'),new Response('<div id="root"></div>',{headers:{'Content-Type':'text/html'}}),/Connected.*does not identify/],
+  [new Response('{"ok":true}'),new Response('<div id="root"></div>',{headers:{'Content-Type':'text/html'}}),/Connected.*dashboard, API and database/],
   [new Response('{"ok":true}'),new Response('failure',{status:502}),/dashboard is unavailable/],
   [new Response('{"ok":false}',{status:503}),null,/database is unavailable/],
   [new Response('bad gateway',{status:502}),null,/HTTP 502/]
