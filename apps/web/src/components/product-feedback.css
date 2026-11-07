@@ -1,0 +1,4 @@
+.product-reporting {margin: .5rem 0 1rem; color: var(--muted); font-size: .875rem;}
+.product-reporting summary {cursor: pointer; width: fit-content; padding: .4rem 0;}
+.product-reporting[open] {padding-bottom: .75rem; border-bottom: 1px solid var(--border);}
+.product-reporting p {max-width: 62ch;}
