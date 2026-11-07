@@ -1,4 +1,22 @@
-.product-reporting {margin: .5rem 0 1rem; color: var(--muted); font-size: .875rem;}
-.product-reporting summary {cursor: pointer; width: fit-content; padding: .4rem 0;}
-.product-reporting[open] {padding-bottom: .75rem; border-bottom: 1px solid var(--border);}
-.product-reporting p {max-width: 62ch;}
+.settings-overview-actions:has(.feedback-trigger) {display:flex;flex-flow:row nowrap;align-items:center}
+.settings-overview-actions:has(.feedback-trigger) .settings-search {min-width:0;flex:1 1 auto}
+.settings-overview-actions:has(.feedback-trigger) .settings-search input {width:100%;min-width:0}
+.settings-overview-actions .feedback-trigger {flex:none;white-space:nowrap}
+.modal:has(.feedback-columns) {width:min(920px,96vw);max-width:96vw;max-height:90dvh;overflow:auto}
+.feedback-columns {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);gap:16px}
+.feedback-guide,.feedback-panel {padding:clamp(14px,2vw,26px);border:1px solid var(--border,#31506f);border-radius:14px}
+.feedback-guide {background:radial-gradient(ellipse at top,#10365c,#071827 80%);color:#edf6ff}
+.feedback-guide .feedback-art {display:block;width:68px;height:68px;margin:12px auto 24px;color:#45bdff}
+.feedback-guide ul {display:grid;gap:18px;padding:0;list-style:none}
+.feedback-guide li,.feedback-panel h3,.feedback-choice {display:flex;gap:10px;align-items:center}
+.feedback-guide li svg,.feedback-panel h3 svg {color:#2fa9ee}
+.feedback-guide li:nth-child(1) svg {color:#38dba1}
+.feedback-guide li:nth-child(2) svg {color:#ffb449}
+.feedback-guide li:nth-child(4) svg {color:#be8bff}
+.feedback-panel h3 {margin:0}
+.feedback-panel form,.feedback-panel form label {display:grid;gap:8px}
+.feedback-panel form {gap:14px;margin-top:16px}
+.feedback-panel form :is(select,textarea,input) {width:100%;box-sizing:border-box}
+.feedback-panel .feedback-choice input {width:auto}
+.feedback-count {text-align:right;margin-top:-10px}
+@media(max-width:600px){.feedback-columns{display:flex;flex-direction:column}.feedback-panel{order:-1}.feedback-guide .feedback-art{display:none}}
