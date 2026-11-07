@@ -90,7 +90,7 @@ jobs:
         run: |
           docker compose exec -T caddy caddy build-info > /tmp/iclusters-caddy-build-info.txt
           grep -E '[[:space:]]github.com/go-jose/go-jose/v4[[:space:]]+v4\.1\.6([[:space:]]|$)' /tmp/iclusters-caddy-build-info.txt
-          grep -E '[[:space:]]golang.org/x/net[[:space:]]+v0\.60\.0([[:space:]]|$)' /tmp/iclusters-caddy-build-info.txt
+          grep -E '[[:space:]]golang.org/x/net[[:space:]]+v0\.62\.0([[:space:]]|$)' /tmp/iclusters-caddy-build-info.txt
       - name: Disposable Docker worker crash recovery
         run: |
           ICLUSTERS_CI_DRILL=1 ICLUSTERS_DRILL_IMAGE="$(docker image inspect --format '{{.Id}}' "$(docker compose images -q api | head -1)")" node deployment/check-docker-crash-recovery.mjs
