@@ -8,17 +8,18 @@ export default function ClusterTopology({data,loading,error}:{data:any,loading:b
  const [search,setSearch]=useState(''),[zoom,setZoom]=useState(1),[selected,setSelected]=useState<any>(null);
  const [expanded,setExpanded]=useState(false);
  const shell=useRef<HTMLDivElement>(null);
- async function toggleExpanded(){
-  if(document.fullscreenElement===shell.current){await document.exitFullscreen();return}
-  if(expanded){setExpanded(false);return}
-  try{await shell.current!.requestFullscreen()}catch{setExpanded(true)}
- }
+ function toggleExpanded(){setExpanded(value=>!value)}
  useLayoutEffect(()=>{
-  const sync=()=>setExpanded(document.fullscreenElement===shell.current);
-  const escape=(event:KeyboardEvent)=>{if(event.key==='Escape'&&!selected&&!document.fullscreenElement)setExpanded(false)};
-  document.addEventListener('fullscreenchange',sync);document.addEventListener('keydown',escape);
-  return()=>{document.removeEventListener('fullscreenchange',sync);document.removeEventListener('keydown',escape)};
- },[selected]);
+  const element=shell.current;if(!element||!expanded)return;
+  if(element.showPopover){element.setAttribute('popover','manual');element.showPopover()}
+  return()=>{if(element.hasAttribute('popover')){element.hidePopover();element.removeAttribute('popover')}}
+ },[expanded]);
+ useLayoutEffect(()=>{
+  if(!expanded||selected)return;
+  const escape=(event:KeyboardEvent)=>{if(event.key==='Escape')setExpanded(false)};
+  document.addEventListener('keydown',escape);
+  return()=>document.removeEventListener('keydown',escape);
+ },[expanded,selected]);
  const viewport=useRef<HTMLDivElement>(null),canvas=useRef<HTMLDivElement>(null),[fit,setFit]=useState(1);
  const [drawing,setDrawing]=useState<{width:number;height:number;paths:string[]}>({width:0,height:0,paths:[]});
  useLayoutEffect(()=>{

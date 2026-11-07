@@ -70,7 +70,7 @@
  .cluster-topology-guests{grid-template-columns:minmax(0,1fr);gap:10px;padding-top:32px}
  .cluster-topology .cluster-topology-guest{min-height:80px}
 }
-.topology-shell.expanded,.topology-shell:fullscreen{position:fixed;inset:0;z-index:900;background:var(--theme-surface,#0d1b2c);overflow:auto}
+.topology-shell.expanded{position:fixed;inset:0;width:100vw;height:100dvh;box-sizing:border-box;max-width:none;max-height:none;margin:0;padding:0;border:0;color:inherit;z-index:900;background:var(--theme-surface,#0d1b2c);overflow:auto}
 .topology-shell.expanded>.cluster-topology{display:flex;flex-direction:column;box-sizing:border-box;min-height:100%;height:100dvh}
 .topology-shell.expanded .cluster-topology-viewport{flex:1;min-height:12rem}
 @media(min-width:901px){
