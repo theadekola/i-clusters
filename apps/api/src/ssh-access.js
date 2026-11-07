@@ -1,3 +1,4 @@
+import {guestUpdateCommand,assertGuestUpdateSession} from './guest-package-update.js';
 import {verifySSHHostKey} from './ssh-host-trust.js';
 import {passwordAuthentication} from './ssh-password.js';
 import {approvalTargetForPath,resolveActionApproval} from './action-approval.js';
@@ -50,10 +51,30 @@ export async function connectSSH(input,user,sessionId){
  let stream;try{stream=await new Promise((resolve,reject)=>input.mode==='sftp'?client.sftp((e,s)=>e?reject(e):resolve(s)):client.shell({term:'xterm-256color',cols:100,rows:28},(e,s)=>e?reject(e):resolve(s)));}catch(e){client.end();throw e;}
  if(input.save===false&&input.mode!=='authorize')deleteSavedSSH(user,input.target);
  if(input.save===true){const vault=connectionVault(),all=vault.read()||{};all[`${user}:${input.target}`]={host:input.host,port,username:input.username,password:input.password,fingerprint:input.fingerprint};vault.save(all);}
- const id=crypto.randomUUID(),s={user,sessionId,client,stream,mode:input.mode==='sftp'?'sftp':'shell',output:'',touched:Date.now(),closed:false};sessions.set(id,s);const decoder=new StringDecoder('utf8'),closed=()=>{if(s.closed)return;s.output=(s.output+decoder.end()).slice(-262144);s.closed=true;s.onOutput?.();};if(s.mode==='shell')stream.on('data',d=>{s.output=(s.output+decoder.write(d)).slice(-262144);s.onOutput?.();});stream.on('close',()=>{closed();client.end()});client.on('error',closed);client.on('close',closed);return {id};
+ const id=crypto.randomUUID(),s={user,sessionId,target:input.target,host:input.host,client,stream,mode:input.mode==='sftp'?'sftp':'shell',output:'',touched:Date.now(),closed:false};sessions.set(id,s);const decoder=new StringDecoder('utf8'),closed=()=>{if(s.closed)return;s.output=(s.output+decoder.end()).slice(-262144);s.closed=true;s.onOutput?.();};if(s.mode==='shell')stream.on('data',d=>{s.output=(s.output+decoder.write(d)).slice(-262144);s.onOutput?.();});stream.on('close',()=>{closed();client.end()});client.on('error',closed);client.on('close',closed);return {id};
+}
+export async function openGuestUpdate(id,user,loginId,resolveHost){
+ const parent=shellSession(id,user);
+ assertGuestUpdateSession(parent,loginId);
+ if(parent.host!==await resolveHost(parent.target))throw failure('Reconnect using the guest SSH address reported by Proxmox before updating.',409);
+ assertGuestUpdateSession(parent,loginId);
+ if(parent.updating)throw failure('An update check is already open for this shell.',409);
+ parent.updating=true;
+ try{
+  const stream=await new Promise((resolve,reject)=>parent.client.exec(guestUpdateCommand,{pty:{term:'xterm-256color',cols:100,rows:28}},(err,ch)=>err?reject(err):resolve(ch)));
+  const childId=crypto.randomUUID(),decoder=new StringDecoder('utf8');
+  // Releasing this tab must close only its channel, never the original terminal.
+  const child={user,sessionId:loginId,mode:'shell',updateChannel:true,client:{end:()=>stream.close()},stream,output:'',closed:false,touched:Date.now()};
+  const append=text=>{child.output=(child.output+text).slice(-262144);child.onOutput?.();};
+  stream.on('data',chunk=>append(decoder.write(chunk)));
+  const finish=message=>{if(child.closed)return;child.closed=true;parent.updating=false;append(decoder.end()+message);};
+  stream.on('error',()=>finish('\r\nUpdate channel interrupted.'));
+  stream.on('close',code=>finish(code===0?'\r\nUpdate session finished.':'\r\nUpdate session ended without a successful exit.'));
+  sessions.set(childId,child);return {id:childId};
+ }catch(error){parent.updating=false;throw error;}
 }
 export function shellSession(id,user){const s=sessions.get(id);if(!s||s.user!==user||shellExpired(s))throw failure('Shell session unavailable',404);if(s.mode==='sftp')s.touched=Date.now();return s;}
-export function closeShell(id,user){const s=shellSession(id,user);s.releaseOutput?.();if(s.mode==='sftp')s.stream.end();else s.stream.close();s.client.end();sessions.delete(id);}
+export function closeShell(id,user){const s=shellSession(id,user);s.releaseOutput?.();if(s.mode==='sftp')s.stream.end();else if(!s.updateChannel)s.stream.close();s.client.end();sessions.delete(id);}
 const timer=setInterval(()=>{for(const [id,s]of sessions)if(shellExpired(s)){s.releaseOutput?.();s.client.end();sessions.delete(id)}for(const [id,g]of grants)if(g.expires<Date.now())grants.delete(id)},15000);timer.unref();
 
 const remotePath=value=>{if(typeof value!=='string'||!value.startsWith('/')||value.includes('\0')||value.length>4096)throw failure('Enter an absolute remote path');return path.posix.normalize(value)};
