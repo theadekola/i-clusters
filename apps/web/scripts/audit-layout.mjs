@@ -126,6 +126,11 @@ try{
   if(process.env.LAYOUT_STORAGE_POPUPS&&path==='/storage/datasets/edit'&&route.request().method()==='GET'){
    const resourceId=new URL(route.request().url()).searchParams.get('resourceId'),resource=popupVolumes.find(row=>row.resourceId===resourceId);assert.ok(resource);return route.fulfill({json:{...resource,revision:'fixture-revision',connectionScope:'fixture-scope',disk:'scsi0',quota:0,compression:'LZ4',readonly:'OFF'}});
   }
+  if(path==='/product/visit'&&route.request().method()==='POST'){
+   const visit=route.request().postDataJSON();
+   if(Object.keys(visit??{}).length!==1||typeof visit?.feature!=='string'||!visit.feature.trim())failures.push('Invalid product visit payload');
+   return route.fulfill({status:204});
+  }
   // The audit must never reach an actual provider or perform a management write.
   if(route.request().method()!=='GET'&&path!=='/ssh/fingerprint'&&!(checkRefresh&&path==='/docker/updates/check'))failures.push(`Unexpected write: ${path}`);
   return route.fulfill({json:fixture(path)});

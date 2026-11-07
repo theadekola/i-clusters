@@ -12,7 +12,7 @@ Preserve dependency/artwork notices in source and distributions. Review any cust
 
 ## Controller image customizations
 
-Caddy retains its upstream 2.11.7 source licence and base-image notices; the local build uses Go 1.27.3 and an explicit golang.org/x/net 0.60.0 update. PostgreSQL remains the upstream 17 image with its entrypoint privilege drop switched to Alpine su-exec. Alpine, Go, Caddy, PostgreSQL, su-exec and their dependencies retain their licences. Vendor/author image labels describe this deployment’s maintainer and do not replace upstream attribution.
+Caddy retains its upstream 2.11.7 source licence and base-image notices; the local build uses Go 1.27.3 and an explicit golang.org/x/net 0.62.0 update. PostgreSQL remains the upstream 17 image with its entrypoint privilege drop switched to Alpine su-exec. Alpine, Go, Caddy, PostgreSQL, su-exec and their dependencies retain their licences. Vendor/author image labels describe this deployment’s maintainer and do not replace upstream attribution.
 
 ## Country flag images
 
