@@ -97,7 +97,8 @@ try{
   await page.screenshot({path:path.join(output,`topology-${width}.png`)});
   await page.getByRole('button',{name:'Expand',exact:true}).click();
   await page.getByRole('button',{name:'Collapse',exact:true}).waitFor();
-  assert.ok(await page.locator('.topology-shell.expanded').evaluate(el=>el.getBoundingClientRect().width>=innerWidth-1));
+  const expandedBox=await page.locator('.topology-shell.expanded').evaluate(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,available:document.documentElement.clientWidth,viewport:innerHeight,position:getComputedStyle(el).position}));
+  assert.equal(expandedBox.position,'fixed');assert.ok(expandedBox.width>=expandedBox.available-1&&expandedBox.height>=expandedBox.viewport-1,JSON.stringify(expandedBox));
   await page.getByRole('button',{name:'Collapse',exact:true}).click();
   await page.getByRole('button',{name:'Expand',exact:true}).waitFor();
   await page.getByLabel('Zoom in topology',{exact:true}).click();assert.equal(await page.locator('.cluster-topology-canvas').evaluate(el=>el.style.zoom),'1.1');await page.getByLabel('Reset topology zoom',{exact:true}).click();
