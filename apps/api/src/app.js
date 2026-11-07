@@ -74,6 +74,7 @@ import crypto from 'node:crypto';
 import {accountIdentity} from './username.js';
 import { setupStatus,registerOwner } from './setup.js';
 import { clusterStore,clusterConfig,publicCluster,validateCluster } from './cluster-config.js';
+import {productRouter,countAction} from './product-usage.js';
 import { pool } from './db.js';
 import { auth,requireRole,verifyPassword,issueTokens,rotateRefreshToken,roles } from './security.js';
 import { writeAudit } from './audit.js';
@@ -88,7 +89,7 @@ export function createApp({authenticate=auth,authorize=requireRole,audit=writeAu
  const app=express(),readCache=createReadCache(),reportPerformance=createReportPerformance();
  app.use((req,res,next)=>{const started=performance.now();res.on('finish',()=>{if(req.method==='GET'&&req.route?.path)reportPerformance.record(req.route.path,performance.now()-started,res.statusCode)});next()});
  app.use((req,res,next)=>{res.on('finish',()=>{try{activity.capture(req,res.statusCode,res.locals.activityStatus)}catch{console.error('Application activity could not be recorded.')}});next();});
- app.use((req,res,next)=>{res.on('finish',()=>{if(!['GET','HEAD'].includes(req.method)&&res.statusCode<400&&req.path!=='/api/node-agents/pairing/status'&&!/^\/api\/(auth|ssh|node-agent|header-notifications)(?:\/|$)/.test(req.path))readCache.clear();});next();});
+ app.use((req,res,next)=>{res.on('finish',()=>{if(!['GET','HEAD'].includes(req.method)&&res.statusCode<400&&req.path!=='/api/node-agents/pairing/status'&&!/^\/api\/(auth|ssh|product|node-agent|header-notifications)(?:\/|$)/.test(req.path))readCache.clear();});next();});
 
  app.use(requestBodyDeadline);
  if(process.env.TRUST_PROXY)app.set('trust proxy',Number(process.env.TRUST_PROXY)||1);
@@ -126,6 +127,7 @@ export function createApp({authenticate=auth,authorize=requireRole,audit=writeAu
  app.get('/api/auth/me',authenticate,(req,res)=>res.json({user:req.user}));
  app.use('/api',authenticate);
  app.use('/api',(req,res,next)=>{if(!['GET','HEAD'].includes(req.method)&&process.env.DATA_DIR&&existsSync(process.env.DATA_DIR+'/maintenance.json'))return res.status(503).json({error:'Controller maintenance is in progress. Retry after it completes.'});next();});
+ app.use('/api/product',productRouter(db));
  app.use('/api/account',accountSecurityRouter({db,audit,limiter:loginLimiter,onSessionRevoked:closeSessionAccess}));
  app.use('/api',(req,res,next)=>{for(const [key,value] of Object.entries(req.headers))if(key.startsWith('x-homecloud-')&&!Object.hasOwn(req.headers,key.replace('x-homecloud-','x-iclusters-')))req.headers[key.replace('x-homecloud-','x-iclusters-')]=value;next()});
  app.use('/api',(req,res,next)=>agentContext.run({host:String(req.headers['x-iclusters-docker-host']||'')},next));
@@ -225,9 +227,9 @@ export function createApp({authenticate=auth,authorize=requireRole,audit=writeAu
    if(needsConfirmation&&req.headers['x-iclusters-confirm']!==phrase){req.activityChallenge=true;return res.status(409).json({error:'confirmation_required',confirmationPhrase:phrase,sshTarget,approvalDescription:approval?.description});}
    if(sshTarget&&!consumeGrant(req.headers['x-iclusters-ssh-grant'],req.user.sub,req.method,req.path.replace(/^\/api/,''),req.body,approval?.scope||sshTarget))return res.status(428).json({error:'Target SSH authentication required',sshTarget,approvalDescription:approval?.description});
    let result;
-   try{result=await handler(req);}catch(error){await audit(req,label,resource,{error:error.message},'failed');throw error;}
+   try{result=await handler(req);}catch(error){countAction(db,req.user.sub,label,'failed');await audit(req,label,resource,{error:error.message},'failed');throw error;}
    monitor.invalidate();
-   const status=result?.task||result?.jobId?'queued':'success';res.locals.activityStatus=status;
+   const status=result?.task||result?.jobId?'queued':'success';res.locals.activityStatus=status;countAction(db,req.user.sub,label,status);
 
    await audit(req,label,resource,{result:result??null},status);
    res.json({ok:true,result,message:status==='queued'?'Task accepted. Check task history for completion.':'Operation completed.'});

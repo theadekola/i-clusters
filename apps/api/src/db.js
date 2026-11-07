@@ -1,3 +1,4 @@
+import {usageSchema} from './product-usage.js';
 import pg from 'pg';
 const { Pool } = pg;
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -16,6 +17,7 @@ export async function migrate() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       last_login TIMESTAMPTZ
     );
+    ${usageSchema}
     ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
     ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
     CREATE UNIQUE INDEX IF NOT EXISTS users_username_ci ON users(lower(username));

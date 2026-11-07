@@ -28,7 +28,13 @@ Infrastructure names, IP addresses, logs, filenames and prompts may contain pers
 - The optional host updater contacts the configured Git upstream, normally GitHub. Installation/build/update tooling also downloads selected packages and container images.
 - External documentation, repository, portfolio and social links open their respective sites when followed.
 
-The bundled application has no built-in advertising or analytics tracking service. This does not describe tracking added by an installation's hosting, proxy, browser extensions or modified builds. Third-party destinations apply their own policies; the operator chooses whether to configure them.
+## Product usage and voluntary feedback
+
+The controller automatically counts authenticated section visits and selected restore and snapshot API outcomes for product improvement. Each installation sends monthly totals hourly to www.i-clusters.com along with an installation key that changes every month and the software version. The receiving service estimates installation country from the controller's connection through Cloudflare. Queued operations count as accepted requests. Account IDs used for counting distinct active accounts stay in the local database. Only the current and preceding reporting months are retained locally.
+
+Open **Feedback & usage** on any signed-in page and clear **Include my activity in usage reports** to stop future counting for your account. Operators can disable usage reporting across the installation by setting `ICLUSTERS_USAGE_REPORTING=off` in the API environment and recreating the API container. Previously aggregated totals may persist. The website receives the network connection through its hosting providers.
+
+Feedback is optional and works independently of usage reporting. Before sending, the form shows the category, message, optional reply email, page and version. Submissions go to the private website administrator inbox. Avoid including credentials or infrastructure details.
 
 ## Browser storage and sessions
 
