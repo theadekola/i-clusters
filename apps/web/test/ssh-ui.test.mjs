@@ -3,7 +3,7 @@ import React,{act} from 'react';import {createRoot} from 'react-dom/client';impo
 const rootPath=fileURLToPath(new URL('../',import.meta.url));
 async function component(file){
  const directory=fs.mkdtempSync(path.join(rootPath,'node_modules','audit-ui-'));
- const result=await build({entryPoints:[path.join(rootPath,'src',file)],bundle:true,format:'esm',platform:'node',packages:'external',loader:{'.css':'empty'},jsx:'automatic',write:false,plugins:[{name:'fixture-api',setup(b){b.onResolve({filter:/^@xterm\//},()=>({path:'terminal',namespace:'terminal'}));b.onLoad({filter:/.*/,namespace:'terminal'},()=>({contents:`export class Terminal {options={};cols=100;rows=28;loadAddon(){}open(){}onData(fn){globalThis.__terminalInput=fn;return {dispose(){}}}write(text){globalThis.__terminalWrites?.push(text)}dispose(){}focus(){}getSelection(){return globalThis.__terminalSelection??'selected'}selectAll(){globalThis.__terminalSelection='all terminal output'}attachCustomKeyEventHandler(fn){globalThis.__terminalKey=fn}clear(){}paste(text){globalThis.__terminalInput(text)}}export class FitAddon{fit(){}}`}));b.onResolve({filter:/\/api$/},()=>({path:'fixture-api',namespace:'fixture'}));b.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:`export const clearTokens=()=>{};export const api=(...a)=>globalThis.__auditApi(...a);export const confirmedApi=(...a)=>globalThis.__auditConfirmed(...a);export function setDockerHost(id){localStorage.setItem('iclusters_docker_host',id);window.dispatchEvent(new Event('iclusters-connection'));}` }));}}]});
+ const result=await build({entryPoints:[path.join(rootPath,'src',file)],bundle:true,format:'esm',platform:'node',packages:'external',loader:{'.css':'empty'},jsx:'automatic',write:false,plugins:[{name:'fixture-api',setup(b){b.onResolve({filter:/^@xterm\//},()=>({path:'terminal',namespace:'terminal'}));b.onLoad({filter:/.*/,namespace:'terminal'},()=>({contents:`export class Terminal {options={};cols=100;rows=28;loadAddon(){}open(el){el.testTerminal=this}onData(fn){globalThis.__terminalInput=fn;return {dispose(){}}}write(text){globalThis.__terminalWrites?.push(text)}dispose(){}focus(){}getSelection(){return globalThis.__terminalSelection??'selected'}selectAll(){globalThis.__terminalSelection='all terminal output'}attachCustomKeyEventHandler(fn){globalThis.__terminalKey=fn}clear(){}paste(text){globalThis.__terminalInput(text)}}export class FitAddon{fit(){}}`}));b.onResolve({filter:/\/api$/},()=>({path:'fixture-api',namespace:'fixture'}));b.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:`export const clearTokens=()=>{};export const api=(...a)=>globalThis.__auditApi(...a);export const confirmedApi=(...a)=>globalThis.__auditConfirmed(...a);export function setDockerHost(id){localStorage.setItem('iclusters_docker_host',id);window.dispatchEvent(new Event('iclusters-connection'));}` }));}}]});
  const modulePath=path.join(directory,'component.mjs');fs.writeFileSync(modulePath,result.outputFiles[0].text);const module=await import(pathToFileURL(modulePath));return {module,cleanup:()=>fs.rmSync(directory,{recursive:true,force:true})};
 }
 async function mounted(file,props,api,mobile=true,strict=false,initialEntries=['/'],exportName='default',setup=()=>{}){
@@ -306,15 +306,29 @@ test('software progress shows confirmed milestones and becomes indeterminate whi
  }finally{await page.close()}
 });
 
-test('guest toolbar exposes OS Update and sizes 5–12 before Copy; completed update tab can be closed',async()=>{
+test('guest toolbar exposes OS Update and sizes 10–15 before Copy; completed update tab can be closed',async()=>{
  let closed=0;
  const props={...terminalProps,target:'lxc:pve:120',onUpdateSession(){}};
  const page=await mounted('components/SSHAccess.tsx',props,async()=>({}));
  try{
   const controls=[...page.container.querySelectorAll('.header-actions button,.header-actions select')];
   assert.deepEqual(controls.map(c=>c.getAttribute('aria-label')),['Guest OS updates','Font size','Copy selected text','Paste text','Fullscreen terminal']);
-  assert.equal(controls[0].textContent,'OS Update');assert.deepEqual([...controls[1].options].map(o=>o.value),['5','6','7','8','9','10','11','12']);
+  assert.equal(controls[0].textContent,'OS Update');assert.deepEqual([...controls[1].options].map(o=>o.value),['10','11','12','13','14','15']);
+  const icons=page.container.querySelector('.header-actions').querySelectorAll('svg'),sizes=[...icons].map(i=>i.outerHTML);
+  await act(async()=>{controls[1].value='15';controls[1].dispatchEvent(new Event('change',{bubbles:true}))});
+  assert.equal(page.container.querySelector('.ssh-terminal').testTerminal.options.fontSize,15);
+  assert.deepEqual([...icons].map(i=>i.outerHTML),sizes);
  }finally{await page.close()}
  const update=await mounted('components/SSHAccess.tsx',{...props,updateTab:true,onDisconnect(){closed++}},async path=>path.endsWith('/output')?new Response(JSON.stringify({output:'',closed:true,updateResult:{osVersion:'Debian GNU/Linux 12',rebootRequired:true}})+'\n'):{});
- try{const dialog=update.container.querySelector('[role=dialog]');assert.match(dialog.textContent,/OS update successful/);assert.match(dialog.textContent,/Debian GNU\/Linux 12/);assert.match(dialog.textContent,/reboot is required/);await update.click([...dialog.querySelectorAll('button')].find(b=>b.textContent==='Close update shell'));assert.equal(closed,1)}finally{await update.close()}
+ try{const dialog=update.container.querySelector('[role=dialog]');assert.match(dialog.textContent,/OS update successful/);assert.match(dialog.textContent,/Debian GNU\/Linux 12/);assert.match(dialog.textContent,/reboot is required/);await update.click([...dialog.querySelectorAll('button')].find(b=>b.textContent==='Restart CT'));assert.match(document.body.querySelector('[role=dialog]').textContent,/pve \/ 120/);await update.click([...document.body.querySelectorAll('button')].find(b=>b.textContent==='Later'));await update.click([...update.container.querySelectorAll('button')].find(b=>b.textContent==='Close update shell'));assert.equal(closed,1)}finally{await update.close()}
+});
+
+test('VM update offers a restart only when requested by the guest, without issuing power commands on open',async()=>{
+ for(const required of [false,true]){
+  const calls=[];
+  const page=await mounted('components/SSHAccess.tsx',{...terminalProps,target:'vm:node01:103',updateTab:true},async path=>{calls.push(path);return path.endsWith('/output')?new Response(JSON.stringify({output:'',closed:true,updateResult:{osVersion:'Ubuntu',rebootRequired:required}})+'\n'):{}});
+  try{const button=[...page.container.querySelectorAll('button')].find(b=>b.textContent==='Restart VM');assert.equal(!!button,required);
+   if(button){await page.click(button);assert.match(document.body.querySelector('[role=dialog]').textContent,/node01 \/ 103/);assert.ok(!calls.some(path=>path.startsWith('/actions/')))}
+  }finally{await page.close()}
+ }
 });
