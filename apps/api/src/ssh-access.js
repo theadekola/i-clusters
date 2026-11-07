@@ -1,4 +1,4 @@
-import {guestUpdateCommand,assertGuestUpdateSession} from './guest-package-update.js';
+import {guestUpdateCommand,assertGuestUpdateSession,completedGuestUpdate} from './guest-package-update.js';
 import {verifySSHHostKey} from './ssh-host-trust.js';
 import {passwordAuthentication} from './ssh-password.js';
 import {approvalTargetForPath,resolveActionApproval} from './action-approval.js';
@@ -66,10 +66,11 @@ export async function openGuestUpdate(id,user,loginId,resolveHost){
   // Releasing this tab must close only its channel, never the original terminal.
   const child={user,sessionId:loginId,mode:'shell',updateChannel:true,client:{end:()=>stream.close()},stream,output:'',closed:false,touched:Date.now()};
   const append=text=>{child.output=(child.output+text).slice(-262144);child.onOutput?.();};
-  stream.on('data',chunk=>append(decoder.write(chunk)));
+  let tail='';
+  stream.on('data',chunk=>{const text=decoder.write(chunk);tail=(tail+text).slice(-512);append(text)});
   const finish=message=>{if(child.closed)return;child.closed=true;parent.updating=false;append(decoder.end()+message);};
   stream.on('error',()=>finish('\r\nUpdate channel interrupted.'));
-  stream.on('close',code=>finish(code===0?'\r\nUpdate session finished.':'\r\nUpdate session ended without a successful exit.'));
+  stream.on('close',code=>{if(child.closed)return;child.updateResult=completedGuestUpdate(code,tail);finish(code===0?'\r\nUpdate session finished.':'\r\nUpdate session ended without a successful exit.')});
   sessions.set(childId,child);return {id:childId};
  }catch(error){parent.updating=false;throw error;}
 }

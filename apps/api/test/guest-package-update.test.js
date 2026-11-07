@@ -30,3 +30,10 @@ test('guest updates use a separate PTY on the verified connection, bound to the 
   assert.deepEqual(commands,[guestUpdateCommand,guestUpdateCommand]);
  }finally{for(const client of clients)client.end();server.close()}
 });
+
+import {completedGuestUpdate} from '../src/guest-package-update.js';
+test('success requires both an applied-update receipt and a successful process exit',()=>{
+ const receipt='done\r\nICLUSTERS_UPDATE_RESULT=1|Ubuntu 24.04.3 LTS\r\n';
+ assert.deepEqual(completedGuestUpdate(0,receipt),{osVersion:'Ubuntu 24.04.3 LTS',rebootRequired:true});
+ for(const [code,output] of [[1,receipt],[undefined,receipt],[0,'No packages installed.'],[0,receipt+'more output']])assert.equal(completedGuestUpdate(code,output),null);
+});

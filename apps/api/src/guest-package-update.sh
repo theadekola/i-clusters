@@ -10,5 +10,9 @@ as_root apt-get -o APT::Update::Error-Mode=any update
 apt-get -s upgrade
 printf "Apply the available package upgrades to this guest? [y/N] "
 read -r answer
-case "$answer" in y|Y|yes|YES) as_root apt-get --no-remove upgrade;; *) echo "No packages installed."; exit 0;; esac
+case "$answer" in y|Y|yes|YES) as_root apt-get --yes --no-remove upgrade;; *) echo "No packages installed."; exit 0;; esac
 if [ -e /var/run/reboot-required ]; then echo "A guest reboot is required."; fi
+. /etc/os-release
+reboot=0
+[ ! -e /var/run/reboot-required ] || reboot=1
+printf '\nICLUSTERS_UPDATE_RESULT=%s|%s\n' "$reboot" "${PRETTY_NAME:-${ID} ${VERSION_ID:-}}"

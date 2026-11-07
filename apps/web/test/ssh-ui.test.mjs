@@ -33,7 +33,7 @@ test('terminal preserves long paste order, reports unsupported controls and surv
   const text='a'.repeat(8191)+'😀'+'b'.repeat(9000);
   await act(async()=>{globalThis.__terminalInput(text);globalThis.__terminalInput('last');await tick();});
   const chunks=calls.filter(c=>c.init?.body).map(c=>JSON.parse(c.init.body).input).filter(x=>x!==undefined);assert.equal(chunks.join(''),text+'last');assert.ok(chunks.every(x=>x.length<=8192));
-  const buttons=[...page.container.querySelectorAll('.shell-session-toolbar button')];assert.equal(buttons.length,4);assert.ok(buttons.every(b=>b.getAttribute('aria-label')&&b.textContent.trim()===''));const terminal=page.container.querySelector('.ssh-terminal');await page.click(page.container.querySelector('[aria-label="Fullscreen terminal"]'));assert.ok(page.container.querySelector('.terminal-expanded'));assert.equal(page.container.querySelector('.ssh-terminal'),terminal);await page.click(page.container.querySelector('[aria-label="Exit fullscreen terminal"]'));assert.equal(page.container.querySelector('.terminal-expanded'),null);assert.equal(page.container.querySelector('.ssh-terminal'),terminal);
+  const buttons=[...page.container.querySelectorAll('.shell-session-toolbar button')];assert.equal(buttons.length,3);assert.ok(buttons.every(b=>b.getAttribute('aria-label')&&b.textContent.trim()===''));const terminal=page.container.querySelector('.ssh-terminal');await page.click(page.container.querySelector('[aria-label="Fullscreen terminal"]'));assert.ok(page.container.querySelector('.terminal-expanded'));assert.equal(page.container.querySelector('.ssh-terminal'),terminal);await page.click(page.container.querySelector('[aria-label="Exit fullscreen terminal"]'));assert.equal(page.container.querySelector('.terminal-expanded'),null);assert.equal(page.container.querySelector('.ssh-terminal'),terminal);
  }finally{await page.close();await tick();delete globalThis.__terminalInput;}
  assert.equal(calls.filter(c=>c.init?.method==='DELETE').length,1);
 });
@@ -181,7 +181,7 @@ const terminalButton=(page,label)=>[...page.container.querySelectorAll('.shell-s
 const terminalProps={target:'node:fixture',sessionId:'fixture',name:'Fixture',active:true};
 test('terminal toolbar copies selected output, selects all and pastes through the ordered SSH input queue',async()=>{
  const copied=[],inputs=[];const page=await mounted('components/SSHAccess.tsx',terminalProps,async(p,o)=>{if(o?.body){const b=JSON.parse(o.body);if(b.input)inputs.push(b.input)}return {output:'',closed:false}},false,false,['/'],'default',win=>Object.defineProperty(win.navigator,'clipboard',{value:{writeText:async text=>copied.push(text),readText:async()=> 'echo clipboard text'}}));
- try{await page.click(terminalButton(page,'Copy'));assert.deepEqual(copied,['selected']);await page.click(terminalButton(page,'Select All'));await page.click(terminalButton(page,'Copy'));assert.equal(copied[1],'all terminal output');await page.click(terminalButton(page,'Paste'));await tick();assert.equal(inputs.join(''),'echo clipboard text');assert.match(page.container.textContent,/Ctrl\+Shift\+C/)}finally{await page.close();delete globalThis.__terminalSelection;delete globalThis.__terminalKey}
+ try{await page.click(terminalButton(page,'Copy'));assert.deepEqual(copied,['selected']);await act(async()=>page.container.querySelector('.ssh-terminal').dispatchEvent(new page.dom.window.MouseEvent('contextmenu',{bubbles:true,cancelable:true})));await page.click([...page.container.querySelectorAll('[role=dialog] button')].find(b=>b.textContent==='Select All'));await page.click(terminalButton(page,'Copy'));assert.equal(copied[1],'all terminal output');await page.click(terminalButton(page,'Paste'));await tick();assert.equal(inputs.join(''),'echo clipboard text');assert.match(page.container.textContent,/Ctrl\+Shift\+C/)}finally{await page.close();delete globalThis.__terminalSelection;delete globalThis.__terminalKey}
 });
 test('terminal clipboard fallback retains copied output and only sends manually pasted text on Insert',async()=>{
  const inputs=[],page=await mounted('components/SSHAccess.tsx',terminalProps,async(p,o)=>{if(o?.body){const b=JSON.parse(o.body);if(b.input)inputs.push(b.input)}return {output:'',closed:false}});
@@ -304,4 +304,17 @@ test('software progress shows confirmed milestones and becomes indeterminate whi
  const page=await mounted('components/UpdateButton.tsx',{showLabel:true},async()=>{if(offline)throw Error('Service restarting');return status},true,false,['/'],'default',win=>{win.setInterval=fn=>{poll=fn;return 1};win.clearInterval=()=>{}});
  try{await page.click(page.container.querySelector('button'));const bar=()=>document.body.querySelector('progress');assert.equal(bar().value,35);assert.match(document.body.textContent,/Downloading the reviewed release/);offline=true;await act(async()=>{poll();await tick()});assert.equal(bar().hasAttribute('value'),false);assert.match(document.body.textContent,/cannot read live progress/);offline=false;status={...status,progress:{...status.progress,percent:80,stage:'Starting services and checking health'}};await act(async()=>{poll();await tick()});assert.equal(bar().value,80);status={...status,state:'completed',available:false,progress:{...status.progress,percent:100,stage:'Update installed and health checks passed'}};await act(async()=>{poll();await tick()});assert.equal(bar().value,100);assert.match(document.body.textContent,/health checks passed/);status={...status,progress:undefined};await act(async()=>{poll();await tick()});assert.equal(bar().value,100,'A confirmed legacy completion also finishes the bar');
  }finally{await page.close()}
+});
+
+test('guest toolbar exposes OS Update and sizes 5–12 before Copy; completed update tab can be closed',async()=>{
+ let closed=0;
+ const props={...terminalProps,target:'lxc:pve:120',onUpdateSession(){}};
+ const page=await mounted('components/SSHAccess.tsx',props,async()=>({}));
+ try{
+  const controls=[...page.container.querySelectorAll('.header-actions button,.header-actions select')];
+  assert.deepEqual(controls.map(c=>c.getAttribute('aria-label')),['Guest OS updates','Font size','Copy selected text','Paste text','Fullscreen terminal']);
+  assert.equal(controls[0].textContent,'OS Update');assert.deepEqual([...controls[1].options].map(o=>o.value),['5','6','7','8','9','10','11','12']);
+ }finally{await page.close()}
+ const update=await mounted('components/SSHAccess.tsx',{...props,updateTab:true,onDisconnect(){closed++}},async path=>path.endsWith('/output')?new Response(JSON.stringify({output:'',closed:true,updateResult:{osVersion:'Debian GNU/Linux 12',rebootRequired:true}})+'\n'):{});
+ try{const dialog=update.container.querySelector('[role=dialog]');assert.match(dialog.textContent,/OS update successful/);assert.match(dialog.textContent,/Debian GNU\/Linux 12/);assert.match(dialog.textContent,/reboot is required/);await update.click([...dialog.querySelectorAll('button')].find(b=>b.textContent==='Close update shell'));assert.equal(closed,1)}finally{await update.close()}
 });

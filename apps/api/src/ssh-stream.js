@@ -14,7 +14,7 @@ export function streamShellOutput(req,res,session,{lifetime=15000,maxPending=104
   if(res.destroyed||res.writableEnded){cleanup();return;}
   if(res.writableLength>maxPending){cleanup();res.destroy();return;}
   const output=session.output;session.output='';
-  if(output||session.closed)res.write(JSON.stringify({output,closed:session.closed})+'\n');
+  if(output||session.closed)res.write(JSON.stringify({output,closed:session.closed,...(session.closed&&session.updateResult?{updateResult:session.updateResult}:{})})+'\n');
   if(session.closed)finish();
  };
  const timer=setTimeout(finish,lifetime);timer.unref?.();
