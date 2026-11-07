@@ -23,7 +23,8 @@ function textChildren(value:any,locale:ReturnType<typeof useLocale>):any{
 export function LocalizedElement({as,...original}:any){
  const locale=useLocale(),parentRaw=useContext(Verbatim),verbatim=parentRaw||original.translate==='no'||['pre','code','kbd','samp','textarea','script','style'].includes(as)||technical.test(original.className||'');
  const props={...original};delete props.__localeRawAttrs;
- if(!verbatim){for(const key of ['title','placeholder','aria-label','aria-description','alt'])if(typeof props[key]==='string'&&!original.__localeRawAttrs?.includes(key))props[key]=translate(props[key],locale);props.children=textChildren(props.children,locale)}
+ if(!parentRaw&&original.translate!=='no'&&(!verbatim||as==='textarea')){for(const key of ['title','placeholder','aria-label','aria-description','alt'])if(typeof props[key]==='string'&&!original.__localeRawAttrs?.includes(key))props[key]=translate(props[key],locale)}
+ if(!verbatim)props.children=textChildren(props.children,locale);
  if(as==='option'&&original.value===undefined){const value=plain(original.children);if(value!==undefined)props.value=value}
  if(verbatim&&props.dir===undefined&&!['pre','code','textarea','script','style'].includes(as))props.dir='auto';
  const element=React.createElement(as,props);return verbatim&&!parentRaw?React.createElement(Verbatim.Provider,{value:true},element):element;
