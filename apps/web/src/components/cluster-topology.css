@@ -70,3 +70,16 @@
  .cluster-topology-guests{grid-template-columns:minmax(0,1fr);gap:10px;padding-top:32px}
  .cluster-topology .cluster-topology-guest{min-height:80px}
 }
+.topology-shell.expanded,.topology-shell:fullscreen{position:fixed;inset:0;z-index:900;background:var(--theme-surface,#0d1b2c);overflow:auto}
+.topology-shell.expanded>.cluster-topology{display:flex;flex-direction:column;box-sizing:border-box;min-height:100%;height:100dvh}
+.topology-shell.expanded .cluster-topology-viewport{flex:1;min-height:12rem}
+@media(min-width:901px){
+ .cluster-topology-canvas{display:flex;align-items:center;justify-content:center;gap:clamp(44px,6vw,100px)}
+ .cluster-topology-root{width:150px;margin:0}
+ .cluster-topology-nodes{flex-direction:row;display:grid;gap:40px;padding:0}
+ .cluster-topology-branch{display:grid;grid-template-columns:180px 220px;gap:clamp(44px,6vw,100px);align-items:center;width:auto;min-width:0;padding:0}
+ .cluster-topology .cluster-topology-node{width:100%;background:var(--theme-input,#112336)}
+ .cluster-topology-guests{grid-template-columns:1fr;padding:0;gap:8px}
+}
+@keyframes topology-flow{to{stroke-dashoffset:-24}}
+@media(prefers-reduced-motion:no-preference){.cluster-topology-links path{animation:topology-flow 2.2s linear infinite}}
