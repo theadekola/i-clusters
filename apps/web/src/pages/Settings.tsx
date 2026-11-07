@@ -1,3 +1,4 @@
+import ProductFeedback from '../components/ProductFeedback';
 import {getLocale,useLocale,languages,translate} from '../i18n/locale';
 import {settingsCategory,settingsTitle} from '../page-navigation';
 import ReportLoading from '../components/ReportLoading';
@@ -41,7 +42,7 @@ function SettingsOverview({category,change}:{category:string;change:(tab:string)
  const show=(section:string,title:string,keywords='')=>category===section&&`${title} ${translate(title)} ${keywords} ${translate(keywords)}`.toLowerCase().includes(search.toLowerCase());
  const info=(label:string,value:any)=><div className="settings-fact" key={label}><span>{label}</span><b>{value??'Not reported'}</b></div>;
  const nav=<nav className="settings-overview-tabs tabs" aria-label="Settings sections">{categories.map(([name,Icon])=><button type="button" key={name} className={`tab ${category===name?'active':''}`} aria-current={category===name?'page':undefined} aria-busy={busy} disabled={busy} onClick={()=>section(name)}><Icon size={16}/>{name}</button>)}</nav>;
- return <><div className="settings-overview-heading"><PageIcon name="settings" size={31}/><div><h1>{settingsTitle(category)}</h1><p>Configure and customize your i-Clusters.</p></div><div className="settings-overview-actions"><label className="settings-search"><Search size={17}/><input aria-label="Search settings" placeholder="Search settings…" value={search} onChange={e=>setSearch(e.target.value)}/></label></div></div>{nav}
+ return <><div className="settings-overview-heading"><PageIcon name="settings" size={31}/><div><h1>{settingsTitle(category)}</h1><p>Configure and customize your i-Clusters.</p></div><div className="settings-overview-actions"><label className="settings-search"><Search size={17}/><input aria-label="Search settings" placeholder="Search settings…" value={search} onChange={e=>setSearch(e.target.value)}/></label>{category==='General'&&<ProductFeedback/>}</div></div>{nav}
  {(error||live.error||session.error)&&<p className="error" role="alert">{error||live.error||session.error}</p>}{message&&<p role="status" className="settings-save-message"><CheckCircle size={17}/>{message}</p>}
  {live.loading&&!data&&<Card><p><ReportLoading/></p></Card>}{live.error&&!data&&<button type="button" className="btn secondary" onClick={()=>live.refresh()}>Retry settings</button>}
  {data&&<><div className={`settings-overview-grid ${category==='System'?'system-settings-grid':category==='Security'?'security-settings-grid':category==='Appearance'?'appearance-settings-grid':category==='About'?'about-settings-grid':''}`}>

@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
-import {MessageSquare} from 'lucide-react';
+import {MessageSquare, MessagesSquare, Send, Rocket, TriangleAlert, ChartColumn, Star} from 'lucide-react';
 import './product-feedback.css';
 import {api} from '../api';
 import {Modal} from './UI';
@@ -8,19 +8,25 @@ type Preferences={enabled:boolean;available:boolean;version:string};
 const sections=new Set('proxmox docker storage network backups restore schedules retention monitoring alerts ai users settings tools'.split(' '));
 const post=(data:unknown)=>({method:'POST',body:JSON.stringify(data)});
 
-export default function ProductFeedback({path,search}:{path:string;search:string}){
+export function ProductVisit({path,search}:{path:string;search:string}){
  const segment=path.split('/')[1]||'dashboard';
  const tab=new URLSearchParams(search).get('tab');
  const page=segment==='backups'&&tab==='Restore Points'?'restore':sections.has(segment)?segment:'dashboard';
- const [open,setOpen]=useState(false),[pref,setPref]=useState<Preferences|null>(null);
- const [category,setCategory]=useState('general'),[message,setMessage]=useState(''),[email,setEmail]=useState('');
- const [error,setError]=useState(''),[sent,setSent]=useState(false),[busy,setBusy]=useState(false);
- const previous=useRef(''),submission=useRef({key:'',id:''}),[context,setContext]=useState(page);
+ const previous=useRef('');
  useEffect(()=>{
   if(previous.current===page)return;
   previous.current=page;
   void api('/product/visit',post({feature:page})).catch(()=>{});
  },[page]);
+ return null;
+}
+
+export default function ProductFeedback(){
+ const context='settings';
+ const [open,setOpen]=useState(false),[pref,setPref]=useState<Preferences|null>(null);
+ const [category,setCategory]=useState('general'),[message,setMessage]=useState(''),[email,setEmail]=useState('');
+ const [error,setError]=useState(''),[sent,setSent]=useState(false),[busy,setBusy]=useState(false);
+ const submission=useRef({key:'',id:''});
  useEffect(()=>{
   if(!open)return;
   let active=true;
@@ -43,16 +49,18 @@ export default function ProductFeedback({path,search}:{path:string;search:string
    setSent(true);setMessage('');setEmail('');submission.current={key:'',id:''};
   }catch(e:any){setError(e.message)}finally{setBusy(false)}
  }
- return <><details className="product-reporting"><summary>Help, feedback and usage reporting</summary><p>Monthly usage totals help improve i-Clusters. You can turn off reporting for your account.</p><button type="button" className="btn secondary small" onClick={()=>{setOpen(true);setContext(page);setSent(false);setError('')}}><MessageSquare size={16}/> Feedback &amp; usage</button></details>
- <Modal open={open} title="Feedback and usage" closeDisabled={busy} onClose={()=>setOpen(false)}>
- <p>i-Clusters automatically shares monthly feature counts, active account totals and selected action results to improve the software. The reporting service estimates the installation country.</p>
- {pref&&<label><input type="checkbox" checked={pref.enabled} disabled={busy||!pref.available} onChange={changeReporting}/> Include my activity in usage reports</label>}
- {sent?<p role="status">Feedback received. Thank you.</p>:<form className="form-grid" onSubmit={submit}>
+ return <><button type="button" className="btn secondary feedback-trigger" aria-haspopup="dialog" onClick={()=>{setOpen(true);setSent(false);setError('')}}><MessageSquare size={17}/> Feedback &amp; usage</button>
+ <Modal open={open} title="Feedback & Usage" closeDisabled={busy} onClose={()=>setOpen(false)}>
+ <div className="feedback-columns">
+ <aside className="feedback-guide"><MessagesSquare className="feedback-art" aria-hidden="true"/><h3>We Value Your Feedback</h3><p>Tell us what’s working well, what we can improve, or what you’d like to see next.</p>
+ <ul><li><Rocket/>Suggest a Feature</li><li><TriangleAlert/>Report an Issue</li><li><ChartColumn/>Share Your Experience</li><li><Star/>General Feedback</li></ul></aside>
+ <section className="feedback-panel"><h3><Send size={22}/> Send Feedback</h3><p>Your message goes privately to the i-Clusters team.</p>
+ {pref&&<label className="feedback-choice"><input type="checkbox" checked={pref.enabled} disabled={busy||!pref.available} onChange={changeReporting}/> Include my activity in usage reports</label>}
+ {sent?<p role="status">Feedback received. Thank you.</p>:<form onSubmit={submit}>
  <label>Feedback type<select value={category} onChange={e=>setCategory(e.target.value)}><option value="general">General feedback</option><option value="problem">Report a problem</option><option value="idea">Suggest a feature</option></select></label>
- <label>Message<textarea required maxLength={3000} value={message} onChange={e=>setMessage(e.target.value)}/></label>
- <label>Reply email (optional)<input type="email" maxLength={254} value={email} onChange={e=>setEmail(e.target.value)}/></label>
- <p>Your message goes privately to the i-Clusters team. Included page and version: {context} · {pref?.version}</p>
- <button className="btn primary" disabled={busy||!pref||!message.trim()}>Send feedback</button></form>}
- {error&&<p role="alert">{error}</p>}
+ <label>Message<textarea required rows={4} maxLength={1000} value={message} onChange={e=>setMessage(e.target.value)}/></label><small className="feedback-count">{message.length} / 1000</small>
+ <label>Reply email (optional)<input type="email" autoComplete="email" maxLength={254} value={email} onChange={e=>setEmail(e.target.value)}/></label>
+ <button className="btn primary" disabled={busy||!message.trim()}><Send size={16}/> Send feedback</button></form>}
+ {error&&<p role="alert">{error}</p>}</section></div>
  </Modal></>;
 }
