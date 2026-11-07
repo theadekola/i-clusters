@@ -205,3 +205,4 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
 .overview-resources .resource-history-empty{display:flex;align-items:center;min-height:72px;font-size:11px}
 
 .content .overview-v2 .resource-tile>.recharts-responsive-container{display:block}
+.content .health-layout .actual-health small{font-size:10px!important;line-height:1.15;text-align:center;max-width:78%;overflow-wrap:anywhere}
