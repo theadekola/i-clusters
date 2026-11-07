@@ -83,3 +83,19 @@
 }
 @keyframes topology-flow{to{stroke-dashoffset:-24}}
 @media(prefers-reduced-motion:no-preference){.cluster-topology-links path{animation:topology-flow 2.2s linear infinite}}
+.topology-filters{display:flex;gap:16px;flex-wrap:wrap;margin:12px 0}
+.topology-filters label{display:grid;gap:6px}
+.cluster-topology-legend label{display:flex;align-items:center;gap:8px}
+.cluster-topology-viewport{cursor:grab;touch-action:pan-x pan-y}
+.cluster-topology-viewport:active{cursor:grabbing}
+.cluster-topology-viewport[data-layout] .cluster-topology-canvas{display:block;width:max-content;min-width:100%;padding:28px 40px}
+.cluster-topology-viewport[data-layout] .cluster-topology-root{width:180px;margin:auto}
+.cluster-topology-viewport[data-layout] .cluster-topology-nodes{display:flex;flex-direction:column;align-items:center;gap:54px;padding-top:60px}
+.cluster-topology-viewport[data-layout] .cluster-topology-branch{display:block;width:auto;min-width:0;padding:0 18px}
+.cluster-topology-viewport[data-layout] .cluster-topology-node{width:220px;margin:auto}
+.cluster-topology-viewport[data-layout] .cluster-topology-guests{display:grid;grid-template-columns:repeat(var(--topology-columns),220px);gap:24px;padding-top:50px}
+.cluster-topology-viewport[data-layout="vertical"] .cluster-topology-guests{grid-template-columns:220px}
+.topology-attachments{margin:8px 0 0 28px;border-left:1px dashed #57cbd8;padding-left:14px;text-align:left;display:grid;gap:8px}
+.topology-attachment{position:relative;display:flex;gap:6px;align-items:flex-start;font-size:11px;padding:7px;border:1px solid var(--theme-border,#31506f);border-radius:7px;overflow-wrap:anywhere}
+.topology-attachment:before{content:'';position:absolute;left:-15px;top:15px;width:14px;border-top:1px dashed #57cbd8}
+.topology-attachment span{min-width:0;flex:1}
