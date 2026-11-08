@@ -1,6 +1,5 @@
 import {useLayoutEffect,useRef} from 'react';
 import {useLocation,useNavigate,useSearchParams} from 'react-router-dom';
-import {Terminal} from 'lucide-react';
 import {Badge} from './UI';
 import './guest-inventory.css';
 
@@ -54,11 +53,10 @@ export function GuestStatus({status}:{status:string}){
  return <span className="guest-status" ref={ref}><Badge tone={status==='running'?'green':status==='stopped'?'red':'gray'}>{status||'Unknown'}</Badge></span>;
 }
 
-export function MobileGuestList({guests,kind,selected,select,openShell,canShell}:{guests:Guest[];kind:Kind;selected:string;select:(id:string)=>void;openShell:(guest:Guest)=>void;canShell:boolean}){
+export function MobileGuestList({guests,kind,selected,select}:{guests:Guest[];kind:Kind;selected:string;select:(id:string)=>void}){
  return <div className="mobile-guest-list">{guests.map(guest=><div className="mobile-guest-row" key={guest.id}>
   <button className="guest-identity" aria-pressed={selected===String(guest.id)} onClick={()=>select(String(guest.id))}>
    <span><b>{guest.name}</b><small>{kind==='vm'?'VM':'CT'} {guest.id} · {guest.node}</small></span><GuestStatus status={guest.status}/>
   </button>
-  {canShell&&<button className="icon-btn" aria-label="Shell" aria-description={guest.name} title="Shell" onClick={()=>openShell(guest)}><Terminal size={18}/></button>}
  </div>)}</div>;
 }

@@ -1,8 +1,8 @@
 .mobile-guest-list{display:none}
 .guest-status{border-radius:5px;outline:2px solid transparent}
-.vm-detail-actions details summary{cursor:pointer;padding:10px;font-weight:600}
-.vm-detail-actions details[open]{grid-column:1/-1}
-.vm-detail-actions details[open]>button{margin:2px}
+.guest-inventory .vm-power-actions{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.guest-inventory .vm-power-actions>button{padding:9px 4px;gap:4px}
+.guest-inventory .vm-power-actions>button>svg{flex-shrink:0}
 @media(max-width:700px){
  .guest-inventory .vm-list-card>.table-wrap,.guest-inventory .vm-list-card>.vm-card-grid,.guest-inventory .vm-layout{display:none}
  .guest-inventory .mobile-guest-list{display:grid;gap:5px}
@@ -11,5 +11,4 @@
  .guest-identity[aria-pressed=true]{background:var(--theme-highlight);border-radius:6px}
  .guest-identity b,.guest-identity small{display:block;overflow-wrap:anywhere}
  .guest-identity small{color:var(--theme-muted)}
- .mobile-guest-row>.icon-btn{min-width:44px;min-height:44px}
 }

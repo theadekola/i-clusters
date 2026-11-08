@@ -289,7 +289,11 @@ test('Back from a guest Shell restores the filtered inventory, guest and scroll 
    let restored;
    page.dom.window.scrollY=320;
    page.dom.window.scrollTo=(_x,y)=>{restored=y};
-   await page.click(list().querySelector('[aria-label=Shell]'));
+   assert.equal(page.container.querySelector('.vm-list-card [aria-label=Shell]'),null);
+   const power=page.container.querySelector('.vm-power-actions');
+   assert.deepEqual([...power.querySelectorAll('button')].map(button=>button.textContent.trim()),['Start','Shutdown','Reboot']);
+   assert.equal(page.container.querySelector('.vm-detail-actions details'),null);
+   await page.click(button(page,'Shell'));
    assert.equal(list(),null);
    assert.equal(page.container.querySelector('[data-location]').dataset.location,'/tools/shell?target='+encodeURIComponent(kind+':n2:'+id));
    await page.click(button(page,'Audit Back'));
