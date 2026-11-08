@@ -121,13 +121,13 @@ test('Backup Jobs has six cards and orders enabled upcoming schedules',async()=>
 });
 
 const backupTabApi=async p=>p==='/auth/me'?{user:{role:'viewer'}}:p==='/backups'?{jobs:[],points:[],errors:[],providerInventory:{jobs:{configured:false,complete:false}},archiveInventory:{configured:false,complete:false}}:p==='/restore'?{points:[],snapshots:[],errors:[],providerInventory:{snapshots:{configured:false,complete:false}},archiveInventory:{configured:false,complete:false}}:p==='/schedules'?{items:[],truenas:[],errors:[],providerInventory:{items:{configured:false,complete:false},truenas:{configured:false,complete:false}}}:p==='/retention'?{policies:[],truenas:[],errors:[],providerInventory:{policies:{configured:false,complete:false}}}:p.startsWith('/proxmox/tasks')?{tasks:[],errors:['No visible nodes'],coverage:{complete:false}}:p==='/proxmox/storage'?{resources:[],errors:['No visible nodes'],coverage:{complete:false}}:{nodes:[],vms:[],lxc:[]};
-test('all backup tabs preserve URL context, support history and do not present unavailable inventory as zero',async()=>{
- const page=await mounted('pages/Backups.tsx',{},backupTabApi,true,false,'/backups?keep=1&archive=chosen');
+test('backup tab changes preserve the node, clear view-specific context and support history with unknown inventory',async()=>{
+ const page=await mounted('pages/Backups.tsx',{},backupTabApi,true,false,'/backups?node=n1&keep=1&archive=chosen');
  try{
   const metric=label=>[...page.container.querySelectorAll('.metric-grid .card')].find(e=>e.querySelector('small')?.textContent===label)?.querySelector('strong')?.textContent;
   assert.equal(metric('Backup Archives'),'Unknown');
   for(const [tab,label] of [['Restore Points','Total Restore Points'],['Schedules','Total Schedules'],['Retention Policies','Known Archive Data'],['Destinations',null],['Reports',null]]){
-   await page.click(button(page,tab));const params=new URLSearchParams(route(page).split('?')[1]);assert.equal(params.get('keep'),'1');assert.equal(params.get('archive'),'chosen');assert.equal(params.get('tab'),tab);
+   await page.click(button(page,tab));const params=new URLSearchParams(route(page).split('?')[1]);assert.equal(params.get('node'),'n1');assert.equal(params.has('keep'),false);assert.equal(params.has('archive'),false);assert.equal(params.get('tab'),tab);
    assert.equal(page.container.querySelector('.tabs .active').textContent,tab);
    if(label)assert.equal(metric(label),'Unknown',label);
    if(tab==='Reports'){const archive=[...page.container.querySelectorAll('.card')].find(c=>c.querySelector('h3')?.textContent==='Backup Archive Data');assert.equal(archive.querySelector('strong').textContent,'Unknown');}

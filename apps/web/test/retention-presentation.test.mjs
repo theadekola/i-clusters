@@ -1,5 +1,6 @@
-import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import ts from 'typescript';
-const code=ts.transpileModule(fs.readFileSync(new URL('../src/retention-presentation.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext}}).outputText;
+import test from 'node:test';import assert from 'node:assert/strict';import {fileURLToPath} from 'node:url';import {build} from 'esbuild';
+const bundle=await build({entryPoints:[fileURLToPath(new URL('../src/retention-presentation.ts',import.meta.url))],bundle:true,format:'esm',platform:'node',write:false});
+const code=bundle.outputFiles[0].text;
 const {retentionRule,policyMatchesArchive}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
 test('provider object and textual retention forms normalize to equivalent editable rules',()=>{const object=retentionRule({'keep-last':7,'keep-daily':'14','keep-weekly':4}),text=retentionRule('keep-last=7,keep-daily=14,keep-weekly=4');assert.deepEqual(object,text);assert.equal(object.configured,true);assert.equal(object.items[1].value,'Keep 14');});
 test('invalid nested, duplicate, prototype and boolean settings remain unconfigured',()=>{for(const value of [{'keep-last':true},{'keep-daily':{}},{'keep-weekly':-1},'keep-last=7,keep-last=2',JSON.parse('{"__proto__":7}'),{'keep-last':0}]){const rule=retentionRule(value);assert.equal(rule.valid,false);assert.equal(rule.configured,false);assert.ok(rule.issues.length);assert.ok(!rule.text.includes('[object Object]'));}assert.equal(retentionRule(null).configured,false);assert.equal(retentionRule({'keep-last':7,'keep-daily':0}).configured,true);});
