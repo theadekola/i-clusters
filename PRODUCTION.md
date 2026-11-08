@@ -217,8 +217,11 @@ HTTPS origin. The page checks the API/database and frontend separately, links to
 the direct health endpoint for native browser TLS errors, and offers an explicit
 reset of only the root-scoped service worker. No cookies, credentials or server
 records are cleared. Close other dashboard tabs before resetting and reopen after.
-An older worker may still mask a TLS error until browser trust is repaired; use a
-fresh browser to inspect the direct health endpoint. A QR code is an address, not
+If an existing tab only says “Loading i-Clusters…”, enter `/api/health` on
+the same installation in the address bar. The browser can then show a certificate
+warning directly. After an update, the recovery screen offers same-tab diagnostics
+and a network retry. Refresh that tab after restoring connectivity or establishing
+certificate trust. Clearing browser data is unnecessary. A QR code is an address, not
 proof that a remote device can reach it.
 
 Settings → Security → **Browser Certificate Setup** provides an explicit public-root check, SHA-256 fingerprint and download, with device installation instructions. Compare the fingerprint using the server command below before trusting it. This does not modify device trust or bypass a browser warning; the dashboard must first be reachable. The fixed `/local-ca.crt` endpoint serves only Caddy’s public root and returns unavailable when no local root exists. It never serves private keys.

@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {build} from 'esbuild';
 const built=await build({entryPoints:[new URL('../src/service-worker.ts',import.meta.url).pathname],bundle:true,format:'iife',globalName:'worker',write:false});
-function setup(register){
+function setup(register,address='https://controller.test/'){
  const events={},intervals=new Map(),document={hidden:false,addEventListener:(name,fn)=>events[name]=fn,removeEventListener:name=>delete events[name]};
- const window={isSecureContext:true,addEventListener:(name,fn)=>events[name]=fn,removeEventListener:name=>delete events[name],setInterval:fn=>{intervals.set(1,fn);return 1},clearInterval:id=>intervals.delete(id)};
- const context={navigator:{serviceWorker:{register}},window,document};vm.createContext(context);vm.runInContext(built.outputFiles[0].text,context);
- return {events,intervals,document,stop:context.worker.startWorkerUpdates()};
+ const location={href:address},history={state:{key:'existing'},replaceState(state,_unused,url){assert.equal(state,this.state);location.href=url}};
+ const window={location,history,isSecureContext:true,addEventListener:(name,fn)=>events[name]=fn,removeEventListener:name=>delete events[name],setInterval:fn=>{intervals.set(1,fn);return 1},clearInterval:id=>intervals.delete(id)};
+ const context={URL,navigator:{serviceWorker:{register}},window,document};vm.createContext(context);vm.runInContext(built.outputFiles[0].text,context);
+ return {events,intervals,document,location,stop:context.worker.startWorkerUpdates()};
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 test('recovery code refreshes on startup, network return and visibility without reloading forms',async()=>{
@@ -19,4 +20,10 @@ test('recovery code refreshes on startup, network return and visibility without 
 test('outages are caught and a stopped registration does not keep updating',async()=>{
  const failing=setup(async()=>{throw Error('offline')});await tick();failing.stop();
  let finish;const pending=setup(()=>new Promise(resolve=>finish=resolve));pending.stop();finish({update:()=>assert.fail('update after stop')});await tick();
+});
+
+test('recovered app removes only the network retry flag and keeps the original route and history state',async()=>{
+ const page=setup(async()=>({update:async()=>{}}),'https://controller.test/proxmox?tab=VMs&__iclusters_reconnect=1#details');
+ assert.equal(page.location.href,'https://controller.test/proxmox?tab=VMs#details');
+ await tick();page.stop();
 });
