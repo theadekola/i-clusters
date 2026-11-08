@@ -1,5 +1,10 @@
 // Refresh recovery code after upgrades and network changes. Never reload an open form.
 export function startWorkerUpdates(){
+ const url=new URL(window.location.href);
+ if(url.searchParams.get('__iclusters_reconnect')==='1'){
+  url.searchParams.delete('__iclusters_reconnect');
+  window.history.replaceState(window.history.state,'',url.href);
+ }
  if(!('serviceWorker' in navigator)||!window.isSecureContext)return()=>{};
  let stopped=false,busy=false;
  const update=async()=>{
