@@ -1,3 +1,4 @@
+import {jobIncludesNode} from './backup-selection';
 const labels:Record<string,string>={'keep-last':'Latest backups','keep-hourly':'Hourly backups','keep-daily':'Daily backups','keep-weekly':'Weekly backups','keep-monthly':'Monthly backups','keep-yearly':'Yearly backups'};
 export function retentionRule(value:any){
  if(value==null||value==='')return {text:'',items:[] as {name:string;value:string}[],valid:true,configured:false,issues:[] as string[]};
@@ -9,7 +10,7 @@ export function retentionRule(value:any){
 }
 export function policyMatchesArchive(policy:any,point:any){
  if(policy.provider==='truenas')return point.__snapshot===true&&!!policy.dataset&&policy.dataset===point.dataset;
- if(point.__snapshot||!policy.storage||policy.storage!==point.storage||policy.node&&policy.node!==point.node&&point.shared!==true)return false;
+ if(point.__snapshot||!policy.storage||policy.storage!==point.storage||policy.node&&!jobIncludesNode(policy,point.node)&&point.shared!==true)return false;
  const id=String(point.vmid??'');if(!/^\d+$/.test(id))return false;
  if(String(policy.exclude||'').split(/[,;\s]+/).includes(id))return false;
  if(policy.all===true||policy.all===1||policy.all==='1')return true;
