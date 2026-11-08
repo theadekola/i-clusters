@@ -38,7 +38,7 @@ export default function ProxmoxOverview(){
  const [params,setParams]=useSearchParams(),navigate=useNavigate();
  const requested=params.get('tab')||'',action=params.get('action');
  const view=action==='Create VM'?'Virtual Machines':action==='Create CT'?'LXC Containers':tabs.includes(requested)?requested:'Overview';
- const setView=(tab:string)=>{if(!tabs.includes(tab))return;const next=new URLSearchParams(params);next.set('tab',tab);next.delete('action');if(tab!=='Nodes'){next.delete('node');next.delete('nodeTab');}setParams(next);};
+ const setView=(tab:string)=>{if(!tabs.includes(tab))return;const next=new URLSearchParams(params);next.set('tab',tab);for(const key of ['action','search','status','page','guest'])next.delete(key);if(tab!=='Nodes'){next.delete('node');next.delete('nodeTab');}setParams(next);};
  const openNode=(name:string)=>{const next=new URLSearchParams(params);next.set('tab','Nodes');next.set('node',name);next.set('nodeTab','Overview');next.delete('action');setParams(next);};
  const openNodeServices=(name:string)=>{const next=new URLSearchParams(params);next.set('tab','Nodes');next.set('node',name);next.set('nodeTab','Services');next.delete('action');setParams(next);};
  const data=live.error?null:live.data,nodes=data?.nodes||[],vms=data?.vms||[],lxc=data?.lxc||[],storage=data?.storage||[],errors=data?.errors||[],services=data?.nodeServices||[];

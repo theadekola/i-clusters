@@ -26,8 +26,10 @@ export default function Overview(){
  const data=dashboard??{};
  const {data:backup,error:backupError,loading:backupLoading,refresh:refreshBackups}=useApi<any>('/backups',null);
  const attention=useApi<any>('/header-notifications',null,10000);
- const navigate=useNavigate();const [overviewQuery]=useSearchParams();
- const [node,setNode]=useState(''),[hours,setHours]=useState('24'),[search,setSearch]=useState(''),[customize,setCustomize]=useState(()=>overviewQuery.get('customize')==='1'),[failure,setFailure]=useState(''),[refreshFailure,setRefreshFailure]=useState(''),[checking,setChecking]=useState(false),[answer,setAnswer]=useState(''),[refreshing,setRefreshing]=useState(false);
+ const navigate=useNavigate();const [overviewQuery,setOverviewQuery]=useSearchParams();
+ const node=overviewQuery.get('node')||'';
+ const setNode=(name:string)=>{const next=new URLSearchParams(overviewQuery);if(name)next.set('node',name);else next.delete('node');setOverviewQuery(next,{replace:true,preventScrollReset:true})};
+ const [hours,setHours]=useState('24'),[search,setSearch]=useState(''),[customize,setCustomize]=useState(()=>overviewQuery.get('customize')==='1'),[failure,setFailure]=useState(''),[refreshFailure,setRefreshFailure]=useState(''),[checking,setChecking]=useState(false),[answer,setAnswer]=useState(''),[refreshing,setRefreshing]=useState(false);
 
  const [success,setSuccess]=usePopupSuccess(customize);
  const [visible,setVisible]=useState<string[]>(loadDashboardWidgets);
@@ -48,6 +50,11 @@ export default function Overview(){
  const configured=data.services?.length||0,reachable=data.services?.filter((s:any)=>s.status==='reachable').length||0;
  const resourceReading={data:dashboard,error:error||refreshFailure,loading},resourcesFresh=summaryValue('current',resourceReading)==='current';
  const health=configured?Math.round(reachable/configured*100):null;
+ const inventoryLink=(tab:string)=>{
+  const query=new URLSearchParams({tab});
+  if(node)query.set('inventoryNode',node);
+  return '/proxmox?'+query.toString();
+ };
  const has=(name:string)=>visible.includes(name);
  const chart=(small=false,metric='both')=>small&&!history.some((point:any)=>metric==='cpu'?Number.isFinite(point.cpu):Number.isFinite(point.memory))?<div className="resource-history-empty muted">No history available yet.</div>:<ResponsiveContainer width="100%" height={small?72:180}><AreaChart data={history}><XAxis hide={small} dataKey="time" minTickGap={40} tickFormatter={v=>new Date(v).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}/><YAxis hide={small} domain={[0,100]} width={30}/><Tooltip labelFormatter={v=>new Date(v).toLocaleString()}/>{metric!=='memory'&&<Area name="CPU %" dataKey="cpu" stroke="#438eff" fill="#438eff22" connectNulls={false} isAnimationActive={false}/>} {metric!=='cpu'&&<Area name="Memory %" dataKey="memory" stroke="#a277ff" fill="#a277ff18" connectNulls={false} isAnimationActive={false}/>}</AreaChart></ResponsiveContainer>;
  return <div className="overview-v2">
@@ -55,8 +62,8 @@ export default function Overview(){
  {(error||failure||attention.error)&&<p className="login-error" role="alert">{error||failure||attention.error}</p>}
  {session.data?.user?.role==='owner'&&data.services?.length===0&&<Card><h3>Connect your infrastructure</h3><p>Add a Proxmox node or Docker host to start discovering resources.</p><Link className="btn primary" to="/settings?tab=Connections&setup=choose">Add Your First Connection</Link></Card>}
  <div className="overview-stats metric-grid">{[
-  {label:'Total Servers',value:inventoryKnown?nodes.length:missingInventory,detail:inventoryKnown?`${online} Online`:inventoryLoading?'':'Inventory incomplete or unavailable',icon:Server,path:'/proxmox'},
-  {label:'Virtual Machines',value:inventoryKnown?guests.filter((g:any)=>g.type==='qemu').length:missingInventory,detail:inventoryKnown?`${guests.filter((g:any)=>g.type==='qemu'&&g.status==='running').length} Running`:inventoryLoading?'':'Inventory incomplete or unavailable',icon:Monitor,path:'/proxmox'},
+  {label:'Total Servers',value:inventoryKnown?nodes.length:missingInventory,detail:inventoryKnown?`${online} Online`:inventoryLoading?'':'Inventory incomplete or unavailable',icon:Server,path:inventoryLink('Nodes')},
+  {label:'Virtual Machines',value:inventoryKnown?guests.filter((g:any)=>g.type==='qemu').length:missingInventory,detail:inventoryKnown?`${guests.filter((g:any)=>g.type==='qemu'&&g.status==='running').length} Running`:inventoryLoading?'':'Inventory incomplete or unavailable',icon:Monitor,path:inventoryLink('Virtual Machines')},
   {label:'Containers',value:inventoryKnown&&dockerKnown||guests.some((g:any)=>g.type==='lxc')||inventory.some((r:any)=>r.kind==='Docker container'&&r.status!=='stale')?guests.filter((g:any)=>g.type==='lxc').length+inventory.filter((r:any)=>r.kind==='Docker container'&&r.status!=='stale').length:missingContainers,detail:inventoryKnown&&dockerKnown?`${guests.filter((g:any)=>g.type==='lxc'&&g.status==='running').length+inventory.filter((r:any)=>r.kind==='Docker container'&&r.status==='running').length} Running`:containerLoading?'':'Inventory incomplete or unavailable',icon:Container,path:'/docker'},
   {label:'Alerts',value:attention.error?'Unknown':attentionCount,detail:attention.error?'Notification status unavailable':`${criticalCount} Critical${updateCount?` · ${updateCount} Update${updateCount===1?'':'s'}`:''}`,icon:Bell,path:!node&&attentionKnown&&updateCount===attentionCount&&updateRows.length?updateRows[0].link:'/alerts'},
   {label:'Backups',value:backupCount!==null?backupCount:missingBackup,detail:backupError?(backupCount!==null?'Last known archives; refresh failed':backupError):archiveLoading?'':backupDetail,icon:Archive,path:'/backups'}
