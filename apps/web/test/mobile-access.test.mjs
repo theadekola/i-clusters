@@ -14,6 +14,6 @@ test('service worker leaves APIs untouched and never caches authenticated naviga
  vm.runInNewContext(source,{self:{addEventListener:(name,fn)=>events[name]=fn},fetch:async request=>{calls++;if(fail)throw Error('offline');return new Response('live')},Response,URL,AbortController,setTimeout,clearTimeout});
  let response;events.fetch({request:{mode:'cors',url:'https://host/api/auth/me'},respondWith:()=>assert.fail('API intercepted')});assert.equal(calls,0);
  events.fetch({request:{mode:'navigate',url:'https://host/'},respondWith:p=>response=p});assert.equal(await (await response).text(),'live');
- fail=true;events.fetch({request:{mode:'navigate',url:'https://host/'},respondWith:p=>response=p});const offline=await response;assert.equal(offline.status,503);assert.equal(offline.headers.get('Cache-Control'),'no-store');assert.match(await offline.text(),/Connect to your home network/);
+ fail=true;events.fetch({request:{mode:'navigate',url:'https://host/'},respondWith:p=>response=p});const offline=await response;assert.equal(offline.status,503);assert.equal(offline.headers.get('Cache-Control'),'no-store');assert.match(await offline.text(),/Loading i-Clusters…/);
  assert.equal(source.includes('caches.'),false);
 });

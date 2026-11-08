@@ -6,7 +6,5 @@ export function recoveryMessages(){
  function html(source){const dom=new JSDOM(source);try{for(const script of dom.window.document.querySelectorAll('script'))javascript(script.textContent);for(const element of dom.window.document.querySelectorAll('script,style,pre,code,svg'))element.remove();const walker=dom.window.document.createTreeWalker(dom.window.document,dom.window.NodeFilter.SHOW_TEXT);while(walker.nextNode())add(walker.currentNode.data);}finally{dom.window.close()}}
  const worker=fs.readFileSync(web+'public/sw.js','utf8').replace(/\/\* START RECOVERY I18N \*\/[\s\S]*?\/\* END RECOVERY I18N \*\//g,'');
  html(worker.match(/const unavailablePage = `([\s\S]*?)`;/)[1]);html(fs.readFileSync(web+'public/connection-check.html','utf8'));javascript(fs.readFileSync(web+'public/connection-check.js','utf8'));
- // Navigation failure reasons are outside the inline HTML script.
- for(const text of ['The HTTPS request timed out. Check the server, network route and certificate trust.','The server returned HTTP {0}. The dashboard may be restarting or its web service may be unavailable.','The network or HTTPS request failed. This can be a routing, firewall, certificate trust or server problem.'])add(text);
  return [...keys].filter(key=>!key.startsWith('/')).sort();
 }
