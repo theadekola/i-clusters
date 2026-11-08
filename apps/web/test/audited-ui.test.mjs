@@ -821,3 +821,30 @@ for (const mode of ['shell', 'sftp']) {
   }
  });
 }
+
+test('host picker retains the active filter, search and layout when guest status changes', async () => {
+ let status = 'stopped';
+ const api = async path => path === '/proxmox'
+  ? {nodes:[{name:'node01'}],vms:[{vmid:101,node:'node01',name:'Jellyfin',status}]}
+  : {};
+ const page = await mounted('pages/Shell.tsx', {}, api);
+ try {
+  const select = page.container.querySelector('[aria-label="Shell host type"]');
+  const search = page.container.querySelector('[aria-label="Search shell hosts"]');
+  await act(async () => {
+   select.value='Virtual Machines';
+   select.dispatchEvent(new Event('change',{bubbles:true}));
+  });
+  await repairField(page, 'Search shell hosts', 'Jelly');
+  await page.click(page.container.querySelector('[aria-label="Grid view"]'));
+  const row = page.container.querySelector('[aria-label="Connect to Jellyfin"]');
+  assert.match(row.textContent, /stopped/);
+  status='running';
+  await act(async () => { window.dispatchEvent(new Event('iclusters-settings')); await Promise.resolve(); });
+  assert.equal(page.container.querySelector('[aria-label="Connect to Jellyfin"]'),row);
+  assert.match(row.textContent,/running/);
+  assert.equal(select.value,'Virtual Machines');
+  assert.equal(search.value,'Jelly');
+  assert.equal(page.container.querySelector('[aria-label="Grid view"]').getAttribute('aria-pressed'),'true');
+ } finally { await page.close(); }
+});
