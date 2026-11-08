@@ -53,7 +53,7 @@ export async function backupArchives(query=pve,{timeoutMs=20000}={}){
   const configWork=read('/storage').then(value=>({value}),error=>({error}));
   const nodes=await read('/nodes');
   if(!Array.isArray(nodes)||nodes.some(n=>!n||typeof n.node!=='string'||!n.node))throw httpError('Unexpected backup node inventory',502);
-  const points=[],errors=[],coverage={nodes:nodes.length,checkedNodes:0,completeNodes:[],visibleStorage:0,checkedStorage:0,issues:[]};let configs=[];
+  const points=[],errors=[],coverage={nodes:nodes.length,checkedNodes:0,completeNodes:[],destinations:[],visibleStorage:0,checkedStorage:0,issues:[]};let configs=[];
   if(!nodes.length)errors.push('No Proxmox nodes are visible to the backup inventory. Check the API token permissions.');
   let sharingKnown=false;
   try{const result=await configWork;if(result.error)throw result.error;configs=result.value;if(!Array.isArray(configs))throw Error('Invalid storage configuration');sharingKnown=true;}catch(e){configs=[];errors.push(`Storage sharing configuration: ${e.message}`);}
@@ -81,12 +81,13 @@ export async function backupArchives(query=pve,{timeoutMs=20000}={}){
           }
         }
         coverage.checkedStorage++;
+        coverage.destinations.push({node:n.node,storage:store.storage,count:files.length});
         for(const f of files)points.push({id:Buffer.from(JSON.stringify({node:n.node,storage:store.storage,volid:f.volid})).toString('base64url'),provider:'proxmox',node:n.node,storage:store.storage,shared:(store.shared??configs.find(c=>c.storage===store.storage)?.shared)===1||(store.shared??configs.find(c=>c.storage===store.storage)?.shared)===true,volid:f.volid,name:f.volid,type:f.subtype||(/vzdump-lxc/.test(f.volid)?'lxc':'qemu'),vmid:f.vmid??null,guestName:f['vm-name']||null,created:f.ctime?new Date(f.ctime*1000).toISOString():null,size:f.size??null,protected:Boolean(f.protected)});
       }catch(e){const message=`${n.node}/${store.storage}: ${e.message}`;errors.push(message);coverage.issues.push({code:'archive-read-failed',node:n.node,storage:store.storage,message});}
     }));
     if(sharingKnown&&!coverage.issues.some(issue=>issue.node===n.node))coverage.completeNodes.push(n.node);
   }));
-  return {points,errors,coverage:{...coverage,complete:errors.length===0}};
+  return {points,errors,coverage:{...coverage,checkedAt:new Date().toISOString(),complete:errors.length===0}};
 }
 export async function restoreArchive(id,body,{query=pve,archives=backupArchives,write=pveWrite}={}){
   const inventory=await archives();const point=inventory.points.find(p=>p.id===id);

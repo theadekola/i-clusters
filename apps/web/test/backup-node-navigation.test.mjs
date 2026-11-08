@@ -51,3 +51,44 @@ test('node02 shared archive stays selected through refresh and Back preserves gu
   assert.ok(calls.every(method=>method==='GET'));
  }finally{await page.close()}
 });
+
+test('Restore Points returns from destination inspection to the same scoped search and scroll',async()=>{
+ const calls=[],checkedAt='2026-11-08T05:00:00Z';
+ const coverage={configured:true,complete:false,checkedAt,completeNodes:['node01'],destinations:[{node:'node01',storage:'nas',count:0}],issues:[{node:'node02',storage:'nas',message:'node02/nas: 403 Permission denied'}]};
+ const resources=['node01','node02'].map(node=>({id:node+'/nas',node,name:'nas',type:'nfs',content:'backup',shared:true,status:'online',capacity:2*1024**3,available:1024**3}));
+ const api=async(path,init)=>{
+  calls.push(init?.method||'GET');
+  if(path.startsWith('/restore'))return {points:[],archiveInventory:coverage,errors:[coverage.issues[0].message]};
+  if(path.startsWith('/proxmox/storage?')||path==='/proxmox/storage')return {resources,errors:[]};
+  return {status:{active:1},user:{role:'viewer'},tasks:[]};
+ };
+ const page=await mounted('pages/Backups.tsx',{initialEntry:'/backups?tab=Restore%20Points&node=node02&type=archive'},api);
+ try{
+  const search=page.container.querySelector('[aria-label="Search restore points"]');
+  await act(async()=>{search.value='ZimaOS';search.dispatchEvent(new page.dom.window.Event('input',{bubbles:true}))});
+  let top=630;
+  Object.defineProperty(page.dom.window,'scrollY',{get:()=>top});
+  page.dom.window.scrollTo=(_,value)=>{top=value};
+  await page.click([...page.container.querySelectorAll('a')].find(a=>a.textContent==='Check backup destinations'));
+  top=0;
+  const row=page.container.querySelector('.destination-table tbody tr');
+  assert.match(row.textContent,/Archives · Permissions/);
+  assert.match(row.textContent,/1.0 GiB/);
+  await page.click(row);
+  const dialog=()=>page.container.querySelector('[role="dialog"]');
+  assert.match(dialog().textContent,/403 Permission denied/);
+  assert.match(dialog().textContent,/Last checked/);
+  const browse=[...dialog().querySelectorAll('a')].find(a=>a.textContent.includes('Browse Archives'));
+  assert.match(browse.href,/storage=nas/);assert.match(browse.href,/node=node02/);
+  await act(async()=>{const requests=[];page.dom.window.dispatchEvent(new page.dom.window.CustomEvent('iclusters-resource-refresh',{detail:{prefixes:['/restore','/proxmox/storage'],requests}}));await Promise.all(requests)});
+  assert.match(dialog().textContent,/node02/);
+  await page.click(dialog().querySelector('[aria-label="Close dialog"]'));
+  await page.click(button(page.container,'Back'));
+  assert.equal(page.container.querySelector('[aria-label="Search restore points"]').value,'ZimaOS');
+  assert.equal(page.container.querySelector('[aria-label="Restore point node"]').value,'node02');
+  assert.equal(top,630);
+  assert.ok(calls.every(method=>method==='GET'));
+ }finally{await page.close()}
+ const other=await mounted('pages/BackupDestinations.tsx',{initialEntry:'/backups?tab=Destinations&node=node01'},api);
+ try{assert.match(other.container.querySelector('.destination-table tbody tr').textContent,/Archives · 0/)}finally{await other.close()}
+});
