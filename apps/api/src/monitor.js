@@ -71,7 +71,7 @@ export function createMonitor(sources=providers,persistence={get,mutate},checkSe
    const work=agentContext.run({host:''},async()=>{
     await Promise.all([
      ...Object.keys(sources).map(async name=>{const result=await collect(name,true);if(result.data)snapshot[name]=result.data;snapshot.services=snapshot.services.map(s=>s.id===name?result.service:s);}),
-     (async()=>{let services;try{snapshot.dockerFleet=await fleet();services=snapshot.dockerFleet.hosts.map(h=>({id:`docker:${h.id}`,name:`Docker ${h.node} / ${h.name}`,provider:'docker',hostId:h.id,status:h.status,response:h.response??null,error:h.error,sampledAt:h.sampledAt}));}catch{services=[{id:'docker-fleet',name:'Docker host monitoring',provider:'docker',status:'error',error:'Docker host inventory failed'}];}snapshot.services=[...snapshot.services.filter(s=>s.id!=='docker-fleet'),...services];})(),
+     (async()=>{let services;try{snapshot.dockerFleet=await fleet();services=snapshot.dockerFleet.hosts.map(h=>({id:`docker:${h.id}`,name:`Docker ${h.node} / ${h.name}`,provider:'docker',hostId:h.id,node:h.node,containerCount:h.inventory?.containers?.length,runningCount:h.inventory?.containers?.filter(c=>c.status==='running').length,status:h.status,response:h.response??null,error:h.error,sampledAt:h.sampledAt}));}catch{services=[{id:'docker-fleet',name:'Docker host monitoring',provider:'docker',status:'error',error:'Docker host inventory failed'}];}snapshot.services=[...snapshot.services.filter(s=>s.id!=='docker-fleet'),...services];})(),
      (async()=>{try{snapshot.services.push(...await checkServices());}catch(e){snapshot.services.push({name:'Additional service configuration',status:'error',error:e.message});}})()
     ]);
     snapshot.operations=operationsView(operationalNodes());

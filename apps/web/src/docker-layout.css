@@ -97,3 +97,21 @@
 .content .docker-host-heading > h1 { display:flex;align-items:center;gap:8px;flex-wrap:nowrap;min-width:0; }
 .content .docker-host-heading .docker-host-name { min-width:0;overflow-wrap:anywhere;font:inherit; }
 .content .docker-host-heading > .badge { flex:none; }
+
+.docker-row-host{display:none}
+@media(max-width:700px){
+ .content .docker-manager .docker-table{display:block;width:100%;min-width:0!important}
+ .docker-table thead{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}
+ .docker-table tbody{display:grid;gap:6px}
+ .docker-manager .docker-table tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center}
+ .docker-manager .docker-table td{padding:5px;white-space:normal}
+ .docker-manager .docker-table td:nth-child(n+3):nth-child(-n+5),.docker-manager .docker-table .docker-image{display:none}
+ .docker-manager .docker-table .docker-row-host{display:block;color:var(--theme-muted);overflow-wrap:anywhere}
+ .docker-manager .docker-table .docker-container-name b{white-space:normal;overflow-wrap:anywhere}
+ .docker-manager .docker-table td:last-child{display:flex;flex-wrap:wrap}
+ .docker-manager .docker-table .icon-btn{min-width:44px;min-height:44px}
+}
+@media(max-width:700px){
+ .docker-manager .docker-table td:first-child{width:auto}
+ .docker-manager .docker-table td:last-child{width:auto;white-space:normal}
+}

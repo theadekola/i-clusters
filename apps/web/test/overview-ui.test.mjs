@@ -20,7 +20,7 @@ const sample=()=>({sampledAt:new Date().toISOString(),nodes:[{name:'n1',status:'
 const stat=(page,label)=>[...page.container.querySelectorAll('.overview-stat')].find(e=>e.querySelector('span')?.textContent===label);
 test('overview service search keeps summary stable and Refresh reloads backup inventory',async()=>{
  const calls=[];let backupReads=0;const page=await mounted('pages/Overview.tsx',{},async p=>{calls.push(p);if(p==='/auth/me')return {user:{role:'owner'}};if(p==='/backups')return {points:++backupReads===1?[]:[{node:'n1'}],jobs:[]};return sample();});
- try{const input=page.container.querySelector('[aria-label="Search services"]');const props=input[Object.keys(input).find(k=>k.startsWith('__reactProps'))];await act(async()=>props.onChange({target:{value:'alpha'}}));assert.equal(stat(page,'Containers').querySelector('strong').textContent,'2');await page.click(page.container.querySelector('[aria-label="Refresh live measurements"]'));assert.ok(calls.includes('/dashboard?refresh=1'));assert.equal(backupReads,2);assert.equal(stat(page,'Backups').querySelector('strong').textContent,'1');}finally{await page.close();}
+ try{const input=page.container.querySelector('[aria-label="Search services"]');const props=input[Object.keys(input).find(k=>k.startsWith('__reactProps'))];await act(async()=>props.onChange({target:{value:'alpha'}}));assert.equal(stat(page,'Docker Containers').querySelector('strong').textContent,'2');await page.click(page.container.querySelector('[aria-label="Refresh live measurements"]'));assert.ok(calls.includes('/dashboard?refresh=1'));assert.equal(backupReads,2);assert.equal(stat(page,'Backups').querySelector('strong').textContent,'1');}finally{await page.close();}
 });
 test('overview node filter includes storage alerts, scopes backups and uses online averages',async()=>{
  const data={...sample(),storage:[{id:'disk-n1',node:'n1',usage:10,status:'online'}],alerts:[{id:'alert',resourceId:'disk-n1',source:'local-lvm',status:'active',severity:'critical',title:'Full disk'}]};
@@ -32,11 +32,11 @@ test('overview node filter includes storage alerts, scopes backups and uses onli
 });
 test('overview shows failed inventories as Unknown and makes backup errors visible',async()=>{
  const page=await mounted('pages/Overview.tsx',{},async p=>p==='/auth/me'?{user:{role:'viewer'}}:p==='/backups'?{points:[],jobs:[],errors:['Backup permission denied']}:{...sample(),nodes:[],guests:[],resources:[],services:[{name:'proxmox',status:'error',error:'Forbidden'}]});
- try{for(const label of ['Total Servers','Virtual Machines','Containers','Backups'])assert.equal(stat(page,label).querySelector('strong').textContent,'Unknown');assert.ok([...page.container.querySelectorAll('[role=alert]')].some(e=>e.textContent.includes('Backup permission denied')));}finally{await page.close();}
+ try{for(const label of ['Total Servers','Virtual Machines','LXC Containers','Docker Containers','Backups'])assert.equal(stat(page,label).querySelector('strong').textContent,'Unknown');assert.ok([...page.container.querySelectorAll('[role=alert]')].some(e=>e.textContent.includes('Backup permission denied')));}finally{await page.close();}
 });
 test('overview retries an initial dashboard failure and shows successfully measured zero counts',async()=>{
  let reads=0;const page=await mounted('pages/Overview.tsx',{},async p=>{if(p==='/auth/me')return {user:{role:'viewer'}};if(p==='/backups')return {points:[],jobs:[]};if(++reads===1)throw Error('Dashboard unavailable');return {...sample(),nodes:[],resources:[]};});
- try{assert.ok(page.container.querySelector('[role=alert]').textContent.includes('Dashboard unavailable'));await page.click([...page.container.querySelectorAll('button')].find(b=>b.textContent==='Retry overview'));assert.equal(stat(page,'Total Servers').querySelector('strong').textContent,'0');assert.equal(stat(page,'Containers').querySelector('strong').textContent,'0');}finally{await page.close();}
+ try{assert.ok(page.container.querySelector('[role=alert]').textContent.includes('Dashboard unavailable'));await page.click([...page.container.querySelectorAll('button')].find(b=>b.textContent==='Retry overview'));assert.equal(stat(page,'Total Servers').querySelector('strong').textContent,'0');assert.equal(stat(page,'Docker Containers').querySelector('strong').textContent,'0');}finally{await page.close();}
 });
 test('backup refresh still runs when a forced dashboard sample fails',async()=>{
  let backupReads=0;const page=await mounted('pages/Overview.tsx',{},async p=>{if(p==='/auth/me')return {user:{role:'viewer'}};if(p==='/backups'){backupReads++;return {points:[],jobs:[]}}if(p==='/dashboard?refresh=1')throw Error('Forced sample failed');return sample();});
@@ -105,7 +105,7 @@ test('a failed backup refresh marks the headline unknown and retains labelled pr
 
 test('pending overview measurements show circles without loading text',async()=>{
  const page=await mounted('pages/Overview.tsx',{},async p=>p==='/auth/me'?{user:{role:'viewer'}}:p==='/backups'?{points:[],jobs:[]}:{...sample(),nodes:[],guests:[],resources:[],refreshing:true,services:[{provider:'proxmox',status:'pending'},{provider:'docker',status:'pending'}]});
- try{for(const label of ['Total Servers','Virtual Machines','Containers']){assert.ok(stat(page,label).querySelector('strong [role=status] .report-loading-circle'));assert.ok(!/Loading/.test(stat(page,label).textContent));}}finally{await page.close()}
+ try{for(const label of ['Total Servers','Virtual Machines','LXC Containers','Docker Containers']){assert.ok(stat(page,label).querySelector('strong [role=status] .report-loading-circle'));assert.ok(!/Loading/.test(stat(page,label).textContent));}}finally{await page.close()}
 });
 
 test('Overview resource and health widgets suppress cached values after forced refresh fails and recover on success',async()=>{
@@ -134,5 +134,22 @@ test('independent overview readings appear while dashboard inventory is still pe
   assert.equal(stat(page,'Total Servers'),servers);
   assert.equal(servers.querySelector('strong').textContent,'2');
   assert.equal(page.container.querySelector('[aria-label="Export overview report"]').disabled,false);
+ }finally{await page.close()}
+});
+
+test('node-scoped LXC and Docker totals have distinct destinations',async()=>{
+ const data={...sample(),guests:[{id:200,node:'n1',type:'lxc',status:'running'}],services:[
+  {name:'proxmox',status:'reachable'},{provider:'docker',hostId:'agent:qemu/101',node:'n1',status:'reachable',containerCount:3,runningCount:2}
+ ],resources:[]};
+ const page=await mounted('pages/Overview.tsx',{},async path=>path==='/dashboard'?data:{});
+ try{
+  const select=page.container.querySelector('[aria-label="Select node"]');
+  await act(async()=>{select.value='n1';select.dispatchEvent(new Event('change',{bubbles:true}))});
+  const lxc=stat(page,'LXC Containers'),docker=stat(page,'Docker Containers');
+  assert.equal(lxc.querySelector('strong').textContent,'1');
+  assert.equal(docker.querySelector('strong').textContent,'3');
+  const lxcURL=new URL(lxc.href),dockerURL=new URL(docker.href);
+  assert.equal(lxcURL.pathname,'/proxmox');assert.equal(lxcURL.searchParams.get('tab'),'LXC Containers');assert.equal(lxcURL.searchParams.get('inventoryNode'),'n1');
+  assert.equal(dockerURL.pathname,'/docker');assert.equal(dockerURL.searchParams.get('tab'),'Containers');assert.equal(dockerURL.searchParams.get('host'),'agent:qemu/101');
  }finally{await page.close()}
 });

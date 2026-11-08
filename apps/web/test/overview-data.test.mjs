@@ -13,3 +13,11 @@ test('backup summary requires complete configured archive coverage and explains 
  const empty=overviewData(sample,{...base,archiveInventory:{configured:true,complete:true,visibleStorage:0}},'','');assert.equal(empty.backupKnown,true);assert.match(empty.backupDetail,/No Proxmox backup storage visible/);
  const measured=overviewData(sample,{...base,points:[{node:'n1'}],archiveInventory:{configured:true,complete:true,visibleStorage:1}},'','');assert.equal(measured.backupKnown,true);assert.equal(measured.points.length,1);assert.equal(measured.backupDetail,'Proxmox backup archives');
 });
+
+test('a node with one verified Docker host links even with an empty inventory; multiple engines stay unscoped',()=>{
+ const data={nodes:[],resources:[],services:[{provider:'docker',hostId:'agent:qemu/101',node:'n1',status:'reachable',containerCount:0,runningCount:0},{provider:'docker',hostId:'agent:qemu/102',node:'n2',status:'reachable',containerCount:1,runningCount:1}]};
+ const scoped=overviewData(data,null,'n1','');
+ assert.equal(scoped.dockerHost,'agent:qemu/101');assert.equal(scoped.dockerKnown,true);assert.equal(scoped.dockerCount,0);
+ assert.equal(overviewData(data,null,'','').dockerHost,null);
+ assert.equal(overviewData(data,null,'n3','').dockerKnown,false);
+});

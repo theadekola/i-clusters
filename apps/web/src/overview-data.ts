@@ -11,7 +11,20 @@ export function overviewData(data:any,backup:any,node:string,search:string){
  const reporting=nodes.filter((n:any)=>n.status==='online');
  const proxmox=(data.services||[]).find((s:any)=>s.provider==='proxmox'||s.name==='proxmox');
  const inventoryKnown=data.resourceInventoryComplete===true||proxmox?.status==='reachable';
- const dockerKnown=(data.services||[]).filter((s:any)=>s.provider==='docker'||s.name==='docker').every((s:any)=>s.status==='reachable');
+ const dockerRows=inventory.filter((r:any)=>r.kind==='Docker container'&&r.status!=='stale');
+ const rowHosts=new Set(dockerRows.map((r:any)=>r.hostId).filter(Boolean));
+ const engines=(data.services||[]).filter((s:any)=>(s.provider==='docker'||s.name==='docker')&&s.status!=='not-configured');
+ const scopedEngines=engines.filter((s:any)=>!node||s.node===node||rowHosts.has(s.hostId||'direct'));
+ const dockerKnown=scopedEngines.length>0&&scopedEngines.every((s:any)=>s.status==='reachable');
+ const hostIds=new Set<string|null>(scopedEngines.map((s:any)=>s.hostId||(s.id==='docker'||s.name==='docker'?'direct':null)));
+ for(const row of dockerRows)hostIds.add(row.hostId||null);
+ // A directly connected Engine can also be paired through Proxmox. Discovery
+ // deduplicates its rows globally, so use the paired inventory for that node.
+ const singleEngine=node&&scopedEngines.length===1?scopedEngines[0]:null;
+ const dockerCount=singleEngine?.containerCount??dockerRows.length;
+ const dockerRunning=singleEngine?.runningCount??dockerRows.filter((r:any)=>r.status==='running').length;
+ const dockerHost=hostIds.size===1?[...hostIds][0]:null;
+
  const backupErrors=backup?.errors||[];
  const backupKnown=!!backup&&(backup.archiveInventory?backup.archiveInventory.configured===true&&backup.archiveInventory.complete===true:!backupErrors.length);
  const backupIssue=backup?.archiveInventory?.issues?.find((issue:any)=>issue.code==='storage-unavailable'&&(!node||issue.node===node));
@@ -22,5 +35,5 @@ export function overviewData(data:any,backup:any,node:string,search:string){
  const points=distinctBackupPoints((backup?.points||[]).filter((p:any)=>!node||p.node===node));
  const backupCount=backupKnown||points.length>0||backup?.archiveInventory?.checkedStorage>0?points.length:null;
  const jobs=(backup?.jobs||[]).filter((j:any)=>!node||!j.node||j.node===node);
- return {nodes,guests,storage,inventory,resources,alerts,cpu:measured(reporting,'cpu'),memory:measured(reporting,'memoryPercent'),disk:measured(storage.filter((s:any)=>s.status==='online'),'usage'),inventoryKnown,dockerKnown,points,jobs,backupErrors,backupKnown,backupDetail,backupCount,backupIssue,backupProblems,backupOtherErrors,jobsKnown};
+ return {nodes,guests,storage,inventory,resources,alerts,cpu:measured(reporting,'cpu'),memory:measured(reporting,'memoryPercent'),disk:measured(storage.filter((s:any)=>s.status==='online'),'usage'),inventoryKnown,dockerKnown,dockerCount,dockerRunning,dockerHost,points,jobs,backupErrors,backupKnown,backupDetail,backupCount,backupIssue,backupProblems,backupOtherErrors,jobsKnown};
 }

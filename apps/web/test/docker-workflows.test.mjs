@@ -128,3 +128,35 @@ test('container cells select, actions open the popup and operations retain the e
  const writes=[],page=await mounted('pages/Docker.tsx',{},async(p,init)=>{if(init?.method){writes.push(p);return {}}return dockerFixture(p)});
  try{const row=page.container.querySelector('[aria-label="Container old-app"]');for(const cell of [...row.querySelectorAll('td')].slice(0,5)){await page.click(cell);assert.equal(page.container.querySelector('.modal'),null);assert.equal(row.getAttribute('aria-selected'),'true');assert.deepEqual(writes,[])}assert.equal(row.firstElementChild.querySelectorAll('button').length,0);await page.click(page.container.querySelector('[aria-label="Actions for old-app"]'));assert.match(page.container.querySelector('.modal').textContent,/old-app/);assert.match(page.container.querySelector('.modal').textContent,/old:latest/);await page.click(button(page.container,'stop'));assert.deepEqual(writes,['/actions/docker/container/old-container/stop'])}finally{await page.close()}
 });
+
+test('Logs and Back keep the Jellyfin row, host, search, status filter and scroll position',async()=>{
+ const calls=[];
+ const page=await mounted('pages/Docker.tsx',{},async(path,init)=>{
+  calls.push([path,init?.method||'GET']);
+  if(path==='/auth/me')return {user:{role:'viewer'}};
+  if(path==='/docker')return inventory('media-host',[{id:'j',name:'Jellyfin',status:'running'},{id:'p',name:'Plex',status:'running'}]);
+  if(path.endsWith('/logs'))return {logs:'Jellyfin ready'};
+  return dockerFixture(path);
+ });
+ try{
+  const search=page.container.querySelector('[aria-label="Search Docker resources"]');
+  const status=page.container.querySelector('[aria-label="Container status"]');
+  await act(async()=>{
+   search.value='Jelly';
+   search.dispatchEvent(new Event('input',{bubbles:true}));
+   status.value='running';status.dispatchEvent(new Event('change',{bubbles:true}));
+  });
+  const row=page.container.querySelector('.docker-table tbody tr');
+  assert.match(row.textContent,/Jellyfin.*media-host/);
+  assert.equal(page.container.querySelectorAll('.docker-table tbody tr').length,1);
+  const scroller=row.closest('.table-wrap');scroller.scrollTop=72;
+  await page.click(row.querySelector('.container-logs'));
+  assert.equal(page.container.querySelector('.task-log').textContent,'Jellyfin ready');
+  await page.click(button(page.container,'Back'));
+  assert.equal(page.container.querySelector('.task-log'),null);
+  assert.equal(page.container.querySelector('.docker-table tbody tr'),row);
+  assert.equal(row.getAttribute('aria-selected'),'true');
+  assert.equal(search.value,'Jelly');assert.equal(status.value,'running');assert.equal(scroller.scrollTop,72);
+  assert.ok(calls.every(([,method])=>method==='GET'));
+ }finally{await page.close()}
+});
