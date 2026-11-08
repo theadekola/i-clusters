@@ -99,3 +99,29 @@
 .topology-attachment{position:relative;display:flex;gap:6px;align-items:flex-start;font-size:11px;padding:7px;border:1px solid var(--theme-border,#31506f);border-radius:7px;overflow-wrap:anywhere}
 .topology-attachment:before{content:'';position:absolute;left:-15px;top:15px;width:14px;border-top:1px dashed #57cbd8}
 .topology-attachment span{min-width:0;flex:1}
+
+/* Cluster above host branches; guests read across, then down. */
+.cluster-topology-viewport[data-layout=tree]{background:radial-gradient(ellipse at 50% 0,#102344,transparent 65%),#061020;color:#eaf5ff}
+.cluster-topology-viewport[data-layout=tree] .cluster-topology-canvas{padding:26px 24px 40px}
+.cluster-topology-viewport[data-layout=tree] .cluster-topology-nodes{flex-flow:row nowrap;align-items:flex-start;justify-content:center;gap:22px;padding-top:40px}
+.cluster-topology-viewport[data-layout=tree] .cluster-topology-branch{padding:0 12px}
+.cluster-topology-viewport[data-layout=tree] .cluster-topology-node{width:max-content;max-width:220px;min-height:56px;background:transparent;color:#ecf5ff}
+.cluster-topology-viewport[data-layout=tree] .cluster-topology-guests{grid-template-columns:repeat(var(--topology-columns),152px);gap:4px 26px;padding-top:36px}
+.cluster-topology-viewport[data-layout=tree] .cluster-topology-guests:not(:has(>li:nth-child(3))){grid-template-columns:152px}
+.cluster-topology-viewport[data-layout=tree] .cluster-topology-guest{min-height:54px;height:auto;color:#ecf5ff;gap:4px}
+.cluster-topology-viewport[data-layout=tree] .cluster-topology-guest .topology-system-icon{width:36px;flex-basis:36px}
+.cluster-topology-viewport[data-layout=tree] .cluster-topology-root{color:#ecf5ff}
+.cluster-topology-viewport[data-layout=tree] .cluster-topology-guest .topology-system-state,.cluster-topology-viewport[data-layout=tree] .cluster-topology-ip{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.cluster-topology-viewport[data-layout=tree] .cluster-topology-guest b{font-size:12px;font-weight:450}
+.cluster-topology-viewport[data-layout=tree] .topology-online .topology-system-state{color:#72ef9c}
+.cluster-topology-viewport[data-layout=tree] .cluster-topology-links path{animation:none;stroke:#498995;stroke-width:1.4;filter:none}
+.cluster-topology-viewport[data-layout=tree] .cluster-topology-links .map-pulse{stroke:#69edff;stroke-width:3;stroke-dasharray:2 38}
+.cluster-topology-viewport[data-layout=tree] .cluster-topology-links .tx{stroke:#bda2ff;stroke-dashoffset:20}
+.map-flow-key i,.map-flow-key em{display:inline-block;width:8px;height:8px;border-radius:50%;background:#69edff}
+.map-flow-key em{background:#bda2ff}
+@keyframes map-in{to{stroke-dashoffset:-40}}
+@keyframes map-out{to{stroke-dashoffset:60}}
+@media(prefers-reduced-motion:no-preference){
+.cluster-topology-viewport[data-layout=tree] .cluster-topology-links .rx{animation:map-in 1.8s linear infinite}
+.cluster-topology-viewport[data-layout=tree] .cluster-topology-links .tx{animation:map-out 1.8s linear infinite}
+}
