@@ -9,7 +9,7 @@ import Pagination from '../components/Pagination';
 import PageIcon from '../components/PageIcon';
 import {ResponsiveContainer,BarChart,Bar,XAxis,YAxis,Tooltip,CartesianGrid} from 'recharts';
 import {backupOutcome} from '../backup-reports';
-import {useEffect,useLayoutEffect,useRef,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {Link,useLocation,useNavigate,useSearchParams} from 'react-router-dom';
 import {Archive,Database,Calendar,RefreshCw,Search,Monitor,Box,ShieldCheck,RotateCcw,Plus,FileText,LayoutGrid,List,HardDrive,Clock,ArrowRight,X,Eye,Info,Download} from 'lucide-react';
 import {useApi} from '../hooks';
@@ -64,7 +64,8 @@ export default function Restore({navigation,returnList}:{navigation?:import('rea
   if(priorFilters.current!==filterKey)setPage(0);
   priorFilters.current=filterKey;
  },[filterKey]);
- useLayoutEffect(()=>{
+ // Restore after the departing dialog releases its scroll lock.
+ useEffect(()=>{
   const snapshot=pendingScroll.current;
   if(!snapshot||!live.data)return;
   if(table.current)table.current.scrollTop=snapshot.tableScroll;

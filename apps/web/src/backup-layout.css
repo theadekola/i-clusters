@@ -63,3 +63,22 @@
   .destination-table .destination-icon-button { min-width: 44px; min-height: 44px; }
   .destination-table .destination-name b, .destination-table .destination-archive-issue { white-space: normal; overflow-wrap: anywhere; }
 }
+
+.backup-archive-scope { display: flex; align-items: center; gap: 12px; overflow-wrap: anywhere; }
+@media (max-width: 650px) {
+  .backup-archives-workspace table.backup-table, .schedule-overview table.schedule-table { width: 100%; min-width: 0; }
+  :is(.backup-archives-workspace .backup-table,.schedule-overview .schedule-table) thead {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
+  }
+  :is(.backup-archives-workspace .backup-table,.schedule-overview .schedule-table) tbody { display: grid; gap: 8px; }
+  :is(.backup-archives-workspace .backup-table,.schedule-overview .schedule-table) tbody tr {
+    display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center;
+    padding: 8px; border: 1px solid var(--theme-border); border-radius: 10px;
+  }
+  :is(.backup-archives-workspace .backup-table,.schedule-overview .schedule-table) tbody td {
+    min-width: 0; width: auto; padding: 4px; white-space: normal; overflow-wrap: anywhere;
+  }
+  :is(.backup-archives-workspace .backup-table,.schedule-overview .schedule-table) td:is(:first-child,:last-child) { grid-column: 1 / -1; }
+  .backup-archives-workspace .backup-table td:nth-child(3) { display: none; }
+  :is(.backup-archives-workspace .backup-table,.schedule-overview .schedule-table) td:last-child button { min-height: 44px; }
+}

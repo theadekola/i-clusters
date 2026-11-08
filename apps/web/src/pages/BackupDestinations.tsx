@@ -28,12 +28,13 @@ function Usage({row,color='#00d598'}:{row:any;color?:string}){
  const reading=destinationReading(row);
  return <div className="destination-usage"><small>{bytes(reading.used)}{reading.percent===null?'':` (${Math.round(reading.percent)}%)`}</small><i role="img" aria-label={reading.percent===null?'Storage usage unavailable':`${Math.round(reading.percent)}% used`}><b style={{width:`${reading.percent??0}%`,background:color}}/></i></div>;
 }
-export default function BackupDestinations({navigation}:{navigation?:import('react').ReactNode}){
+export default function BackupDestinations({navigation,returnTo}:{navigation?:import('react').ReactNode;returnTo?:React.MutableRefObject<{entry:string;id:string}|null>}){
  const reports=useResourceRefresh(['/proxmox/storage','/restore']);
  const archives=useApi<any>('/restore',null),location=useLocation(),navigate=useNavigate();
  const [params,setParams]=useSearchParams(),node=params.get('node')||'';
  const live=useApi<any>('/proxmox/storage',null),session=useApi<any>('/auth/me',null);
- const [search,setSearch]=useState(''),[type,setType]=useState('all'),[status,setStatus]=useState('all'),[selected,setSelected]=useState(''),[closed,setClosed]=useState(true),[page,setPage]=useState(0),[limit,setLimit]=useState(6),[checked,setChecked]=useState<string[]>([]);
+ const returning=returnTo?.current?.entry===location.key?returnTo.current.id:'';
+ const [search,setSearch]=useState(''),[type,setType]=useState('all'),[status,setStatus]=useState('all'),[selected,setSelected]=useState(returning),[closed,setClosed]=useState(!returning),[page,setPage]=useState(0),[limit,setLimit]=useState(6),[checked,setChecked]=useState<string[]>([]);
  const [modal,setModal]=useState<'add'|'test'|'summary'|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[checks,setChecks]=useState<any[]>([]);
  const run=useRef<AbortController|null>(null),writing=useRef(false);
  useEffect(()=>()=>run.current?.abort(),[]);
@@ -99,7 +100,7 @@ export default function BackupDestinations({navigation}:{navigation?:import('rea
     {!filtered.length&&<div className="destination-empty"><Database size={30}/><b>{live.loading?<ReportLoading inline/>:live.error||!complete||missingIssues.length?'Destination inventory unavailable':'No matching backup destinations'}</b><small>{live.error?'Retry to request storage readings again.':'Backup-capable storage will appear when reported by Proxmox.'}</small>{(search||type!=='all'||status!=='all')&&<button className="btn secondary" onClick={reset}>Reset Filters</button>}</div>}
     <Pagination className="destination-pagination" label="Destinations" total={filtered.length} page={actual} pageSize={limit} onPageChange={setPage} onPageSizeChange={setLimit} previousLabel="Previous destinations page" nextLabel="Next destinations page"/>
    </Card>
-   {current?<DestinationPanels key={current.id} current={current} rows={rows} closed={closed||selected!==current.id} setClosed={setClosed} admin={admin} inventoryError={!!live.error} refresh={refresh} select={select} grouped={grouped} gradient={gradient} complete={complete} selectCategory={(name:string)=>{setSearch('');setStatus('all');setType(`category:${name}`);setClosed(false)}}/>:<>
+   {current?<DestinationPanels key={current.id} current={current} backToRestore={location.state?.fromRestore?()=>navigate(-1):undefined} onBrowse={()=>{if(returnTo)returnTo.current={entry:location.key,id:current.id}}} rows={rows} closed={closed||selected!==current.id} setClosed={setClosed} admin={admin} inventoryError={!!live.error} refresh={refresh} select={select} grouped={grouped} gradient={gradient} complete={complete} selectCategory={(name:string)=>{setSearch('');setStatus('all');setType(`category:${name}`);setClosed(false)}}/>:<>
     {!closed&&<Card className="destination-details"><h3>Destination Details</h3><div className="destination-empty"><HardDrive size={30}/><p>Select a destination to inspect its usage and storage content.</p></div></Card>}
     <DestinationAnalytics rows={rows} detail={{data:null,loading:live.loading}} select={select} grouped={grouped} gradient={gradient} complete={complete} selectCategory={(name:string)=>setType(`category:${name}`)}/>
    </>}
@@ -118,7 +119,7 @@ function DestinationPanels(props:any){
  return <><Modal open={!closed} title="Destination Details" onClose={()=>setClosed(true)}><DestinationDetails {...props} detail={detail} refresh={refresh} onClose={()=>setClosed(true)}/></Modal><DestinationAnalytics {...props} detail={detail}/></>;
 }
 
-function DestinationDetails({current,detail,admin,inventoryError,refresh,onClose}:any){
+function DestinationDetails({current,detail,admin,inventoryError,refresh,onBrowse,backToRestore}:any){
  const [tab,setTab]=useState('Overview'),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[tested,setTested]=useState(false);
  const status=detail.data?.status||{},statusError=(detail.data?.errors||[]).some((value:string)=>value.startsWith('status:'));
  const reading=destinationReading(statusError?{}:{capacity:status.total??current.capacity,used:status.used??current.used,available:status.avail??current.available});
@@ -136,7 +137,7 @@ function DestinationDetails({current,detail,admin,inventoryError,refresh,onClose
    {tab==='Settings'&&<div className="destination-settings"><dl className="destination-facts"><div><dt>Storage Type</dt><dd>{current.type}</dd></div><div><dt>Content</dt><dd>{current.content}</dd></div><div><dt>Path / Endpoint</dt><dd>{destinationEndpoint(current)}</dd></div></dl><button className="btn secondary" aria-busy={!!(busy)} disabled={!admin||busy||inventoryError||!!detail.error||statusError||reportedEnabled===null} onClick={toggle}>{reportedEnabled===false?'Enable Destination':'Disable Destination'}</button><Link className="btn secondary" to="/proxmox?tab=Storage">Manage Storage Configuration <ArrowUpRight size={13}/></Link></div>}
    {!!detail.data?.errors?.length&&<details className="destination-detail-errors"><summary>Unavailable readings</summary>{detail.data.errors.map((value:string,index:number)=><p key={index}>{value}</p>)}</details>}
   </div>
-  <div className="destination-detail-actions"><RefreshButton className="btn primary" aria-busy={detail.loading} disabled={detail.loading} onClick={check}><RefreshCw size={14}/> {detail.loading?'Checking...':'Test Connection'}</RefreshButton><Link className="btn secondary" to={backupArchivesLocation(current.name,current.node)}><Folder size={14}/> Browse Archives</Link></div>
+  <div className="destination-detail-actions">{backToRestore&&<button className="btn secondary" onClick={backToRestore}>Back</button>}<RefreshButton className="btn primary" aria-busy={detail.loading} disabled={detail.loading} onClick={check}><RefreshCw size={14}/> {detail.loading?'Checking...':'Test Connection'}</RefreshButton><Link className="btn secondary" state={{fromDestination:true}} onClick={onBrowse} to={backupArchivesLocation(current.name,current.node)}><Folder size={14}/> Browse Archives</Link></div>
 
  </Card>;
 }
