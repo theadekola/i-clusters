@@ -7,11 +7,15 @@ async function component(file){
  const modulePath=path.join(directory,'component.mjs');fs.writeFileSync(modulePath,result.outputFiles[0].text);const module=await import(pathToFileURL(modulePath));return {module,cleanup:()=>fs.rmSync(directory,{recursive:true,force:true})};
 }
 function Location(){const location=useLocation(),navigate=useNavigate();return React.createElement(React.Fragment,null,React.createElement('output',{'data-location':location.pathname+location.search}),React.createElement('button',{onClick:()=>navigate(-1)},'Audit Back'),React.createElement('button',{onClick:()=>navigate(1)},'Audit Forward'))}
-async function mounted(file,props,api,mobile=true,strict=false,entry='/proxmox',exportName='default'){
+function InventoryRoute({component,props}){
+ const location=useLocation();
+ return location.pathname==='/tools/shell'?null:React.createElement(component,props);
+}
+async function mounted(file,props,api,mobile=true,strict=false,entry='/proxmox',exportName='default',routeInventory=false){
  const dom=new JSDOM('<div id="root"></div>',{url:'https://iclusters.test'});const navigatorDescriptor=Object.getOwnPropertyDescriptor(globalThis,'navigator');Object.defineProperty(globalThis,'navigator',{value:dom.window.navigator,configurable:true});const originals={};for(const k of ['window','document','localStorage','Event','CustomEvent','HTMLElement','FormData','ResizeObserver','requestAnimationFrame']){originals[k]=globalThis[k];globalThis[k]=dom.window[k];}
  dom.window.HTMLElement.prototype.attachEvent=()=>{};dom.window.HTMLElement.prototype.detachEvent=()=>{};dom.window.matchMedia=()=>({matches:mobile,addEventListener(){},removeEventListener(){}});globalThis.ResizeObserver=class {observe(){}disconnect(){}};globalThis.requestAnimationFrame=fn=>{fn();return 1};globalThis.IS_REACT_ACT_ENVIRONMENT=true;globalThis.__auditApi=api;globalThis.__auditConfirmed=api;dom.window.confirm=()=>true;
  const built=await component(file),container=dom.window.document.getElementById('root'),root=createRoot(container);const Component=built.module[exportName];
- const render=async values=>{await act(async()=>{root.render(React.createElement(strict?React.StrictMode:React.Fragment,null,React.createElement(MemoryRouter,{initialEntries:[entry]},React.createElement(Location),React.createElement(Component,values))));await new Promise(r=>setTimeout(r,0));});};
+ const render=async values=>{await act(async()=>{root.render(React.createElement(strict?React.StrictMode:React.Fragment,null,React.createElement(MemoryRouter,{initialEntries:[entry]},React.createElement(Location),routeInventory?React.createElement(InventoryRoute,{component:Component,props:values}):React.createElement(Component,values))));await new Promise(r=>setTimeout(r,0));});};
  await render(props);
  return {dom,container,render,click:async button=>{assert.ok(button,'Expected control is rendered');await act(async()=>{button.dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,0));});},close:async()=>{await act(async()=>root.unmount());await new Promise(r=>setTimeout(r,10));dom.window.close();built.cleanup();for(const k of Object.keys(originals)){if(originals[k]===undefined)delete globalThis[k];else globalThis[k]=originals[k];}if(navigatorDescriptor)Object.defineProperty(globalThis,'navigator',navigatorDescriptor);else delete globalThis.navigator;delete globalThis.__auditApi;delete globalThis.__auditConfirmed;}};
 }
@@ -274,4 +278,24 @@ test('restore selectors exclude occupied IDs and incompatible storage and clear 
  await act(async()=>{node.value='n2';node.dispatchEvent(new page.dom.window.Event('change',{bubbles:true}))});assert.equal(form.elements.storage.value,'');assert.deepEqual([...form.elements.storage.options].map(o=>o.value),['','ct-two']);
  await act(async()=>form.dispatchEvent(new page.dom.window.Event('submit',{bubbles:true,cancelable:true})));assert.equal(submissions,1);
  }finally{await page.close()}
+});
+
+test('Back from a guest Shell restores the filtered inventory, guest and scroll position',async()=>{
+ for(const [file,kind,id] of [['VirtualMachines','vm','102'],['LxcContainers','lxc','202']]){
+  const page=await mounted('pages/'+file+'.tsx',{data:guests,role:'owner',refresh:async()=>{}},async()=>({}),true,false,'/proxmox?inventoryNode=n2&search=two&status=stopped','default',true);
+  try{
+   const list=()=>page.container.querySelector('.mobile-guest-list');
+   assert.equal(list().querySelectorAll('.mobile-guest-row').length,1);
+   let restored;
+   page.dom.window.scrollY=320;
+   page.dom.window.scrollTo=(_x,y)=>{restored=y};
+   await page.click(list().querySelector('[aria-label=Shell]'));
+   assert.equal(list(),null);
+   assert.equal(page.container.querySelector('[data-location]').dataset.location,'/tools/shell?target='+encodeURIComponent(kind+':n2:'+id));
+   await page.click(button(page,'Audit Back'));
+   assert.equal(list().querySelector('.guest-identity').getAttribute('aria-pressed'),'true');
+   assert.match(list().textContent,/two/);
+   assert.equal(restored,320);
+  }finally{await page.close()}
+ }
 });
