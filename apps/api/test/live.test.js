@@ -68,6 +68,7 @@ const upstream=http.createServer(async(req,res)=>{
  else if(req.url==='/api2/json/nodes/pve/storage/backup/content?content=backup')data=[{volid:'backup:backup/vzdump-qemu-101.vma.zst',subtype:'qemu',vmid:101,size:1234,ctime:1700000000}];
  else if(req.url==='/api2/json/cluster/backup'&&req.method==='POST')data=null;
  else if(req.url==='/api2/json/nodes/pve/services/sshd/restart'&&req.method==='POST')data='UPID:service-task';
+ else if(req.url.includes('/prunebackups')&&req.method==='GET')data=[{volid:'backup:old',vmid:101,mark:'remove'}];
  else if(req.url.includes('/vzdump')||req.url==='/api2/json/nodes/pve/qemu'||req.url.includes('/prunebackups')||req.url.includes('/status/start'))data='UPID:real-task';
  else {res.statusCode=404;data=null;}
  res.setHeader('Content-Type','application/json');res.end(JSON.stringify({data}));
@@ -210,7 +211,9 @@ try{
  });
  await test('cleanup needs payload-bound confirmation and rejects retain-nothing policies',async()=>{
    assert.throws(()=>retention('keep-last=0'),/at least one/);
-   const body={node:'pve',storage:'backup',rule:'keep-last=7'};const first=await call('/retention/run','POST',body);assert.equal(first.status,409);
+   const params={jobId:'job',node:'pve',storage:'backup',rule:'keep-last=7',vmid:'101'};
+   const preview=await call('/retention/preview?'+new URLSearchParams(params));assert.equal(preview.status,200);
+   const body={...params,previewToken:preview.body.previewToken};const first=await call('/retention/run','POST',body);assert.equal(first.status,409);
    const changed=await call('/retention/run','POST',{...body,rule:'keep-last=1'},{'X-IClusters-Confirm':first.body.confirmationPhrase});assert.equal(changed.status,409);
    const approved=await call('/retention/run','POST',body,{'X-IClusters-Confirm':first.body.confirmationPhrase});assert.equal(approved.status,200);assert.equal(approved.body.result.task,'UPID:real-task');
    assert.ok(requests.some(r=>r.method==='DELETE'&&r.path.includes('/prunebackups?')));

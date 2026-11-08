@@ -1,3 +1,4 @@
+import {retentionCleanup} from './retention-cleanup.js';
 import {trustSSHHost} from './ssh-host-trust.js';
 import {requestBodyDeadline} from './request-body-deadline.js';
 import {storageConfigurationService} from './storage-configuration-service.js';
@@ -455,10 +456,14 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
  action('delete','/schedules/:id','admin','proxmox.schedule.delete',req=>pve(`/cluster/backup/${encode(req.params.id)}`,{method:'DELETE'}),true);
  read('/retention',()=>providerReads([['policies','proxmox',async()=>(await backupJobs()).map(j=>({...j,rule:j['prune-backups']??null}))],['truenas','truenas',()=>truenas('pool.snapshottask.query')]]));
  action('post','/retention','admin','proxmox.retention.update',req=>pveWrite(`/cluster/backup/${encode(required(req.body.jobId,'Backup job'))}`,'PUT',{'prune-backups':retention(req.body.rule)}),true);
- read('/retention/preview',async req=>({items:await pve(`/nodes/${encode(required(req.query.node,'Node'))}/storage/${encode(required(req.query.storage,'Backup storage'))}/prunebackups?${new URLSearchParams({'prune-backups':retention(req.query.rule),...(req.query.vmid?{vmid:String(integer(req.query.vmid,'VM ID',100))}:{})})}`)}),'admin');
- action('post','/retention/run','admin','proxmox.retention.prune',async req=>{
-   const {node,storage,rule}=req.body;return {node,task:await pve(`/nodes/${encode(required(node,'Node'))}/storage/${encode(required(storage,'Backup storage'))}/prunebackups?${new URLSearchParams({'prune-backups':retention(rule),...(req.body.vmid?{vmid:String(integer(req.body.vmid,'VM ID',100))}:{})})}`,{method:'DELETE'})};
- },true);
+ const cleanupService=retentionCleanup();
+ const cleanupRequest=(method,req)=>{
+  const config=clusterConfig(),connection=connectionScope();
+  const read=(path,init)=>pve(path,init,config);
+  return cleanupService[method](method==='preview'?req.query:req.body,req.user.sub,connection,read);
+ };
+ read('/retention/preview',req=>cleanupRequest('preview',req),'admin');
+ action('post','/retention/run','admin','proxmox.retention.prune',req=>cleanupRequest('run',req),true);
  read('/restore',async req=>{
    const result=await providerReads([['snapshots','truenas',async()=>(await snapshot('truenas',forceRead(req))).snapshots]]);result.points=[];result.archiveInventory={configured:providers.proxmox.configured(),complete:false};
    if(providers.proxmox.configured())try{const archives=await readArchives(req);result.points=archives.points;result.archiveInventory={configured:true,...archives.coverage};result.errors.push(...archives.errors);}catch(e){result.errors.push(`proxmox: ${e.message}`);}
