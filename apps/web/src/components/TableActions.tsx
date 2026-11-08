@@ -33,21 +33,21 @@ function rowContent(value:ReactNode,firstCell=false):ReactNode {
  });
 }
 
-export function InspectableRow({onInspect,className='',children,...props}:Omit<ComponentProps<'tr'>,'onClick'|'onKeyDown'> & {onInspect:(row:HTMLTableRowElement)=>void}){
+export function InspectableRow({onInspect,inspectOnActivate=false,className='',children,...props}:Omit<ComponentProps<'tr'>,'onClick'|'onKeyDown'> & {inspectOnActivate?:boolean;onInspect:(row:HTMLTableRowElement)=>void}){
  const id=useId(),selection=useContext(RowSelection),[localSelected,setLocalSelected]=useState(false);
  const cells=rowCells(children);
  const hasActions=cells.length>1&&hasAction((cells.at(-1) as any)?.props.children);
  const selected=selection?.selected!=null?selection.selected===id:localSelected||/(?:^|\s)(?:[\w-]*-)?selected(?:\s|$)/.test(className);
  const classes=selection?.selected!=null?className.split(/\s+/).filter(c=>!/(?:^|-)selected$/.test(c)).join(' '):className;
  const choose=()=>{if(selection)selection.select(id);else setLocalSelected(true)};
- const activate=(row:HTMLTableRowElement)=>{choose();if(!hasActions)onInspect(row)};
+ const activate=(row:HTMLTableRowElement)=>{choose();if(inspectOnActivate||!hasActions)onInspect(row)};
  let first=true;
  const content=Children.map(children,child=>{
   if(!isValidElement<any>(child)||nativeTag(child)!=='td')return child;
   const isFirst=first;first=false;
   return cloneElement(child,{},rowContent((child as any).props.children,isFirst));
  });
- return <tr {...props} tabIndex={props.tabIndex??0} aria-selected={selected} data-row-action={hasActions?'select':'inspect'} className={`inspectable-row ${classes}${selected?' selected':''}`}
+ return <tr {...props} tabIndex={props.tabIndex??0} aria-selected={selected} data-row-action={hasActions&&!inspectOnActivate?'select':'inspect'} className={`inspectable-row ${classes}${selected?' selected':''}`}
   onClickCapture={event=>{if((event.target as Element).closest('button,a[href]'))choose()}}
   onClick={event=>{const target=event.target as Element;if(target.closest('button,a,input,select,textarea,label,details,summary,[role="button"],[role="switch"],[role="checkbox"],[contenteditable="true"]'))return;activate(event.currentTarget)}}
   onKeyDown={event=>{if(event.target!==event.currentTarget||!['Enter',' '].includes(event.key))return;event.preventDefault();activate(event.currentTarget)}}>{content}</tr>;

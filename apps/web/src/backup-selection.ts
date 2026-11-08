@@ -10,3 +10,11 @@ export function distinctBackupPoints(points:any[],preferredId=''){
 }
 
 export function backupArchivesLocation(storage?:string,node?:string){const params=new URLSearchParams({tab:'Backup Archives'});if(storage)params.set('storage',storage);if(node)params.set('node',node);return '/backups?'+params;}
+
+export function archiveScopeComplete(data:any,node:string){
+ const coverage=data?.archiveInventory;
+ if(!coverage)return !!data&&!data.errors?.length;
+ if(!coverage.configured)return false;
+ if(node&&Array.isArray(coverage.completeNodes))return coverage.completeNodes.includes(node);
+ return coverage.complete===true;
+}

@@ -21,3 +21,10 @@ test('a node with one verified Docker host links even with an empty inventory; m
  assert.equal(overviewData(data,null,'','').dockerHost,null);
  assert.equal(overviewData(data,null,'n3','').dockerKnown,false);
 });
+
+test('another node being checked cannot establish a zero archive count for an inaccessible node',()=>{
+ const backup={points:[],archiveInventory:{configured:true,complete:false,checkedStorage:1,completeNodes:['node01']}};
+ assert.equal(overviewData(sample,backup,'node02','').backupCount,null);
+ assert.equal(overviewData(sample,backup,'node01','').backupCount,0);
+ assert.equal(overviewData(sample,backup,'','').backupCount,null);
+});

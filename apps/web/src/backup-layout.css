@@ -18,3 +18,25 @@
 .backup-manager .page-header>.header-actions,.network-traffic>.network-panel-head>.header-actions{align-items:center;flex-wrap:wrap;min-width:0}
 .backup-manager .page-header>.header-actions>select{width:auto;flex:none}
 @media(max-width:600px){.backup-manager .page-header>.header-actions>select{flex:1 1 160px;min-width:0}.network-traffic>.network-panel-head>.header-actions{width:100%}}
+
+.restore-table .restore-mobile-guest { display: none; }
+@media (max-width: 650px) {
+  .restore-redesign table.restore-table { min-width: 0; width: 100%; }
+  .restore-table thead { position: absolute; clip-path: inset(50%); width: 1px; height: 1px; overflow: hidden; }
+  .restore-redesign .restore-table tbody { display: grid; gap: 8px; }
+  .restore-redesign .restore-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    border: 1px solid var(--theme-border);
+    border-radius: 10px;
+    padding: 8px;
+  }
+  .restore-redesign .restore-table tbody td { min-width: 0; white-space: normal; padding: 4px; border: 0; }
+  .restore-table td:first-child { grid-column: 1 / -1; }
+  .restore-table td:is(:nth-child(2), :nth-child(3), :nth-child(6)) { display: none; }
+  .restore-table td:last-child { grid-column: 1 / -1; }
+  .restore-table .restore-row-name b { white-space: normal; overflow-wrap: anywhere; }
+  .restore-table .restore-mobile-guest { display: block; }
+  .restore-table .backup-row-actions { justify-content: flex-end; }
+  .restore-table .restore-icon-button { min-width: 44px; min-height: 44px; }
+}

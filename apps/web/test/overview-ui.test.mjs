@@ -148,6 +148,10 @@ test('node-scoped LXC and Docker totals have distinct destinations',async()=>{
   const lxc=stat(page,'LXC Containers'),docker=stat(page,'Docker Containers');
   assert.equal(lxc.querySelector('strong').textContent,'1');
   assert.equal(docker.querySelector('strong').textContent,'3');
+  const backupURL=new URL(stat(page,'Backups').href);
+  assert.equal(backupURL.searchParams.get('tab'),'Restore Points');
+  assert.equal(backupURL.searchParams.get('node'),'n1');
+  assert.equal(backupURL.searchParams.get('type'),'archive');
   const lxcURL=new URL(lxc.href),dockerURL=new URL(docker.href);
   assert.equal(lxcURL.pathname,'/proxmox');assert.equal(lxcURL.searchParams.get('tab'),'LXC Containers');assert.equal(lxcURL.searchParams.get('inventoryNode'),'n1');
   assert.equal(dockerURL.pathname,'/docker');assert.equal(dockerURL.searchParams.get('tab'),'Containers');assert.equal(dockerURL.searchParams.get('host'),'agent:qemu/101');

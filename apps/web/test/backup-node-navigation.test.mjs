@@ -22,3 +22,32 @@ test('node backup action scopes destinations before shared-store deduplication a
  const page=await mounted('pages/BackupDestinations.tsx',{initialEntry:'/backups?tab=Destinations&node=n2'},destinationApi);
  try{assert.equal(page.container.querySelectorAll('.destination-table tbody tr').length,1);assert.ok(!page.container.querySelector('.destination-identity'));await page.click(page.container.querySelector('button[aria-label^="Actions for destination"]'));assert.match(page.container.querySelector('.destination-identity').textContent,/n2/);await page.click(page.container.querySelector('[aria-label="Close dialog"]'));assert.ok(!page.container.querySelector('.destination-table tbody').textContent.includes('local'));await page.click(button(page.container,'Test All'));assert.equal(page.container.querySelectorAll('.destination-checks>div').length,1);await page.click(page.container.querySelector('.modal [aria-label="Close dialog"]')||page.container.querySelector('.modal-close'));await page.click(button(page.container,'Show all nodes'));assert.equal(page.container.querySelectorAll('.destination-table tbody tr').length,2);assert.equal(page.container.querySelector('[data-location]').getAttribute('data-location'),'/backups?tab=Destinations');}finally{await page.close()}
 });
+
+test('node02 shared archive stays selected through refresh and Back preserves guest search',async()=>{
+ const calls=[];
+ const points=['node01','node02'].map(node=>({id:node,node,type:'qemu',vmid:200,shared:true,storage:'nas',volid:'nas:backup/200.vma.zst',created:'2026-11-01',size:1024**3}));
+ const api=async(path,init)=>{
+  calls.push(init?.method||'GET');
+  if(path.split('?')[0]==='/restore')return {points,errors:[],archiveInventory:{configured:true,complete:true,completeNodes:['node01','node02']}};
+  if(path==='/dashboard')return {guests:[{node:'node02',type:'qemu',id:200,name:'ZimaOS'}]};
+  return {user:{role:'viewer'},tasks:[]};
+ };
+ const page=await mounted('pages/Restore.tsx',{initialEntry:'/backups?tab=Restore%20Points&node=node02&type=archive'},api);
+ try{
+  const search=page.container.querySelector('[aria-label="Search restore points"]');
+  await act(async()=>{search.value='ZimaOS';search.dispatchEvent(new page.dom.window.Event('input',{bubbles:true}));});
+  const row=page.container.querySelector('.restore-table tbody tr');
+  assert.match(row.textContent,/ZimaOS/);
+  await page.click(row);
+  assert.match(page.container.querySelector('[role="dialog"]').textContent,/node02/);
+  assert.equal(page.container.querySelector('.restore-detail-actions button').disabled,true);
+  await act(async()=>{const requests=[];page.dom.window.dispatchEvent(new page.dom.window.CustomEvent('iclusters-resource-refresh',{detail:{prefixes:['/restore'],requests}}));await Promise.all(requests)});
+  assert.match(page.container.querySelector('[role="dialog"]').textContent,/200/);
+  await page.click(page.container.querySelector('[aria-label="Close dialog"]'));
+  assert.equal(page.container.querySelector('[role="dialog"]'),null);
+  assert.equal(search.value,'ZimaOS');
+  assert.equal(page.container.querySelector('.restore-table tbody tr.selected'),row);
+  assert.ok(!page.container.querySelector('[data-location]').dataset.location.includes('inspect='));
+  assert.ok(calls.every(method=>method==='GET'));
+ }finally{await page.close()}
+});
