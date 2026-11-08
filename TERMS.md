@@ -1,4 +1,4 @@
-Developer attribution: **The Adekola** · Company attribution: **ATT-Tech**. Updated 20 October 2026.
+Developed by **The Adekola Labs**. Updated 20 October 2026.
 
 # Terms of use for the self-hosted application
 

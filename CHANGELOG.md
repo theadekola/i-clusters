@@ -1,6 +1,6 @@
 # Changelog
 
-Developer: **The Adekola** · Company: **ATT-Tech**.
+Developed by **The Adekola Labs**.
 
 ## Unreleased
 

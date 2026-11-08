@@ -11,4 +11,4 @@ RUN go mod init iclusters.local/caddy-build \
 FROM caddy:2.11.7-alpine
 RUN apk upgrade --no-cache
 COPY --from=builder /out/caddy /usr/bin/caddy
-LABEL org.opencontainers.image.authors="The Adekola" org.opencontainers.image.vendor="ATT-Tech"
+LABEL org.opencontainers.image.authors="The Adekola Labs" org.opencontainers.image.vendor="The Adekola Labs"

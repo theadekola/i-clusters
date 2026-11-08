@@ -1,6 +1,6 @@
 # Current release-candidate assessment
 
-Baseline: 20 October 2026 · Updated 21 October 2026 · i-Clusters 3.1.0-rc.3 · Developer: The Adekola · Company: ATT-Tech.
+Baseline: 20 October 2026 · Updated 21 October 2026 · i-Clusters 3.1.0-rc.3 · Developed by The Adekola Labs.
 
 This supersedes the earlier same-day source-baseline findings where changes now exist. The release remains a controlled evaluation candidate, pending live installation acceptance and independent security review.
 

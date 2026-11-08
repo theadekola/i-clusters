@@ -1,6 +1,6 @@
 # Contributing
 
-Developer: The Adekola · Company: ATT-Tech.
+Developed by The Adekola Labs.
 
 Open a focused issue or pull request against the repository. Use SECURITY.md for private vulnerability handling. Do not include customer data or secrets. Keep existing third-party copyright/licence notices and do not add assets without a documented source/licence.
 

@@ -1,6 +1,6 @@
 # i-Clusters documentation
 
-Developer: **The Adekola** · Company: **ATT-Tech** · Current release baseline: **1.0.0**.
+Developed by **The Adekola Labs** · Current release baseline: **1.0.0**.
 
 | Need | Guide |
 | --- | --- |

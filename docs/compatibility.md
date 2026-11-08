@@ -1,6 +1,6 @@
 # Compatibility and deployment scope
 
-Applies to 1.0.0. Developer: The Adekola; company: ATT-Tech.
+Applies to 1.0.0. Developed by The Adekola Labs.
 
 | Component | Tested or implemented scope | Acceptance boundary |
 | --- | --- | --- |

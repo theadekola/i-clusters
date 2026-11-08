@@ -6,9 +6,9 @@
 
 **Your infrastructure, in one interface.**
 
-i-Clusters is a self-hosted infrastructure management application for Proxmox VE, Docker and TrueNAS. It brings inventory, monitoring, supported infrastructure actions, backups, SSH terminals and SFTP into one responsive interface.
+i-Clusters is a self-hosted interface for managing Proxmox VE environments, virtual machines, LXC containers, Docker and TrueNAS. Keep the server names you use in Proxmox VE. It brings inventory, monitoring, supported infrastructure actions, backups, SSH terminals and SFTP into one responsive interface.
 
-Developed by **The Adekola** for **ATT-Tech**. Application version: **1.0.0** (release baseline; publication paused). Licence: [MIT](LICENSE).
+Developed by **The Adekola Labs**. Application version: **1.0.0** (release baseline; publication paused). Licence: [MIT](LICENSE).
 
 **Release status:** controlled evaluation candidate, with separate controllers per customer. Production provider acceptance, physical-device testing and independent security review remain open. See [release notes](docs/releases/v1.0.0.md), [CHANGELOG](CHANGELOG.md), [release policy](docs/release-policy.md) and [acceptance checklist](docs/acceptance-checklist.md).
 
@@ -221,7 +221,7 @@ Use [GitHub Issues](https://github.com/theadekola/i-clusters/issues) for reprodu
 - [Customer acceptance checklist](docs/acceptance-checklist.md)
 - [Contributing](CONTRIBUTING.md) and [third-party notices](THIRD_PARTY_NOTICES.md)
 
-Developer: **The Adekola** · Company: **ATT-Tech**. The existing repository owner and Ubuntu service/path names remain compatibility identifiers.
+Developed by **The Adekola Labs**. The existing repository owner and Ubuntu service/path names remain compatibility identifiers.
 
 Existing installations are migrated during the normal update. See [i-Clusters name migration](docs/brand-migration.md) for preserved data and compatibility aliases.
 

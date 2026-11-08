@@ -1,6 +1,6 @@
 # Third-party notices
 
-First-party application attribution: developer The Adekola; company ATT-Tech. First-party source uses the MIT licence in LICENSE. Changing the public developer/company attribution does not remove third-party rights.
+The Adekola Labs develops and publishes i-Clusters. First-party source uses the MIT licence in LICENSE. Changing the public developer/company attribution does not remove third-party rights.
 
 Dependencies retain their respective licences. The API and web lockfiles and generated CycloneDX SBOMs identify selected components; consult each distributed package's licence before redistribution. SBOM metadata is an inventory aid, not a complete legal clearance report.
 

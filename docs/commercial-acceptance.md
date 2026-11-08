@@ -1,6 +1,6 @@
 # Commercial acceptance and remaining launch gates
 
-Developer: The Adekola · Company: ATT-Tech. Updated 21 October 2026.
+Developed by The Adekola Labs. Updated 21 October 2026.
 
 Publication and new release notes remain paused. The current design supports a dedicated controller per customer. It is not a shared multi-tenant SaaS service. These procedures collect evidence; they do not create a compliance, uptime or security certification.
 

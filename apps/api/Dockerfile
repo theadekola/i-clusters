@@ -14,5 +14,5 @@ RUN node scripts/write-build-info.mjs
 RUN mkdir -p /app/runtime
 ENV PORT=6000
 EXPOSE 6000
-LABEL org.opencontainers.image.authors="The Adekola" org.opencontainers.image.vendor="ATT-Tech"
+LABEL org.opencontainers.image.authors="The Adekola Labs" org.opencontainers.image.vendor="The Adekola Labs"
 CMD ["node","src/server.js"]
