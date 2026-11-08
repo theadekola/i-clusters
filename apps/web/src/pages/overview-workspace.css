@@ -33,3 +33,9 @@
  .overview-v2 .overview-stat {transition:border-color 160ms ease,box-shadow 160ms ease}
  .overview-v2 .overview-stat:hover {border-color:var(--app-accent);box-shadow:0 2px 8px #0002}
 }
+@container overview (min-width: 1120px) {
+ .content .overview-v2 .overview-stats {grid-template-columns:repeat(6,minmax(0,1fr))}
+}
+@container overview (min-width: 620px) and (max-width: 1119px) {
+ .content .overview-v2 .overview-stats {grid-template-columns:repeat(3,minmax(0,1fr))}
+}
