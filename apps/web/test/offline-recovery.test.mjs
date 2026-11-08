@@ -10,29 +10,29 @@ async function offlineHTML(){
 function recovery(html,fetch){
  const events={},timers=new Map(),nodes=Object.fromEntries(['retry','status','address'].map(id=>[id,{textContent:'',disabled:false,addEventListener:(name,fn)=>events[id+':'+name]=fn}]));let count=0,reloads=0;
  const document={hidden:false,getElementById:id=>nodes[id],addEventListener:(name,fn)=>events['document:'+name]=fn};
- vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],{document,window:{addEventListener:(name,fn)=>events['window:'+name]=fn},location:{host:'192.168.20.104:6002',reload:()=>reloads++},fetch,AbortController,setTimeout:(fn,ms)=>{const id=++count;timers.set(id,{fn,ms});return id},clearTimeout:id=>timers.delete(id)});
+ vm.runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],{document,window:{addEventListener:(name,fn)=>events['window:'+name]??=fn},location:{host:'192.168.20.104:6002',reload:()=>reloads++},fetch,AbortController,setTimeout:(fn,ms)=>{const id=++count;timers.set(id,{fn,ms});return id},clearTimeout:id=>timers.delete(id)});
  return {document,nodes,events,timers,reloads:()=>reloads};
 }
 test('navigation failures and server errors return a self-contained responsive screen; auth errors stay untouched',async()=>{
  const events={};let status=502;
  vm.runInNewContext(source,{self:{addEventListener:(name,fn)=>events[name]=fn},fetch:async()=>new Response('upstream error',{status}),Response,URL,AbortController,setTimeout,clearTimeout});
  let response;events.fetch({request:{mode:'navigate',url:'https://host/'},respondWith:p=>response=p});const fallback=await response,html=await fallback.text();
- assert.equal(fallback.status,503);assert.match(html,/viewport-fit=cover/);assert.match(html,/prefers-color-scheme:light/);assert.match(html,/safe-area-inset/);assert.match(html,/Unable to reach i-Clusters/);assert.match(html,/Your dashboard data is not stored offline/);assert.doesNotMatch(html,/<link[^>]+rel="stylesheet"|<img[^>]+src=/);assert.match(html,/rel="apple-touch-icon"/);assert.equal(fallback.headers.get('Cache-Control'),'no-store');
+ assert.equal(fallback.status,503);assert.match(html,/viewport-fit=cover/);assert.match(html,/prefers-color-scheme:light/);assert.match(html,/safe-area-inset/);assert.match(html,/<p role="status">Loading i-Clusters…<\/p>/);assert.doesNotMatch(html.split("<script>")[0],/Unable to reach|Installation address|diagnostics|Try again/i);assert.doesNotMatch(html,/<link[^>]+rel="stylesheet"|<img[^>]+src=/);assert.match(html,/rel="apple-touch-icon"/);assert.equal(fallback.headers.get('Cache-Control'),'no-store');
  status=403;events.fetch({request:{mode:'navigate',url:'https://host/'},respondWith:p=>response=p});assert.equal((await response).status,403);
 });
 test('retry probes public health without credentials or cache and reloads only after verified recovery',async()=>{
  const calls=[],page=recovery(await offlineHTML(),async(path,options)=>{calls.push({path,options});return path==='/'?new Response('<div id="root"></div>',{headers:{'Content-Type':'text/html'}}):{ok:true,json:async()=>({ok:true})}});
- assert.equal(page.nodes.address.textContent,'192.168.20.104:6002');await page.events['retry:click']();assert.equal(page.reloads(),1);assert.equal(calls[0].path,'/api/health');assert.equal(calls[0].options.cache,'no-store');assert.equal(calls[0].options.credentials,'omit');
+ await [...page.timers.values()].find(t=>t.ms===5000).fn();assert.equal(page.reloads(),1);assert.equal(calls[0].path,'/api/health');assert.equal(calls[0].options.cache,'no-store');assert.equal(calls[0].options.credentials,'omit');
 });
 test('server failures and captive-portal responses do not cause a reload loop',async()=>{
  for(const response of [{ok:false},{ok:true,json:async()=>({ok:false})},{ok:true,json:async()=>{throw Error('HTML response')}}]){
-  const page=recovery(await offlineHTML(),async()=>response);await page.events['retry:click']();assert.equal(page.reloads(),0);assert.equal(page.nodes.retry.disabled,false);assert.ok([...page.timers.values()].some(t=>t.ms===5000));
+  const page=recovery(await offlineHTML(),async()=>response);await page.events['window:online']();assert.equal(page.reloads(),0);assert.ok([...page.timers.values()].some(t=>t.ms===5000));
  }
 });
 test('checks time out, pause in hidden pages and stop after leaving the page',async()=>{
  let calls=0;const page=recovery(await offlineHTML(),async(path,{signal})=>{calls++;return new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(Error('timeout'))))});
- const checking=page.events['retry:click']();assert.equal(page.nodes.retry.disabled,true);await page.events['window:online']();assert.equal(calls,1);
- [...page.timers.values()].find(t=>t.ms===6000).fn();await checking;assert.equal(page.nodes.retry.disabled,false);assert.equal(page.reloads(),0);
+ const checking=[...page.timers.values()].find(t=>t.ms===5000).fn();await page.events['window:online']();assert.equal(calls,1);
+ [...page.timers.values()].find(t=>t.ms===6000).fn();await checking;assert.equal(page.reloads(),0);
  page.document.hidden=true;page.events['document:visibilitychange']();assert.equal(page.timers.size,0);await page.events['window:online']();assert.equal(calls,1);
  page.events['window:pagehide']();page.document.hidden=false;await page.events['window:online']();assert.equal(calls,1);
 });
@@ -49,20 +49,13 @@ test('direct API navigation preserves original network and TLS errors instead of
 test('healthy API with a failed or non-dashboard frontend never reloads the offline page',async()=>{
  for(const shell of [new Response('failed',{status:502}),new Response('<html>proxy login</html>',{headers:{'Content-Type':'text/html'}})]){
   const page=recovery(await offlineHTML(),async path=>path==='/api/health'?new Response('{"ok":true}') : shell);
-  await page.events['retry:click']();assert.equal(page.reloads(),0);assert.match(page.nodes.status.textContent,/dashboard is unavailable/);
+  await page.events['window:online']();assert.equal(page.reloads(),0);assert.equal(page.nodes.status.textContent,"");
  }
-});
-
-test('a server error is described separately from an unknown network or TLS failure',async()=>{
- const events={};vm.runInNewContext(source,{self:{addEventListener:(name,fn)=>events[name]=fn},fetch:async()=>new Response('bad gateway',{status:502}),Response,URL,AbortController,setTimeout,clearTimeout});
- let response;events.fetch({request:{mode:'navigate',url:'https://host/'},respondWith:p=>response=p});assert.match(await (await response).text(),/server returned HTTP 502/);
- assert.match(await offlineHTML(),/routing, firewall, certificate trust or server problem/);
- const page=recovery(await offlineHTML(),async()=>new Response('{"ok":false}',{status:503}));await page.events['retry:click']();assert.match(page.nodes.status.textContent,/database is unavailable/);
 });
 
 test('a stalled navigation returns a bounded fallback even when the transport ignores abort',async()=>{
  const events={},timers=new Map();let count=0;
  vm.runInNewContext(source,{self:{addEventListener:(name,fn)=>events[name]=fn},fetch:()=>new Promise(()=>{}),Response,URL,AbortController,setTimeout:(fn,ms)=>{timers.set(++count,{fn,ms});return count},clearTimeout:id=>timers.delete(id)});
  let response;events.fetch({request:{mode:'navigate',url:'https://host/'},respondWith:p=>response=p});assert.ok([...timers.values()].some(t=>t.ms===15000));[...timers.values()][0].fn();
- assert.match(await (await response).text(),/HTTPS request timed out/);assert.equal(timers.size,0);
+ assert.match(await (await response).text(),/Loading i-Clusters…/);assert.equal(timers.size,0);
 });
