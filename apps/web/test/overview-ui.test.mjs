@@ -112,3 +112,24 @@ test('Overview resource and health widgets suppress cached values after forced r
 test('Overview expired resource readings are labelled Stale rather than current percentages',async()=>{
  const page=await mounted('pages/Overview.tsx',{},async p=>p==='/auth/me'?{user:{role:'viewer'}}:p==='/backups'?{points:[],jobs:[]}:{...sample(),sampledAt:new Date(Date.now()-240000).toISOString()});try{assert.ok([...page.container.querySelectorAll('.resource-tile strong,.health-line b,.actual-health strong')].every(el=>el.textContent==='Stale'));}finally{await page.close()}
 });
+
+test('independent overview readings appear while dashboard inventory is still pending',async()=>{
+ let finish;
+ const page=await mounted('pages/Overview.tsx',{},async path=>{
+  if(path==='/dashboard')return new Promise(resolve=>{finish=resolve});
+  if(path==='/backups')return {points:[{node:'n1'}],jobs:[]};
+  if(path==='/header-notifications')return {attentionCount:2,criticalCount:1};
+  return {user:{role:'viewer'}};
+ });
+ try{
+  const servers=stat(page,'Total Servers');
+  assert.ok(servers.querySelector('strong [role=status]'));
+  assert.equal(stat(page,'Backups').querySelector('strong').textContent,'1');
+  assert.equal(stat(page,'Alerts').querySelector('strong').textContent,'2');
+  assert.equal(page.container.querySelector('[aria-label="Export overview report"]').disabled,true);
+  await act(async()=>finish(sample()));
+  assert.equal(stat(page,'Total Servers'),servers);
+  assert.equal(servers.querySelector('strong').textContent,'2');
+  assert.equal(page.container.querySelector('[aria-label="Export overview report"]').disabled,false);
+ }finally{await page.close()}
+});
