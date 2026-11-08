@@ -80,7 +80,7 @@ export async function proxmoxSnapshot(query=pve){
         }else{
           if(!Array.isArray(data)||data.some(guest=>!guest||guest.vmid==null||!Number.isInteger(Number(guest.vmid))))throw new Error('Unexpected guest inventory response');
           const present=new Set(data.map(guest=>String(guest.vmid)));resources=resources.filter(row=>row.type!==type||row.node!==node.node||present.has(String(row.vmid)));
-          for(const guest of data)if(guest.vmid!=null){const existing=resources.find(r=>r.type===type&&String(r.vmid)===String(guest.vmid));if(existing)Object.assign(existing,guest,{node:node.node});else resources.push({...guest,type,node:node.node});}
+          for(const row of data)if(row.vmid!=null){const guest={...row,networkSample:{at:Date.now(),rx:row.netin,tx:row.netout,uptime:row.uptime}};const existing=resources.find(r=>r.type===type&&String(r.vmid)===String(guest.vmid));if(existing)Object.assign(existing,guest,{node:node.node});else resources.push({...guest,type,node:node.node});}
         }
         coverage.readings.push(type);
       }catch(e){coverage.status='partial';coverage.errors.push(`${type}: ${e.message}`);errors.push(`${node.node} ${type}: ${e.message}`);}
@@ -96,7 +96,7 @@ export async function proxmoxSnapshot(query=pve){
   const identity=createHash('sha256').update(JSON.stringify(clusterConfig())).digest('hex');
   const vmFilesystems=await readGuestFilesystems(running,query,identity);
   const addressReadings=await readGuestAddresses(resources.filter(r=>['qemu','lxc'].includes(r.type)),query,identity);
-  const guests=type=>resources.filter(r=>r.type===type).map(r=>({...addressReadings.get(`${r.node}/${r.type}/${r.vmid}`),id:String(r.vmid),name:r.name||String(r.vmid),node:r.node,type,status:r.status,nodeAvailable:!unavailable.has(r.node),reportedStatus:r.reportedStatus,cpu:r.cpu==null?null:Math.round(r.cpu*100),memory:r.mem==null?null:r.mem,memoryTotal:r.maxmem??null,memoryPercent:percent(r.mem,r.maxmem),disk:type==='qemu'?(vmFilesystems.get(String(r.vmid))?.used??null):(r.disk??null),diskTotal:type==='qemu'?(vmFilesystems.get(String(r.vmid))?.total??null):(r.maxdisk??null),diskFree:type==='qemu'?(vmFilesystems.get(String(r.vmid))?.free??null):null,diskCapacity:r.maxdisk??null,diskPercent:type==='qemu'?percent(vmFilesystems.get(String(r.vmid))?.used,vmFilesystems.get(String(r.vmid))?.total):percent(r.disk,r.maxdisk),uptime:r.uptime??null}));
+  const guests=type=>resources.filter(r=>r.type===type).map(r=>({networkSample:!unavailable.has(r.node)&&r.status==='running'?r.networkSample??null:null,...addressReadings.get(`${r.node}/${r.type}/${r.vmid}`),id:String(r.vmid),name:r.name||String(r.vmid),node:r.node,type,status:r.status,nodeAvailable:!unavailable.has(r.node),reportedStatus:r.reportedStatus,cpu:r.cpu==null?null:Math.round(r.cpu*100),memory:r.mem==null?null:r.mem,memoryTotal:r.maxmem??null,memoryPercent:percent(r.mem,r.maxmem),disk:type==='qemu'?(vmFilesystems.get(String(r.vmid))?.used??null):(r.disk??null),diskTotal:type==='qemu'?(vmFilesystems.get(String(r.vmid))?.total??null):(r.maxdisk??null),diskFree:type==='qemu'?(vmFilesystems.get(String(r.vmid))?.free??null):null,diskCapacity:r.maxdisk??null,diskPercent:type==='qemu'?percent(vmFilesystems.get(String(r.vmid))?.used,vmFilesystems.get(String(r.vmid))?.total):percent(r.disk,r.maxdisk),uptime:r.uptime??null}));
   let clusterStatus=[];
   try{clusterStatus=await query('/cluster/status');}catch(e){errors.push(`Cluster status: ${e.message}`);}
   const backupHistory={verified:false,tasks:[]};
