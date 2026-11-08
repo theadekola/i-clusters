@@ -18,3 +18,25 @@ export function archiveScopeComplete(data:any,node:string){
  if(node&&Array.isArray(coverage.completeNodes))return coverage.completeNodes.includes(node);
  return coverage.complete===true;
 }
+
+export function jobNodes(job:any):string[]{
+ return String(job.node??'').split(/[,\s]+/).filter(Boolean);
+}
+
+export function jobIncludesNode(job:any,node:string){
+ const nodes=jobNodes(job);
+ return !node||node==='all'||!nodes.length||nodes.includes(node);
+}
+
+export function nextTime(job:any):number|null{
+ const raw=job['next-run']??job.next_run;
+ if(typeof raw!=='number'&&typeof raw!=='string')return null;
+ const value=typeof raw==='string'?raw.trim():raw;
+ const millis=typeof value==='number'||/^\d+(\.\d+)?$/.test(value)?Number(value)*1000:Date.parse(value);
+ return millis>0&&Number.isFinite(new Date(millis).getTime())?millis:null;
+}
+
+const scheduleDate=new Intl.DateTimeFormat(undefined,{
+ year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'
+});
+export function formatNextRun(millis:number){return scheduleDate.format(millis)}
