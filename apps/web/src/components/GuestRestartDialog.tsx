@@ -10,6 +10,6 @@ export default function GuestRestartDialog({node,id,kind='vm',reason='setup',nam
  return createPortal(<Modal open title={`Restart ${kind==='vm'?'VM':'CT'} · ${name}`} onClose={onClose} closeDisabled={busy}>
  {reason==='update'?<><p><b>{name}</b> ({node} / {id})</p><p>Restart this guest to finish the OS update. Services will be interrupted. SSH approval is required.</p></>:<><p>Setup is installed. A full shutdown and start is required to activate the guest channel on <b>{name}</b> ({node} / {id}). This interrupts services in this guest.</p><p>Continue to shut down safely, wait until it is stopped, then start it and verify access. The existing SSH approval protects power actions.</p></>}
  {busy&&<p role="status"><ReportLoading message={message||'Preparing restart…'}/></p>}{error&&<p role="alert" className="error">{error}</p>}
- <div className="modal-actions"><button type="button" className="btn secondary" disabled={busy} onClick={onClose}>Later</button><button type="button" className="btn primary" disabled={busy} aria-busy={busy} onClick={restart}>Shutdown, Start &amp; Verify</button></div>
+ <div className={reason==="update"?"modal-actions guest-restart-sheet":"modal-actions"}><button type="button" className="btn secondary" disabled={busy} onClick={onClose}>Later</button><button type="button" className="btn primary" disabled={busy} aria-busy={busy} onClick={restart}>Shutdown, Start &amp; Verify</button></div>
  </Modal>,document.body);
 }
