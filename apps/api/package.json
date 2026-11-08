@@ -22,8 +22,8 @@
     "ssh2": "^1.17.0",
     "ws": "^8.22.0"
   },
-  "author": "The Adekola",
-  "company": "ATT-Tech",
+  "author": "The Adekola Labs",
+  "company": "The Adekola Labs",
   "license": "MIT",
   "homepage": "https://www.i-clusters.com"
 }

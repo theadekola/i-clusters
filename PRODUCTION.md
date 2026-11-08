@@ -250,7 +250,7 @@ Browsers and manually paired nodes must trust Caddy’s local CA. Automatic SSH 
 
 ## Release candidate operations
 
-Current publisher attribution: ATT-Tech; developer: The Adekola. Follow the [release policy](docs/release-policy.md), [compatibility scope](docs/compatibility.md), [operations guide](docs/operations.md) and [acceptance checklist](docs/acceptance-checklist.md). Optional MFA is user-controlled under Settings → Security. Use the HTTPS endpoint for Secure browser cookies and screen-awake support. Screen locks are best effort; server-side jobs remain independent.
+Published by The Adekola Labs. Follow the [release policy](docs/release-policy.md), [compatibility scope](docs/compatibility.md), [operations guide](docs/operations.md) and [acceptance checklist](docs/acceptance-checklist.md). Optional MFA is user-controlled under Settings → Security. Use the HTTPS endpoint for Secure browser cookies and screen-awake support. Screen locks are best effort; server-side jobs remain independent.
 
 ### TrueNAS certificate options
 

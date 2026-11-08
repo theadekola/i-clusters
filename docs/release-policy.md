@@ -1,6 +1,6 @@
 # Release and maintenance policy
 
-Developer: The Adekola · Company: ATT-Tech.
+Developed by The Adekola Labs.
 
 Versions follow a `major.minor.patch` scheme with prerelease suffixes for evaluation builds. The release series starts at **v1.0.0**, with package version **1.0.0**. This is the new release-notes baseline; publication remains paused. Earlier 3.x candidate labels are retained as historical development records, and existing GitHub tags/assets are not renamed or deleted. Package versions, lockfile root versions, build metadata and notes must agree. Build numbers and Git revisions identify artifacts separately from the semantic version.
 

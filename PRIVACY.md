@@ -1,6 +1,6 @@
 # Privacy and data handling
 
-Updated: 20 October 2026. Developer attribution: The Adekola. Company attribution: ATT-Tech.
+Updated: 20 October 2026. Developed by The Adekola Labs.
 
 This document describes the i-Clusters application's data flows. It is not a privacy notice for every independently operated installation. The person or organisation operating an installation decides its access, connected systems, retention, backups and any additional proxy or hosting logs. Contact that operator about data on their instance.
 

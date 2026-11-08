@@ -1,6 +1,6 @@
 # Security and operational scope
 
-Publisher attribution: **ATT-Tech**. Developer: **The Adekola**. Applies to the 3.1.0 release-candidate series; see [release policy](docs/release-policy.md).
+Published by **The Adekola Labs**. Applies to the 3.1.0 release-candidate series; see [release policy](docs/release-policy.md).
 
 i-Clusters controls privileged infrastructure. Use dedicated provider identities and grant only the permissions needed for the selected features. The MIT licence is not a security guarantee.
 

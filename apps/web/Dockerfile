@@ -9,7 +9,7 @@ RUN npm run build
 
 FROM nginx:alpine
 RUN apk upgrade --no-cache
-LABEL org.opencontainers.image.authors="The Adekola" org.opencontainers.image.vendor="ATT-Tech"
+LABEL org.opencontainers.image.authors="The Adekola Labs" org.opencontainers.image.vendor="The Adekola Labs"
 COPY --from=build /app/dist /usr/share/nginx/html
 RUN chmod -R a+rX /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf

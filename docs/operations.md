@@ -1,6 +1,6 @@
 # Operating and supporting an installation
 
-Developer: The Adekola · Company: ATT-Tech. This is an operator runbook, not an uptime or recovery guarantee.
+Developed by The Adekola Labs. This is an operator runbook, not an uptime or recovery guarantee.
 
 ## Before accepting a customer
 

@@ -8,4 +8,4 @@ RUN apk upgrade --no-cache \
  && ! grep -q gosu /usr/local/bin/docker-entrypoint.sh \
  && rm -f /usr/local/bin/gosu \
  && test "$(su-exec postgres id -u)" = 70
-LABEL org.opencontainers.image.authors="The Adekola" org.opencontainers.image.vendor="ATT-Tech"
+LABEL org.opencontainers.image.authors="The Adekola Labs" org.opencontainers.image.vendor="The Adekola Labs"
