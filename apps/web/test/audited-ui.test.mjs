@@ -647,7 +647,7 @@ test('operational tools require a fresh connector and preserve unavailable measu
 test('recovery tests never run automatically or allow verification without console evidence',async()=>{const calls=[];const page=await mounted('components/RecoveryTests.tsx',{},async(p,options)=>{calls.push({p,options});if(p==='/recovery-tests')return {tests:[{id:'r',node:'n',vmid:900,status:'boot-requested',dataVerified:false}]};if(p==='/recovery-tests/r')return {test:{id:'r',vmid:900,status:'boot-requested'},guestStatus:'running',isolated:true,note:'Inspect console'};return {points:[]}});try{assert.equal(calls.some(c=>c.options?.method==='POST'),false);await page.click(button(page.container,'View Verification'));assert.equal(button(page.container,'Record Verified Recovery').disabled,true);assert.ok(button(page.container,'Close'))}finally{await page.close()}});
 
 test('report refresh controls request every source used by their page without submitting provider writes',async()=>{
- const cases=[['pages/Storage.tsx','Refresh',['/storage?view=pools','/proxmox/tasks?hours=24']],['pages/ProxmoxNetworks.tsx','Refresh',['/proxmox/network','/proxmox/network/fixture?timeframe=day']],['pages/ProxmoxTasks.tsx','Refresh',['/proxmox/tasks?hours=24','/proxmox/tasks?hours=168']],['pages/NetworkTraffic.tsx','Refresh',['/proxmox/network','/proxmox/network/fixture?timeframe=day']],['pages/Users.tsx','Refresh',['/users','/auth/me']],['pages/Shell.tsx','Refresh Hosts',['/proxmox','/ssh/connections']],['pages/Schedules.tsx','Refresh',['/schedules','/proxmox/storage','/proxmox','/proxmox/tasks?hours=168']],['pages/Retention.tsx','Refresh',['/retention','/restore']],['pages/BackupDestinations.tsx','Refresh',['/proxmox/storage']],['pages/BackupReports.tsx','Refresh',['/proxmox/tasks?hours=24','/proxmox/storage','/restore']],['pages/ProxmoxTasks.tsx','Refresh',['/proxmox/tasks?hours=24']],['pages/NetworkDNS.tsx','Refresh',['/network/dns']],['pages/NetworkRouting.tsx','Refresh',['/proxmox/network','/proxmox']],['pages/NetworkDevices.tsx','Refresh',['/dashboard','/docker/hosts']],['pages/StorageShares.tsx','Refresh',['/storage/shares']],['pages/StorageSnapshots.tsx','Refresh',['/storage/snapshots?refresh=1']],['components/OperationsHealth.tsx','Refresh Readings',['/operations/health','/operations/performance']],['components/RecoveryTests.tsx','Refresh Recovery Tests',['/recovery-tests','/restore']]];
+ const cases=[['pages/Storage.tsx','Refresh',['/storage?view=pools','/proxmox/tasks?hours=24']],['pages/ProxmoxNetworks.tsx','Refresh',['/proxmox/network','/proxmox/network/fixture?timeframe=day']],['pages/ProxmoxTasks.tsx','Refresh',['/proxmox/tasks?hours=24','/proxmox/tasks?hours=168']],['pages/NetworkTraffic.tsx','Refresh',['/proxmox/network','/proxmox/network/fixture?timeframe=day']],['pages/Users.tsx','Refresh',['/users','/auth/me']],['pages/Schedules.tsx','Refresh',['/schedules','/proxmox/storage','/proxmox','/proxmox/tasks?hours=168']],['pages/Retention.tsx','Refresh',['/retention','/restore']],['pages/BackupDestinations.tsx','Refresh',['/proxmox/storage']],['pages/BackupReports.tsx','Refresh',['/proxmox/tasks?hours=24','/proxmox/storage','/restore']],['pages/ProxmoxTasks.tsx','Refresh',['/proxmox/tasks?hours=24']],['pages/NetworkDNS.tsx','Refresh',['/network/dns']],['pages/NetworkRouting.tsx','Refresh',['/proxmox/network','/proxmox']],['pages/NetworkDevices.tsx','Refresh',['/dashboard','/docker/hosts']],['pages/StorageShares.tsx','Refresh',['/storage/shares']],['pages/StorageSnapshots.tsx','Refresh',['/storage/snapshots?refresh=1']],['components/OperationsHealth.tsx','Refresh Readings',['/operations/health','/operations/performance']],['components/RecoveryTests.tsx','Refresh Recovery Tests',['/recovery-tests','/restore']]];
  for(const [file,label,expected] of cases){const calls=[];const page=await mounted(file,{role:'owner',hours:'24'},async(p,options)=>{calls.push({p,options});if(p==='/auth/me')return {user:{role:'owner'}};return {nodes:[{id:'fixture',node:'fixture',name:'fixture',status:'online'}],hosts:[],connections:[],users:[],vms:[],lxc:[],alerts:[],rules:[],interfaces:[],resolvers:[],tasks:[],points:[],snapshots:[],storage:[],disks:[],shares:[],datasets:[],tests:[],routes:[],services:[],resources:[],logs:[],providerInventory:{},coverage:{complete:true},archiveInventory:{complete:true},errors:[]}});
  try{const before=calls.length;const refreshButton=button(page.container,label)||[...page.container.querySelectorAll('button')].find(b=>/^Refresh/.test(b.textContent.trim())||(b.getAttribute('aria-label')||'').startsWith('Refresh'));assert.ok(refreshButton,file+' must expose a refresh control');await page.click(refreshButton);for(const path of expected)assert.ok(calls.slice(before).some(c=>c.p===path),file+' must refresh '+path+'; got '+calls.slice(before).map(c=>c.p).join(','));assert.ok(calls.every(c=>!c.options?.method||c.options.method==='GET'),file+' refresh must be read-only')}finally{await page.close()}
  }
@@ -800,3 +800,24 @@ test('A plain version number does not claim commercial release acceptance',async
   assert.ok(page.container.textContent.includes('Evaluation build'));assert.ok(page.container.textContent.includes('Commercial release acceptance is pending.'));assert.equal(page.container.textContent.includes('Versioned release'),false);
  }finally{await page.close();}
 });
+
+for (const mode of ['shell', 'sftp']) {
+ test(mode + ' refreshes the host list automatically', async () => {
+  let reads = 0;
+  const page = await mounted('pages/Shell.tsx', {mode}, async (path, options) => {
+   assert.equal(options?.method ?? 'GET', 'GET');
+   if (path !== '/proxmox') return {};
+   reads++;
+   return {nodes: [{name: reads === 1 ? 'first-host' : 'updated-host'}], refreshing: reads === 1};
+  });
+  try {
+   assert.ok(button(page.container, 'Refresh Hosts') === undefined);
+   assert.match(page.container.textContent, /first-host/);
+   await act(async () => { await new Promise(resolve => setTimeout(resolve, 1200)); });
+   assert.match(page.container.textContent, /updated-host/);
+   assert.doesNotMatch(page.container.textContent, /first-host/);
+  } finally {
+   await page.close();
+  }
+ });
+}
