@@ -40,3 +40,12 @@ const scheduleDate=new Intl.DateTimeFormat(undefined,{
  year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'
 });
 export function formatNextRun(millis:number){return scheduleDate.format(millis)}
+
+export function backupPolicyIncludesNode(row:any,node:string){
+ if(node==='all')return true;
+ return row.provider==='truenas'?row.node===node:jobIncludesNode(row,node);
+}
+
+export function backupNodeLabel(row:any){
+ return row.node||(row.provider==='proxmox'?'All Nodes':'Not reported');
+}

@@ -1,7 +1,8 @@
 import {pve} from './connectors.js';
 import {encode,integer,httpError} from './infrastructure.js';
-export async function taskInventory(hours=24,query=pve){
- hours=integer(hours,'Hours',1,720);const nodes=await query('/nodes'),tasks=[],errors=[],truncated=[];if(!Array.isArray(nodes)||nodes.some(n=>!n||typeof n.node!=='string'||!n.node.trim()))throw Object.assign(new Error('Invalid Proxmox node inventory'),{status:502});
+export async function taskInventory(hours=24,query=pve,node){
+ hours=integer(hours,'Hours',1,720);const inventory=await query('/nodes'),tasks=[],errors=[],truncated=[];if(!Array.isArray(inventory)||inventory.some(n=>!n||typeof n.node!=='string'||!n.node.trim()))throw Object.assign(new Error('Invalid Proxmox node inventory'),{status:502});
+ const nodes=node?inventory.filter(item=>item.node===node):inventory;
  if(!nodes.length)errors.push('No Proxmox nodes are visible; task history could not be verified.');
  for(let i=0;i<nodes.length;i+=5)await Promise.all(nodes.slice(i,i+5).map(async n=>{try{if(n.status==='offline')throw new Error('Node is offline');const rows=await query(`/nodes/${encode(n.node)}/tasks?source=all&limit=500&since=${Math.floor(Date.now()/1000)-hours*3600}`);if(!Array.isArray(rows))throw new Error('Unexpected task inventory response');tasks.push(...rows.map(t=>({...t,node:n.node})));if(rows.length===500)truncated.push(n.node);}catch(e){errors.push(`${n.node}: ${e.message}`);}}));
  return {nodes,tasks:tasks.sort((a,b)=>b.starttime-a.starttime),errors,truncated,coverage:{complete:!errors.length&&!truncated.length},sampledAt:new Date().toISOString()};

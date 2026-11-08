@@ -465,7 +465,7 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
    return result;
  });
  action('post','/restore/:id/run','admin','proxmox.restore',req=>restoreArchive(req.params.id,req.body),true);
- read('/proxmox/tasks',req=>taskInventory(req.query.hours||24));
+ read('/proxmox/tasks',req=>taskInventory(req.query.hours||24,undefined,req.query.node));
  action('delete','/tasks/:node/:id','admin','proxmox.task.stop',req=>stopTask(req.params.node,req.params.id),true);
  read('/tasks',()=>providerReads([['proxmox','proxmox',()=>pve('/cluster/tasks')],['truenas','truenas',()=>truenas('core.get_jobs',[[],{limit:100}])]]));
  read('/tasks/:node/:id',req=>pve(`/nodes/${encode(req.params.node)}/tasks/${encode(req.params.id)}/status`));
