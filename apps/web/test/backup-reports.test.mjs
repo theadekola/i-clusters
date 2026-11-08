@@ -3,3 +3,11 @@ const result=await build({entryPoints:[fileURLToPath(new URL('../src/backup-repo
 test('backup outcomes retain unknown finished results and exclude invalid durations',()=>{const tasks=[{status:'OK',starttime:100,endtime:220},{status:'error',starttime:100,endtime:160},{status:'running',starttime:200},{starttime:100,endtime:150},{status:'error',starttime:200,endtime:190}];assert.equal(backupOutcome(tasks[3]),'Unknown');assert.equal(backupDuration(tasks[4]),null);const s=backupSummary(tasks);assert.deepEqual({success:s.success,failed:s.failed,running:s.running,unknown:s.unknown},{success:1,failed:2,running:1,unknown:1});assert.equal(s.average,230/3);assert.ok(Math.abs(s.rate-100/3)<1e-10);});
 test('backup activity sorts days and counts returned states without inventing skipped tasks',()=>{const rows=backupActivity([{status:'OK',starttime:1900000000,endtime:1900000060},{status:'error',starttime:1800000000,endtime:1800000030}]);assert.ok(rows[0].day<rows[1].day);assert.equal(rows[0].Failed,1);assert.equal(rows[1].Successful,1);assert.equal(rows[1].average,60);assert.equal(rows[0].Skipped,undefined)});
 test('backup CSV quotes values and neutralizes spreadsheet formula prefixes',()=>{const csv=backupCsv([{status:'OK',starttime:100,endtime:160,node:'=formula',id:'a,b',upid:'a"b'}]);assert.ok(csv.includes('"\'=formula"'));assert.ok(csv.includes('"a,b"'));assert.ok(csv.includes('"a""b"'));assert.ok(csv.includes('"60"'));});
+
+test('only explicitly skipped tasks count as skipped and they do not affect success rate',()=>{
+ const tasks=[{exitstatus:'skipped',starttime:100,endtime:110},{exitstatus:'OK',starttime:120,endtime:125}];
+ assert.equal(backupSummary(tasks).skipped,1);
+ assert.equal(backupSummary(tasks).failed,0);
+ assert.equal(backupSummary(tasks).rate,100);
+ assert.equal(backupActivity(tasks)[0].Skipped,1);
+});

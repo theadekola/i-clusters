@@ -58,7 +58,7 @@ test('Restore Points returns from destination inspection to the same scoped sear
  const resources=['node01','node02'].map(node=>({id:node+'/nas',node,name:'nas',type:'nfs',content:'backup',shared:true,status:'online',capacity:2*1024**3,available:1024**3}));
  const api=async(path,init)=>{
   calls.push(init?.method||'GET');
-  if(path.startsWith('/restore'))return {points:[],archiveInventory:coverage,errors:[coverage.issues[0].message]};
+  if(path.startsWith('/restore')||path==='/backups')return {points:[],archiveInventory:coverage,errors:[coverage.issues[0].message]};
   if(path.startsWith('/proxmox/storage?')||path==='/proxmox/storage')return {resources,errors:[]};
   return {status:{active:1},user:{role:'viewer'},tasks:[]};
  };
@@ -82,8 +82,12 @@ test('Restore Points returns from destination inspection to the same scoped sear
   assert.match(browse.href,/storage=nas/);assert.match(browse.href,/node=node02/);
   await act(async()=>{const requests=[];page.dom.window.dispatchEvent(new page.dom.window.CustomEvent('iclusters-resource-refresh',{detail:{prefixes:['/restore','/proxmox/storage'],requests}}));await Promise.all(requests)});
   assert.match(dialog().textContent,/node02/);
-  await page.click(dialog().querySelector('[aria-label="Close dialog"]'));
+  await page.click(browse);
+  assert.match(page.container.querySelector('.backup-archive-scope').textContent,/node02 \/ nas/);
+  assert.match(page.container.querySelector('.vm-list-card').textContent,/403 Permission denied/);
   await page.click(button(page.container,'Back'));
+  assert.match(dialog().textContent,/403 Permission denied/);
+  await page.click(button(dialog(),'Back'));
   assert.equal(page.container.querySelector('[aria-label="Search restore points"]').value,'ZimaOS');
   assert.equal(page.container.querySelector('[aria-label="Restore point node"]').value,'node02');
   assert.equal(top,630);
@@ -91,4 +95,48 @@ test('Restore Points returns from destination inspection to the same scoped sear
  }finally{await page.close()}
  const other=await mounted('pages/BackupDestinations.tsx',{initialEntry:'/backups?tab=Destinations&node=node01'},api);
  try{assert.match(other.container.querySelector('.destination-table tbody tr').textContent,/Archives · 0/)}finally{await other.close()}
+});
+
+test('Archive list distinguishes a verified empty destination, search miss and a readable archive',async()=>{
+ const asset={id:'a',node:'node02',storage:'nas',type:'qemu',vmid:200,guestName:'ZimaOS',volid:'nas:backup/2026-11-07.vma.zst',size:1024**3,protected:true};
+ for(const points of [[],[asset]]){
+  const calls=[],page=await mounted('pages/Backups.tsx',{initialEntry:'/backups?tab=Backup%20Archives&node=node02&storage=nas'},async(p,init)=>{
+   calls.push(init?.method||'GET');
+   if(p==='/backups')return {points,archiveInventory:{configured:true,complete:false,destinations:[{node:'node02',storage:'nas',count:points.length}]},errors:['other node unavailable']};
+   return {user:{role:'viewer'}};
+  });
+  try{
+   assert.match(page.container.querySelector('.backup-archive-scope').textContent,/node02 \/ nas/);
+   const card=page.container.querySelector('.vm-list-card');
+   if(!points.length){assert.match(card.textContent,/No archives returned/);continue;}
+   const input=card.querySelector('[aria-label="Search backups"]');
+   async function search(value){await act(async()=>{input.value=value;input.dispatchEvent(new page.dom.window.Event('input',{bubbles:true}))})}
+   await search('missing');assert.match(card.textContent,/No matching backups/);
+   await search('zimaos');
+   const row=card.querySelector('tbody tr');
+   assert.match(row.textContent,/VM · 200 · ZimaOS/);assert.match(row.textContent,/Protected/);
+   assert.ok(!row.textContent.includes(asset.volid));
+   await page.click(row);
+   assert.ok(page.container.querySelector('[role=dialog]').textContent.includes(asset.volid));
+   assert.ok(calls.every(method=>method==='GET'));
+  }finally{await page.close()}
+ }
+});
+
+test('job inspection shows guest scope and only the result tied to the job',async()=>{
+ const job={id:'nightly',node:'node02',all:1,exclude:'201',storage:'nas','last-run-upid':'exact'};
+ const writes=[];
+ const page=await mounted('pages/Backups.tsx',{},async(p,init)=>{
+  if(init?.method&&init.method!=='GET')writes.push(p);
+  if(p==='/auth/me')return {user:{role:'viewer'}};
+  if(p==='/backups/jobs')return {jobs:[job]};
+  if(p.startsWith('/proxmox/tasks'))return {tasks:['unrelated','exact'].map(upid=>({upid,node:'node02',type:'vzdump',exitstatus:upid==='exact'?'OK':'error'}))};
+  return {};
+ });
+ try{
+  await page.click(page.container.querySelector('.backup-table tbody tr'));
+  const details=page.container.querySelector('[role=dialog]');
+  assert.match(details.textContent,/All guests − 201/);assert.match(details.textContent,/nas/);
+  assert.match(details.textContent,/ResultOK/);assert.deepEqual(writes,[]);
+ }finally{await page.close()}
 });
