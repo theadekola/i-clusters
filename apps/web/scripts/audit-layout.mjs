@@ -56,6 +56,8 @@ function fixture(path){
  if(process.env.LAYOUT_STORAGE_CLEANUP&&path==='/storage')return {...sample,pools:[{id:'node01/local',name:'local',node:'node01',provider:'proxmox',status:'online',applicable:true},{id:'node01/media-storage',name:'media-storage',node:'node01',provider:'proxmox',status:'not-assigned',applicable:false}],summary:{pools:1},providerInventory:{truenas:{configured:false}}};
  if(process.env.LAYOUT_STORAGE_CLEANUP&&path==='/configuration/truenas')return {id:'truenas',name:'TrueNAS',fields:[{key:'TRUENAS_URL',label:'HTTPS endpoint',type:'url',required:true,value:'',hasValue:false},{key:'TRUENAS_API_KEY',label:'API key',type:'password',required:true,value:'',hasValue:false}]};
  if(path==='/settings')return {settings:{refresh:30,siteName:'i-Clusters'},system:{},security:{},notifications:{},connections:[]};
+ // Storage inventory reports node names; task and cluster inventories report node objects.
+ if(path==='/proxmox/storage')return {...sample,nodes:nodes.map(node=>node.node),resources:[],coverage:{complete:true,expectedNodes:nodes.map(node=>node.node),readNodes:nodes.map(node=>node.node)}};
  if(path==='/backups')return {...sample,archiveInventory:{configured:true,complete:true}};
  if(path==='/proxmox/storage/configuration')return {resources:[{id:'local',type:'dir',enabled:true,shared:false,path:'/var/lib/vz',content:['iso','vztmpl']},{id:'local-lvm',type:'lvmthin',enabled:true,shared:null,vgname:'pve',thinpool:'data',content:['images','rootdir']},{id:'backup-ssd',type:'dir',enabled:true,shared:true,path:'/mnt/pve/backup-ssd',content:['backup'],nodes:['node01']}],sampledAt:new Date().toISOString()};
  if(path==='/docker/hosts')return {hosts:[{id:'docker-fixture',name:'control-vm',online:true}]};
@@ -136,6 +138,7 @@ try{
   return route.fulfill({json:fixture(path)});
  });
  let errors=[];page.on('pageerror',e=>errors.push(e.stack||e.message));
+ page.on('console',message=>{if(message.type()==='error')errors.push(message.text())});
  for(const width of widths){
   console.log('Checking '+auditLocale+' at '+width+'px.');
   await page.setViewportSize({width,height:1000});
