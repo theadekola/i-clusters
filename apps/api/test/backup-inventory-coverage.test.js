@@ -107,3 +107,20 @@ test('permission-check errors preserve visible archives and report unknown visib
  assert.equal(result.points.length,1);assert.equal(result.coverage.complete,false);
  assert.match(result.errors[0],/Cannot verify archive visibility/);
 });
+
+test('shared destination counts require a successful archive read on that specific node',async()=>{
+ const result=await backupArchives(async path=>{
+  if(path==='/storage')return [{storage:'nas',shared:1}];
+  if(path==='/nodes')return ['node01','node02'].map(node=>({node,status:'online'}));
+  if(path.endsWith('/storage?content=backup'))return [{storage:'nas',active:1}];
+  if(path.includes('/node02/storage/nas/content'))throw Error('403 Permission denied');
+  if(path.startsWith('/access/permissions?')){
+   const scope=decodeURIComponent(path.split('path=')[1]);
+   return {[scope]:{'VM.Backup':1,'Datastore.AllocateSpace':1}};
+  }
+  return [];
+ });
+ assert.deepEqual(result.coverage.destinations,[{node:'node01',storage:'nas',count:0}]);
+ assert.ok(Number.isFinite(Date.parse(result.coverage.checkedAt)));
+ assert.match(result.coverage.issues[0].message,/node02\/nas.*403 Permission denied/);
+});
