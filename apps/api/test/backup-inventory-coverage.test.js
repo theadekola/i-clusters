@@ -7,6 +7,7 @@ test('backup inventory distinguishes a successfully checked empty store from an 
   const paths=[],result=await backupArchives(async path=>{paths.push(path);if(path.startsWith('/access/permissions?')){const scope=decodeURIComponent(path.split('path=')[1]);return {[scope]:{'Datastore.AllocateSpace':1,'VM.Backup':1}};}if(path==='/nodes')return [{node:'node01',status:'online'}];if(path==='/storage')return [];if(path.endsWith('/storage?content=backup'))return [{storage:'backup',active}];return []});
   assert.deepEqual(result.points,[]);
   assert.equal(result.coverage.complete,active===1);
+  assert.deepEqual(result.coverage.completeNodes,active===1?["node01"]:[]);
   assert.equal(result.coverage.checkedStorage,active===1?1:0);
   assert.equal(paths.some(p=>p.includes('/backup/content')),active===1);
   if(active!==1)assert.match(result.errors[0],/node01\/backup.*unavailable/);
