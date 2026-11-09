@@ -2,6 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import cryp
 process.env.JWT_SECRET='s'.repeat(64);process.env.JWT_REFRESH_SECRET='r'.repeat(64);process.env.DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'shell-stream-'));
 const {default:jwt}=await import('jsonwebtoken'),{pool}=await import('../src/db.js'),{createApp}=await import('../src/app.js'),{connectSSH,closeShell,shellSession}=await import('../src/ssh-access.js');
 const users={alice:{id:'alice',role:'admin',status:'active'},bob:{id:'bob',role:'owner',status:'active'}};pool.query=async(_,args)=>({rows:users[args?.[0]]?[users[args[0]]]:[],rowCount:users[args?.[0]]?1:0});
+const {apiPolicy}=await import('../src/api-policy.js');
 const token=user=>jwt.sign({sub:user},process.env.JWT_SECRET,{algorithm:'HS256',expiresIn:'5m'});
 test('real SSH echo reaches HTTP stream immediately for node VM and CT; access remains authenticated and owner-bound',async()=>{
  const {privateKey}=crypto.generateKeyPairSync('rsa',{modulusLength:2048}),clients=new Set(),writes=[];
@@ -14,8 +15,16 @@ test('real SSH echo reaches HTTP stream immediately for node VM and CT; access r
   assert.equal((await fetch(endpoint)).status,401);assert.equal((await fetch(endpoint,{headers:{Authorization:'Bearer '+token('bob')}})).status,404);
   users.alice.role='operator';assert.equal((await fetch(endpoint,{headers})).status,403);users.alice.role='admin';
   const controller=new AbortController(),response=await fetch(endpoint,{headers,signal:controller.signal}),reader=response.body.getReader();assert.equal(response.headers.get('content-type'),'application/x-ndjson');
-  const echo=reader.read(),start=Date.now();assert.equal((await fetch(origin+`/api/ssh/session/${id}`,{headers,method:'POST',body:JSON.stringify({input:'hello 😀\r'})})).status,200);
+  const echo=reader.read(),start=Date.now();
+  const sessionUrl=origin+`/api/ssh/session/${id}`;
+  const write=await fetch(sessionUrl,{headers,method:'POST',body:JSON.stringify({input:'hello 😀\r'})});
+  assert.equal(write.status,200);
+  assert.equal(Number(write.headers.get('ratelimit-limit')),apiPolicy.shellRequestsPerMinute);
   let deadline;const chunk=await Promise.race([echo,new Promise((_,reject)=>deadline=setTimeout(()=>reject(Error('Echo exceeded one second')),1000))]);clearTimeout(deadline);assert.ok(Date.now()-start<1000);assert.equal(JSON.parse(new TextDecoder().decode(chunk.value)).output,'hello 😀\r');
+  const other=await fetch(sessionUrl,{headers:{...headers,Authorization:'Bearer '+token('bob')},method:'POST',body:JSON.stringify({input:'DENIED'})});
+  assert.equal(other.status,404);assert.equal(Number(other.headers.get('ratelimit-limit')),apiPolicy.requestsPerMinute);
+  const unsigned=await fetch(sessionUrl,{method:'POST',headers:{...headers,Authorization:'Bearer invalid'},body:JSON.stringify({presence:'active'})});
+  assert.equal(unsigned.status,401);assert.equal(Number(unsigned.headers.get('ratelimit-limit')),apiPolicy.requestsPerMinute);
   assert.equal((await fetch(origin+`/api/ssh/session/${id}`,{headers})).status,409);controller.abort();await reader.cancel().catch(()=>{});
   const cleanupDeadline=Date.now()+1000;while(shellSession(id,'alice').onOutput&&Date.now()<cleanupDeadline)await new Promise(r=>setTimeout(r,10));assert.equal(shellSession(id,'alice').onOutput,null);users.alice.status='inactive';assert.equal((await fetch(endpoint,{headers})).status,401);users.alice.status='active';
   shellSession(id,'alice').mode='sftp';assert.equal((await fetch(endpoint,{headers})).status,400);shellSession(id,'alice').mode='shell';closeShell(id,'alice');

@@ -9,6 +9,28 @@ export async function readShellOutput(response:Response,onFrame:(frame:{output:s
 // wait for its own round trip. No input is retried after an uncertain failure.
 export function shellInputQueue(send:(chunk:string)=>Promise<any>,onError:(error:any)=>void){
  let pending='',sending=false,stopped=false;
- const flush=async()=>{if(sending||stopped)return;sending=true;try{while(pending&&!stopped){const text=pending;pending='';await sendShellInput(text,chunk=>stopped?Promise.resolve():send(chunk));}}catch(error){pending='';stopped=true;onError(error)}finally{sending=false}};
- return {push(text:string){if(stopped)return;if(pending.length+text.length>1048576){pending='';stopped=true;onError(Error('Terminal input queue is full. Reconnect before typing again.'));return;}pending+=text;void flush();},stop(){stopped=true;pending='';}};
+ const stop=()=>{stopped=true;pending='';};
+ const flush=async()=>{
+  if(sending||stopped)return;
+  sending=true;
+  try{
+   while(pending&&!stopped){
+    const text=pending;pending='';
+    await sendShellInput(text,chunk=>stopped?Promise.resolve():send(chunk));
+   }
+  }catch(error){stop();onError(error);}
+  finally{sending=false;}
+ };
+ return {
+  push(text:string){
+   if(stopped)return;
+   if(pending.length+text.length>1048576){stop();onError(Error('Terminal input queue is full.'));return;}
+   pending+=text;void flush();
+  },
+  stop,
+  resume(){
+   if(sending)return false;
+   stopped=false;return true;
+  }
+ };
 }

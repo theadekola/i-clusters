@@ -58,7 +58,7 @@ export async function api<T = any>(path: string, options: RequestInit = {}, conf
   const host=localStorage.getItem('iclusters_docker_host');if(host&&!Object.hasOwn(headers,'x-iclusters-docker-host')&&(/^\/(?:docker|actions\/docker)(?:\/|\?|$)|^\/(?:storage|network)(?:\?|$)/.test(path)))headers['X-IClusters-Docker-Host']=host;
   const token=getAccessToken(); if(token) headers.Authorization=`Bearer ${token}`;
   if(confirmation) headers['X-IClusters-Confirm']=confirmation;
-  const deadline=/^\/proxmox\/storage-file-upload\//.test(path)?7200000:/^\/storage\/datasets\/(?:guest-(?:layout|expand)|edit)(?:\?|$)/.test(path)?300000:/^\/operations\/[^/]+\/tools$/.test(path)?390000:path.startsWith('/auth/')?30000:/^\/(?:node-agents\/guest\/(?:agent|bootstrap|setup)|docker\/image\/(?:pull|build))(?:[/?]|$)/.test(path)?1020000:undefined;
+  const deadline=options.method==='POST'&&/^\/ssh\/session\/[^/]+$/.test(path)?10000:/^\/proxmox\/storage-file-upload\//.test(path)?7200000:/^\/storage\/datasets\/(?:guest-(?:layout|expand)|edit)(?:\?|$)/.test(path)?300000:/^\/operations\/[^/]+\/tools$/.test(path)?390000:path.startsWith('/auth/')?30000:/^\/(?:node-agents\/guest\/(?:agent|bootstrap|setup)|docker\/image\/(?:pull|build))(?:[/?]|$)/.test(path)?1020000:undefined;
   const readResponse=async(res:Response)=>({res,body:rawResponse&&res.ok?undefined:await res.json().catch(()=>({}))});
   let {res,body} = await requestWithDeadline(`${API}/api${path}`, { ...options, headers },readResponse,deadline,rawResponse);
 

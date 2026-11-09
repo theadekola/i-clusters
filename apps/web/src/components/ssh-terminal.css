@@ -22,3 +22,6 @@
  .ssh-shell .shell-session-heading>svg{display:none}
  .ssh-shell .shell-session-toolbar .shell-update-label{font-size:11px;padding:5px}
 }
+
+.shell-input-recovery{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;padding:.5rem;flex:none}
+.shell-input-recovery button{white-space:nowrap}

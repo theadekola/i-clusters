@@ -19,13 +19,18 @@ export const roles = Object.freeze(Object.assign(Object.create(null), {
   owner: 50,
 }));
 
+export function verifyAccessToken(token) {
+  const claims = jwt.verify(token, ACCESS_SECRET, { algorithms: ['HS256'] });
+  if(claims.typ&&claims.typ!=='access')throw Error('Invalid token type');
+  if(claims.sessionExp&&Date.now()>=claims.sessionExp*1000)throw Error('Session expired');
+  return claims;
+}
+
 export async function auth(req, res, next) {
   const header = req.headers.authorization || '';
   if (!header.startsWith('Bearer ')) return res.status(401).json({ error: 'Authentication required' });
   try {
-    const claims = jwt.verify(header.slice(7), ACCESS_SECRET, { algorithms: ['HS256'] });
-    if(claims.typ&&claims.typ!=='access')throw Error('Invalid token type');
-    if(claims.sessionExp&&Date.now()>=claims.sessionExp*1000)throw Error('Session expired');
+    const claims = verifyAccessToken(header.slice(7));
     let result;try{result=await accountQuery('SELECT id,email,username,name,role,status,token_version FROM users WHERE id=$1',[claims.sub]);}catch{return res.status(503).json({error:'Account verification is temporarily unavailable. Try again shortly.'});}
     if(!result.rowCount||result.rows[0].status!=='active')return res.status(401).json({error:'Account is inactive or missing'});
     if((claims.ver||0)!==(result.rows[0].token_version||0))throw Error('Session revoked');
