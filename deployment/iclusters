@@ -11,8 +11,15 @@ case "$command" in
   restart) docker compose up -d --wait --wait-timeout 180;;
   config) "${EDITOR:-nano}" .env;;
   certificate)
-    # Public PEM only. Redirect on the caller's side to save it for a device.
-    docker compose exec -T caddy cat /data/caddy/pki/authorities/local/root.crt </dev/null
+    case "${2:-}" in
+      '') docker compose exec -T caddy cat /data/caddy/pki/authorities/local/root.crt </dev/null ;;
+      --apple-profile)
+        grep -qx 'CADDY_TLS=tls internal' .env || { echo 'The Apple trust profile is for controllers using the built-in LAN CA.' >&2; exit 1; }
+        docker compose exec -T caddy cat /data/caddy/pki/authorities/local/root.crt </dev/null |
+          python3 deployment/apple-trust-profile.py
+        ;;
+      *) echo 'Usage: sudo iclusters certificate [--apple-profile]' >&2; exit 2 ;;
+    esac
     ;;
   backup) bash deployment/controller-backup.sh "${2:?Backup directory required}" "${3:?age public recipient required}";;
   recover-account)

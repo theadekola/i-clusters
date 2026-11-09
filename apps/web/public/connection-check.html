@@ -14,7 +14,9 @@ button:not(:disabled):active{filter:brightness(.9);box-shadow:inset 0 0 0 2px cu
 <p><a href="/api/health" target="_blank" rel="noopener">Open the direct health check</a> · <a href="/">Open dashboard</a></p>
 <details><summary>Certificate warning or network failure</summary><p>A browser request failure cannot distinguish an untrusted certificate from a routing or firewall problem. Open the direct health check to see the browser's own error. Do not bypass certificate verification.</p>
 <p>For Caddy LAN HTTPS, run on the Ubuntu controller:</p><pre>sudo iclusters certificate &gt; iclusters-root.crt
-openssl x509 -in iclusters-root.crt -noout -fingerprint -sha256</pre>
+openssl x509 -in iclusters-root.crt -noout -fingerprint -sha256
+
+sudo iclusters certificate --apple-profile &gt; i-clusters.mobileconfig</pre>
 <p>Transfer only that public certificate through a trusted channel. Compare its SHA-256 fingerprint before installing it. Never distribute a private key.</p>
 <p>iPhone/iPad: install the certificate profile in Settings → General → VPN &amp; Device Management. Then enable it under General → About → Certificate Trust Settings. Android: install it as a CA certificate. Windows: import into Trusted Root Certification Authorities. Firefox may require its own Authorities import.</p>
 <p>Trust survives routine renewal while the same root CA and certificate storage are retained. A public domain with automated DNS validation is another option; it does not require publishing the dashboard.</p></details>

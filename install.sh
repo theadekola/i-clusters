@@ -90,6 +90,11 @@ systemctl daemon-reload
 systemctl enable --now i-clusters.service
 sh deployment/export-controller-ca.sh
 echo "i-Clusters installed at $url"
+if grep -qx 'CADDY_TLS=tls internal' .env; then
+  echo 'For one-time iPhone or iPad trust, export the profile and transfer it through a trusted channel:'
+  echo '  sudo iclusters certificate --apple-profile > i-clusters.mobileconfig'
+  echo 'Install the profile in Settings, then enable the matching root in General > About > Certificate Trust Settings.'
+fi
 echo 'Keep the installation private until you have registered the owner account.'
 echo 'Open this URL and register your owner account. No setup code is required.'
 echo 'Choose your name, email and password in the browser. Registration closes after the first account.'
