@@ -43,7 +43,7 @@ export function createStorageResourceEditor({query=pve,tn=truenas}={}){
   const model={...target,type:guest.type==='qemu'?'VM Volume':'CT Volume',disk:disks[0][0],size,digest:config.digest};
   return {...model,revision:revision(model)};
  }
- async function update(input,guard=()=>{}){
+ async function update(input,guard=()=>{},checkGuestLayout){
   const model=await inspect(input);
   if(input.revision!==model.revision)fail('Storage settings changed. Close and reopen Modify disk before saving.',409);
   const body={};
@@ -57,6 +57,13 @@ export function createStorageResourceEditor({query=pve,tn=truenas}={}){
   if(model.provider==='proxmox'){
    if(input.compression!==undefined||input.readonly!==undefined||input.quotaGiB!==undefined)fail('This Proxmox volume supports size increases only');
    if(!body.volsize)fail('Enter the new volume size');
+   if(input.allocationMode!==undefined&&!['guest','disk-only'].includes(input.allocationMode))fail('Invalid disk allocation mode');
+   if(model.type==='VM Volume'&&input.allocationMode!=='disk-only'){
+    if(!checkGuestLayout)fail('Automatic allocation is unavailable. Choose Expand virtual disk only to continue.',409);
+    const checked=await checkGuestLayout(input,guard);
+    if(checked.model.revision!==model.revision)fail('The disk changed. Reopen Modify disk.',409);
+    if(!checked.plan.supported)fail('Automatic allocation is unavailable. Choose Expand virtual disk only to continue.',409);
+   }
    const kind=model.type==='VM Volume'?'qemu':'lxc';
    guard();
    const result=await query(`/nodes/${encodeURIComponent(model.node)}/${kind}/${model.vmid}/resize`,{method:'PUT',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({disk:model.disk,size:input.sizeGiB+'G',digest:model.digest}).toString()});

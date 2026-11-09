@@ -2,20 +2,24 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {JSDOM} from 'jsdom';
 const source=fs.readFileSync(new URL('../public/connection-check.js',import.meta.url),'utf8');
-function page(fetch,registration){
+function page(fetch,registration,starts=true){
  const events={},nodes=Object.fromEntries(['check','reset','result','address'].map(id=>[id,{textContent:'',disabled:false,addEventListener:(event,fn)=>events[id]=fn}]));
- vm.runInNewContext(source,{document:{getElementById:id=>nodes[id]},location:{origin:'https://controller:6002'},navigator:{serviceWorker:{getRegistration:async()=>registration}},fetch,AbortController,setTimeout,clearTimeout});
+ const {window}=new JSDOM('');const head={append(script){queueMicrotask(()=>starts?window.dispatchEvent(new window.CustomEvent('iclusters-boot-ready',{detail:{entry:script.src,ok:true}})):script.onerror())}};
+ vm.runInNewContext(source,{window,URL,DOMParser:window.DOMParser,document:{head,createElement:tag=>window.document.createElement(tag),getElementById:id=>nodes[id]},location:{origin:'https://controller:6002'},navigator:{serviceWorker:{getRegistration:async()=>registration}},fetch,AbortController,setTimeout,clearTimeout});
  return {events,nodes};
 }
 test('diagnostics distinguishes healthy connection, failed frontend, database outage and proxy errors',async()=>{
- for(const [health,shell,message] of [
-  [new Response('{"ok":true}'),new Response('<div id="root"></div>',{headers:{'Content-Type':'text/html'}}),/Connected.*dashboard, API and database/],
-  [new Response('{"ok":true}'),new Response('failure',{status:502}),/dashboard is unavailable/],
+ for(const [health,shell,message,starts] of [
+  [new Response('{"ok":true}'),new Response('<div id="root"></div><script type="module" src="/assets/entry.js"></script>' ,{headers:{'Content-Type':'text/html'}}),/Connected.*dashboard, API and database/],
+  [new Response('{"ok":true}'),new Response('<div id="root"></div><script type="module" src="/assets/entry.js"></script>',{headers:{'Content-Type':'text/html'}}),/dashboard is unavailable/,false],
+  [new Response('{"ok":true}'),new Response('<div id="root"></div>',{headers:{'Content-Type':'text/html'}}),/dashboard is unavailable/],
+  [new Response('{"ok":true}'),new Response('failure' ,{status:502}),/dashboard is unavailable/],
   [new Response('{"ok":false}',{status:503}),null,/database is unavailable/],
   [new Response('bad gateway',{status:502}),null,/HTTP 502/]
  ]){
-  const calls=[],p=page(async(path,options)=>{calls.push(options);return path==='/api/health'?health:shell});await p.events.check();assert.match(p.nodes.result.textContent,message);assert.equal(p.nodes.check.disabled,false);assert.ok(calls.every(c=>c.credentials==='omit'&&c.cache==='no-store'&&c.redirect==='error'));
+  const calls=[],p=page(async(path,options)=>{calls.push(options);return path==='/api/health'?health:shell},null,starts);await p.events.check();assert.match(p.nodes.result.textContent,message);assert.equal(p.nodes.check.disabled,false);assert.ok(calls.every(c=>c.credentials==='omit'&&c.cache==='no-store'&&c.redirect==='error'));
  }
 });
 test('network failures do not pretend to detect a disconnected VPN or an invalid certificate',async()=>{

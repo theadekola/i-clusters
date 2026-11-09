@@ -25,11 +25,12 @@ test('i-Clusters sign in retains password visibility, remembered sessions and sa
  await act(async()=>page.container.querySelector('form').dispatchEvent(new page.dom.window.Event('submit',{bubbles:true,cancelable:true})));assert.deepEqual(request.body,{username:'owner',password:'secret',remember:true});assert.equal(request.loggedIn,true);assert.deepEqual(globalThis.__brandTokens,['access','refresh',true,undefined,false]);
  }finally{delete globalThis.__brandTokens;await page.close()}
 });
-test('i-Clusters first-use owner registration requires no setup code and returns to sign in',async()=>{
- let body;const page=await mounted('pages/Login.tsx',{onLogin(){}},async(p,init)=>p==='/auth/setup'?{registrationOpen:true}:((body=JSON.parse(init.body)),{}));
- try{assert.ok(!page.container.textContent.includes('Setup code'));const inputs=[...page.container.querySelectorAll('input')];assert.equal(inputs.length,4);
- const values=['Owner','owner','long-password','long-password'];await act(async()=>{inputs.forEach((input,index)=>input[Object.keys(input).find(k=>k.startsWith('__reactProps'))].onChange({target:{value:values[index]}}))});
- await act(async()=>page.container.querySelector('form').dispatchEvent(new page.dom.window.Event('submit',{bubbles:true,cancelable:true})));assert.deepEqual(body,{name:'Owner',username:'owner',password:'long-password'});assert.match(page.container.textContent,/Owner account created/);assert.match(page.container.querySelector('h1').textContent,/Sign in/);assert.equal(page.container.querySelector('#login-password').value,'');
+test('unclaimed installations direct the owner to the VM and enable sign-in after a console claim',async()=>{
+ let needsOwner=true;const paths=[];
+ const page=await mounted('pages/Login.tsx',{onLogin(){}},async p=>{paths.push(p);return {registrationOpen:false,needsOwner}});
+ try{assert.match(page.container.textContent,/sudo iclusters claim-owner/);assert.equal(page.container.querySelector('form'),null);
+  needsOwner=false;await page.click([...page.container.querySelectorAll('button')].find(b=>b.textContent==='Check again'));
+  assert.ok(page.container.querySelector('#login-password'));assert.deepEqual(paths,['/auth/setup','/auth/setup']);
  }finally{await page.close()}
 });
 

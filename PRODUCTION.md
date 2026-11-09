@@ -17,11 +17,11 @@ sudo bash /tmp/iclusters-install.sh
 
 The installer detects the VM's IPv4 source address from its default route and prints `https://DETECTED-IP:6002`. No IP or URL argument is required. If no default route is present, it selects a global address from a non-Docker interface; it stops if no usable address exists. `--url` remains available for a specific hostname or interface. Detection runs at installation time; a DHCP address change means you must use the VM's new address in your browser.
 
-The default web port is **6002**, mapped to Caddy's internal HTTPS port 443. The API runs on **6000 inside Docker**, with requests proxied through the web port. The API port is not published to the host. Chromium browsers block port 6000 as an X11 port, so the browser never connects to it directly. `--port` overrides the web port if 6002 is occupied. HTTPS uses the main port 6002 by default; HTTP uses auxiliary port 6003. Public port settings are stored as `WEB_PORT` and `HTTPS_PORT` in `.env`.
+The default web port is **6002**, mapped to Caddy's internal HTTPS port 443. The API runs on **6000 inside Docker**, with requests proxied through the web port. The API port is not published to the host. Chromium browsers block port 6000 as an X11 port, so the browser never connects to it directly. `--https-port` changes the dashboard port and `--port` changes the auxiliary HTTP port. HTTPS uses the main port 6002 by default; HTTP uses auxiliary port 6003. Public port settings are stored as `WEB_PORT` and `HTTPS_PORT` in `.env`.
 
 For automatic HTTPS, use `--url https://iclusters.your-domain.example --port 80 --https-port 443`, with DNS pointing at the server and public certificate validation reaching Caddy. If a reverse proxy already manages ports 80/443, proxy to i-Clusters's HTTP port and set `WEB_ORIGIN` to the browser's HTTPS URL. The installer expects `--url` without a port; supply ports through the separate flags. `--ref v1.0.0` pins that release tag once published; verify it exists on the Releases page first. The installer downloads and builds source, installs Docker from its official apt repository when absent, generates secrets, and enables the `i-clusters` systemd service. Existing Docker installations must already have the Compose plugin. It never removes conflicting Docker packages automatically.
 
-Open i-Clusters, enter your name, username and password (at least 12 characters), confirm the password, then register the owner account. No setup code is required. The first registration claims ownership, so keep access limited to yourself until registration is complete. Registration closes after the first account is created, and concurrent requests cannot create multiple owners. Sign in after registering. Administrators add subsequent users from the Users page. Existing accounts and existing SETUP_TOKEN environment entries are unaffected by updates; the old setup token is no longer used.
+The interactive installer prompts for the first owner’s name, username and password on the controller. After an unattended installation, run `sudo iclusters claim-owner` there. Sign in with that account in the browser. Once an owner exists, the console command refuses further claims. Administrators add subsequent users from the Users page.
 
 Application files live in `/opt/i-clusters`; integration credentials are configured in its `.env` or the Proxmox form. Installation requires internet access to GitHub, Docker's package repository and container registries. A private repository needs a separate authenticated checkout and the manual deployment below; tokens are not accepted in installer URLs.
 
@@ -39,7 +39,7 @@ Updates pull the current branch with `git pull --ff-only`, rebuild and check con
 
 ### Manual deployment
 
-Install Docker Engine and the Compose plugin using https://docs.docker.com/engine/install/ubuntu/ . Copy this project to `/opt/i-clusters`. Run `sh deployment/generate-secrets.sh` once, then edit `.env`. Keep its generated database password, JWT secrets. The first owner registers in the browser; `ADMIN_EMAIL` and `ADMIN_PASSWORD` are no longer used. Existing database accounts remain intact when updating.
+Install Docker Engine and the Compose plugin using https://docs.docker.com/engine/install/ubuntu/ . Copy this project to `/opt/i-clusters`. Run `sh deployment/generate-secrets.sh` once, then edit `.env`. Keep the generated database password and JWT secrets. After bringing up the stack, create the first owner on the host using `sudo bash deployment/iclusters claim-owner` from the standard installation in `/opt/i-clusters`; `ADMIN_EMAIL` and `ADMIN_PASSWORD` are no longer used. Existing database accounts remain intact when updating.
 
 For initial private LAN testing:
 
@@ -63,7 +63,7 @@ WEB_ORIGIN=https://iclusters.your-domain.example
 
 Use HTTPS or a trusted private access tunnel for credentials. Do not expose privileged connectors directly to the internet.
 
-To change an existing installation's port, run `sudo iclusters config`, set `WEB_PORT=6002` and `WEB_ORIGIN=https://YOUR-UBUNTU-IP:6002`, then run `sudo iclusters restart`. Legacy installations without port variables keep ports 80/443. Existing accounts show the usual sign-in screen. An empty database opens first-use owner registration automatically; never delete existing accounts to reopen registration.
+To change the dashboard port, run `sudo iclusters config`, set `HTTPS_PORT` and the corresponding `WEB_ORIGIN`, then run `sudo iclusters restart`. Use a separate `WEB_PORT` for HTTP. Updates preserve these configured ports.
 
 ```sh
 docker compose up -d --build

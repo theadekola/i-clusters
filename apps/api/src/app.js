@@ -73,7 +73,7 @@ import rateLimit from 'express-rate-limit';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import {accountIdentity} from './username.js';
-import { setupStatus,registerOwner } from './setup.js';
+import {setupStatus} from './setup.js';
 import { clusterStore,clusterConfig,publicCluster,validateCluster } from './cluster-config.js';
 import {productRouter,countAction} from './product-usage.js';
 import { pool } from './db.js';
@@ -108,9 +108,7 @@ export function createApp({authenticate=auth,authorize=requireRole,audit=writeAu
 
  app.post('/api/node-agent/setup-script',(req,res)=>{authenticateAgent(req.headers.authorization?.replace(/^Bearer /,''));res.json({script:readFileSync(new URL('./agent-assets/guest-docker-setup.sh',import.meta.url),'utf8')});});
  app.get('/api/auth/setup',async(req,res)=>{res.set('Cache-Control','no-store');res.json(await setupStatus(db));});
- app.post('/api/auth/register',loginLimiter,async(req,res)=>{
-   const user=await registerOwner(db,req.body);res.status(201).json({ok:true,user:{id:user.id,email:user.email,username:user.username,name:user.name,role:user.role},message:'Owner account created. Sign in to continue.'});
- });
+ app.post('/api/auth/register',(_req,res)=>res.status(403).json({error:'Create the first owner from the controller console.'}));
  app.get('/api/health',async(req,res,next)=>{try{await db.query('SELECT 1');res.json({ok:true,version:buildInfo.version,time:new Date().toISOString()});}catch(e){res.status(503).json({ok:false,error:'Database is unavailable'});}});
  app.post('/api/auth/login',loginLimiter,async(req,res)=>{
    browserSession(req);
@@ -356,7 +354,7 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
  read('/storage/datasets/guest-layout',async req=>{const scope=connectionScope(),result=await guestStorageService.inspect(req.query,()=>unchangedConnection(scope));unchangedConnection(scope);return {...result,connectionScope:scope};},'admin');
  action('put','/storage/datasets/guest-expand','admin','storage.guest.expand',req=>{const scope=req.body.connectionScope;unchangedConnection(scope);return guestStorageService.expand(req.body,()=>unchangedConnection(scope));},true);
  read('/storage/datasets/edit',async req=>{const scope=connectionScope(),model=await storageEditor.inspect(req.query);unchangedConnection(scope);return {...model,connectionScope:scope};},'admin');
- action('put','/storage/datasets/edit','admin','storage.resource.edit',req=>{const scope=req.body.connectionScope;unchangedConnection(scope);return storageEditor.update(req.body,()=>unchangedConnection(scope));},true);
+ action('put','/storage/datasets/edit','admin','storage.resource.edit',req=>{const scope=req.body.connectionScope;unchangedConnection(scope);return storageEditor.update(req.body,()=>unchangedConnection(scope),(input,guard)=>guestStorageService.inspect(input,guard));},true);
  read('/storage/datasets/browse',async req=>({entries:await truenas('filesystem.listdir',[await datasetRoot(req.query.dataset),[],{limit:200}])}));
  read('/storage/datasets/permissions',async req=>({permissions:await truenas('filesystem.getacl',[await datasetRoot(req.query.dataset),true])}));
  read('/network',async req=>{

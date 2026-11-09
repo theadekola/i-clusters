@@ -9,7 +9,7 @@ class MigrationTests(unittest.TestCase):
     def test_lan_migration_preserves_secrets_and_is_repeatable(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / ".env"
-            original = "WEB_ORIGIN=http://192.168.20.104:6002\nWEB_PORT=6002\nHTTPS_PORT=8443\nJWT_SECRET=keep-me\n"
+            original = "WEB_ORIGIN=http://192.168.20.104:6002\nWEB_PORT=6002\nJWT_SECRET=keep-me\n"
             path.write_text(original)
             self.assertTrue(module.configure(path))
             result = path.read_text()
@@ -19,6 +19,16 @@ class MigrationTests(unittest.TestCase):
             self.assertIn("JWT_SECRET=keep-me", result)
             self.assertEqual(path.with_name(".env.before-https-6002").read_text(), original)
             self.assertFalse(module.configure(path))
+    def test_custom_ports_survive_install_and_repeated_upgrades(self):
+        for scheme in ("http", "https"):
+            with self.subTest(scheme=scheme), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / ".env"
+                path.write_text(f"WEB_ORIGIN={scheme}://192.168.20.104\nWEB_PORT=8080\nHTTPS_PORT=8443\n")
+                module.configure(path)
+                self.assertIn("WEB_ORIGIN=https://192.168.20.104:8443\n", path.read_text())
+                self.assertIn("WEB_PORT=8080\n", path.read_text())
+                self.assertFalse(module.configure(path))
+
     def test_public_domain_is_preserved(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / ".env"

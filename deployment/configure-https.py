@@ -20,7 +20,18 @@ def configure(path):
     # Public domains retain their ACME settings and chosen port.
     if not local:
         return False
-    replacements = {"DOMAIN": "https://" + host, "WEB_PORT": "6003", "HTTPS_PORT": "6002", "WEB_ORIGIN": "https://" + host + ":6002", "CADDY_DEFAULT_SNI": host, "CADDY_TLS": "tls internal"}
+    # Only the original HTTP-only layout reused port 6002 for HTTPS on migration.
+    https_port = values.get("HTTPS_PORT") or str((origin.port or 443) if origin.scheme == "https" else 6002)
+    http_port = values.get("WEB_PORT") or "6003"
+    if origin.scheme == "http" and http_port == https_port == "6002":
+        http_port = "6003"
+    if not all(port.isascii() and port.isdecimal() and 1 <= int(port) <= 65535 for port in (http_port, https_port)) or int(http_port) == int(https_port):
+        raise ValueError("WEB_PORT and HTTPS_PORT must be distinct valid ports")
+    authority = f"[{host}]" if ":" in host else host
+    site = "https://" + authority
+    public_url = site if int(https_port) == 443 else f"{site}:{https_port}"
+    replacements = {"DOMAIN": site, "WEB_PORT": http_port, "HTTPS_PORT": https_port,
+                    "WEB_ORIGIN": public_url, "CADDY_DEFAULT_SNI": host, "CADDY_TLS": "tls internal"}
     lines = [line for line in original.splitlines() if line.split("=", 1)[0] not in replacements]
     lines.extend(key + "=" + value for key, value in replacements.items())
     updated = "\n".join(lines) + "\n"

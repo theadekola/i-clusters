@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 const fail=(message,status=400)=>{throw Object.assign(new Error(message),{status});};
 export async function setupStatus(db) {
  const result=await db.query('SELECT EXISTS(SELECT 1 FROM users) AS registered');
- return {registrationOpen:!result.rows[0].registered};
+ return {registrationOpen:false,needsOwner:!result.rows[0].registered};
 }
 export async function registerOwner(db,input={}) {
  const name=String(input.name||'').trim(),{email,username}=accountIdentity(input),password=input.password;
@@ -15,7 +15,7 @@ export async function registerOwner(db,input={}) {
   await client.query('BEGIN');
   // Serializes registration and user creation, including simultaneous first-use requests.
   await client.query('LOCK TABLE users IN EXCLUSIVE MODE');
-  if(!(await setupStatus(client)).registrationOpen)fail('Registration is closed. Sign in or ask an administrator for an account.',409);
+  if(!(await setupStatus(client)).needsOwner)fail('Registration is closed. Sign in or ask an administrator for an account.',409);
   const result=await client.query("INSERT INTO users(email,name,password_hash,role,status,username) VALUES($1,$2,$3,'owner','active',$4) RETURNING id,email,username,name,role,status",[email,name,hash,username]);
   await client.query('COMMIT');return result.rows[0];
  }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}

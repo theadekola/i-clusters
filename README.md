@@ -97,13 +97,13 @@ session, run `sudo iclusters certificate --apple-profile > i-clusters.mobileconf
 Follow the [one-time device trust instructions](PRODUCTION.md#automatic-lan-https-on-port-6002).
 
 1. Open the HTTPS address printed by the installer.
-2. Enter your name, username and password to register the owner account. Registration closes after the first account is created.
+2. Create the first owner at the installer’s console prompt, then sign in to the dashboard. For an unattended installation, run `sudo iclusters claim-owner` on the controller.
 3. Sign in. Administrators create subsequent users from **Users**.
 4. Use the eye icon to show or hide the entered password. **Remember this device** controls persistent browser sign-in; it does not save the password.
 5. Optionally enable MFA under **Settings → Security** and store the one-time recovery codes safely.
 6. Choose an inactivity timeout under **Settings → Security → Active Sessions**. The default is 30 minutes for unchecked sign-ins. Remembered sign-ins expire after a fixed 10 days and require a new login. See [browser sessions](docs/browser-sessions.md).
 
-No setup code is required. The first person to register becomes the owner. Keep the installation private until you create that account. Registration then closes automatically. Keep server signing keys private. Supported provider credentials are entered through the application's configuration forms.
+Only the controller console can create the first owner. Administrators add subsequent users in the dashboard. Keep server signing keys private. Supported provider credentials are entered through the application's configuration forms.
 
 ## Connect your infrastructure
 

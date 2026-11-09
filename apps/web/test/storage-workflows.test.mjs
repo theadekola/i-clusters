@@ -117,7 +117,7 @@ test('Modify disk keeps the dialog open until the selected VM resize and allocat
    return ++reads===1?disk:new Promise(resolve=>finishResize=resolve);
   }
   if(path==='/tasks/node01/UPID%3Anode01%3Atask')return new Promise(resolve=>finishTask=resolve);
-  if(path.startsWith('/storage/datasets/guest-layout?')){checks++;return {...layout,model:{...disk,size:150*GiB,revision:'after-resize'}}}
+  if(path.startsWith('/storage/datasets/guest-layout?')){checks++;return reads===1?layout:{...layout,model:{...disk,size:150*GiB,revision:'after-resize'}}}
   return {resources,summary:{},errors:[]};
  });
  try{
@@ -126,12 +126,12 @@ test('Modify disk keeps the dialog open until the selected VM resize and allocat
   assert.equal(button(page.container,'Select'),undefined);
   await page.click(edit);const modal=page.container.querySelector('[role=dialog]');
   await submitResize(page,modal);
-  assert.deepEqual(writes,[['/storage/datasets/edit',{provider:'proxmox',resourceId:disk.resourceId,node:'node01',vmid:101,revision:'fresh',connectionScope:'connection',sizeGiB:150}]]);
-  assert.equal(checks,0);assert.match(modal.textContent,/Verifying the new disk size/);
+  assert.deepEqual(writes,[['/storage/datasets/edit',{provider:'proxmox',resourceId:disk.resourceId,node:'node01',vmid:101,revision:'fresh',connectionScope:'connection',sizeGiB:150,allocationMode:'guest'}]]);
+  assert.equal(checks,1);assert.match(modal.textContent,/Verifying the new disk size/);
   await act(async()=>finishTask({status:'stopped',exitstatus:'OK'}));
-  assert.equal(checks,0);assert.equal(modal.querySelector('form'),null);
+  assert.equal(checks,1);assert.equal(modal.querySelector('form'),null);
   await act(async()=>finishResize({...disk,size:150*GiB}));
-  assert.equal(checks,1);assert.ok(page.container.querySelector('[role=dialog]')===modal);
+  assert.equal(checks,2);assert.ok(page.container.querySelector('[role=dialog]')===modal);
   assert.match(modal.textContent,/Allocate disk space/);assert.equal(writes.length,1);
   await page.click(button(modal,'Expand guest filesystem'));
   assert.deepEqual(writes[1],['/storage/datasets/guest-expand',{provider:'proxmox',resourceId:disk.resourceId,node:'node01',vmid:101,revision:'after-resize',connectionScope:'connection',guestToken:'guest-token'}]);
@@ -157,7 +157,24 @@ test('a failed task or interrupted verification never starts allocation or submi
   assert.match(modal.querySelector('[role=alert]').textContent,/unavailable/);
   outcome='ok';await page.click(button(modal,'Check resize status'));
   assert.match(modal.querySelector('[role=alert]').textContent,/connection changed/);
-  assert.equal(writes,1);assert.equal(checks,0);assert.equal(modal.querySelector('.connection-success'),null);
+  assert.equal(writes,1);assert.equal(checks,1);assert.equal(modal.querySelector('.connection-success'),null);
+ }finally{await page.close()}
+});
+
+test('unsupported VM layout requires an explicit disk-only resize and never starts guest allocation',async()=>{
+ let reads=0,checks=0;const writes=[];
+ const page=await mounted('components/StorageResourceEditor.tsx',{resource:disk,onClose(){},onSaved(){}},async(path,init)=>{
+  if(init?.method){writes.push(JSON.parse(init.body));return {result:{accepted:true}}}
+  if(path.includes('/guest-layout')){checks++;throw Error('Automatic allocation requires one attached disk')}
+  return {...disk,size:(++reads===1?120:150)*GiB};
+ });
+ try{
+  const modal=page.container.querySelector('[role=dialog]');
+  assert.match(modal.textContent,/one attached disk/);assert.equal(button(modal,'Save Changes'),undefined);
+  await submitResize(page,modal);assert.equal(writes.length,0);
+  await page.click(button(modal,'Expand virtual disk only'));
+  assert.equal(writes.length,1);assert.equal(writes[0].allocationMode,'disk-only');assert.equal(checks,1);
+  assert.match(modal.querySelector('.connection-success').textContent,/Guest filesystem allocation was skipped/);
  }finally{await page.close()}
 });
 

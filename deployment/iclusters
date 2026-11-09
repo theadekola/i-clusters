@@ -23,6 +23,17 @@ case "$command" in
     esac
     ;;
   backup) bash deployment/controller-backup.sh "${2:?Backup directory required}" "${3:?age public recipient required}";;
+  claim-owner)
+    [[ -t 0 ]] || { echo 'Run sudo iclusters claim-owner from an interactive controller console.' >&2; exit 1; }
+    read -r -p 'Owner name: ' owner_name
+    read -r -p 'Username: ' owner_username
+    read -r -p 'Email (optional): ' owner_email
+    read -r -s -p 'Password (at least 12 characters): ' owner_password; echo
+    read -r -s -p 'Confirm password: ' owner_confirm; echo
+    [[ $owner_password == "$owner_confirm" ]] || { echo 'Passwords do not match.' >&2; exit 1; }
+    printf '%s\n' "$owner_name" "$owner_username" "$owner_email" "$owner_password" |
+      docker compose exec -T api node scripts/claim-owner.mjs
+    ;;
   recover-account)
     username=${2:?Username required}
     read -rsp 'New password: ' account_password; echo
@@ -32,5 +43,5 @@ case "$command" in
     unset account_password account_confirm
     ;;
   update) bash deployment/upgrade.sh;;
-  *) echo 'Usage: sudo iclusters {status|logs|start|stop|restart|config|certificate|trusted-https|update|backup|recover-account}';;
+  *) echo 'Usage: sudo iclusters {status|logs|start|stop|restart|config|certificate|trusted-https|update|backup|claim-owner|recover-account}';;
 esac

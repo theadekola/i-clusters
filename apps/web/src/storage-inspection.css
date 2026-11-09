@@ -75,3 +75,5 @@
 .content .storage-datasets .dataset-quick-actions {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
 }
+.storage-resource-edit > .storage-edit-actions { flex-wrap: wrap; }
+.storage-resource-edit .storage-edit-actions > .btn { flex-basis: auto; min-inline-size: max-content; }
