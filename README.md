@@ -85,6 +85,11 @@ LAN HTTPS uses Caddy's local certificate authority. Install its public root cert
 
 ## First sign-in
 
+When you use the controller’s LAN IP on an iPhone or iPad, you can set up HTTPS
+trust before opening the dashboard. From the VM console or a verified SSH
+session, run `sudo iclusters certificate --apple-profile > i-clusters.mobileconfig`.
+Follow the [one-time device trust instructions](PRODUCTION.md#automatic-lan-https-on-port-6002).
+
 1. Open the HTTPS address printed by the installer.
 2. Enter your name, username and password to register the owner account. Registration closes after the first account is created.
 3. Sign in. Administrators create subsequent users from **Users**.

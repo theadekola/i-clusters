@@ -241,6 +241,22 @@ Firefox may need an Authorities import. Do not distribute private keys or trust 
 short-lived leaf certificate. Routine renewal retains device trust while the same
 root and persistent Caddy storage are retained. Keep the VM address stable.
 
+For a first visit from an iPhone or iPad, export an Apple profile on the controller
+from its console or a verified SSH session. This works before signing in to the dashboard.
+
+```bash
+sudo iclusters certificate --apple-profile > i-clusters.mobileconfig
+```
+
+Transfer the file through a trusted channel such as AirDrop from your own Mac.
+The unsigned profile contains one public root certificate. Compare the certificate's
+SHA-256 fingerprint with the value printed on the controller. On the iPhone, open
+the profile, tap **Settings → Profile Downloaded → Install**, then turn on full
+trust for the matching root under **Settings → General → About → Certificate Trust
+Settings**. Reopen the original HTTPS address. The same trust works after closing
+the browser and after ordinary server certificate renewals. Each controller has
+its own root. Removing its trust or replacing that root requires enrollment again.
+
 A publicly trusted certificate is an alternative for an owned DNS name with local
 DNS resolving to the controller and automated DNS-01 validation. The bundled Caddy
 build does not contain a DNS provider plugin: adding the appropriate maintained

@@ -29,6 +29,7 @@ jobs:
           bash deployment/test-updater.sh
           bash -n deployment/iclusters
           bash -n deployment/upgrade.sh deployment/controller-backup.sh deployment/controller-restore.sh deployment/check-controller-recovery.sh
+          python3 deployment/test-apple-trust-profile.py
           python3 deployment/test-brand-migration.py
           bash -n deployment/finish-brand-migration.sh
           python3 deployment/test-safe-extract.py
