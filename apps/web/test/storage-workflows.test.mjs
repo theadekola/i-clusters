@@ -49,7 +49,7 @@ test('Performance source and time-range changes request the selected measurement
 
 test('pending share and dataset reads are cancelled and late results cannot reopen changed resources',async()=>{
  for(const [file,resources,readButton,readPath] of [['StorageShares',shares,'Permissions','/permissions'],['StorageDatasets',datasets,'View Permissions','/permissions?']]){
-  let complete,signal;const page=await mounted('pages/'+file+'.tsx',{onTab(){}},async(p,init)=>p==='/auth/me'?{user:{role:'owner'}}:p.includes(readPath)?new Promise(r=>{complete=r;signal=init.signal}):{resources,summary:{},services:[],snapshots:[],truenasEnabled:true,errors:[]});try{await page.click(button(page.container,readButton));await page.click(page.container.querySelector('button[aria-label="'+(file==='StorageShares'?'Inspect B':'Select tank/b')+'"]'));assert.equal(signal.aborted,true);assert.equal(page.container.querySelector('.modal'),null);await act(async()=>complete({permissions:{uid:987654}}));assert.ok(!page.container.textContent.includes('987654'))}finally{await page.close()}
+  let complete,signal;const page=await mounted('pages/'+file+'.tsx',{onTab(){}},async(p,init)=>p==='/auth/me'?{user:{role:'owner'}}:p.includes(readPath)?new Promise(r=>{complete=r;signal=init.signal}):{resources,summary:{},services:[],snapshots:[],truenasEnabled:true,errors:[]});try{await page.click(button(page.container,readButton));await page.click(page.container.querySelector(file==='StorageShares'?'button[aria-label="Inspect B"]':'tr[aria-label="Select tank/b"]'));assert.equal(signal.aborted,true);assert.equal(page.container.querySelector('.modal'),null);await act(async()=>complete({permissions:{uid:987654}}));assert.ok(!page.container.textContent.includes('987654'))}finally{await page.close()}
  }
 });
 test('the same resource ID with a changed filesystem path invalidates open permission forms',async()=>{
@@ -90,15 +90,88 @@ test('dataset selection keeps scoped guest usage in the table without a resource
  try{assert.equal(page.container.querySelector('.dataset-layout .dataset-detail-card'),null);assert.equal(page.container.querySelector('.modal'),null);assert.match(page.container.querySelector('tbody').textContent,/Guest total/);await page.click(page.container.querySelector('tbody .resource-identity'));assert.equal(page.container.querySelector('.modal'),null);assert.ok(page.container.querySelector('tbody'));}finally{await page.close()}
 });
 
-test('Edit opens a real Proxmox volume form and saves the clicked resource with its fresh revision',async()=>{
- const GiB=1024**3,resources=[{id:'disk-a',name:'local:vm-100-disk-0',resourceId:'local:vm-100-disk-0',provider:'proxmox',node:'node01',vmid:100,type:'VM Volume',pool:'local'},{id:'disk-b',name:'local:vm-101-disk-0',resourceId:'local:vm-101-disk-0',provider:'proxmox',node:'node01',vmid:101,type:'VM Volume',pool:'local'}],calls=[];
- const page=await mounted('pages/StorageDatasets.tsx',{onTab(){}},async(p,init)=>{calls.push({p,init});if(p==='/auth/me')return {user:{role:'owner'}};if(p.startsWith('/storage/datasets/edit?'))return {...resources[1],revision:'fresh',connectionScope:'connection',size:120*GiB,disk:'scsi0'};if(init?.method)return {result:{task:'UPID:node01:task'}};return {resources,summary:{},errors:[]}});
+const GiB=1024**3;
+const disk={id:'disk-b',name:'local:vm-101-disk-0',resourceId:'local:vm-101-disk-0',provider:'proxmox',node:'node01',vmid:101,type:'VM Volume',pool:'local',disk:'scsi0',size:120*GiB,revision:'fresh',connectionScope:'connection'};
+const layout={model:disk,connectionScope:'connection',plan:{supported:true,token:'guest-token',diskBytes:150*GiB,capacityBytes:50*GiB,availableBytes:10*GiB,source:'/dev/vg/root',filesystem:'ext4',missingTools:[]}};
+const expanded={verified:true,changed:true,before:{capacityBytes:50*GiB},after:{capacityBytes:150*GiB,availableBytes:100*GiB}};
+async function submitResize(page,modal){
+ modal.querySelector('input[name=sizeGiB]').value='150';
+ await act(async()=>{
+  modal.querySelector('form').dispatchEvent(new page.dom.window.Event('submit',{bubbles:true,cancelable:true}));
+  await new Promise(resolve=>setTimeout(resolve,0));
+ });
+}
+
+test('Modify disk keeps the dialog open until the selected VM resize and allocation are verified',async()=>{
+ const writes=[],resources=[{...disk,id:'disk-a',name:'other'},disk];
+ let finishTask,finishResize,reads=0,checks=0;
+ const page=await mounted('pages/StorageDatasets.tsx',{onTab(){}},async(path,init)=>{
+  if(init?.method==='PUT'){
+   writes.push([path,JSON.parse(init.body)]);
+   return path.endsWith('/guest-expand')?{result:expanded}:{result:{task:'UPID:node01:task'}};
+  }
+  if(path==='/auth/me')return {user:{role:'owner'}};
+  if(path.startsWith('/storage/datasets/edit?')){
+   const params=new URLSearchParams(path.split('?')[1]);
+   assert.equal(params.get('resourceId'),disk.resourceId);assert.equal(params.get('vmid'),'101');
+   return ++reads===1?disk:new Promise(resolve=>finishResize=resolve);
+  }
+  if(path==='/tasks/node01/UPID%3Anode01%3Atask')return new Promise(resolve=>finishTask=resolve);
+  if(path.startsWith('/storage/datasets/guest-layout?')){checks++;return {...layout,model:{...disk,size:150*GiB,revision:'after-resize'}}}
+  return {resources,summary:{},errors:[]};
+ });
  try{
-  const edit=page.container.querySelector('[aria-label="Edit local:vm-101-disk-0"]');assert.ok(edit);assert.equal(button(page.container,'Inspect'),undefined);
-  await page.click(edit);const modal=page.container.querySelector('.modal');assert.match(modal.textContent,/Edit Dataset \/ Volume/);assert.equal(modal.querySelector('.dataset-details'),null);assert.ok(modal.querySelector('input[name=sizeGiB]'));
-  const requested=new URL(calls.find(c=>c.p.includes('/edit?')).p,'https://fixture');assert.equal(requested.searchParams.get('resourceId'),resources[1].resourceId);assert.equal(requested.searchParams.get('vmid'),'101');
-  modal.querySelector('input').value='150';await act(async()=>{modal.querySelector('form').dispatchEvent(new page.dom.window.Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,0))});
-  const saved=calls.find(c=>c.init?.method==='PUT');assert.equal(saved.p,'/storage/datasets/edit');assert.deepEqual(JSON.parse(saved.init.body),{provider:'proxmox',resourceId:resources[1].resourceId,revision:'fresh',connectionScope:'connection',node:'node01',vmid:101,sizeGiB:150});assert.match(modal.textContent,/Resize task accepted/);
+  const edit=page.container.querySelector('[aria-label="Modify disk local:vm-101-disk-0"]');
+  assert.equal(edit.textContent,'Modify disk');assert.equal(edit.querySelector('svg'),null);
+  assert.equal(button(page.container,'Select'),undefined);
+  await page.click(edit);const modal=page.container.querySelector('[role=dialog]');
+  await submitResize(page,modal);
+  assert.deepEqual(writes,[['/storage/datasets/edit',{provider:'proxmox',resourceId:disk.resourceId,node:'node01',vmid:101,revision:'fresh',connectionScope:'connection',sizeGiB:150}]]);
+  assert.equal(checks,0);assert.match(modal.textContent,/Verifying the new disk size/);
+  await act(async()=>finishTask({status:'stopped',exitstatus:'OK'}));
+  assert.equal(checks,0);assert.equal(modal.querySelector('form'),null);
+  await act(async()=>finishResize({...disk,size:150*GiB}));
+  assert.equal(checks,1);assert.ok(page.container.querySelector('[role=dialog]')===modal);
+  assert.match(modal.textContent,/Allocate disk space/);assert.equal(writes.length,1);
+  await page.click(button(modal,'Expand guest filesystem'));
+  assert.deepEqual(writes[1],['/storage/datasets/guest-expand',{provider:'proxmox',resourceId:disk.resourceId,node:'node01',vmid:101,revision:'after-resize',connectionScope:'connection',guestToken:'guest-token'}]);
+  assert.match(modal.querySelector('.connection-success').textContent,/Disk expanded successfully.*50 GiB to 150 GiB/);
+ }finally{await page.close()}
+});
+
+test('a failed task or interrupted verification never starts allocation or submits another resize',async()=>{
+ let outcome='failed',checks=0,writes=0;
+ const page=await mounted('components/StorageResourceEditor.tsx',{resource:disk,onClose(){},onSaved(){}},async(path,init)=>{
+  if(init?.method){writes++;return {result:{task:'UPID:node01:task'}}}
+  if(path.startsWith('/tasks/')){
+   if(outcome==='offline')throw Error('Connection unavailable');
+   return {status:'stopped',exitstatus:outcome==='failed'?'ERROR':'OK'};
+  }
+  if(path.includes('/guest-layout')){checks++;return layout}
+  return {...disk,size:(writes?150:120)*GiB,connectionScope:writes?'changed':'connection'};
+ });
+ try{
+  const modal=page.container.querySelector('[role=dialog]');await submitResize(page,modal);
+  assert.match(modal.querySelector('[role=alert]').textContent,/ERROR/);
+  outcome='offline';await page.click(button(modal,'Check resize status'));
+  assert.match(modal.querySelector('[role=alert]').textContent,/unavailable/);
+  outcome='ok';await page.click(button(modal,'Check resize status'));
+  assert.match(modal.querySelector('[role=alert]').textContent,/connection changed/);
+  assert.equal(writes,1);assert.equal(checks,0);assert.equal(modal.querySelector('.connection-success'),null);
+ }finally{await page.close()}
+});
+
+test('a synchronous container resize confirms the measured size without a VM allocation step',async()=>{
+ let resized=false;
+ const resource={...disk,type:'CT Volume',disk:'rootfs'};
+ const page=await mounted('components/StorageResourceEditor.tsx',{resource,onClose(){},onSaved(){}},async(path,init)=>{
+  assert.match(path,/datasets\/edit/);
+  if(init?.method){resized=true;return {result:{accepted:true}}}
+  return {...resource,size:(resized?150:120)*GiB};
+ });
+ try{
+  const modal=page.container.querySelector('[role=dialog]');await submitResize(page,modal);
+  assert.match(modal.querySelector('.connection-success').textContent,/Disk expanded successfully/);
  }finally{await page.close()}
 });
 
@@ -110,26 +183,44 @@ test('TrueNAS edit failures retain the form and cancelling an editor cannot subm
   return {resources:datasets,summary:{},errors:[]};
  });
  try{
-  await page.click(page.container.querySelector('[aria-label="Edit tank/a"]'));const form=page.container.querySelector('.modal form');form.querySelector('[name=quotaGiB]').value='50';
+  await page.click(page.container.querySelector('[aria-label="Modify disk tank/a"]'));const form=page.container.querySelector('.modal form');form.querySelector('[name=quotaGiB]').value='50';
   await act(async()=>{form.dispatchEvent(new page.dom.window.Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,0))});assert.match(page.container.querySelector('.modal [role=alert]').textContent,/settings changed/);assert.equal(form.querySelector('[name=quotaGiB]').value,'50');assert.equal(writes[0].resourceId,'tank/a');
   const submit=form[Object.keys(form).find(k=>k.startsWith('__reactProps'))].onSubmit;await page.click(button(page.container,'Cancel'));await act(async()=>submit({preventDefault(){},currentTarget:form}));assert.equal(writes.length,1);assert.equal(page.container.querySelector('.modal'),null);
  }finally{await page.close()}
 });
 
 
-test('guest filesystem expansion uses existing allocation without a disk increase and clears the plan after a write',async()=>{
- const resource={id:'disk',resourceId:'local:vm-100-disk-0',node:'one',vmid:100},model={...resource,provider:'proxmox',type:'VM Volume',revision:'fresh'},calls=[];
- const page=await mounted('components/GuestStorageAllocation.tsx',{resource,onSaved(){},disabled:false,onBusy(){}},async(p,init)=>{calls.push({p,init});return init?.method?{result:{verified:true,changed:true,before:{capacityBytes:50*1024**3},after:{capacityBytes:120*1024**3,availableBytes:80*1024**3}}}:{model,connectionScope:'connection',plan:{supported:true,token:'guest-token',diskBytes:120*1024**3,capacityBytes:50*1024**3,availableBytes:10*1024**3,source:'/dev/vg/root',filesystem:'ext4',missingTools:[]}}});
- try{
-  assert.equal(calls.length,0);await page.click(button(page.container,'Check usable space'));assert.match(page.container.textContent,/50 GiB/);
-  await page.click(button(page.container,'Expand guest filesystem'));const write=calls.find(c=>c.init?.method);assert.equal(write.p,'/storage/datasets/guest-expand');const body=JSON.parse(write.init.body);assert.equal(body.resourceId,resource.resourceId);assert.equal(body.revision,'fresh');assert.equal(body.guestToken,'guest-token');assert.equal(body.sizeGiB,undefined);assert.match(page.container.textContent,/Verified filesystem capacity/);assert.equal(button(page.container,'Expand guest filesystem'),undefined);
- }finally{await page.close()}
+test('checking existing space shows the verified result in a popup without resizing the disk',async()=>{
+ for(const result of [expanded,{...expanded,changed:false,after:expanded.before},{verified:false}]){
+  const writes=[];
+  const page=await mounted('components/StorageResourceEditor.tsx',{resource:disk,onClose(){},onSaved(){}},async(path,init)=>{
+   if(init?.method){writes.push(path);return {result}}
+   return path.includes('/guest-layout')?layout:disk;
+  });
+  try{
+   const modal=page.container.querySelector('[role=dialog]');
+   await page.click(button(modal,'Check usable space'));
+   assert.match(modal.textContent,/50 GiB/);assert.equal(modal.querySelector('form'),null);
+   await page.click(button(modal,'Expand guest filesystem'));
+   assert.deepEqual(writes,['/storage/datasets/guest-expand']);
+   if(result.verified)assert.match(modal.querySelector('.connection-success').textContent,result.changed?/Disk expanded successfully/:/Capacity is unchanged/);
+   else{assert.match(modal.querySelector('[role=alert]').textContent,/not verified/);assert.equal(modal.querySelector('.connection-success'),null)}
+   assert.equal(button(modal,'Expand guest filesystem'),undefined);
+  }finally{await page.close()}
+ }
 });
 test('unsupported guest allocation cannot execute and errors require checking the layout again',async()=>{
  for(const unsupported of [true,false]){
-  const writes=[],resource={id:'disk',resourceId:'local:disk',node:'one',vmid:100};
-  const page=await mounted('components/GuestStorageAllocation.tsx',{resource,onSaved(){},disabled:false,onBusy(){}},async(p,init)=>{if(init?.method){writes.push(p);throw Error('Guest storage changed. Recheck before retrying.')}return {model:{...resource,revision:'fresh'},plan:{supported:!unsupported,missingTools:unsupported?['growpart']:[],diskBytes:120,capacityBytes:50,availableBytes:10,token:'token'}}});
-  try{await page.click(button(page.container,'Check usable space'));const expand=button(page.container,'Expand guest filesystem');assert.equal(expand.disabled,unsupported);if(unsupported){assert.match(page.container.textContent,/growpart/);assert.equal(writes.length,0)}else{await page.click(expand);assert.match(page.container.querySelector('[role=alert]').textContent,/Recheck/);assert.equal(button(page.container,'Expand guest filesystem'),undefined)}}finally{await page.close()}
+  const writes=[];
+  const page=await mounted('components/GuestStorageAllocation.tsx',{resource:disk,onComplete(){assert.fail('unexpected completion')},onBusy(){}},async(path,init)=>{
+   if(init?.method){writes.push(path);throw Error('Guest storage changed. Recheck before retrying.')}
+   return {...layout,plan:{...layout.plan,supported:!unsupported,missingTools:unsupported?['growpart']:[]}};
+  });
+  try{
+   const expand=button(page.container,'Expand guest filesystem');assert.equal(expand.disabled,unsupported);
+   if(unsupported){assert.match(page.container.textContent,/growpart/);assert.equal(writes.length,0)}
+   else{await page.click(expand);assert.match(page.container.querySelector('[role=alert]').textContent,/Recheck/);assert.equal(button(page.container,'Expand guest filesystem'),undefined)}
+  }finally{await page.close()}
  }
 });
 

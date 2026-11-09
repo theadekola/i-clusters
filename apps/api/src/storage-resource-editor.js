@@ -45,7 +45,7 @@ export function createStorageResourceEditor({query=pve,tn=truenas}={}){
  }
  async function update(input,guard=()=>{}){
   const model=await inspect(input);
-  if(input.revision!==model.revision)fail('Storage settings changed. Close and reopen Edit before saving.',409);
+  if(input.revision!==model.revision)fail('Storage settings changed. Close and reopen Modify disk before saving.',409);
   const body={};
   if(input.sizeGiB!==undefined){
    const size=input.sizeGiB*GiB;

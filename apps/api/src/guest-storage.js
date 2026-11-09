@@ -9,7 +9,7 @@ export function createGuestStorage({query=pve,editor=storageResourceEditor,wait=
   if(model.provider!=='proxmox'||model.type!=='VM Volume')fail('Select a Proxmox VM disk for guest filesystem expansion');
   const base=`/nodes/${encodeURIComponent(model.node)}/qemu/${model.vmid}`;
   const config=await query(base+'/config');
-  if(config.digest!==model.digest||config.lock||config.template)fail('VM configuration changed. Reopen Edit');
+  if(config.digest!==model.digest||config.lock||config.template)fail('VM configuration changed. Reopen Modify disk');
   const disks=Object.entries(config).filter(([key,value])=>/^(scsi|sata|ide|virtio)\d+$/.test(key)&&typeof value==='string'&&!/(?:^|,)media=cdrom(?:,|$)/.test(value));
   if(disks.length!==1||disks[0][0]!==model.disk)fail('Automatic guest expansion requires one attached VM disk to identify the root disk safely');
   const status=await query(base+'/status/current');if(status?.status!=='running')fail('Start the VM and its QEMU Guest Agent before checking usable space');
