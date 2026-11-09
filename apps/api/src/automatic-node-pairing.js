@@ -12,7 +12,7 @@ import {connectorSource,connectorRelease} from './connector-release.js';
 const script=readFileSync(new URL('./agent-assets/pair-node-ssh.py',import.meta.url),'utf8');
 const fail=(message,status=400)=>Object.assign(Error(message),{status});
 const quote=value=>"'"+value.replace(/'/g,"'\"'\"'")+"'";
-const messages={'controller-tls':'The Docker host could not verify the controller certificate. Re-export the controller public CA on the i-Clusters VM and retry.','controller-network':'The Docker host cannot reach the controller HTTPS address. Check routing and firewall access between the guest and controller.','wrong-guest':'The SSH host does not match the selected VM or CT. No installation was performed.','docker-required':'Docker must already be installed and running on this host. Start Docker, then retry automatic pairing.','wrong-node':'This SSH host is not the selected Proxmox node. No installation was performed.','not-proxmox':'This host does not have the Proxmox node tools. Use the Proxmox node, not a VM or CT.','already-installed':'A connector is already installed on this node. Use its existing connection, or remove the old connector before pairing again.','root-required':'Root or password-based sudo access is required.','service-failed':'The connector service could not start. Inspect systemd on the selected node.','bootstrap-failed':'The node could not verify the controller HTTPS connection or complete installation. Check the controller address, certificate and node service.'};
+const messages={'controller-tls':'The Docker host could not verify the controller certificate. Re-export the controller public CA on the i-Clusters VM and retry.','controller-network':'The Docker host cannot reach the controller HTTPS address. Check routing and firewall access between the guest and controller.','wrong-guest':'The SSH host does not match the selected VM or CT. No installation was performed.','docker-missing':'The Docker CLI was not found on this guest. Install Docker Engine on the selected guest, then retry pairing.','docker-unavailable':'Docker is installed, but the connector could not query its Engine. Check sudo docker info on the selected guest, then retry pairing.','wrong-node':'This SSH host is not the selected Proxmox node. No installation was performed.','not-proxmox':'This host does not have the Proxmox node tools. Use the Proxmox node, not a VM or CT.','already-installed':'A connector is already installed on this node. Use its existing connection, or remove the old connector before pairing again.','root-required':'Root or password-based sudo access is required.','service-failed':'The connector service could not start. Inspect systemd on the selected node.','bootstrap-failed':'The node could not verify the controller HTTPS connection or complete installation. Check the controller address, certificate and node service.'};
 export function executePairingSSH(client,username,password,payload){return new Promise((resolve,reject)=>{
  let output='',settled=false;const finish=(error,result)=>{if(settled)return;settled=true;clearTimeout(timer);error?reject(error):resolve(result)};
  const timer=setTimeout(()=>{client.end();finish(fail('SSH installation timed out. Inspect the node before retrying.',504))},75000);
@@ -29,7 +29,19 @@ export function createAutomaticNodePairing({config=clusterConfig,query=pve,nodes
  const read=id=>{const job=jobs.get(id);if(!job)throw fail('Installation status is no longer available. Check the node connector before retrying.',404);if(job.state==='unverified'&&fresh(job))Object.assign(job,{state:'completed',message:'Node connector installed, paired and fresh heartbeat verified.'});return {...job}};
  async function perform(job,input){let client,registered,installed=false;try{
   if(binding()!==input.connectionId)throw fail('The Proxmox connection changed. Reopen setup.',409);
-  client=clientFactory();await new Promise((resolve,reject)=>{client.once('ready',resolve);client.once('error',()=>reject(fail('SSH authentication or host verification failed. Check the node address, fingerprint and password.',422)));client.connect({host:input.host,port:input.port,username:input.username,...passwordAuthentication(client,input.password),readyTimeout:12000,hostVerifier:key=>verifySSHHostKey(input,key)})});
+  client=clientFactory();
+  await new Promise((resolve,reject)=>{
+   let hostKeyRejected=false;
+   client.once('ready',resolve);
+   client.once('error',error=>{
+    let message='SSH could not connect to the selected host. Check the address, port and SSH service.';
+    if(hostKeyRejected)message='SSH host key verification failed. Check the host identity from its trusted console before retrying.';
+    else if(error?.level==='client-authentication')message='SSH login failed. Check the Linux username and password on the selected host.';
+    reject(fail(message,422));
+   });
+   client.connect({host:input.host,port:input.port,username:input.username,...passwordAuthentication(client,input.password),readyTimeout:12000,
+    hostVerifier:key=>{hostKeyRejected=!verifySSHHostKey(input,key);return !hostKeyRejected}});
+  });
   if(binding()!==input.connectionId)throw fail('The Proxmox connection changed. Reopen setup.',409);
   const resolved=await readTarget(job.node);if(resolved.host!==input.host)throw fail('Host address changed. Reopen setup.',409);const base={mode:'probe',node:job.node,kind,url:controller(),ca:ca(),...(resolved.identity?{identity:resolved.identity}:{})};
   Object.assign(job,{state:'checking',message:'Checking the selected node, root access and controller HTTPS trust.'});

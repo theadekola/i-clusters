@@ -13,7 +13,12 @@ def execute(payload,root=pathlib.Path('/'),run=subprocess.run,hostname=socket.ge
         if identity.get('uuid'):
             if uuid!=identity['uuid'].lower(): raise RuntimeError('wrong-guest')
         elif not set(identity.get('macs',[])).intersection(macs): raise RuntimeError('wrong-guest')
-        if not which('docker') or run(['docker','info','--format','{{json .}}'],capture_output=True,timeout=20).returncode: raise RuntimeError('docker-required')
+        if not which('docker'): raise RuntimeError('docker-missing')
+        try:
+            engine=run(['docker','info','--format','{{json .}}'],capture_output=True,timeout=20)
+        except (OSError,subprocess.TimeoutExpired) as error:
+            raise RuntimeError('docker-unavailable') from error
+        if engine.returncode: raise RuntimeError('docker-unavailable')
     elif actual!=payload['node']: raise RuntimeError('wrong-node')
     if not all(which(command) for command in (['python3','systemctl'] if docker else ['qm','pct','python3','systemctl'])): raise RuntimeError('not-proxmox')
     url=urllib.parse.urlsplit(payload['url'])
@@ -78,5 +83,5 @@ if __name__=='__main__':
         reason=str(error)
         if isinstance(error,ssl.SSLError) or isinstance(getattr(error,'reason',None),ssl.SSLError): reason='controller-tls'
         elif isinstance(error,(urllib.error.URLError,TimeoutError,ConnectionError)): reason='controller-network'
-        allowed=['controller-tls','controller-network','invalid-payload','wrong-guest','docker-required','root-required','wrong-node','not-proxmox','invalid-url','already-installed','source-mismatch','missing-pairing','service-failed','controller-unreachable']
+        allowed=['controller-tls','controller-network','invalid-payload','wrong-guest','docker-missing','docker-unavailable','root-required','wrong-node','not-proxmox','invalid-url','already-installed','source-mismatch','missing-pairing','service-failed','controller-unreachable']
         print(json.dumps({'error':reason if reason in allowed else 'bootstrap-failed'}));sys.exit(1)
