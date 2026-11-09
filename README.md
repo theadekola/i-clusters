@@ -81,7 +81,13 @@ sudo bash /tmp/iclusters-install.sh
 
 The installer creates `/opt/i-clusters`, generates deployment secrets, installs Docker if absent and starts the service at boot. It detects the VM address and prints **https://VM-IP:6002**. Port **6003** is the auxiliary HTTP port. API port 6000 is internal to Docker and must not be used as the browser URL. Existing public-domain deployments retain their selected configuration.
 
-LAN HTTPS uses Caddy's local certificate authority. Install its public root certificate in your browsers and paired nodes' trust stores. Do not disable certificate verification. For public-domain HTTPS, port overrides, pinned refs and manual installation, follow [PRODUCTION.md](PRODUCTION.md).
+For a dashboard that users can open without a device profile, enter a hostname
+from your Cloudflare-managed domain at the installer's prompt. The installer
+requests a publicly trusted certificate using DNS validation and Caddy renews it.
+The same setup is available on existing installations. See
+[Trusted HTTPS for LAN or VPN users](PRODUCTION.md#trusted-https-for-lan-or-vpn-users).
+
+Direct access by LAN IP uses Caddy's local certificate authority. Install its public root certificate in your browsers and paired nodes' trust stores. Do not disable certificate verification. For public-domain HTTPS, port overrides, pinned refs and manual installation, follow [PRODUCTION.md](PRODUCTION.md).
 
 ## First sign-in
 

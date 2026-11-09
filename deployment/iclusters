@@ -10,6 +10,7 @@ case "$command" in
   stop) systemctl stop i-clusters;;
   restart) docker compose up -d --wait --wait-timeout 180;;
   config) "${EDITOR:-nano}" .env;;
+  trusted-https) shift; exec python3 deployment/trusted-https.py "$@";;
   certificate)
     case "${2:-}" in
       '') docker compose exec -T caddy cat /data/caddy/pki/authorities/local/root.crt </dev/null ;;
@@ -31,5 +32,5 @@ case "$command" in
     unset account_password account_confirm
     ;;
   update) bash deployment/upgrade.sh;;
-  *) echo 'Usage: sudo iclusters {status|logs|start|stop|restart|config|certificate|update|backup|recover-account}';;
+  *) echo 'Usage: sudo iclusters {status|logs|start|stop|restart|config|certificate|trusted-https|update|backup|recover-account}';;
 esac

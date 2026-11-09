@@ -12,6 +12,7 @@ apps/api/runtime/
 runtime/*
 !runtime/.gitkeep
 
+secrets/trusted-https/
 secrets/docker/*
 !secrets/docker/.gitkeep
 secrets/ca/*

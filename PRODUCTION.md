@@ -241,8 +241,9 @@ Firefox may need an Authorities import. Do not distribute private keys or trust 
 short-lived leaf certificate. Routine renewal retains device trust while the same
 root and persistent Caddy storage are retained. Keep the VM address stable.
 
-For a first visit from an iPhone or iPad, export an Apple profile on the controller
-from its console or a verified SSH session. This works before signing in to the dashboard.
+LAN installation also creates `/opt/i-clusters/secrets/ca/i-clusters.mobileconfig`
+for secure transfer to an iPhone or iPad. You can export a fresh copy from the
+VM console or a verified SSH session before signing in to the dashboard.
 
 ```bash
 sudo iclusters certificate --apple-profile > i-clusters.mobileconfig
@@ -257,11 +258,51 @@ Settings**. Reopen the original HTTPS address. The same trust works after closin
 the browser and after ordinary server certificate renewals. Each controller has
 its own root. Removing its trust or replacing that root requires enrollment again.
 
-A publicly trusted certificate is an alternative for an owned DNS name with local
-DNS resolving to the controller and automated DNS-01 validation. The bundled Caddy
-build does not contain a DNS provider plugin: adding the appropriate maintained
-provider and narrowly scoped credentials is a separate configuration task. Keep
-the dashboard private; do not forward public management ports just to obtain TLS.
+### Trusted HTTPS for LAN or VPN users
+
+An owner can give users a browser-trusted URL while keeping the controller on a
+private network. For the built-in DNS setup, use a hostname in a domain whose
+authoritative DNS is hosted by Cloudflare. Create a Cloudflare API token restricted
+to that zone, with **Zone → Zone → Read** and **Zone → DNS → Edit**. Caddy uses it
+to create and remove certificate-validation TXT records and renew the certificate.
+Allow outbound HTTPS and DNS queries from Caddy to its public propagation resolvers
+(1.1.1.1 and 1.0.0.1).
+
+1. Add a LAN or VPN DNS record for the chosen hostname pointing to the VM's private
+   address. Keep inbound access restricted to the intended users. No public A record,
+   Cloudflare proxy or inbound port forwarding is required for DNS validation.
+2. At the interactive installer prompt, enter the hostname. For a scripted installation:
+
+   ```sh
+   sudo bash /tmp/iclusters-install.sh --trusted-hostname dashboard.your-domain.com \
+     --cloudflare-token-file /root/iclusters-cloudflare.token
+   ```
+
+   Use an absolute path to a private file containing only the scoped token. For
+   interactive setup, omit the token file and enter the token when prompted.
+3. On an existing LAN installation, update first and run the same setup directly:
+
+   ```sh
+   sudo iclusters update
+   sudo iclusters trusted-https dashboard.your-domain.com
+   ```
+
+4. Share the verified hostname and port with users. On the default installation
+   this is `https://dashboard.your-domain.com:6002`. The first visit at this new
+   address may require signing in again. Certificate trust needs no device profile.
+   The original LAN address and connector configuration continue to work.
+
+The installer checks the certificate hostname, trust chain and API health against
+the local controller. Confirm that the URL also resolves and opens from a client
+on your LAN or VPN. If issuance is pending, Caddy will retry. Check
+`sudo iclusters trusted-https dashboard.your-domain.com --check` and
+`sudo docker compose logs --tail=50 caddy` in `/opt/i-clusters`. To rotate a token,
+rerun the setup for the same hostname. The token resides in a restricted file
+mounted only into Caddy and is included in encrypted controller backups.
+
+Other DNS providers can continue to use the existing public ACME installation
+with reachable HTTP or TLS validation as described above. Direct LAN IP access
+continues to use the device trust instructions above.
 
 New installations detect the VM address and configure HTTPS at `https://VM-IP:6002`. Existing LAN installations migrate during a software update, preserving passwords and tokens and saving `.env.before-https-6002`. Caddy keeps its certificate authority in the existing Docker volume. Public domain configurations retain their chosen ports and certificate settings. No environment-file or Caddyfile edits are required. HTTP uses auxiliary port 6003; open the HTTPS address explicitly after migration.
 

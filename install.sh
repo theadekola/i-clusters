@@ -3,14 +3,14 @@ set -Eeuo pipefail
 umask 077
 fail() { echo "Error: $*" >&2; exit 1; }
 usage() {
-  echo 'Usage: sudo bash install.sh [--repo https://github.com/OWNER/REPO.git] [--ref BRANCH_OR_TAG] [--url https://SERVER-IP] [--port 6003] [--https-port 6002]'
+  echo 'Usage: sudo bash install.sh [--repo https://github.com/OWNER/REPO.git] [--ref BRANCH_OR_TAG] [--url https://SERVER-IP] [--port 6003] [--https-port 6002] [--trusted-hostname HOST [--cloudflare-token-file FILE]]'
 }
-repo='https://github.com/theadekola/i-clusters.git' ref='' url='' web_port=6003 https_port=6002
+repo='https://github.com/theadekola/i-clusters.git' ref='' url='' web_port=6003 https_port=6002 trusted_host='' cloudflare_token_file=''
 while (($#)); do
   case "$1" in
-    --repo|--ref|--url|--port|--https-port)
+    --repo|--ref|--url|--port|--https-port|--trusted-hostname|--cloudflare-token-file)
       (($# >= 2)) || fail "Missing value for $1"
-      case "$1" in --repo) repo=$2;; --ref) ref=$2;; --url) url=$2;; --port) web_port=$2;; --https-port) https_port=$2;; esac
+      case "$1" in --repo) repo=$2;; --ref) ref=$2;; --url) url=$2;; --port) web_port=$2;; --https-port) https_port=$2;; --trusted-hostname) trusted_host=$2;; --cloudflare-token-file) cloudflare_token_file=$2;; esac
       shift 2;;
     -h|--help) usage; exit 0;;
     *) usage; fail "Unknown option: $1";;
@@ -30,6 +30,19 @@ command -v systemctl >/dev/null || fail 'Ubuntu with systemd is required.'
 [[ ! -e /opt/homecloud-hub ]] || fail 'An existing installation must be upgraded, not reinstalled.'
 [[ ! -e /opt/i-clusters ]] || fail '/opt/i-clusters already exists. Use sudo iclusters update for an existing installation.'
 [[ ! -e /usr/local/bin/iclusters && ! -e /etc/systemd/system/i-clusters.service ]] || fail 'i-Clusters command or service already exists.'
+[[ -z $cloudflare_token_file || -n $trusted_host ]] || fail '--cloudflare-token-file requires --trusted-hostname.'
+[[ -z $trusted_host || -z $url ]] || fail 'Use --trusted-hostname with the default LAN installation, or --url for a custom site.'
+if [[ -z $trusted_host && -z $url && -t 0 && -t 1 ]]; then
+  echo 'To give users trusted HTTPS, enter a hostname in a Cloudflare DNS zone you control.'
+  read -r -p 'Dashboard hostname (press Enter for LAN IP only): ' trusted_host
+fi
+if [[ -n $trusted_host && -z $cloudflare_token_file && ! -t 0 ]]; then
+  fail 'Noninteractive trusted HTTPS requires --cloudflare-token-file FILE.'
+fi
+if [[ -n $cloudflare_token_file ]]; then
+  [[ -f $cloudflare_token_file && -r $cloudflare_token_file ]] || fail 'Cannot read the Cloudflare token file.'
+  cloudflare_token_file=$(realpath -- "$cloudflare_token_file")
+fi
 apt-get update
 apt-get install -y ca-certificates curl git openssl nano iproute2 python3
 if ! command -v docker >/dev/null; then
@@ -63,6 +76,9 @@ git clone -- "$repo" "$stage/source"
 if [[ -n $ref ]]; then git -C "$stage/source" checkout --detach "$ref"; fi
 cd "$stage/source"
 [[ -f docker-compose.yml && -f deployment/iclusters && -f deployment/i-clusters.service && -f .env.example ]] || fail 'Repository does not contain the i-Clusters installation files.'
+if [[ -n $trusted_host && ! -f deployment/trusted-https.py ]]; then
+  fail 'The selected revision does not support --trusted-hostname.'
+fi
 sh deployment/generate-secrets.sh
 if [[ -z $url ]]; then
   source deployment/network.sh
@@ -90,9 +106,17 @@ systemctl daemon-reload
 systemctl enable --now i-clusters.service
 sh deployment/export-controller-ca.sh
 echo "i-Clusters installed at $url"
-if grep -qx 'CADDY_TLS=tls internal' .env; then
-  echo 'For one-time iPhone or iPad trust, export the profile and transfer it through a trusted channel:'
-  echo '  sudo iclusters certificate --apple-profile > i-clusters.mobileconfig'
+if [[ -n $trusted_host ]]; then
+  trusted_args=("$trusted_host")
+  if [[ -n $cloudflare_token_file ]]; then trusted_args+=(--token-file "$cloudflare_token_file"); fi
+  /usr/local/bin/iclusters trusted-https "${trusted_args[@]}" || fail 'The LAN controller is installed. Retry trusted HTTPS with sudo iclusters trusted-https HOST, or use --check if issuance is pending.'
+elif grep -qx 'CADDY_TLS=tls internal' .env; then
+  if [[ -f secrets/ca/i-clusters.mobileconfig ]]; then
+    echo 'Your iPhone/iPad trust profile is ready: /opt/i-clusters/secrets/ca/i-clusters.mobileconfig'
+    echo 'Transfer this public profile through a trusted channel.'
+  else
+    echo 'Export the public LAN root from the VM and transfer it through a trusted channel.'
+  fi
   echo 'Install the profile in Settings, then enable the matching root in General > About > Certificate Trust Settings.'
 fi
 echo 'Keep the installation private until you have registered the owner account.'

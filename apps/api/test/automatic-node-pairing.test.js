@@ -34,7 +34,8 @@ test('controller CA export copies only the public certificate and clears stale L
  const key=path.join(dir,'private.key'),cert=path.join(dir,'public.crt');const generated=spawnSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-keyout',key,'-out',cert,'-days','1','-subj','/CN=Controller fixture']);assert.equal(generated.status,0);
  fs.mkdirSync(path.join(dir,'bin'));fs.writeFileSync(path.join(dir,'bin/docker'),'#!/bin/sh\ncase "$*" in "compose exec -T caddy cat /data/caddy/pki/authorities/local/root.crt") cat "$PAIR_FIXTURE_CERT";; *) exit 1;; esac\n',{mode:0o755});fs.writeFileSync(path.join(dir,'.env'),'CADDY_TLS=tls internal\n');const command=new URL('../../../deployment/export-controller-ca.sh',import.meta.url).pathname,env={...process.env,PATH:path.join(dir,'bin')+':'+process.env.PATH,PAIR_FIXTURE_CERT:cert};
  const result=spawnSync('sh',[command],{cwd:dir,env,encoding:'utf8'});assert.equal(result.status,0,result.stdout+result.stderr);const exported=path.join(dir,'secrets/ca/controller-ca.pem');assert.deepEqual(fs.readFileSync(exported),fs.readFileSync(cert));assert.ok(!fs.readFileSync(exported,'utf8').includes('PRIVATE KEY'));assert.equal(fs.statSync(exported).mode&0o777,0o644);
- fs.writeFileSync(path.join(dir,'.env'),'CADDY_TLS=\n');assert.equal(spawnSync('sh',[command],{cwd:dir,env}).status,0);assert.equal(fs.existsSync(exported),false);
+ const profile=path.join(dir,'secrets/ca/i-clusters.mobileconfig');assert.match(fs.readFileSync(profile,'utf8'),/com\.apple\.security\.root/);
+ fs.writeFileSync(path.join(dir,'.env'),'CADDY_TLS=\n');assert.equal(spawnSync('sh',[command],{cwd:dir,env}).status,0);assert.equal(fs.existsSync(exported),false);assert.equal(fs.existsSync(profile),false);
  }finally{fs.rmSync(dir,{recursive:true,force:true})}
 });
 
