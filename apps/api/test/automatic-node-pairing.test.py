@@ -44,3 +44,17 @@ for prefix in ['', 'sudo-password\n']:
 try: module.read_payload(io.StringIO('bad\nnot-a-marker\n{}'))
 except RuntimeError as e: assert str(e)=='invalid-payload'
 else: raise AssertionError('Invalid framing accepted')
+
+with tempfile.TemporaryDirectory() as temp:
+ root=pathlib.Path(temp)
+ dmi=root/'sys/class/dmi/id';dmi.mkdir(parents=True);(dmi/'product_uuid').write_text('guest-uuid')
+ guest={**payload,'mode':'probe','kind':'docker','identity':{'uuid':'guest-uuid'}}
+ def timeout(*args,**kwargs): raise module.subprocess.TimeoutExpired('docker info',20)
+ for expected,available,run in [
+     ('docker-missing',False,lambda *args,**kwargs: (_ for _ in ()).throw(AssertionError('ran a missing CLI'))),
+     ('docker-unavailable',True,lambda *args,**kwargs: types.SimpleNamespace(returncode=1)),
+     ('docker-unavailable',True,timeout)]:
+  try: module.execute(guest,root=root,which=lambda _:available,run=run)
+  except RuntimeError as error: assert str(error)==expected
+  else: raise AssertionError('Ineligible guest passed Docker preflight')
+  assert not (root/'etc').exists()

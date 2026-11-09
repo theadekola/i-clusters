@@ -6,9 +6,9 @@ trustAfter(()=>{if(trustOriginalDir===undefined)delete process.env.DATA_DIR;else
 import test from 'node:test';import assert from 'node:assert/strict';import {EventEmitter} from 'node:events';import crypto from 'node:crypto';import {spawnSync} from 'node:child_process';import ssh2 from 'ssh2';
 import {createAutomaticNodePairing,executePairingSSH} from '../src/automatic-node-pairing.js';import {connectorRelease} from '../src/connector-release.js';
 const password='fresh-ssh-password',fp='SHA256:'+crypto.createHash('sha256').update('key').digest('base64').replace(/=+$/,'');
-function fixture({heartbeat=true,failedProbe=false,failedInstall=false,gate}={}){
+function fixture({heartbeat=true,failedProbe=false,failedInstall=false,gate,connect}={}){
  const config={url:'https://pve:8006',tokenId:'a@pve!t',tokenSecret:'provider-secret'},hosts=[],calls=[],revoked=[];
- const client=new EventEmitter();client.end=()=>{};client.connect=o=>{assert.ok(o.hostVerifier(Buffer.from('key')));assert.ok(!o.hostVerifier(Buffer.from('wrong')));queueMicrotask(()=>client.emit('ready'))};
+ const client=new EventEmitter();client.end=()=>{};client.connect=connect?options=>connect(client,options):o=>{assert.ok(o.hostVerifier(Buffer.from('key')));assert.ok(!o.hostVerifier(Buffer.from('wrong')));queueMicrotask(()=>client.emit('ready'))};
  const service=createAutomaticNodePairing({config:()=>config,query:async path=>{assert.equal(path,'/cluster/status');return [{type:'node',name:'node01',ip:'192.0.2.10'}]},nodes:()=>hosts,origin:()=> 'https://controller.test:6002',ca:()=>'',clientFactory:()=>client,pairing:()=>({code:'internal-code'}),pair:()=>({id:'new-agent',token:'node-only-token',kind:'proxmox'}),revoke:id=>revoked.push(id),heartbeatTimeout:0,run:async(_c,user,secret,payload)=>{assert.equal(user,'root');assert.equal(secret,password);calls.push({...payload});if(payload.mode==='probe'){if(gate)await gate;if(failedProbe)throw Error('SECRET_RAW_ERROR');return {ready:true,hostname:'node01'}}if(failedInstall)throw Error('SECRET_RAW_ERROR');if(heartbeat)hosts.push({id:'new-agent',hostname:'node01',kind:'proxmox',online:true,...connectorRelease,lastSeen:new Date(Date.now()+1000).toISOString()});return {installed:true}}});
  const input=async extra=>({...await service.target('node01'),username:'root',password,port:22,fingerprint:fp,confirm:true,verified:true,...extra});return {service,input,config,hosts,calls,revoked};
 }
@@ -45,4 +45,21 @@ test('simultaneous automatic installation requests cannot pair the same node twi
 });
 test('Docker pairing resolves guest IP and UUID without using its Proxmox node address',async()=>{
  const {createAutomaticDockerPairing}=await import('../src/automatic-docker-pairing.js');const service=createAutomaticDockerPairing({config:()=>({url:'https://pve',tokenId:'a@pve!t',tokenSecret:'secret'}),origin:()=> 'https://controller',query:async path=>{if(path==='/cluster/resources')return [{node:'node01',vmid:100,type:'qemu'}];if(path.endsWith('/config'))return {smbios1:'uuid=selected-uuid',net0:'virtio=AA:BB:CC:DD:EE:FF'};if(path.endsWith('/network-get-interfaces'))return {result:[{'ip-addresses':[{'ip-address':'192.0.2.100'}]}]};throw Error('Unexpected '+path)}});const target=await service.target('node01:qemu/100');assert.equal(target.host,'192.0.2.100');assert.equal(target.identity.uuid,'selected-uuid');assert.equal(target.sshTarget,'vm:node01:100');await assert.rejects(service.target('node01:qemu/999'));
+});
+
+test('pairing reports distinct SSH authentication, trust and transport failures without exposing SSH output',async()=>{
+ for(const [level,key,expected] of [
+  ['client-authentication','key','SSH login failed.'],
+  ['handshake','unexpected-key','SSH host key verification failed.'],
+  ['client-timeout',null,'SSH could not connect to the selected host.'],
+ ]){
+  const f=fixture({connect(client,options){
+   if(key) options.hostVerifier(Buffer.from(key));
+   queueMicrotask(()=>client.emit('error',Object.assign(Error('sensitive SSH output'),{level})));
+  }});
+  const job=await f.service.start(await f.input());await f.service.wait('node01');
+  const status=f.service.status(job.id);
+  assert.equal(status.state,'failed');assert.ok(status.message.startsWith(expected));
+  assert.ok(!status.message.includes('sensitive SSH output'));assert.equal(f.calls.length,0);
+ }
 });
