@@ -1,12 +1,12 @@
 import {useSyncExternalStore} from 'react';
 import manifest from './manifest.json';
 export const languages=[
- {id:'en-GB',name:'English (UK)',nativeName:'English',country:'United Kingdom',flag:'gb',dir:'ltr'},
- {id:'en-US',name:'English (US)',nativeName:'English',country:'United States',flag:'us',dir:'ltr'},
- {id:'fr-FR',name:'French',nativeName:'Français',country:'France',flag:'fr',dir:'ltr'},
- {id:'es-ES',name:'Spanish',nativeName:'Español',country:'Spain',flag:'es',dir:'ltr'},
- {id:'de-DE',name:'German',nativeName:'Deutsch',country:'Germany',flag:'de',dir:'ltr'},
- {id:'pt-PT',name:'Portuguese',nativeName:'Português',country:'Portugal',flag:'pt',dir:'ltr'},
+ {id:'en-GB',nativeName:'English (UK)',dir:'ltr'},
+ {id:'en-US',nativeName:'English (US)',dir:'ltr'},
+ {id:'fr-FR',nativeName:'Français',dir:'ltr'},
+ {id:'es-ES',nativeName:'Español',dir:'ltr'},
+ {id:'de-DE',nativeName:'Deutsch',dir:'ltr'},
+ {id:'pt-PT',nativeName:'Português',dir:'ltr'},
 ] as const;
 export type Locale=typeof languages[number]['id'];
 type Pack=Record<string,string>;
