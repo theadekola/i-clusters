@@ -1,0 +1,34 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {createMonitor} from '../src/monitor.js';
+import {createHeaderNotifications} from '../src/header-notifications.js';
+import {createNotifier} from '../src/notifications.js';
+
+test('VM and CT outages reach the bell and enabled channels once, with independently verified recoveries',async()=>{
+ const state={alerts:[],rules:[],metrics:[],notificationPreferences:{notifyResolved:true}},messages=[];
+ const store={get:()=>state,mutate:fn=>fn(state)};
+ const notify=createNotifier({persistence:store,env:{DISCORD_WEBHOOK_URL:'fixture'},send:async(channel,text)=>messages.push(text)});
+ const bell=createHeaderNotifications(store,()=>[]);
+ const vm={id:'101',node:'west',name:'Database',status:'running'},ct={id:'202',node:'west',name:'Media',status:'running'};
+ const pve={guestAlertScope:'installation',nodeInventory:{complete:true},resourceInventoryComplete:true,nodes:[{name:'west',status:'online'}],nodeCoverage:[{node:'west',readings:['qemu','lxc']}],vms:[vm,{...vm,id:'900',template:true,status:'stopped'}],lxc:[ct]};
+ let reachable=true;
+ const monitor=createMonitor({proxmox:{configured:()=>true,read:async()=>{if(!reachable)throw Error('Unavailable');return pve}}},store,async()=>[]);
+ const sample=async()=>{await monitor.sample(true);await notify.deliver(state.alerts)};
+ const guests=()=>state.alerts.filter(a=>a.key.startsWith('guest-availability:'));
+ const forGuest=(id)=>guests().find(a=>a.resourceId===id);
+ await sample();assert.equal(guests().length,0);
+ vm.status='stopped';ct.status='paused';await sample();await sample();
+ assert.equal(guests().length,2);assert.equal(messages.length,2);
+ const header=bell.read({sub:'test',role:'viewer'});
+ assert.equal(header.badgeCount,2);assert.ok(header.attention.some(a=>a.title==='VM stopped'&&a.message.includes('Database')));
+ assert.ok(messages.some(m=>m.includes('CT paused')&&m.includes('202')&&m.includes('Media')));
+ reachable=false;await sample();assert.equal(forGuest('101').status,'active');
+ reachable=true;pve.nodeCoverage[0].readings=[];vm.status='running';ct.status='running';await sample();
+ assert.equal(forGuest('202').status,'active');
+ pve.nodes[0].status='offline';await sample();assert.equal(forGuest('101').title,'VM unreachable: host offline');
+ pve.nodes.push({name:'east',status:'online'});pve.nodeCoverage.push({node:'east',readings:['qemu','lxc']});
+ vm.node='east';await sample();assert.equal(forGuest('101').status,'resolved');assert.equal(forGuest('202').status,'active');
+ pve.nodes[0].status='online';pve.nodeCoverage[0].readings=['qemu','lxc'];await sample();await sample();
+ assert.equal(forGuest('202').status,'resolved');
+ assert.equal(messages.filter(m=>m.includes('Database')).length,2);assert.equal(messages.filter(m=>m.includes('Media')).length,2);
+});

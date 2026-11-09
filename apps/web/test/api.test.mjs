@@ -137,3 +137,24 @@ test('binary file imports preserve their content type without combining it with 
  await c.api('/proxmox/storage-file-upload/'+'a'.repeat(48),{method:'PUT',headers:{'Content-Type':'application/octet-stream'},body:file});
  assert.equal(new Headers(seen.headers).get('Content-Type'),'application/octet-stream');assert.equal(seen.body,file);
 });
+
+test('a waiting browser tab reuses a remembered session renewed by another tab',async()=>{
+ const c=await client();
+ c.setTokens('old',undefined,true,Date.now()+60000,true);
+ const previous=Object.getOwnPropertyDescriptor(navigator,'locks');
+ let lockCount=0,refreshes=0;
+ Object.defineProperty(navigator,'locks',{configurable:true,value:{
+  async request(name,callback){
+   assert.equal(name,'iclusters-session-refresh');lockCount++;
+   c.setTokens('renewed',undefined,undefined,undefined,true);
+   return callback();
+  }
+ }});
+ try{
+  globalThis.fetch=async(url,options)=>{
+   if(url.endsWith('/auth/refresh'))refreshes++;
+   return new Headers(options.headers).get('authorization')==='Bearer renewed'?response(200,{ok:true}):response(401);
+  };
+  assert.deepEqual(await c.api('/auth/me'),{ok:true});assert.equal(lockCount,1);assert.equal(refreshes,0);
+ }finally{if(previous)Object.defineProperty(navigator,'locks',previous);else delete navigator.locks}
+});

@@ -42,6 +42,6 @@ case "$command" in
     printf '%s\n' "$account_password" | docker compose exec -T api node scripts/recover-account.mjs "$username" "${3:-}"
     unset account_password account_confirm
     ;;
-  update) bash deployment/upgrade.sh;;
+  update) shift; bash deployment/upgrade.sh "$@";;
   *) echo 'Usage: sudo iclusters {status|logs|start|stop|restart|config|certificate|trusted-https|update|backup|claim-owner|recover-account}';;
 esac

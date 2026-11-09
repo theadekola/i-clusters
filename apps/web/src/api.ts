@@ -5,15 +5,50 @@ import {getAccessToken,getRefreshToken,setTokens,clearTokens,usesCookieSession} 
 export {getAccessToken,setTokens,clearTokens} from './session';
 const API = import.meta.env.VITE_API_URL || '';
 let refreshInFlight:Promise<boolean>|null=null;
-function refreshAccessToken(){
-  if(!refreshInFlight)refreshInFlight=(async()=>{
-    const refreshToken=getRefreshToken(),cookie=usesCookieSession(),access=getAccessToken();
-    if(!refreshToken&&!cookie){clearTokens();return false;}
-    const {response,body}=await requestWithDeadline(`${API}/api/auth/refresh`,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-IClusters-Browser':'1'},body:JSON.stringify(refreshToken?{refreshToken}:{})},async response=>({response,body:await response.json().catch(()=>({}))}),30000);
-    if(!response.ok){if(response.status===401&&getRefreshToken()===refreshToken&&getAccessToken()===access)clearTokens();throw Object.assign(new Error(response.status===401?'Session expired. Sign in again.':'Session refresh is temporarily unavailable.'),{status:response.status});}
-    if(getRefreshToken()!==refreshToken||cookie&&getAccessToken()!==access)return false;setTokens(body.accessToken,body.refreshToken,undefined,body.rememberUntil,body.cookieSession===true);return true;
-  })().catch(e=>{if(e.status!==401)window.dispatchEvent?.(new CustomEvent('iclusters-session-unavailable',{detail:e.message||'Connection temporarily unavailable'}));throw e;}).finally(()=>{refreshInFlight=null;});
-  return refreshInFlight;
+function renewedSession(previous:string){
+ const current=getAccessToken();
+ if(!current||current===previous)return false;
+ // Never replay a pending write under a different signed-in account or session.
+ const identity=(token:string)=>{
+  try{const claims=JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));return claims}
+  catch{return undefined}
+ };
+ const before=identity(previous),after=identity(current);
+ if(before?.sub!==after?.sub||(before?.sid&&after?.sid&&before.sid!==after.sid))throw Object.assign(new Error('Session changed. Retry the action.'),{status:409});
+ return true;
+}
+function refreshAccessToken(previous:string){
+ const renew=async()=>{
+  if(renewedSession(previous))return true;
+  const refreshToken=getRefreshToken(),cookie=usesCookieSession();
+  if(!getAccessToken()||(!refreshToken&&!cookie))return false;
+  const {response,body}=await requestWithDeadline(`${API}/api/auth/refresh`,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-IClusters-Browser':'1'},body:JSON.stringify(refreshToken?{refreshToken}:{})},async response=>({response,body:await response.json().catch(()=>({}))}),30000);
+  if(renewedSession(previous))return true;
+  if(!response.ok){
+   if(response.status===401){
+    // An older tab may have already rotated the cookie and still be saving its response.
+    if(cookie&&!globalThis.navigator?.locks&&localStorage.getItem('iclusters_remember_until')){
+     for(let i=0;i<20&&getAccessToken();i++){
+      await new Promise(resolve=>setTimeout(resolve,100));
+      if(renewedSession(previous))return true;
+     }
+    }
+    if(getAccessToken()===previous&&getRefreshToken()===refreshToken)clearTokens();
+   }
+   throw Object.assign(new Error(response.status===401?'Session expired. Sign in again.':'Session refresh is temporarily unavailable.'),{status:response.status});
+  }
+  if(getAccessToken()!==previous||getRefreshToken()!==refreshToken)return false;
+  setTokens(body.accessToken,body.refreshToken,undefined,body.rememberUntil,body.cookieSession===true);
+  return true;
+ };
+ if(!refreshInFlight){
+  const locks=globalThis.navigator?.locks;
+  const coordinated=async()=>locks?await locks.request('iclusters-session-refresh',renew):await renew();
+  refreshInFlight=coordinated()
+   .catch(e=>{if(e.status!==401&&e.status!==409)window.dispatchEvent?.(new CustomEvent('iclusters-session-unavailable',{detail:e.message||'Connection temporarily unavailable'}));throw e})
+   .finally(()=>{refreshInFlight=null});
+ }
+ return refreshInFlight;
 }
 
 export async function api<T = any>(path: string, options: RequestInit = {}, confirmation?: string, rawResponse=false): Promise<T> {
@@ -28,7 +63,8 @@ export async function api<T = any>(path: string, options: RequestInit = {}, conf
   let {res,body} = await requestWithDeadline(`${API}/api${path}`, { ...options, headers },readResponse,deadline,rawResponse);
 
   if(res.status===401 && (!path.startsWith('/auth/')||path==='/auth/me')){
-    if((getAccessToken()!==token&&getAccessToken())||await waitForRequest(refreshAccessToken(),options.signal)){
+    if(renewedSession(token)||await waitForRequest(refreshAccessToken(token),options.signal)){
+      renewedSession(token);
       headers.Authorization=`Bearer ${getAccessToken()}`;({res,body}=await requestWithDeadline(`${API}/api${path}`,{...options,headers},readResponse,deadline,rawResponse));
     }
   }

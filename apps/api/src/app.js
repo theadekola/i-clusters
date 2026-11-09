@@ -152,7 +152,7 @@ export function createApp({authenticate=auth,authorize=requireRole,audit=writeAu
 
  app.get('/api/updates',authorize('owner'),(req,res)=>{res.set('Cache-Control','no-store');res.json(updates.status());});
  app.post('/api/updates/check',authorize('owner'),(req,res)=>res.status(202).json(updates.check()));
- app.post('/api/updates',authorize('owner'),async(req,res)=>{await audit(req,'software.update','iclusters',{},'queued');res.status(202).json(updates.request());});
+ app.post('/api/updates',authorize('owner'),async(req,res)=>{const result=updates.request(req.body?.revision);await audit(req,'software.update','iclusters',{revision:result.revision},'queued');res.status(202).json(result);});
 
  app.get('/api/connections/health',authorize('owner'),async(req,res)=>{res.set('Cache-Control','no-store');if(forceRead(req))void monitor.sample(true).catch(()=>{});const snapshot=await monitor.sample();res.json(connectionHealth({snapshot,cluster:publicCluster(clusterConfig()),direct:publicDocker(),nodes:agentNodes(),refreshing:!!monitor.isRefreshing?.(),configurations:Object.fromEntries(['truenas'].map(id=>{const c=configuration.resolve(id);return [id,{source:configuration.publicConfig(id).source,endpoint:c.TRUENAS_URL||null}]}))}));});
  app.get('/api/connections/proxmox/guests',authorize('owner'),async(req,res)=>{res.set('Cache-Control','no-store');res.json(await guestConnectionReader(req.query.refresh==='1'||req.headers['x-iclusters-refresh']==='1'));});
