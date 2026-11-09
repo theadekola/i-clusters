@@ -14,8 +14,21 @@ export default function LanguageSelector({compact=false}:{compact?:boolean}){
   if(event.key==='Escape'){event.preventDefault();event.stopPropagation();close()}
   if(['ArrowDown','ArrowUp','Home','End'].includes(event.key)){event.preventDefault();if(!open){setOpen(true);return}const items=[...root.current!.querySelectorAll<HTMLButtonElement>('[role=option]')],current=items.indexOf(document.activeElement as HTMLButtonElement),index=event.key==='Home'?0:event.key==='End'?items.length-1:event.key==='ArrowDown'?(current+1)%items.length:current<0?items.length-1:(current-1+items.length)%items.length;items[index]?.focus()}
  }}>
- {!compact&&<label htmlFor={id}>Language</label>}<button ref={trigger} id={id} type="button" className={`language-trigger${compact?' icon-btn':''}`} aria-label={compact?'Interface language':undefined} title={compact?selected.nativeName:undefined} aria-haspopup="listbox" aria-expanded={open} aria-controls={open?id+'-options':undefined} disabled={busy} aria-busy={busy} onClick={()=>setOpen(!open)}><img src={`/flags/${selected.flag}.svg`} alt="" width="28" height="21"/>{!compact&&<><span translate="no" lang={selected.id}>{selected.nativeName}</span><small>{selected.country}</small><ChevronDown size={18}/></>}</button>
- {open&&<div id={id+'-options'} className="language-options" role="listbox" aria-label="Interface language">{languages.map(language=><button key={language.id} type="button" role="option" aria-selected={language.id===locale} data-locale={language.id} tabIndex={language.id===locale?0:-1} disabled={busy} onClick={()=>void choose(language.id)}><img src={`/flags/${language.flag}.svg`} alt="" width="28" height="21"/><span translate="no" lang={language.id}>{language.nativeName}</span><small>{language.country}</small>{language.id===locale&&<Check size={16}/>}</button>)}</div>}
+ {!compact&&<label htmlFor={id}>Language</label>}
+ <button ref={trigger} id={id} type="button" className={`language-trigger${compact?' icon-btn':''}`}
+  aria-label={compact?'Interface language':undefined} aria-description={compact?selected.nativeName:undefined}
+  title={compact?selected.nativeName:undefined} aria-haspopup="listbox" aria-expanded={open}
+  aria-controls={open?id+'-options':undefined} disabled={busy} aria-busy={busy} onClick={()=>setOpen(!open)}>
+  <span translate="no" lang={selected.id}>{compact?locale.split('-')[0].toUpperCase():selected.nativeName}</span>
+  {!compact&&<ChevronDown size={18}/>}
+ </button>
+ {open&&<div id={id+'-options'} className="language-options" role="listbox" aria-label="Interface language">
+  {languages.map(language=><button key={language.id} type="button" role="option" aria-selected={language.id===locale}
+   data-locale={language.id} tabIndex={language.id===locale?0:-1} disabled={busy} onClick={()=>void choose(language.id)}>
+   <span translate="no" lang={language.id}>{language.nativeName}</span>
+   {language.id===locale&&<Check size={16} aria-hidden="true"/>}
+  </button>)}
+ </div>}
  {error&&(!compact||open)&&<p role="alert" className="error language-error">{error}</p>}
  </div>;
  if(compact)return picker;

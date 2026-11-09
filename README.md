@@ -238,7 +238,7 @@ Existing installations are migrated during the normal update. See [i-Clusters na
 
 ### Interface languages
 
-Switch the full interface in Settings → Appearance → Interface Language. Bundled English, French, Spanish, German and European Portuguese packs include local country flags and saved browser preferences. See [language maintenance and coverage](docs/interface-languages.md).
+Switch the full interface in Settings → Appearance → Interface Language. The header shows the active two-letter language code. Choose a language by its native name in either picker. Your browser saves the selected locale. See [language maintenance and coverage](docs/interface-languages.md).
 
 ### Upgrading a previously configured gateway
 

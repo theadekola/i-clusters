@@ -24,7 +24,7 @@ Developed by **The Adekola Labs**.
 
 - Open storage pool and disk inspection in eye-action popups, expand the tables, and align dataset editor actions in a dedicated footer.
 
-- Add a country-flag language dropdown between header alerts and the user profile, sharing the saved interface language with Settings.
+- Show a two-letter language code between header alerts and the user profile. The header and Settings menus list native language names, including English (UK) and English (US).
 
 - Restore CPU, memory and Resource Usage charts by preserving chart children and SVG definitions through localization.
 

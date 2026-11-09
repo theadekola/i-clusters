@@ -16,4 +16,4 @@ Caddy retains its upstream 2.11.7 source licence and base-image notices; the loc
 
 ## Country flag images
 
-Five regional flag SVGs in `apps/web/public/flags` come from [flag-icons](https://github.com/lipis/flag-icons), copyright Panayiotis Lipiridis, under the MIT licence. The licence is included beside the assets as `LICENSE.txt`.
+Earlier versions of the language picker used regional flag SVGs from [flag-icons](https://github.com/lipis/flag-icons), copyright Panayiotis Lipiridis, under the MIT licence. The original licence is retained in `apps/web/public/flags/LICENSE.txt`.
