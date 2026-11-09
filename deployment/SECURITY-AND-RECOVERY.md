@@ -30,6 +30,8 @@ Restore to a NEW directory on an isolated host:
 bash deployment/controller-restore.sh /path/controller.tar.age /path/private-age-identity /new/controller-directory
 ```
 
+New backups retain the update branch and its upstream, including when the two names differ. Restoring a pinned installation keeps that revision pinned. For an older backup, restore looks for a unique remote branch containing the saved revision. If the remote is offline or the history is ambiguous, the restore finishes pinned. Supply the original branch name as a fourth restore argument to select it explicitly.
+
 The command verifies archive checksums, creates isolated Compose volumes, restores offline Git history and the database, and validates saved encryption keys. Prior sessions and recovery codes are invalidated. Application services remain stopped. Isolate provider networks and review domain/ports before starting the restored controller. Sign in with the authenticator, generate new recovery codes, then perform the planned acceptance checks. Never run the CI drill helper on an installation containing real data.
 
 ## Software upgrades

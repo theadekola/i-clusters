@@ -21,13 +21,23 @@ import './iclusters-brand.css';
 import './viewport.css';
 import './components/ssh-dialog.css';
 
-applyAppearance();
-
-void initializeLocale().then(()=>ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <BrowserRouter><InterfaceMotion/><PageBoundary><App /><InstallPrompt/></PageBoundary></BrowserRouter>
-  </React.StrictMode>
-));
+// The standalone diagnostics page loads the actual entry and waits for a React commit.
+if(location.pathname==='/connection-check.html'){
+ const report=(ok:boolean)=>window.dispatchEvent(new CustomEvent('iclusters-boot-ready',{detail:{entry:import.meta.url,ok}}));
+ // Loading the route also checks its lazy dependencies without signing in or polling providers.
+ void import('./pages/Dashboard').then(()=>{
+  const probe=ReactDOM.createRoot(document.createElement('div'));
+  probe.render(<span ref={node=>{
+   if(node)queueMicrotask(()=>{probe.unmount();report(true)});
+  }}/>);
+ }).catch(()=>report(false));
+}else{
+ applyAppearance();
+ void initializeLocale().then(()=>ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode><BrowserRouter><InterfaceMotion/><PageBoundary><App /><InstallPrompt/></PageBoundary></BrowserRouter></React.StrictMode>
+ ));
+ startWorkerUpdates();
+}
 
 import './components/distribution-summary.css';
 
@@ -41,7 +51,6 @@ import './responsive-layout.css';
 import './interaction-feedback.css';
 
 import {startWorkerUpdates} from './service-worker';
-startWorkerUpdates();
 
 import './icon-surfaces.css';
 

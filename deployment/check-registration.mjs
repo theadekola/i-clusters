@@ -1,16 +1,25 @@
 // Exercises real PostgreSQL transactions through the Compose API in isolated CI.
 import fs from 'node:fs';
+import {execFile} from 'node:child_process';
 import assert from 'node:assert/strict';
 const base='https://localhost:6002/api';
 const request=async(path,body)=>{const response=await fetch(base+path,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{});return {status:response.status,body:await response.json()};};
-assert.equal((await request('/auth/setup')).body.registrationOpen,true);
+const setupBefore=await request('/auth/setup');
+assert.equal(setupBefore.body.needsOwner,true);assert.equal(setupBefore.body.registrationOpen,false);
 const account={name:'CI Owner',username:'ci_owner',email:'owner@example.test',password:'CI-only-password-12345'};
-assert.equal((await request('/auth/register',{...account,password:'short'})).status,400);
-const competing=await Promise.all([request('/auth/register',account),request('/auth/register',{...account,username:'ci_second',email:'second@example.test'})]);
-assert.deepEqual(competing.map(r=>r.status).sort(),[201,409]);
-const owner=competing.find(r=>r.status===201).body.user;
-assert.equal(owner.role,'owner');assert.equal((await request('/auth/setup')).body.registrationOpen,false);
-assert.equal((await request('/auth/register',{...account,username:'ci_third',email:'third@example.test'})).status,409);
+assert.equal((await request('/auth/register',account)).status,403);
+function claim(user){
+ return new Promise(resolve=>{
+  const child=execFile('docker',['compose','exec','-T','api','node','scripts/claim-owner.mjs'],(error,stdout,stderr)=>resolve({user,error,stderr}));
+  child.stdin.end([user.name,user.username,user.email,user.password,''].join('\n'));
+ });
+}
+const competing=await Promise.all([claim(account),claim({...account,username:'ci_second',email:'second@example.test'})]);
+assert.equal(competing.filter(r=>!r.error).length,1);
+assert.match(competing.find(r=>r.error).stderr,/Registration is closed/);
+const owner=competing.find(r=>!r.error).user;
+assert.equal((await request('/auth/setup')).body.needsOwner,false);
+assert.equal((await request('/auth/register',account)).status,403);
 const login=await request('/auth/login',{username:owner.username,password:account.password,remember:true});
 assert.equal(login.status,200);assert.ok(login.body.accessToken);
 assert.equal(owner.username.startsWith('ci_'),true);
@@ -19,7 +28,7 @@ const refreshed=await request('/auth/refresh',{refreshToken:login.body.refreshTo
 assert.equal(refreshed.status,200);assert.equal(refreshed.body.rememberUntil,login.body.rememberUntil);
 assert.equal((await request('/auth/refresh',{refreshToken:login.body.refreshToken})).status,401);
 assert.equal((await request('/auth/login',{email:owner.email,password:account.password})).status,200);
-console.log('First-use registration, concurrent owner protection and sign-in passed through HTTPS web port 6002 and internal API port 6000.');
+console.log('Browser registration refusal, concurrent console owner protection and sign-in passed through HTTPS web port 6002 and internal API port 6000.');
 // Optional MFA, recovery login, server revocation and password rotation against
 // the real database. Never print setup keys, passwords, tokens or recovery codes.
 const {totp}=await import('../apps/api/src/mfa.js');

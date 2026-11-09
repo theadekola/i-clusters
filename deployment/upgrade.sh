@@ -110,9 +110,9 @@ cp -a runtime "$recovery/"
 snapshot=1
 report_progress 35 'Downloading the reviewed release'
 git pull --ff-only
+python3 deployment/configure-https.py
 grep -q '^WEB_PORT=' .env || echo 'WEB_PORT=80' >> .env
 grep -q '^HTTPS_PORT=' .env || echo 'HTTPS_PORT=443' >> .env
-python3 deployment/configure-https.py
 docker compose config --quiet
 source deployment/build-env.sh
 report_progress 50 'Building updated services'
@@ -126,4 +126,5 @@ bash deployment/setup-updater.sh
 systemctl daemon-reload
 rm -f runtime/maintenance.json
 trap - ERR
+echo "Dashboard: $(sed -n 's/^WEB_ORIGIN=//p' .env)"
 echo "Upgrade completed and health checks passed. Local recovery point: $recovery"

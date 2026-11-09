@@ -17,10 +17,10 @@ await test('first owner is hashed, registration locks the table and closes witho
   return {rows:[]};
  },release(){connectionReleased=true;}};
  const db={query:client.query.bind(client),connect:async()=>client};
- assert.equal((await setupStatus(db)).registrationOpen,true);
+ assert.equal((await setupStatus(db)).needsOwner,true);
  const user=await registerOwner(db,input);assert.equal(user.email,'owner@example.test');assert.equal(user.role,'owner');assert.equal(await bcrypt.compare(input.password,hash),true);
  assert.ok(queries.indexOf('LOCK TABLE users IN EXCLUSIVE MODE')<queries.findIndex(q=>q.startsWith('INSERT INTO users')));
- assert.ok(connectionReleased);assert.equal((await setupStatus(db)).registrationOpen,false);
+ assert.ok(connectionReleased);assert.equal((await setupStatus(db)).needsOwner,false);
  await assert.rejects(registerOwner(db,{...input,email:'another@example.test'}),error=>error.status===409);
  assert.equal(queries.at(-1),'ROLLBACK');assert.equal(queries.filter(q=>q.startsWith('INSERT INTO users')).length,1);
 });

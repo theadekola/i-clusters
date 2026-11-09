@@ -13,9 +13,19 @@ function proxmox(kind='qemu'){
 test('VM and CT editors resolve the actual attached disk and send an absolute grow with its digest',async()=>{
  for(const kind of ['qemu','lxc']){
   const f=proxmox(kind),model=await f.editor.inspect(target);assert.equal(f.writes.length,0);
-  const r=await f.editor.update({...target,revision:model.revision,sizeGiB:150});assert.equal(r.task,'UPID:node01:task');assert.equal(f.writes.length,1);
+  const r=await f.editor.update({...target,revision:model.revision,sizeGiB:150,allocationMode:'disk-only'});assert.equal(r.task,'UPID:node01:task');assert.equal(f.writes.length,1);
   assert.equal(f.writes[0].path,`/nodes/node01/${kind}/100/resize`);const body=new URLSearchParams(f.writes[0].options.body);assert.equal(body.get('disk'),kind==='qemu'?'scsi0':'rootfs');assert.equal(body.get('size'),'150G');assert.equal(body.get('digest'),'a'.repeat(40));
  }
+});
+test('a guided VM resize verifies the guest before writing and fails closed on an unsupported or changed layout',async()=>{
+ const f=proxmox(),model=await f.editor.inspect(target);
+ const input={...target,revision:model.revision,sizeGiB:150};
+ await assert.rejects(f.editor.update(input),/Automatic allocation is unavailable/);
+ await assert.rejects(f.editor.update(input,()=>{},async()=>({model,plan:{supported:false}})),/Expand virtual disk only/);
+ await assert.rejects(f.editor.update(input,()=>{},async()=>({model:{...model,revision:'stale'},plan:{supported:true}})),/disk changed/);
+ assert.equal(f.writes.length,0);
+ await f.editor.update({...input,allocationMode:'guest'},()=>{},async()=>({model,plan:{supported:true}}));
+ assert.equal(f.writes.length,1);
 });
 test('shrinks, stale revisions, moved guests, detached disks and unavailable size never write',async()=>{
  for(const change of [f=>f.guest.node='other',f=>delete f.config.scsi0,f=>f.config.lock='backup',f=>delete f.volume.size,f=>f.config.digest='b'.repeat(40)]){

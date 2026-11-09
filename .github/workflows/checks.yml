@@ -29,6 +29,7 @@ jobs:
           bash deployment/test-updater.sh
           bash -n deployment/iclusters
           bash -n deployment/upgrade.sh deployment/controller-backup.sh deployment/controller-restore.sh deployment/check-controller-recovery.sh
+          python3 deployment/test-configure-https.py
           python3 deployment/test-trusted-https.py
           python3 deployment/test-apple-trust-profile.py
           python3 deployment/test-brand-migration.py
@@ -39,6 +40,7 @@ jobs:
           bash -n deployment/network.sh
           bash deployment/test-network.sh
           sh -n deployment/generate-secrets.sh
+          bash deployment/test-controller-source.sh
           bash install.sh --help
       - name: Check actual guest LVM report schemas (read-only)
         run: |
@@ -67,6 +69,7 @@ jobs:
       - name: Verify popup layouts in Chromium
         run: |
           npm install --prefix /tmp/iclusters-browser-tools --no-save --ignore-scripts playwright-core@1.62.1 @sparticuz/chromium@153.0.0
+          ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules node apps/web/scripts/check-dashboard-recovery.mjs
           ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules node apps/web/scripts/check-popup-layout.mjs
           ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_CHECK_TYPOGRAPHY=1 LAYOUT_WIDTHS=1280,768,390,320 node apps/web/scripts/audit-layout.mjs
       - name: Exercise live language switching on desktop and mobile

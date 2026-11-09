@@ -25,9 +25,8 @@ paused=1
 docker compose stop api caddy
 docker compose exec -T postgres sh -c 'pg_dump --format=custom --no-owner -U "$POSTGRES_USER" -d "$POSTGRES_DB"' > "$stage/database.dump"
 git archive --format=tar HEAD > "$stage/source.tar"
-git bundle create "$stage/source.bundle" HEAD
-git remote get-url origin > "$stage/origin"
-printf '%s\n' "$(git rev-parse HEAD)" > "$stage/revision"
+source deployment/controller-source.sh
+backup_controller_source "$stage"
 cp -a .env runtime docker-compose.yml "$stage/"
 cp -a deployment/Caddyfile "$stage/Caddyfile"
 rm -f "$stage/runtime/maintenance.json"
