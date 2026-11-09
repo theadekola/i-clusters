@@ -206,3 +206,20 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
 
 .content .overview-v2 .resource-tile>.recharts-responsive-container{display:block}
 .content .health-layout .actual-health small{font-size:10px!important;line-height:1.15;text-align:center;max-width:78%;overflow-wrap:anywhere}
+
+/* Keep each action's icon and label together. Tables can scroll as a unit. */
+:is(.content,.modal) :is(td,[class*="-actions"],.schedule-quick) :is(button.btn,a.btn),
+:is(.content,.modal) .storage-guest-allocation > .btn {
+  flex-flow: row nowrap;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+:is(.content,.modal) td:has(> button, > a.btn),
+:is(.content,.modal) td :is(.row-actions,[class*="-actions"]):has(> button, > a.btn) {
+  white-space: nowrap;
+  flex-wrap: nowrap;
+}
+:is(.content,.modal) td :is(.row-actions,[class*="-actions"]) > :is(button,a.btn) {
+  flex: none;
+}
