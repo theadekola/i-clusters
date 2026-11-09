@@ -2,19 +2,8 @@
   default_sni {$CADDY_DEFAULT_SNI:localhost}
 }
 
-{$DOMAIN} {
-  {$CADDY_TLS}
+(controller) {
   encode zstd gzip
-
-  # Fixed public CA export only. No directory browsing or private-key access.
-  handle /local-ca.crt {
-    rewrite * /root.crt
-    root * /data/caddy/pki/authorities/local
-    header Content-Type application/x-x509-ca-cert
-    header Content-Disposition "attachment; filename=i-clusters-root.crt"
-    header Cache-Control "no-store"
-    file_server
-  }
 
   @api path /api/*
   handle @api {
@@ -35,3 +24,21 @@
     Permissions-Policy "camera=(), microphone=(), geolocation=(), screen-wake-lock=(self)"
   }
 }
+
+{$DOMAIN} {
+  {$CADDY_TLS}
+  # Fixed public CA export only. No directory browsing or private-key access.
+  handle /local-ca.crt {
+    rewrite * /root.crt
+    root * /data/caddy/pki/authorities/local
+    header Content-Type application/x-x509-ca-cert
+    header Content-Disposition "attachment; filename=i-clusters-root.crt"
+    header Cache-Control "no-store"
+    file_server
+  }
+
+  import controller
+}
+
+# Optional DNS-validated browser hostname, configured during or after installation.
+import /etc/iclusters/trusted-https/*/browser.caddy

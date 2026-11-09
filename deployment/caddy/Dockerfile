@@ -2,11 +2,13 @@
 # checksum database validates downloaded modules; CI scans the resulting binary.
 FROM golang:1.27.3-alpine AS builder
 WORKDIR /build
+COPY main.go .
 RUN go mod init iclusters.local/caddy-build \
- && go get github.com/caddyserver/caddy/v2/cmd/caddy@v2.11.7 \
+ && go get github.com/caddyserver/caddy/v2/cmd/caddy@v2.11.7 github.com/caddy-dns/cloudflare@v0.2.4 \
  && go get golang.org/x/net@v0.62.0 \
  && go get github.com/go-jose/go-jose/v4@v4.1.6 \
- && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/caddy github.com/caddyserver/caddy/v2/cmd/caddy
+ && go mod tidy \
+ && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/caddy .
 
 FROM caddy:2.11.7-alpine
 RUN apk upgrade --no-cache

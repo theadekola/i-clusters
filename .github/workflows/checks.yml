@@ -29,6 +29,7 @@ jobs:
           bash deployment/test-updater.sh
           bash -n deployment/iclusters
           bash -n deployment/upgrade.sh deployment/controller-backup.sh deployment/controller-restore.sh deployment/check-controller-recovery.sh
+          python3 deployment/test-trusted-https.py
           python3 deployment/test-apple-trust-profile.py
           python3 deployment/test-brand-migration.py
           bash -n deployment/finish-brand-migration.sh
@@ -91,6 +92,7 @@ jobs:
           NODE_EXTRA_CA_CERTS=/tmp/iclusters-ci-root.crt node deployment/check-browser-certificate.mjs
       - name: Check deployed Caddy security dependencies
         run: |
+          docker compose exec -T caddy caddy list-modules | grep -Fx 'dns.providers.cloudflare'
           docker compose exec -T caddy caddy build-info > /tmp/iclusters-caddy-build-info.txt
           grep -E '[[:space:]]github.com/go-jose/go-jose/v4[[:space:]]+v4\.1\.6([[:space:]]|$)' /tmp/iclusters-caddy-build-info.txt
           grep -E '[[:space:]]golang.org/x/net[[:space:]]+v0\.62\.0([[:space:]]|$)' /tmp/iclusters-caddy-build-info.txt

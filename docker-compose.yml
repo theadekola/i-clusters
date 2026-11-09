@@ -20,6 +20,7 @@ services:
       - "${HTTPS_PORT:-443}:443/udp"
     volumes:
       - ./deployment/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./secrets/trusted-https:/etc/iclusters/trusted-https:ro
       - caddy_data:/data
       - caddy_config:/config
     networks:
