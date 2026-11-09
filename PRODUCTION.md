@@ -45,6 +45,7 @@ For initial private LAN testing:
 
 ```env
 DOMAIN=https://YOUR-UBUNTU-IP
+LAN_HTTP_POLICY=lan_redirect
 WEB_PORT=6003
 HTTPS_PORT=6002
 CADDY_DEFAULT_SNI=YOUR-UBUNTU-IP
@@ -56,6 +57,7 @@ For HTTPS, configure DNS and a real hostname with Caddy:
 
 ```env
 DOMAIN=iclusters.your-domain.example
+LAN_HTTP_POLICY=no_lan_redirect
 WEB_PORT=80
 HTTPS_PORT=443
 WEB_ORIGIN=https://iclusters.your-domain.example

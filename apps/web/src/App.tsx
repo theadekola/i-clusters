@@ -32,10 +32,11 @@ export default function App(){
  const checking=useRef(false);
  const check=useCallback(async()=>{
   if(checking.current)return;
-  if(!getAccessToken()){setConnectionError('');setAuthenticated(false);return}
+  const checkedAccess=getAccessToken();
+  if(!checkedAccess){setConnectionError('');setAuthenticated(false);return}
   checking.current=true;
   try{await api('/auth/me');setConnectionError('');setAuthenticated(!!getAccessToken())}
-  catch(e:any){if(e.status===401){clearTokens();setConnectionError('');setAuthenticated(false)}else setConnectionError(e.message||'Cannot reach i-Clusters.')}
+  catch(e:any){if(e.status===401){if(getAccessToken()===checkedAccess)clearTokens();setConnectionError('');setAuthenticated(!!getAccessToken())}else setConnectionError(e.message||'Cannot reach i-Clusters.')}
   finally{checking.current=false}
  },[]);
  useEffect(()=>{const stopActivity=startSessionActivity();void check();const expired=()=>{setConnectionError('');setAuthenticated(false)};const unavailable=(e:any)=>setConnectionError(e.detail||'Connection temporarily unavailable.');window.addEventListener('iclusters-session-unavailable',unavailable);window.addEventListener('iclusters-session-expired',expired);return()=>{stopActivity();window.removeEventListener('iclusters-session-expired',expired);window.removeEventListener('iclusters-session-unavailable',unavailable)}},[check]);

@@ -35,3 +35,10 @@ No automated whole-customer erasure or immutable audit service is claimed. Do no
 ## Support
 
 Product: https://www.i-clusters.com. Support: https://support.i-clusters.com. If the support site is unavailable, use repository issues for non-sensitive reports and SECURITY.md for vulnerability reporting. These links do not establish a staffed support centre or response SLA. Supply version, exact provider versions, sanitized steps and expected/actual behavior. No telemetry or support bundle is sent automatically by this runbook.
+
+
+### VM and container availability alerts
+
+A confirmed stopped VM or LXC container opens a critical alert, including when it is first discovered. Paused or suspended guests open a warning. Each alert identifies the guest name, ID and Proxmox host. Templates are excluded. When Proxmox explicitly reports the host offline, the alert describes the guest as unreachable. An incomplete inventory alone does not establish guest downtime or recovery.
+
+Guests appear in Alerts and in the notification bell. Settings under Notifications control delivery channels, minimum severity and recovery messages. Repeated observations of the same outage share an alert. A verified running state resolves it, including after a move to another host on the same configured cluster.

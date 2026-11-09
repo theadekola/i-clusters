@@ -2,6 +2,16 @@
   default_sni {$CADDY_DEFAULT_SNI:localhost}
 }
 
+# Managed LAN installations provide their externally reachable HTTPS origin.
+(lan_redirect) {
+  http://{$LAN_REDIRECT_HOST:localhost} {
+    redir {$LAN_REDIRECT_ORIGIN:https://localhost:6002}{uri} 308
+  }
+}
+(no_lan_redirect) {
+}
+import {$LAN_HTTP_POLICY:no_lan_redirect}
+
 (controller) {
   encode zstd gzip
 

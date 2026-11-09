@@ -10,3 +10,7 @@ for(const path of ['/root.key','/local-ca.crt/root.key','/data/caddy/pki/authori
  const result=await fetch(origin+path,{redirect:'error',signal:AbortSignal.timeout(10000)});assert.doesNotMatch(await result.text(),/-----BEGIN (?:\w+ )?PRIVATE KEY-----/);
 }
 console.log('Browser certificate export matches the persistent public root; private-key paths are not exposed.');
+
+const httpEntry=await fetch('http://localhost:6003/storage?tab=Disks',{redirect:'manual'});
+assert.equal(httpEntry.status,308);
+assert.equal(httpEntry.headers.get('location'),'https://localhost:6002/storage?tab=Disks');

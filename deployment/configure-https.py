@@ -19,7 +19,8 @@ def configure(path):
         local = host == "localhost" or host.endswith(".local")
     # Public domains retain their ACME settings and chosen port.
     if not local:
-        return False
+        lines = [line for line in original.splitlines(keepends=True) if not line.startswith(("LAN_HTTP_POLICY=", "LAN_REDIRECT_HOST="))]
+        return replace_settings(path, original, "".join(lines))
     # Only the original HTTP-only layout reused port 6002 for HTTPS on migration.
     https_port = values.get("HTTPS_PORT") or str((origin.port or 443) if origin.scheme == "https" else 6002)
     http_port = values.get("WEB_PORT") or "6003"
@@ -30,11 +31,15 @@ def configure(path):
     authority = f"[{host}]" if ":" in host else host
     site = "https://" + authority
     public_url = site if int(https_port) == 443 else f"{site}:{https_port}"
-    replacements = {"DOMAIN": site, "WEB_PORT": http_port, "HTTPS_PORT": https_port,
+    replacements = {"LAN_HTTP_POLICY": "lan_redirect", "LAN_REDIRECT_HOST": authority, "DOMAIN": site, "WEB_PORT": http_port, "HTTPS_PORT": https_port,
                     "WEB_ORIGIN": public_url, "CADDY_DEFAULT_SNI": host, "CADDY_TLS": "tls internal"}
     lines = [line for line in original.splitlines() if line.split("=", 1)[0] not in replacements]
     lines.extend(key + "=" + value for key, value in replacements.items())
     updated = "\n".join(lines) + "\n"
+    return replace_settings(path, original, updated)
+
+
+def replace_settings(path, original, updated):
     if original == updated:
         return False
     backup = path.with_name(".env.before-https-6002")

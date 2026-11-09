@@ -10,6 +10,10 @@ git symbolic-ref --quiet HEAD >/dev/null || { echo 'This checkout is pinned. Sel
 exec 9>"${ICLUSTERS_MAINTENANCE_LOCK:-/run/lock/iclusters-maintenance.lock}"
 flock -n 9 || { echo 'Controller maintenance is already running.' >&2; exit 1; }
 [[ ! -e runtime/maintenance.json ]] || { echo 'Inspect the existing maintenance operation before retrying.' >&2; exit 1; }
+approved=${1:-}
+if [[ $# -gt 0 ]]; then
+ [[ $# == 1 && $approved =~ ^[0-9a-f]{40}$ ]] && git merge-base --is-ancestor HEAD "$approved" && git merge-base --is-ancestor "$approved" '@{upstream}' || { echo 'The requested update is outside the tracked release history.' >&2; exit 1; }
+fi
 umask 077
 # Publish confirmed stage milestones to the existing updater status file.
 # The API may be offline during rebuilding; the browser holds its last report.
@@ -109,7 +113,12 @@ docker compose exec -T postgres sh -c 'pg_dump --format=custom --no-owner -U "$P
 cp -a runtime "$recovery/"
 snapshot=1
 report_progress 35 'Downloading the reviewed release'
-git pull --ff-only
+if [[ -n $approved ]]; then
+ git merge --ff-only "$approved"
+ [[ $(git rev-parse HEAD) == "$approved" ]]
+else
+ git pull --ff-only
+fi
 python3 deployment/configure-https.py
 grep -q '^WEB_PORT=' .env || echo 'WEB_PORT=80' >> .env
 grep -q '^HTTPS_PORT=' .env || echo 'HTTPS_PORT=443' >> .env

@@ -1,3 +1,4 @@
+import {guestAvailability,reconcileGuestAlert} from './guest-availability.js';
 import {operationsView,operationalConditions,operationalRecovery} from './operations-health.js';
 import {operationalNodes} from './node-agents.js';
 import {dockerImageUpdates} from './docker-image-updates.js';
@@ -23,8 +24,9 @@ export function progressServices(services,previous=[],sampledAt,now=Date.now()){
   const kept=candidates.map(recent).filter(Boolean);return kept.length?kept:[service];
  });
 }
-export function alertConditions(snapshot,rules){
+export function alertConditions(snapshot,rules,guests=guestAvailability(snapshot.proxmox)){
   const conditions=snapshot.operations?operationalConditions(snapshot.operations):[];
+  conditions.push(...guests.conditions);
   for(const service of snapshot.services)if(['error','partial'].includes(service.status))conditions.push({key:`connection:${service.id||service.name}`,connectorId:service.id||service.provider,title:service.status==='partial'?'Incomplete monitoring':'Connection failed',source:service.name,provider:service.provider,severity:service.status==='partial'?'warning':'critical',details:service.error});
   for(const row of snapshot.proxmox?.storage||[])if(row.status==='offline'&&String(row.content||'').split(',').includes('backup'))conditions.push({key:`backup-storage:${row.node}:${row.id}`,title:'Backup storage unavailable',source:`${row.node} / ${row.name}`,node:row.node,resourceId:row.id,provider:'proxmox',severity:'warning',details:'Proxmox reports this backup storage offline. Its backup archives cannot be checked. Open Backups → Destinations to inspect its status.'});
   for(const task of snapshot.proxmox?.backupHistory?.tasks||[]){
@@ -82,8 +84,10 @@ export function createMonitor(sources=providers,persistence={get,mutate},checkSe
       const mean=key=>{const values=measured.map(n=>n[key]).filter(v=>typeof v==='number');return values.length?Math.round(values.reduce((sum,v)=>sum+v,0)/values.length):null;};
       persistence.mutate(state=>{
         state.metrics.push({time:snapshot.sampledAt,cpu:mean('cpu'),memory:mean('memory'),docker:monitoredDocker(snapshot).map(c=>({hostId:c.hostId,id:c.id,name:c.name,status:c.status,cpu:c.cpu,memory:c.memoryPercent,memoryBytes:c.memory})),nodes:measured.map(n=>({name:n.name,cpu:n.cpu,memory:n.memoryPercent})),storage:snapshot.proxmox?.storage||[]});state.metrics=state.metrics.slice(-2880);
-        const conditions=alertConditions(snapshot,state.rules),activeKeys=new Set(conditions.map(c=>c.key));
+        const guests=guestAvailability(snapshot.proxmox);
+        const conditions=alertConditions(snapshot,state.rules,guests),activeKeys=new Set(conditions.map(c=>c.key));
         for(const existing of state.alerts)if(existing.status!=='resolved'&&!activeKeys.has(existing.key)){
+          if(existing.key?.startsWith('guest-availability:')){reconcileGuestAlert(existing,snapshot,guests.observations);continue;}
           if(existing.key?.startsWith('docker-image:'))continue;
           if(existing.key?.startsWith('operations:')){if(operationalRecovery(existing,snapshot.operations)){existing.status='resolved';existing.resolvedAt=snapshot.sampledAt;}continue;}
           if(existing.key?.startsWith('backup-task:'))continue;

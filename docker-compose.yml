@@ -11,6 +11,9 @@ services:
       api:
         condition: service_healthy
     environment:
+      LAN_HTTP_POLICY: ${LAN_HTTP_POLICY:-no_lan_redirect}
+      LAN_REDIRECT_HOST: ${LAN_REDIRECT_HOST:-${CADDY_DEFAULT_SNI:-localhost}}
+      LAN_REDIRECT_ORIGIN: ${WEB_ORIGIN:-https://localhost:6002}
       DOMAIN: ${DOMAIN:-https://localhost}
       CADDY_DEFAULT_SNI: ${CADDY_DEFAULT_SNI:-localhost}
       CADDY_TLS: ${CADDY_TLS:-}

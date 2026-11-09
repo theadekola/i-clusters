@@ -26,8 +26,8 @@ export default function UpdateButton({showLabel=false}:{showLabel?:boolean}){
  const update=async()=>{notice('');setBusy(true);try{
   if(!status?.enabled&&!status?.configured){notice(status?.message||'Update service unavailable.');setBusy(false);return;}
   if(!status.available||!status.enabled||['failed','error'].includes(status.state)){const result=await api('/updates/check',{method:'POST'});check.current={checkedAt:result.checkedAt??status.checkedAt,checkId:result.checkId,time:Date.now()};notice('Checking GitHub for updates…');setRequested(true);setBusy(false);return;}
-  previous.current=status.current;started.current=true;setSoftwareUpdating(true);await api('/updates',{method:'POST'});notice('Update queued. i-Clusters will reconnect automatically when the server restarts.');
- }catch(e:any){if(e.updating){notice(updatingMessage);return}started.current=false;setSoftwareUpdating(false);setBusy(false);notice(e.message);}};
+  previous.current=status.current;started.current=true;setSoftwareUpdating(true);await api('/updates',{method:'POST',body:JSON.stringify({revision:status.latest})});notice('Update queued. i-Clusters will reconnect automatically when the server restarts.');
+ }catch(e:any){if(e.updating){notice(updatingMessage);return}started.current=false;setSoftwareUpdating(false);setBusy(false);if(e.status===409)retry.current?.();notice(e.message);}};
  const scanning=requested||status?.checking||status?.state==='checking';
  const running=busy||status?.pending||status?.state==='updating'||isSoftwareUpdating();
  const installable=status?.enabled&&status?.available&&!['failed','error'].includes(status?.state);

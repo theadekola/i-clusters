@@ -46,14 +46,20 @@ latest=$(git rev-parse '@{upstream}')
 available=false
 if [[ $current != "$latest" ]]; then available=true; message='A new update is available.'; fi
 if [[ -f runtime/update-request.json ]]; then
+  approved=$(python3 -c 'import json; print(json.load(open("runtime/update-request.json")).get("revision", ""))')
   rm runtime/update-request.json
-  if [[ $available == true ]]; then
+  if [[ ! $approved =~ ^[0-9a-f]{40}$ ]] || ! git merge-base --is-ancestor "$approved" "$latest" || ! git merge-base --is-ancestor "$current" "$approved"; then
+    message='The approved revision is unavailable. Check for updates and review the current release.'
+    state=failed
+  elif [[ $current != "$approved" ]]; then
     progress_stage='Preparing update'; progress_percent=5
     state=updating; message='Downloading and rebuilding. The dashboard will reconnect automatically.'; write_status
-    ICLUSTERS_UPDATE_STATUS_FILE=/var/lib/iclusters-updater/update-status.json /usr/local/bin/iclusters update
+    ICLUSTERS_UPDATE_STATUS_FILE=/var/lib/iclusters-updater/update-status.json /usr/local/bin/iclusters update "$approved"
     current=$(git rev-parse HEAD)
+    [[ $current == "$approved" ]]
     progress_stage='Update installed and health checks passed'; progress_percent=100
     available=false; state=completed; message='Update installed.'
+    if [[ $latest != "$current" ]]; then available=true; message='Approved revision installed. A newer update is available.'; fi
   fi
 fi
 write_status
