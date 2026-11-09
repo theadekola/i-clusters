@@ -62,6 +62,43 @@ test('node VM and CT terminal views render streamed output immediately and abort
  }
 });
 
+test('shell resumes only fresh input after checking the existing channel',async()=>{
+ const writes=[];let failInput=true,probeStatus=503;
+ const page=await mounted('components/SSHAccess.tsx',{target:'vm:lab:101',sessionId:'vm'},async(path,init)=>{
+  if(path.endsWith('/output'))return new Response(new ReadableStream({start(c){init.signal.addEventListener('abort',()=>c.error(Error('aborted')))}}));
+  const body=JSON.parse(init?.body||'{}');
+  if(body.input){writes.push(body.input);if(failInput){failInput=false;throw Error('Acknowledgement lost')}}
+  if(body.presence==='active'&&probeStatus)throw Object.assign(Error('Probe failed'),{status:probeStatus});
+  return {ok:true};
+ });
+ const resume=()=>page.container.querySelector('.shell-input-recovery button');
+ try{
+  await act(async()=>{globalThis.__terminalInput('first');globalThis.__terminalInput('queued');await tick()});
+  assert.ok(resume());assert.deepEqual(writes,['first']);
+  await page.click(resume());assert.ok(resume());globalThis.__terminalInput('paused');assert.deepEqual(writes,['first']);
+  probeStatus=0;await page.click(resume());assert.equal(resume(),null);
+  await act(async()=>{globalThis.__terminalInput('fresh');await tick()});assert.deepEqual(writes,['first','fresh']);
+  failInput=true;await act(async()=>{globalThis.__terminalInput('last');await tick()});
+  probeStatus=403;await page.click(resume());assert.equal(resume(),null);globalThis.__terminalInput('forbidden');assert.deepEqual(writes,['first','fresh','last']);
+ }finally{await page.close();delete globalThis.__terminalInput;}
+});
+
+test('a stale output reader is replaced on foregrounding the same shell',async()=>{
+ const readers=[],originalNow=Date.now;
+ const page=await mounted('components/SSHAccess.tsx',{target:'lxc:lab:102',sessionId:'ct'},async(path,init)=>{
+  if(!path.endsWith('/output'))return {};
+  readers.push(init.signal);return new Response(new ReadableStream({start(c){init.signal.addEventListener('abort',()=>c.error(Error('aborted')))}}));
+ });
+ try{
+  assert.equal(readers.length,1);
+  Object.defineProperty(document,'hidden',{value:false,configurable:true});
+  Date.now=()=>originalNow()+21000;
+  await act(async()=>{document.dispatchEvent(new Event('visibilitychange'));await tick()});
+  assert.equal(readers[0].aborted,true);assert.equal(readers.length,2);assert.ok(!readers[1].aborted);
+  await act(async()=>{window.dispatchEvent(new Event('online'));await tick()});assert.equal(readers.length,2);
+ }finally{Date.now=originalNow;await page.close();}
+});
+
 test('shell reports suspension and visible resume separately from user activity',async()=>{
  const calls=[];
  const page=await mounted('components/SSHAccess.tsx',{target:'node:fixture',sessionId:'fixture'},async(p,init)=>{calls.push({p,init});return {}});

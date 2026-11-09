@@ -74,6 +74,11 @@ export async function openGuestUpdate(id,user,loginId,resolveHost){
   sessions.set(childId,child);return {id:childId};
  }catch(error){parent.updating=false;throw error;}
 }
+// Used only to assign transport rate limits. The route still checks the current user and role.
+export function openShellOwner(id){
+ const session=sessions.get(id);
+ return session?.mode==='shell'&&!session.closed&&!shellExpired(session)?session.user:undefined;
+}
 export function shellSession(id,user){const s=sessions.get(id);if(!s||s.user!==user||shellExpired(s))throw failure('Shell session unavailable',404);if(s.mode==='sftp')s.touched=Date.now();return s;}
 export function closeShell(id,user){const s=shellSession(id,user);s.releaseOutput?.();if(s.mode==='sftp')s.stream.end();else if(!s.updateChannel)s.stream.close();s.client.end();sessions.delete(id);}
 const timer=setInterval(()=>{for(const [id,s]of sessions)if(shellExpired(s)){s.releaseOutput?.();s.client.end();sessions.delete(id)}for(const [id,g]of grants)if(g.expires<Date.now())grants.delete(id)},15000);timer.unref();

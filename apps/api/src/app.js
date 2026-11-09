@@ -48,7 +48,7 @@ import {streamShellOutput} from './ssh-stream.js';
 import {flag,creationOptions,registerCreation,completeCreationHa} from './guest-create-options.js';
 import {bootstrapGuest} from './guest-bootstrap.js';
 import {targetSSHHost} from './ssh-target.js';
-import {openGuestUpdate,closeSessionAccess,writeShellInput,actionTarget,consumeGrant,connectSSH,shellSession,closeShell,publicSavedSSH,savedSSH,sftpOperation,deleteSavedSSH} from './ssh-access.js';
+import {openGuestUpdate,closeSessionAccess,writeShellInput,openShellOwner,actionTarget,consumeGrant,connectSSH,shellSession,closeShell,publicSavedSSH,savedSSH,sftpOperation,deleteSavedSSH} from './ssh-access.js';
 import {providerDiagnostics} from './diagnostics.js';
 import {notifier} from './notifications.js';
 import {storagePerformance} from './storage-performance.js';
@@ -77,7 +77,7 @@ import {setupStatus} from './setup.js';
 import { clusterStore,clusterConfig,publicCluster,validateCluster } from './cluster-config.js';
 import {productRouter,countAction} from './product-usage.js';
 import { pool } from './db.js';
-import { auth,requireRole,verifyPassword,issueTokens,rotateRefreshToken,roles } from './security.js';
+import { auth,requireRole,verifyAccessToken,verifyPassword,issueTokens,rotateRefreshToken,roles } from './security.js';
 import { writeAudit } from './audit.js';
 import { get,mutate } from './store.js';
 import { monitor as liveMonitor,providers } from './monitor.js';
@@ -95,7 +95,17 @@ export function createApp({authenticate=auth,authorize=requireRole,audit=writeAu
  app.use(requestBodyDeadline);
  if(process.env.TRUST_PROXY)app.set('trust proxy',Number(process.env.TRUST_PROXY)||1);
  app.use(helmet());app.use(cors({origin:(process.env.WEB_ORIGIN||'http://localhost').split(',')}));app.use(express.json({limit:apiPolicy.jsonBodyBytes}));
- app.use(rateLimit({windowMs:60000,limit:apiPolicy.requestsPerMinute,standardHeaders:true,legacyHeaders:false,skip:req=>{if(req.path!=='/api/node-agent/poll')return false;try{req.nodeAgent=authenticateAgent(req.headers.authorization?.replace(/^Bearer /,''));return true;}catch{return false;}}}));
+ const generalLimiter=rateLimit({windowMs:60000,limit:apiPolicy.requestsPerMinute,standardHeaders:true,legacyHeaders:false,skip:req=>{if(req.path!=='/api/node-agent/poll')return false;try{req.nodeAgent=authenticateAgent(req.headers.authorization?.replace(/^Bearer /,''));return true;}catch{return false;}}});
+ const shellLimiter=rateLimit({windowMs:60000,limit:apiPolicy.shellRequestsPerMinute,standardHeaders:true,legacyHeaders:false,keyGenerator:req=>req.shellTrafficOwner});
+ app.use((req,res,next)=>{
+  const transport=req.method==='POST'&&/^\/api\/ssh\/session\/([a-f0-9-]{36})$/.exec(req.path);
+  const owner=transport&&openShellOwner(transport[1]);
+  if(owner&&req.headers.authorization?.startsWith('Bearer ')){
+   try{req.shellTrafficOwner=verifyAccessToken(req.headers.authorization.slice(7)).sub;}catch{/* Invalid credentials use the normal IP limit. */}
+   if(req.shellTrafficOwner===owner)return shellLimiter(req,res,next);
+  }
+  return generalLimiter(req,res,next);
+ });
  const agentPollLimiter=rateLimit({windowMs:60000,limit:120,standardHeaders:true,legacyHeaders:false,keyGenerator:req=>req.nodeAgent.id});
 
  const loginLimiter=rateLimit({windowMs:apiPolicy.loginWindowMs,limit:apiPolicy.loginRequests,standardHeaders:true,legacyHeaders:false});
