@@ -58,3 +58,18 @@ with tempfile.TemporaryDirectory() as temp:
   except RuntimeError as error: assert str(error)==expected
   else: raise AssertionError('Ineligible guest passed Docker preflight')
   assert not (root/'etc').exists()
+
+with tempfile.TemporaryDirectory() as temp:
+ root=pathlib.Path(temp)
+ (root/'etc').mkdir()
+ (root/'etc/os-release').write_text('ID=ubuntu\n')
+ calls=[]
+ def run(command,**kwargs):
+  calls.append(command)
+  return types.SimpleNamespace(returncode=0)
+ external={**payload,'node':'standalone:lab.example','kind':'docker','identity':{'standalone':True},'installDocker':True}
+ options=dict(root=root,run=run,which=lambda name:name!='docker',check_url=lambda *_:None,hostname=lambda:'lab')
+ assert module.execute({**external,'mode':'probe'},**options)['ready'] and not calls
+ assert module.execute(external,**options)['installed']
+ assert ['apt-get','install','--no-remove','-y','docker.io'] in calls
+ assert calls.index(['systemctl','start','docker'])<calls.index(['docker','info'])

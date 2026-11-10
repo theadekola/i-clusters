@@ -129,4 +129,5 @@ elif grep -qx 'CADDY_TLS=tls internal' .env; then
   fi
   echo 'Install the profile in Settings, then enable the matching root in General > About > Certificate Trust Settings.'
 fi
-echo 'Configure supported integrations in Settings: Connections, Notifications and Integrations.'
+echo "Open guided connection setup after signing in: ${installed_url%/}/settings?tab=Connections&setup=choose"
+echo 'Configure AI and notification channels under Settings > Integrations.'

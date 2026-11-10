@@ -1,12 +1,12 @@
 import {storageTabs} from './storage-navigation';
 
-export const settingsTabs=['General','System','Security','Connections','Appearance','About'];
+export const settingsTabs=['General','System','Security','Connections','Integrations','Appearance','About'];
 export function settingsCategory(raw:string){
- if(['Notifications','Integrations'].includes(raw))return 'Connections';
+ if(raw==='Notifications')return 'Integrations';
  if(['Advanced','Backup & Restore'].includes(raw))return 'System';
  return settingsTabs.includes(raw)?raw:'General';
 }
-export function settingsTitle(category:string){return ({General:'General Settings',System:'System Settings',Security:'Security Settings',Connections:'Connections',Appearance:'Appearance Settings',About:'About i-Clusters'} as Record<string,string>)[category]||'General Settings';}
+export function settingsTitle(category:string){return ({General:'General Settings',System:'System Settings',Security:'Security Settings',Connections:'Connections',Integrations:'Integrations',Appearance:'Appearance Settings',About:'About i-Clusters'} as Record<string,string>)[category]||'General Settings';}
 const sections:Record<string,{name:string;tabs?:string[]}>= {
  '/proxmox':{name:'Proxmox',tabs:['Overview','Nodes','Virtual Machines','LXC Containers','Storage','Networks','Tasks & Logs']},
  '/docker':{name:'Docker',tabs:['Containers','Images','Volumes','Compose Stacks','Events','Updates']},
