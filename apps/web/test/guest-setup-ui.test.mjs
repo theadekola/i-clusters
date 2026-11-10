@@ -419,14 +419,15 @@ test('an active SSH installation can disable all popup dismissal methods',async(
  try{const close=page.container.querySelector('[aria-label="Close dialog"]');assert.equal(close.disabled,true);await act(async()=>{document.dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));page.container.querySelector('.modal-backdrop').dispatchEvent(new page.dom.window.MouseEvent('mousedown',{bubbles:true}));await new Promise(r=>setTimeout(r,0))});assert.equal(closed,0);await page.render({...props,closeDisabled:false});await page.click(page.container.querySelector('[aria-label="Close dialog"]'));assert.equal(closed,1)}finally{await page.close()}
 });
 
-test('failed Docker guest pairing can retry with a fresh target, host key, password and consent',async()=>{
+for(const [state,action,label] of [['failed',undefined,'Retry pairing'],['failed','docker-missing','Install Docker and retry'],['failed','docker-start','Start Docker and retry'],['interrupted',undefined,'Resume setup']])test(label+' requires fresh SSH verification, password and consent',async()=>{
  const endpoint='/node-agents/automatic-docker-pairing',node='node01:qemu/108',starts=[];
  let reads=0,keys=0;
  const page=await mounted('components/AutomaticNodePairing.tsx',{node,kind:'docker',onBusy(){},onComplete(){}},async(path,init)=>{
-  if(path.startsWith(endpoint+'/target?'))return {host:'192.0.2.108',connectionId:'binding-'+(++reads)};
+  const job={id:'job-1',state,action,message:'Docker Engine unavailable'};
+  if(path.startsWith(endpoint+'/target?'))return {host:'192.0.2.108',connectionId:'binding-'+(++reads),job:reads>1&&state==='interrupted'?job:undefined};
   if(path==='/ssh/fingerprint'){keys++;return {fingerprint:'key-'+keys}}
   if(path===endpoint){starts.push(JSON.parse(init.body));return {job:{id:'job-1',state:'connecting'}}}
-  if(path===endpoint+'/job-1')return {job:{id:'job-1',state:'failed',message:'Docker Engine unavailable'}};
+  if(path===endpoint+'/job-1')return {job};
   throw Error('Unexpected request '+path);
  });
  const field=name=>page.container.querySelector('[aria-label="'+name+'"]');
@@ -436,15 +437,16 @@ test('failed Docker guest pairing can retry with a fresh target, host key, passw
   await changeControl(field('Approve automatic node pairing'),true);
   await page.click(button(page,'Install, Pair & Verify Automatically'));
   await act(async()=>new Promise(r=>setTimeout(r,1200)));
-  assert.match(page.container.querySelector('[role=alert]').textContent,/Docker Engine unavailable/);
+  assert.match(page.container.textContent,/Docker Engine unavailable/);
   assert.equal(field('Retry SSH verification'),null);
-  await page.click(button(page,'Retry pairing'));
+  await page.click(button(page,label));
   await act(async()=>new Promise(r=>setTimeout(r,320)));
   assert.equal(reads,2);assert.equal(keys,2);assert.equal(starts.length,1);
   assert.equal(field('SSH / sudo password').value,'');assert.equal(field('Approve automatic node pairing').checked,false);
   assert.equal(button(page,'Install, Pair & Verify Automatically').disabled,true);
   await changeControl(field('SSH / sudo password'),'new-password');await changeControl(field('Approve automatic node pairing'),true);
   await page.click(button(page,'Install, Pair & Verify Automatically'));
+  assert.equal(starts[1].resumeJob,state==='interrupted'?'job-1':'');assert.equal(starts[1].installDocker,!!action);
   assert.equal(starts[1].connectionId,'binding-2');assert.equal(starts[1].fingerprint,'key-2');
  }finally{await page.close()}
 });

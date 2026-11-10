@@ -6,10 +6,13 @@ trustAfter(()=>{if(trustOriginalDir===undefined)delete process.env.DATA_DIR;else
 import test from 'node:test';import assert from 'node:assert/strict';import {EventEmitter} from 'node:events';import crypto from 'node:crypto';import {spawnSync} from 'node:child_process';import ssh2 from 'ssh2';
 import {createAutomaticNodePairing,executePairingSSH} from '../src/automatic-node-pairing.js';import {connectorRelease} from '../src/connector-release.js';
 const password='fresh-ssh-password',fp='SHA256:'+crypto.createHash('sha256').update('key').digest('base64').replace(/=+$/,'');
-function fixture({heartbeat=true,failedProbe=false,failedInstall=false,gate,connect}={}){
+function fixture({heartbeat=true,failedProbe=false,failedInstall=false,interrupted=false,gate,connect}={}){
  const config={url:'https://pve:8006',tokenId:'a@pve!t',tokenSecret:'provider-secret'},hosts=[],calls=[],revoked=[];
  const client=new EventEmitter();client.end=()=>{};client.connect=connect?options=>connect(client,options):o=>{assert.ok(o.hostVerifier(Buffer.from('key')));assert.ok(!o.hostVerifier(Buffer.from('wrong')));queueMicrotask(()=>client.emit('ready'))};
- const service=createAutomaticNodePairing({config:()=>config,query:async path=>{assert.equal(path,'/cluster/status');return [{type:'node',name:'node01',ip:'192.0.2.10'}]},nodes:()=>hosts,origin:()=> 'https://controller.test:6002',ca:()=>'',clientFactory:()=>client,pairing:()=>({code:'internal-code'}),pair:()=>({id:'new-agent',token:'node-only-token',kind:'proxmox'}),revoke:id=>revoked.push(id),heartbeatTimeout:0,run:async(_c,user,secret,payload)=>{assert.equal(user,'root');assert.equal(secret,password);calls.push({...payload});if(payload.mode==='probe'){if(gate)await gate;if(failedProbe)throw Error('SECRET_RAW_ERROR');return {ready:true,hostname:'node01'}}if(failedInstall)throw Error('SECRET_RAW_ERROR');if(heartbeat)hosts.push({id:'new-agent',hostname:'node01',kind:'proxmox',online:true,...connectorRelease,lastSeen:new Date(Date.now()+1000).toISOString()});return {installed:true}}});
+ const service=createAutomaticNodePairing({config:()=>config,query:async path=>{assert.equal(path,'/cluster/status');return [{type:'node',name:'node01',ip:'192.0.2.10'}]},nodes:()=>hosts,origin:()=> 'https://controller.test:6002',ca:()=>'',clientFactory:()=>client,pairing:()=>({code:'internal-code'}),pair:()=>{if(!heartbeat)hosts.push({id:'new-agent',hostname:'node01',kind:'proxmox',online:false});return {id:'new-agent',token:'node-only-token',kind:'proxmox'}},revoke:id=>revoked.push(id),heartbeatTimeout:0,run:async(_c,user,secret,payload)=>{assert.equal(user,'root');assert.equal(secret,password);calls.push({...payload});if(payload.mode==='probe'){if(gate)await gate;if(failedProbe)throw Error('SECRET_RAW_ERROR');return {ready:true,hostname:'node01'}}if(interrupted&&!payload.resume){
+ hosts.push({id:'new-agent',hostname:'node01',kind:'proxmox',online:false});
+ throw Object.assign(Error('disconnected'),{interrupted:true});
+ }if(failedInstall)throw Error('SECRET_RAW_ERROR');if(heartbeat)hosts.push({id:'new-agent',hostname:'node01',kind:'proxmox',online:true,...connectorRelease,lastSeen:new Date(Date.now()+1000).toISOString()});return {installed:true}}});
  const input=async extra=>({...await service.target('node01'),username:'root',password,port:22,fingerprint:fp,confirm:true,verified:true,...extra});return {service,input,config,hosts,calls,revoked};
 }
 test('automatic node pairing checks identity before registering, installs and requires a fresh heartbeat',async()=>{const f=fixture(),job=await f.service.start(await f.input());await f.service.wait('node01');assert.equal(f.service.status(job.id).state,'completed');assert.deepEqual(f.calls.map(c=>c.mode),['probe','install']);assert.equal(f.calls[0].token,undefined);assert.equal(f.calls[1].token,'node-only-token');assert.ok(!JSON.stringify(f.service.status(job.id)).includes(password));assert.ok(!JSON.stringify(f.service.status(job.id)).includes('node-only-token'));assert.equal((await f.service.target('node01')).job.state,'completed')});
@@ -73,4 +76,57 @@ test('standalone Docker target works without Proxmox and rejects malformed addre
   assert.deepEqual(target.identity,{standalone:true});
  }
  await assert.rejects(service.target('standalone:host/path'));
+});
+
+test('interrupted installation resumes with the original registration and verifies the heartbeat',async()=>{
+ const f=fixture({interrupted:true});
+ const job=await f.service.start(await f.input());
+ await f.service.wait('node01');
+ assert.equal(f.service.status(job.id).state,'interrupted');
+ assert.deepEqual(f.revoked,[]);
+ await assert.rejects(f.service.start(await f.input({resumeJob:job.id,port:2222})));
+ await f.service.start(await f.input({resumeJob:job.id}));
+ await f.service.wait('node01');
+ assert.equal(f.service.status(job.id).state,'completed');
+ assert.equal(f.calls.at(-1).resume,true);
+ assert.equal(f.calls.at(-1).token,f.calls[1].token);
+ f.hosts.length=0;
+ assert.equal((await f.service.target('node01')).job,undefined);
+ assert.equal(f.service.status(job.id).state,'failed');
+});
+test('a heartbeat after SSH disconnect completes pairing without another installation',async()=>{
+ const f=fixture({interrupted:true}),job=await f.service.start(await f.input());
+ await f.service.wait('node01');
+ Object.assign(f.hosts[0],connectorRelease,{online:true,lastSeen:new Date(Date.now()+1000).toISOString()});
+ assert.equal(f.service.status(job.id).state,'completed');
+ assert.equal(f.calls.length,2);
+});
+
+test('real SSH disconnect after the host accepts installation preserves its registration',async()=>{
+ const privateKey=crypto.generateKeyPairSync('rsa',{modulusLength:2048}).privateKey.export({type:'pkcs1',format:'pem'});
+ const fingerprint='SHA256:'+crypto.createHash('sha256').update(ssh2.utils.parseKey(privateKey).getPublicSSH()).digest('base64').replace(/=+$/,'');
+ const hosts=[],sessions=[],phases=[];
+ const server=new ssh2.Server({hostKeys:[privateKey]},connection=>{
+  sessions.push(connection);connection.on('error',()=>{});
+  connection.on('authentication',ctx=>ctx.username==='root'&&ctx.password===password?ctx.accept():ctx.reject());
+  connection.on('ready',()=>connection.on('session',accept=>accept().on('exec',open=>{
+   const stream=open();let input='';
+   stream.on('data',chunk=>{input+=chunk});
+   stream.on('end',()=>{
+    const payload=JSON.parse(input.slice(input.indexOf('\n')+1));phases.push(payload.mode);
+    if(payload.mode==='install'){connection.end();return}
+    stream.write(JSON.stringify({ready:true,hostname:'node01'}));stream.exit(0);stream.end();
+   });
+  })));
+ });
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ try{
+  const service=createAutomaticNodePairing({config:()=>({}),origin:()=>'https://controller.test',resolveTarget:async()=>({host:'127.0.0.1'}),nodes:()=>hosts,
+   pairing:()=>({code:'fixture'}),pair:()=>{hosts.push({id:'registered',hostname:'node01'});return {id:'registered',token:'fixture'}},revoke:()=>assert.fail('revoked after disconnect')});
+  const input={...await service.target('node01'),port:server.address().port,username:'root',password,verified:true,confirm:true,fingerprint};
+  const job=await service.start(input);await service.wait('node01');
+  assert.equal(service.status(job.id).state,'interrupted');
+  Object.assign(hosts[0],connectorRelease,{online:true,lastSeen:new Date().toISOString()});
+  assert.equal(service.status(job.id).state,'completed');assert.deepEqual(phases,['probe','install']);
+ }finally{sessions.forEach(connection=>connection.end());await new Promise(resolve=>server.close(resolve))}
 });
