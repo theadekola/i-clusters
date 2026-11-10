@@ -343,6 +343,8 @@ try{
    await advanced.locator('summary').click();
    await advanced.getByRole('button',{name:copy('Direct Docker API'),exact:true}).click();
    await page.getByLabel('Docker HTTPS endpoint',{exact:true}).waitFor();
+   await page.getByRole('dialog',{name:copy('Docker Connection'),exact:true}).getByRole('button',{name:copy('Back to Docker setup'),exact:true}).click();
+   await page.getByLabel('Docker host',{exact:true}).waitFor();
    await chooseCard('TrueNAS');
    await page.getByLabel('HTTPS endpoint',{exact:false}).waitFor();
    await page.goto(base+'settings?tab=Integrations');

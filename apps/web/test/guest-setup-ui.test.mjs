@@ -450,3 +450,59 @@ for(const [state,action,label] of [['failed',undefined,'Retry pairing'],['failed
   assert.equal(starts[1].connectionId,'binding-2');assert.equal(starts[1].fingerprint,'key-2');
  }finally{await page.close()}
 });
+
+test('Needs Setup shows only the guest panels for the selected provider',async()=>{
+ const page=await connectionPage();
+ const headings=()=>Array.from(page.container.querySelectorAll('.guest-connection-panel h3'),h=>h.textContent);
+ try{
+  for(const [filter,expected] of [
+   ['Docker (1)',['Optional Docker guest setup']],
+   ['Proxmox (1)',['VM guest access']],
+   ['Services (1)',[]],
+   ['All (3)',['VM guest access','Optional Docker guest setup']]
+  ]){
+   await page.click(button(page,filter));
+   assert.deepEqual(headings(),expected);
+  }
+ }finally{await page.close()}
+});
+
+test('Integrations search matches AI and notification cards and reports an empty result',async()=>{
+ const page=await settingsPage();
+ try{
+  await openNotifications(page);
+  const search=page.container.querySelector('input[aria-label="Search settings"]');
+  for(const [term,ai,channels,empty] of [['model',true,false,false],['Discord',false,true,false],['zzzz',false,false,true],['',true,true,false]]){
+   await changeControl(search,term);
+   assert.equal(!!button(page,'Configure AI Assistant'),ai);
+   assert.equal(!!page.container.querySelector('.notification-settings-channels'),channels);
+   assert.equal(page.container.textContent.includes('No matching integrations.'),empty);
+  }
+ }finally{await page.close()}
+});
+
+test('retrying an earlier assistant question preserves the draft and message order',async()=>{
+ const calls=[];
+ const page=await mounted('pages/AI.tsx',{},async(path,init)=>{
+  if(path==='/auth/me')return {user:{role:'owner'}};
+  assert.equal(path,'/ai/chat');
+  const {message}=JSON.parse(init.body);
+  calls.push(message);
+  if(calls.length===1)throw Error('Provider timed out');
+  return {result:{answer:'Answer to '+message}};
+ });
+ try{
+  const input=page.container.querySelector('.composer input');
+  await changeControl(input,'First question');
+  await page.click(button(page,'Send'));
+  assert.ok(button(page,'Retry'));
+  await changeControl(input,'Second question');
+  await page.click(button(page,'Send'));
+  await changeControl(input,'Unsent draft');
+  await page.click(button(page,'Retry'));
+  assert.deepEqual(calls,['First question','Second question','First question']);
+  assert.equal(input.value,'Unsent draft');
+  assert.deepEqual(Array.from(page.container.querySelectorAll('.bubble'),el=>el.textContent),['First question','Answer to First question','Second question','Answer to Second question']);
+  assert.equal(button(page,'Retry'),undefined);
+ }finally{await page.close()}
+});
