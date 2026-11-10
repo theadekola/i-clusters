@@ -360,6 +360,33 @@ test('guest toolbar exposes OS Update and sizes 10–15 before Copy; completed u
  try{const dialog=update.container.querySelector('[role=dialog]');assert.match(dialog.textContent,/OS update successful/);assert.match(dialog.textContent,/Debian GNU\/Linux 12/);assert.match(dialog.textContent,/reboot is required/);await update.click([...dialog.querySelectorAll('button')].find(b=>b.textContent==='Restart CT'));assert.match(document.body.querySelector('[role=dialog]').textContent,/pve \/ 120/);await update.click([...document.body.querySelectorAll('button')].find(b=>b.textContent==='Later'));await update.click([...update.container.querySelectorAll('button')].find(b=>b.textContent==='Close update shell'));assert.equal(closed,1)}finally{await update.close()}
 });
 
+for (const [kind,label] of [['vm','VM'],['lxc','CT']]) test(label + ' update shell confirms one restart and shows completion before closing',async()=>{
+ const writes=[];
+ let closed=0;
+ const page=await mounted('components/SSHAccess.tsx',{
+  ...terminalProps,target:kind+':pve:120',updateTab:true,onDisconnect(){closed++}
+ },async(path,options)=>{
+  if(path.endsWith('/output'))return new Response(JSON.stringify({closed:true,output:'',updateResult:{osVersion:'Debian',rebootRequired:true}})+'\n');
+  if(path.startsWith('/ssh/session/'))return {};
+  if(path===`/proxmox/${kind}/pve/120/details?view=power`)return {status:{status:'running'}};
+  if(path==='/tasks/pve/restart-task')return {status:'stopped',exitstatus:'OK'};
+  assert.equal(path,`/actions/proxmox/${kind}/120/reboot`);
+  writes.push(JSON.parse(options.body));
+  return {result:{task:'restart-task'}};
+ });
+ try{
+  const button=text=>[...document.body.querySelectorAll('button')].find(b=>b.textContent===text);
+  await page.click(button('Restart '+label));
+  assert.deepEqual(writes,[]);
+  await page.click(button('Shutdown, Start & Verify'));
+  assert.deepEqual(writes,[{node:'pve'}]);
+  assert.match(document.body.querySelector('.connection-success').textContent,/Proxmox confirms the guest is running/);
+  assert.equal(closed,0);
+  await act(async()=>new Promise(resolve=>setTimeout(resolve,2100)));
+  assert.equal(closed,1);
+ }finally{await page.close()}
+});
+
 test('VM update offers a restart only when requested by the guest, without issuing power commands on open',async()=>{
  for(const required of [false,true]){
   const calls=[];

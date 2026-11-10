@@ -96,7 +96,7 @@ const certArgs=tls.https?['--ignore-certificate-errors-spki-list='+createHash('s
  .update(new X509Certificate(tls.https.cert).publicKey.export({type:'spki',format:'der'})).digest('base64')]:[];
 const listen={host:'127.0.0.1',port:0,...tls};
 const failures=[],server=await (process.env.LAYOUT_PRODUCTION==='1'?preview({root,preview:listen}):createServer({root,server:listen}));
-let restartPower='running',restartVerified=false,restartWrites=[];
+let restartPower='running',restartVerified=false,restartPolls=0,restartWrites=[];
 let updateWrites=0;
 let browser,clusterSaves=0,clusterTests=0,aiModelReads=0,aiTests=0,aiSaves=0;
 try{
@@ -111,14 +111,17 @@ try{
   if(process.env.LAYOUT_GUEST_RESTART){
    if(path==='/connections/proxmox/guests')return route.fulfill({json:{guests:[{id:'100',node:'node01',name:'Control-VM',status:restartVerified?'connected':'disabled'}]}});
    if(path==='/node-agents/guest/agent')return route.fulfill({json:{result:{requiresPowerCycle:true,agentVerified:false,message:'Setup installed. Shutdown and start required.'}}});
-   if(path==='/proxmox/vm/node01/100/details')return route.fulfill({json:{status:{status:restartPower}}});
+   if(path==='/proxmox/vm/node01/100/details'){
+    const view=new URL(route.request().url()).searchParams.get('view');
+    return route.fulfill({json:view==='agent'?{os:{result:{name:'Debian'}}}:{status:{status:restartPower}}});
+   }
    if(path.startsWith('/actions/proxmox/vm/100/')){
-    const operation=path.split('/').at(-1);assert.ok(['shutdown','start'].includes(operation));
-    if(operation==='shutdown'&&!route.request().headers()['x-iclusters-ssh-grant'])return route.fulfill({status:409,json:{confirmationPhrase:'CONFIRM FIXTURE SHUTDOWN',sshTarget:'node:node01'}});
+    const operation=path.split('/').at(-1);assert.equal(operation,'reboot');
+    if(!route.request().headers()['x-iclusters-ssh-grant'])return route.fulfill({status:409,json:{confirmationPhrase:'CONFIRM FIXTURE RESTART',sshTarget:'node:node01'}});
     restartWrites.push(operation);return route.fulfill({json:{result:{task:operation+'-fixture-task'}}});
    }
    if(path==='/ssh/connect')return route.fulfill({json:{token:'fixture-approval'}});
-   if(path.startsWith('/tasks/node01/')){await new Promise(resolve=>setTimeout(resolve,150));restartPower=path.includes('shutdown')?'stopped':'running';if(restartPower==='running')restartVerified=true;return route.fulfill({json:{status:'stopped',exitstatus:'OK'}});}
+   if(path.startsWith('/tasks/node01/')){await new Promise(resolve=>setTimeout(resolve,150));if(++restartPolls===1){restartPower='stopped';return route.fulfill({json:{status:'running'}})}restartPower='running';restartVerified=true;return route.fulfill({json:{status:'stopped',exitstatus:'OK'}});}
   }
   if(process.env.LAYOUT_UPDATE_NOTICE&&path==='/updates'&&route.request().method()==='POST'){updateWrites++;return route.fulfill({json:{ok:true,state:'queued'}})}
   if(process.env.LAYOUT_CONNECTION_CHOICES){
@@ -315,14 +318,14 @@ try{
    await page.goto(base+'docker');const picker=page.getByLabel('Docker host for resource views',{exact:true});await picker.waitFor();assert.equal(await picker.locator('option[value="docker-fixture"]').innerText(),'control-vm');
   }
   if(process.env.LAYOUT_GUEST_RESTART){
-   restartPower='running';restartVerified=false;restartWrites=[];
+   restartPower='running';restartVerified=false;restartPolls=0;restartWrites=[];
    await page.goto(base+'settings?tab=Connections&section=setup');await page.getByRole('button',{name:'Set Up Guest Agent',exact:true}).click();
-   const setup=page.getByRole('dialog',{name:'Set Up QEMU Guest Agent · Control-VM',exact:true});await setup.getByLabel('VM SSH address',{exact:true}).fill('192.0.2.100');await setup.getByLabel(copy('SSH / sudo password'),{exact:true}).fill('fixture-only');await setup.getByRole('button',{name:'Show SSH fingerprint',exact:true}).waitFor();await setup.getByRole('checkbox').check();await setup.getByRole('button',{name:'Install / Start & Verify',exact:true}).click();
+   const setup=page.getByRole('dialog',{name:'Set Up QEMU Guest Agent · Control-VM',exact:true});await setup.getByLabel('VM SSH address',{exact:true}).fill('192.0.2.100');await setup.getByLabel(copy('SSH / sudo password'),{exact:true}).fill('fixture-only');await setup.getByRole('button',{name:'Install / Start & Verify',exact:true}).click();
    const restart=page.getByRole('dialog',{name:'Restart VM · Control-VM',exact:true});await restart.waitFor();assert.deepEqual(restartWrites,[],'Installing must not restart without explicit consent');assert.equal(await restart.evaluate(e=>e.closest('.modal-backdrop').parentElement===document.body),true);
    if(process.env.LAYOUT_SCREENSHOTS)await restart.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-guest-restart.png`});await restart.getByRole('button',{name:'Shutdown, Start & Verify',exact:true}).click();assert.equal(await restart.getByRole('button',{name:copy('Close dialog'),exact:true}).isDisabled(),true);
-   const approval=page.getByRole('dialog',{name:'Authenticate node:node01',exact:true});await approval.waitFor();await approval.getByLabel('Password',{exact:true}).fill('fixture-only');await approval.getByRole('button',{name:'Show SSH fingerprint',exact:true}).waitFor();await approval.getByRole('checkbox').check();
+   const approval=page.getByRole('dialog',{name:'Authenticate node:node01',exact:true});await approval.waitFor();await approval.getByLabel('Password',{exact:true}).fill('fixture-only');
    assert.ok(await approval.evaluate(e=>e.contains(document.activeElement)),'Nested SSH approval owns keyboard focus');assert.ok(Number(await approval.evaluate(e=>e.closest('.modal-backdrop').style.zIndex))>Number(await restart.evaluate(e=>e.closest('.modal-backdrop').style.zIndex)),'SSH approval is above restart popup');
-   assert.equal(await restart.getByRole('button',{name:'Shutdown, Start & Verify',exact:true}).evaluate(e=>getComputedStyle(e,'::before').animationName),'update-rotate');await approval.getByRole('button',{name:'Confirm',exact:true}).click();await restart.waitFor({state:'detached'});assert.deepEqual(restartWrites,['shutdown','start']);await page.locator('.connection-success').waitFor();
+   assert.equal(await restart.getByRole('button',{name:'Shutdown, Start & Verify',exact:true}).evaluate(e=>getComputedStyle(e,'::before').animationName),'update-rotate');await approval.getByRole('button',{name:'Confirm',exact:true}).click();await restart.getByText('Starting the guest…',{exact:false}).waitFor();await restart.getByText('The VM is running and QEMU Guest Agent has responded.').waitFor();await restart.waitFor({state:'detached'});assert.deepEqual(restartWrites,['reboot']);await page.locator('.connection-success').waitFor();
   }
   if(process.env.LAYOUT_CONNECTION_CHOICES){
    const openPicker=async()=>{

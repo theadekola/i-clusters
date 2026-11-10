@@ -165,6 +165,16 @@ try{
  await test('VM details return live configuration, runtime, snapshots and guest-agent networking',async()=>{
    const details=await call('/proxmox/vm/pve/101/details');assert.equal(details.status,200);assert.equal(details.body.config.name,'actual-guest');assert.equal(details.body.status.status,'running');assert.equal(details.body.snapshots[0].name,'baseline');assert.equal(details.body.interfaces.result[0].name,'eth0');assert.equal(details.body.history[0].cpu,.12);assert.equal(details.body.os.result['pretty-name'],'Ubuntu 24.04 LTS');assert.deepEqual(details.body.errors,[]);
  });
+ await test('restart monitoring reads only the selected guest power state or VM agent',async()=>{
+   for(const [kind,id,view,endpoint] of [['vm','101','power','qemu/101/status/current'],['lxc','103','power','lxc/103/status/current'],['vm','101','agent','qemu/101/agent/get-osinfo']]){
+     const from=requests.length;
+     const result=await call(`/proxmox/${kind}/pve/${id}/details?view=${view}`);
+     assert.equal(result.status,200);
+     if(view==='power')assert.equal(result.body.status.status,'running');
+     else assert.equal(result.body.os.result['pretty-name'],'Ubuntu 24.04 LTS');
+     assert.deepEqual(requests.slice(from).map(r=>r.path),['/api2/json/nodes/pve/'+endpoint]);
+   }
+ });
  await test('LXC details and snapshots use live Proxmox endpoints',async()=>{
    const details=await call('/proxmox/lxc/pve/103/details');assert.equal(details.status,200);assert.equal(details.body.config.hostname,'actual-lxc');assert.equal(details.body.status.status,'running');assert.equal(details.body.snapshots[0].name,'ct-baseline');assert.equal(details.body.interfaces[0].inet,'192.0.2.60/24');assert.equal(details.body.history[0].cpu,.05);assert.equal(details.body.history[0].netin,256);assert.deepEqual(details.body.errors,[]);
    const created=await call('/actions/proxmox/lxc/103/snapshot','POST',{node:'pve',name:'before-upgrade'},{'X-IClusters-SSH-Grant':issueGrant('user','POST','/actions/proxmox/lxc/103/snapshot',{node:'pve',name:'before-upgrade'})});assert.equal(created.status,200);assert.equal(created.body.result.task,'UPID:lxc-snapshot');assert.equal(requests.at(-1).body.snapname,'before-upgrade');

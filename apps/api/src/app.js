@@ -326,6 +326,8 @@ export function createApp({authenticate=auth,authorize=requireRole,audit=writeAu
 read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req.params.node)}/syslog?limit=200`)}));
  read('/proxmox/vm/:node/:id/details',async req=>{
    const base=`/nodes/${encode(req.params.node)}/qemu/${encode(req.params.id)}`,result={node:req.params.node,id:req.params.id,errors:[]};
+   if(req.query.view==='power')return {status:await pve(base+'/status/current')};
+   if(req.query.view==='agent')return {os:await pve(base+'/agent/get-osinfo',{timeoutMs:4000})};
    await Promise.all([
      ['status',`${base}/status/current`],['config',`${base}/config`],['snapshots',`${base}/snapshot`],['interfaces',`${base}/agent/network-get-interfaces`],['history',`${base}/rrddata?timeframe=hour&cf=AVERAGE`],['os',`${base}/agent/get-osinfo`]
    ].map(async([key,path])=>{try{result[key]=await pve(path);}catch(e){result.errors.push(`${key}: ${e.message}`);}}));
@@ -333,6 +335,7 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
  });
  read('/proxmox/lxc/:node/:id/details',async req=>{
    const base=`/nodes/${encode(req.params.node)}/lxc/${encode(req.params.id)}`,result={node:req.params.node,id:req.params.id,errors:[]};
+   if(req.query.view==='power')return {status:await pve(base+'/status/current')};
    await Promise.all([
      ['status',`${base}/status/current`],['config',`${base}/config`],['snapshots',`${base}/snapshot`],['interfaces',`${base}/interfaces`],['history',`${base}/rrddata?timeframe=hour&cf=AVERAGE`]
    ].map(async([key,path])=>{try{result[key]=await pve(path);}catch(e){result.errors.push(`${key}: ${e.message}`);}}));

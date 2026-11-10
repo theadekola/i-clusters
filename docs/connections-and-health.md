@@ -89,8 +89,12 @@ are preserved. A stopped VM must be started separately before installing or test
 
 Successful verification displays a success message and closes the dialog after
 two seconds. Verified VMs move to Connected. When a full shutdown and start is
-needed, the dialog states that requirement and remains pending until Recheck
-Guest Agent verifies it. No guest is restarted automatically.
+needed, approve **Shutdown, Start & Verify** once with the Proxmox node’s SSH
+credentials. Proxmox shuts down the guest and starts it automatically, even if
+the browser disconnects. The dialog shows progress and verifies QEMU Guest
+Agent on the selected VM before continuing. An OS update uses the same dialog
+when a restart is required and checks that the VM or CT is running. Choose
+**Later** to defer the restart.
 
 ## Optional Docker guest setup
 
