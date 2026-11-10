@@ -18,7 +18,7 @@ async function mounted(file,props,api,mobile=true,initialEntries=['/docker?filte
 const button=(container,label)=>[...container.querySelectorAll('button')].find(b=>b.textContent.trim()===label);
 
 const inventory=(hostname='host-a',containers=[{id:'old-container',name:'old-app',image:'old:latest',status:'running'}])=>({host:{hostname},containers,images:[],volumes:[],networks:[],stacks:[]});
-const dockerFixture=async p=>p==='/auth/me'?{user:{role:'owner'}}:p==='/docker'?inventory():p==='/docker/hosts'?{hosts:[],directEnabled:true}:{nodes:[]};
+const dockerFixture=async p=>p==='/auth/me'?{user:{role:'owner'}}:p==='/docker'?inventory():p==='/docker/hosts'?{hosts:[],directEnabled:true}:p==='/docker/updates'?{rows:[],settings:{enabled:true,intervalHours:6}}:{nodes:[]};
 test('container actions allow unpause only for paused containers',async()=>{
  const page=await mounted('pages/Docker.tsx',{},dockerFixture);try{
  await page.click(page.container.querySelector('[aria-label="Actions for old-app"]'));
@@ -64,15 +64,15 @@ test('Docker deep links select supported tabs and invalid tabs fall back to Cont
 
 
 test('every Docker resource tab places host selection in its heading before its own metrics and navigation',async()=>{
- const cases=[['Containers','Docker Host: host-a',5],['Images','Docker Images',3],['Volumes','Docker Volumes',4],['Compose Stacks','Compose Stacks',4],['Events','Events',5]];
+ const cases=[['Containers','Docker Host: host-a',5],['Images','Docker Host: host-a',3],['Volumes','Docker Host: host-a',4],['Compose Stacks','Docker Host: host-a',4],['Events','Docker Host: host-a',5],['Updates','Docker Host: host-a',0]];
  for(const [tab,title,count] of cases){
   const page=await mounted('pages/Docker.tsx',{},dockerFixture,true,['/docker?tab='+encodeURIComponent(tab)]);
   try{
    const heading=page.container.querySelector('h1,h2'),picker=page.container.querySelector('.docker-host-selector.compact'),metrics=page.container.querySelectorAll('.metric-grid'),nav=page.container.querySelector('[aria-label="Docker resources"]');
-   assert.ok(heading.textContent.startsWith(title),tab+' heading');if(tab==='Containers'){const group=heading.closest('.docker-host-heading');assert.ok(group);assert.equal(group.querySelector(':scope>.badge').textContent,'Connected');assert.equal(heading.querySelector('.badge'),null);}assert.equal(metrics.length,1,tab+' has only its own metrics');assert.equal(metrics[0].children.length,count,tab+' metrics');
+   assert.ok(heading.textContent.startsWith(title),tab+' heading');const group=heading.closest('.docker-host-heading');assert.ok(group);assert.equal(group.querySelector(':scope>.badge').textContent,'Connected');assert.equal(heading.querySelector('.badge'),null);assert.equal(page.container.querySelectorAll('.docker-page-header').length,1,tab+' shares one host header');
+   assert.ok(button(page.container,'Refresh Docker'));assert.ok(page.container.querySelector('a[href="/settings?tab=Connections"]'));
    assert.ok(heading.compareDocumentPosition(picker)&4,tab+' heading precedes host selection');
-   assert.ok(picker.compareDocumentPosition(metrics[0])&4,tab+' host selection precedes metrics');
-   assert.ok(metrics[0].compareDocumentPosition(nav)&4,tab+' metrics precede tabs');
+   assert.equal(metrics.length,count?1:0,tab+' has only its own metrics');if(count){assert.equal(metrics[0].children.length,count,tab+' metrics');assert.ok(picker.compareDocumentPosition(metrics[0])&4,tab+' host selection precedes metrics');assert.ok(metrics[0].compareDocumentPosition(nav)&4,tab+' metrics precede tabs');}
    assert.equal(page.container.querySelectorAll('.docker-host-selector.compact').length,1,tab+' has one host selector');assert.ok(picker.closest('.page-header,.volume-header,.vm-toolbar'),tab+' selector shares the title toolbar');assert.equal(page.container.querySelector('.docker-host-picker'),null);
   }finally{await page.close()}
  }
@@ -159,4 +159,11 @@ test('Logs and Back keep the Jellyfin row, host, search, status filter and scrol
   assert.equal(search.value,'Jelly');assert.equal(status.value,'running');assert.equal(scroller.scrollTop,72);
   assert.ok(calls.every(([,method])=>method==='GET'));
  }finally{await page.close()}
+});
+
+test('all Docker tabs keep the shared host header above incomplete guest discovery diagnostics',async()=>{
+ for(const tab of ['Containers','Images','Volumes','Compose Stacks','Events','Updates']){
+  const page=await mounted('pages/Docker.tsx',{},async p=>p==='/docker'?{readOnly:true,containers:[],images:[],volumes:[],networks:[],stacks:[],note:'Guest inventory is read-only.',discoveryLimitations:['Guest agent unavailable.']}:dockerFixture(p),true,['/docker?tab='+encodeURIComponent(tab)]);
+  try{const header=page.container.querySelector('.docker-page-header');assert.match(header.textContent,/Docker Host: Not connected/);assert.match(header.textContent,/Unavailable/);assert.ok(header.querySelector('a[href="/settings?tab=Connections&setup=docker"]'));assert.ok(button(page.container,'Refresh Docker'));assert.equal(page.container.querySelectorAll('.docker-host-selector.compact').length,1);const note=[...page.container.querySelectorAll('p')].find(p=>p.textContent==='Guest inventory is read-only.');assert.ok(header.compareDocumentPosition(note)&4);assert.equal(page.container.querySelectorAll('.docker-page-header').length,1);}finally{await page.close()}
+ }
 });

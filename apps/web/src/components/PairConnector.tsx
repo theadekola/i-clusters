@@ -31,7 +31,7 @@ export default function PairConnector({kind,onPaired,onComplete}:{kind:'proxmox'
   else{setConnected(node.id);}
  }catch(e:any){setError(e.message)}finally{setBusy(false)}};
  if(connected)return <ConnectionSuccess message={standalone?'Docker host paired and connection verified successfully.':'Proxmox node paired and connection verified successfully.'} onDone={()=>{onPaired?.();onComplete?.();if(standalone&&!onComplete){setDockerHost(connected);navigate('/docker')}else if(!onComplete){setConnected('');setPairing(null)}}}/>;
- return <div className="node-pairing"><h3>{standalone?'Pair Docker Host':'Pair Proxmox Node'}</h3>
+ return <div className="node-pairing"><h3>{standalone?'Pair Docker Host':'Pair Proxmox Server'}</h3>
  <p>{standalone?'Connect your Linux Docker server using automatic SSH setup. The connector uses the local Docker socket; no Docker API port or client certificates are needed.':'Install one connector per Proxmox node using automatic SSH setup. Do not run the node installer inside a VM or CT.'}</p>
  <p className="muted">The connector runs as root and permits authorized Docker management. Use a trusted i-Clusters server. Removing the connection revokes access; uninstall its service separately on the host.</p>
  {!secure&&<p role="alert" className="error">Open i-Clusters at its working HTTPS address before connecting a host.</p>}
