@@ -12,14 +12,27 @@ def execute(payload,root=pathlib.Path('/'),run=subprocess.run,hostname=socket.ge
         macs=[p.read_text().strip().lower() for p in (root/'sys/class/net').glob('*/address')]
         if identity.get('uuid'):
             if uuid!=identity['uuid'].lower(): raise RuntimeError('wrong-guest')
+        elif identity.get('standalone') is True and payload['node'].startswith('standalone:'):
+            pass  # Both phases share the same authenticated, pinned SSH session.
         elif not set(identity.get('macs',[])).intersection(macs): raise RuntimeError('wrong-guest')
-        if not which('docker'): raise RuntimeError('docker-missing')
-        try:
-            engine=run(['docker','info','--format','{{json .}}'],capture_output=True,timeout=20)
-        except (OSError,subprocess.TimeoutExpired) as error:
-            raise RuntimeError('docker-unavailable') from error
-        if engine.returncode: raise RuntimeError('docker-unavailable')
     elif actual!=payload['node']: raise RuntimeError('wrong-node')
+    docker_commands=[]
+    if docker:
+        allow_setup=payload.get('installDocker') is True
+        if not which('docker'):
+            if not allow_setup: raise RuntimeError('docker-missing')
+            release=root/'etc/os-release'
+            system=dict(line.split('=',1) for line in release.read_text().splitlines() if '=' in line) if release.exists() else {}
+            if system.get('ID','').strip('"') not in ('debian','ubuntu') or not which('apt-get'): raise RuntimeError('docker-missing')
+            docker_commands=[['apt-get','update'],['apt-get','install','--no-remove','-y','docker.io'],['systemctl','start','docker']]
+        else:
+            try:
+                engine=run(['docker','info','--format','{{json .}}'],capture_output=True,timeout=20)
+            except (OSError,subprocess.TimeoutExpired) as error:
+                raise RuntimeError('docker-unavailable') from error
+            if engine.returncode:
+                if not allow_setup: raise RuntimeError('docker-unavailable')
+                docker_commands=[['systemctl','start','docker']]
     if not all(which(command) for command in (['python3','systemctl'] if docker else ['qm','pct','python3','systemctl'])): raise RuntimeError('not-proxmox')
     url=urllib.parse.urlsplit(payload['url'])
     if url.scheme!='https' or not url.hostname or url.username or url.password or url.path not in ('','/') or url.query or url.fragment: raise RuntimeError('invalid-url')
@@ -52,6 +65,11 @@ WantedBy=multi-user.target
         os.chmod(lock,0o600);fcntl.flock(handle,fcntl.LOCK_EX|fcntl.LOCK_NB)
         created=[]
         try:
+            if docker_commands:
+                for command in docker_commands:
+                    if run(command,capture_output=True,timeout=180,env={**os.environ,'DEBIAN_FRONTEND':'noninteractive'}).returncode:
+                        raise RuntimeError('docker-unavailable')
+                if run(['docker','info'],capture_output=True,timeout=20).returncode: raise RuntimeError('docker-unavailable')
             for path,content,mode in [(agent,source,0o600),(config,json.dumps({k:payload[k] for k in ['url','id','token','kind','ca'] if k in payload}).encode(),0o600),(unit,text.encode(),0o644)]:
                 path.parent.mkdir(parents=True,exist_ok=True)
                 fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,mode);created.append(path)

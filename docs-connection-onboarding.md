@@ -12,7 +12,7 @@ Choose a discovered Docker host and Connect. Install & Connect remains available
 
 ## Docker Host
 
-Name the connection, generate its code, and run the displayed installer on the intended Linux Docker server. It requires Python 3, curl and systemd. Existing Docker must respond on /var/run/docker.sock. If Docker is absent on Debian/Ubuntu, the installer asks for INSTALL before installing docker.io and starting the service. Existing nonresponsive Docker or Podman requires manual review. Other operating systems require Docker to be installed manually.
+Select **Connect Automatically with SSH** to pair the host from the browser. The following steps apply only if you choose **Manual installer** for a standalone host. Generate its code and run the displayed installer on that host. It requires Python 3, curl and systemd. Existing Docker must respond on /var/run/docker.sock. If Docker is absent on Debian/Ubuntu, the installer asks for INSTALL before installing docker.io and starting the service. Existing nonresponsive Docker or Podman requires manual review. Other operating systems require Docker to be installed manually.
 
 Enter the i-Clusters HTTPS origin and code at the installer prompts. The code is passed to Python over standard input, rather than through process arguments. Private CA deployments require the host trust store to trust the issuing certificate. TLS verification stays enabled. No Docker TCP listener is created, no whole OS upgrade is performed, and no guest power operation occurs.
 
@@ -35,3 +35,11 @@ Remove revokes a connector token or removes a saved API connection; it does not 
 Regression tests cover typed, single-use pairing and expiry, owner permissions, hashed tokens, standalone guest restrictions, fixed installer transports, explicit package-install consent, refusal to overwrite a connector, read-only checks, exact-host verification, failed-selection preservation and removal without fallback. Python tests verify that standalone scanning does not call qm/pct. Rendered React tests exercise the connection choices and HTTPS gate. Shell syntax and Python bridge tests run in GitHub CI.
 
 No existing live hosts, VMs or containers were modified during development. A real first installation should be checked on a disposable supported Docker host before wider rollout; fixtures do not establish compatibility with every distribution or Docker installation.
+
+## Guided installation
+
+After signing in, open Settings → Connections → Add Connection. Choose Proxmox for cluster inventory or TrueNAS for storage. After saving Proxmox, finish setup or pair a Proxmox node to discover Docker in its guests.
+
+For Docker, select a discovered guest or enter the address of a standalone Linux host. Use its Linux SSH account and approve the installation. On Debian and Ubuntu, the optional Docker setup installs the distribution package if needed and can start the service. Pairing checks the controller HTTPS connection and waits for the new connector to report a working Engine. An existing HTTPS Engine with client certificates can be connected under Advanced connection methods inside Docker setup.
+
+AI provider settings and notification channels are available under Settings → Integrations.

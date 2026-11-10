@@ -4,7 +4,7 @@ import {settingsCategory,settingsTitle} from '../page-navigation';
 import ReportLoading from '../components/ReportLoading';
 import PageIcon from '../components/PageIcon';
 import {useEffect,useRef,useState} from 'react';
-import {Link,useSearchParams} from 'react-router-dom';
+import {Link,Navigate,useSearchParams} from 'react-router-dom';
 import {Settings as SettingsIcon,Server,Shield,Link2,Palette,Archive,SlidersHorizontal,Globe,LayoutGrid,Gauge,Info,Search,Download,Upload,ExternalLink,CheckCircle} from 'lucide-react';
 import {useApi,clearApiCache} from '../hooks';
 import {api} from '../api';
@@ -12,6 +12,8 @@ import {appearanceDefaults,loadAppearance,saveAppearanceWithSidebar} from '../ap
 import {loadDashboardWidgets,saveDashboardWidgets} from '../dashboard-preferences';
 import {Card} from '../components/UI';
 import ConnectionManager from '../components/ConnectionManager';
+import ConfigurationDialog from '../components/ConfigurationDialog';
+import NotificationSettings from '../components/NotificationSettings';
 import IntegrationChecks from '../components/IntegrationChecks';
 import './settings-overview.css';
 import SystemSettings from '../components/SystemSettings';
@@ -20,14 +22,23 @@ import EditableSettingsSection from '../components/EditableSettingsSection';
 import AppearanceSettings from '../components/AppearanceSettings';
 import AboutSettings from '../components/AboutSettings';
 import {safeLocale} from '../regional';
-const categories=[['General',SettingsIcon],['System',Server],['Security',Shield],['Connections',Link2],['Appearance',Palette],['About',Info]] as const;
+const categories=[['General',SettingsIcon],['System',Server],['Security',Shield],['Connections',Link2],['Integrations',SlidersHorizontal],['Appearance',Palette],['About',Info]] as const;
 function Switch({label,detail,checked,onChange}:{label:string;detail?:string;checked:boolean;onChange:(v:boolean)=>void}){return <label className="settings-toggle"><span><b>{label}</b>{detail&&<small>{detail}</small>}</span><input type="checkbox" role="switch" checked={checked} onChange={e=>onChange(e.target.checked)}/><span className="settings-switch-track" aria-hidden="true"/></label>}
 function SettingsCard({title,detail,icon:Icon,children}:{title:string;detail:string;icon:any;children:any}){return <Card className="settings-overview-card"><div className="settings-card-heading"><span><Icon size={23}/></span><div><h2>{title}</h2><p>{detail}</p></div></div>{children}</Card>}
-export default function Settings(){const [query,setQuery]=useSearchParams();const raw=query.get('tab')||'General',category=settingsCategory(raw);const change=(tab:string)=>{const next=new URLSearchParams(query);next.set('tab',tab);next.delete('setup');setQuery(next)};
- useEffect(()=>{if(['Notifications','Integrations','Advanced','Backup & Restore'].includes(raw)){const next=new URLSearchParams(query);next.set('tab',category);if(raw==='Notifications')next.set('section','notifications');else if(raw==='Backup & Restore')next.set('section','backup-restore');else next.delete('section');setQuery(next,{replace:true})}},[raw]);
+export default function Settings(){const [query,setQuery]=useSearchParams();const raw=query.get('tab')||'General',category=settingsCategory(raw);const change=(tab:string)=>{const next=new URLSearchParams(query);next.set('tab',tab);next.delete('setup');next.delete('section');setQuery(next)};
+ useEffect(()=>{if(['Notifications','Advanced','Backup & Restore'].includes(raw)){const next=new URLSearchParams(query);next.set('tab',category);if(raw==='Notifications')next.set('section','notifications');else if(raw==='Backup & Restore')next.set('section','backup-restore');else next.delete('section');setQuery(next,{replace:true})}},[raw]);
+ const setup=query.get('setup');
+ if(category==='Connections'&&(setup==='ai'||setup==='notifications'||query.get('section')==='notifications')){
+  const next=new URLSearchParams(query);
+  next.set('tab','Integrations');
+  next.delete('section');
+  if(setup!=='ai')next.delete('setup');
+  return <Navigate replace to={'/settings?'+next.toString()}/>;
+ }
  return <div className="settings-overview-page">{category==='Connections'?<ConnectionManager navigation={<nav className="settings-overview-tabs tabs" aria-label="Settings sections">{categories.map(([name,Icon])=><button type="button" key={name} className={`tab ${category===name?'active':''}`} aria-current={category===name?'page':undefined} onClick={()=>change(name)}><Icon size={16}/>{name}</button>)}</nav>}/>:<SettingsOverview category={category} change={change}/>}</div>;
 }
 function SettingsOverview({category,change}:{category:string;change:(tab:string)=>void}){
+ const [params,setParams]=useSearchParams();
  const locale=useLocale();
  const live=useApi<any>('/settings',null),session=useApi<any>('/auth/me',null);
  const [appearance,setAppearance]=useState(loadAppearance),[sidebar,setSidebar]=useState(()=>localStorage.getItem('iclusters_sidebar')==='collapsed'?'collapsed':'expanded'),[widgets,setWidgets]=useState<string[]>(loadDashboardWidgets),[search,setSearch]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
@@ -45,7 +56,8 @@ function SettingsOverview({category,change}:{category:string;change:(tab:string)
  return <><div className="settings-overview-heading"><PageIcon name="settings" size={31}/><div><h1>{settingsTitle(category)}</h1><p>Configure and customize your i-Clusters.</p></div><div className="settings-overview-actions"><label className="settings-search"><Search size={17}/><input aria-label="Search settings" placeholder="Search settings…" value={search} onChange={e=>setSearch(e.target.value)}/></label>{category==='General'&&<ProductFeedback/>}</div></div>{nav}
  {(error||live.error||session.error)&&<p className="error" role="alert">{error||live.error||session.error}</p>}{message&&<p role="status" className="settings-save-message"><CheckCircle size={17}/>{message}</p>}
  {live.loading&&!data&&<Card><p><ReportLoading/></p></Card>}{live.error&&!data&&<button type="button" className="btn secondary" onClick={()=>live.refresh()}>Retry settings</button>}
- {data&&<><div className={`settings-overview-grid ${category==='System'?'system-settings-grid':category==='Security'?'security-settings-grid':category==='Appearance'?'appearance-settings-grid':category==='About'?'about-settings-grid':''}`}>
+ {data&&<><div className={`settings-overview-grid ${category==='System'?'system-settings-grid':category==='Security'?'security-settings-grid':category==='Appearance'?'appearance-settings-grid':category==='About'?'about-settings-grid':category==='Integrations'?'notification-settings-grid':''}`}>
+ {category==='Integrations'&&(owner?<><Card><h2>AI Assistant</h2><button className="btn secondary" onClick={()=>setParams({tab:'Integrations',setup:'ai'})}>Configure AI Assistant</button></Card><NotificationSettings owner editing busy={busy} search={search}/><ConfigurationDialog service={params.get('setup')==='ai'?'ai':''} onClose={()=>setParams({tab:'Integrations'})} onSaved={()=>live.refresh()}/></>:<p>Ask an i-Clusters owner to add or change connections.</p>)}
  {category==='Security'&&<SecuritySettings user={session.data?.user} search={search}/>}
  {category==='System'&&<SystemSettings data={data} busy={busy} search={search} onRefresh={()=>live.refresh()} onClear={()=>{clearApiCache();setMessage('In-memory API cache cleared. Credentials and preferences were preserved.')}} onReload={()=>{if(window.confirm('Reload the interface? Open terminal sessions may disconnect.'))window.location.reload()}}/>}
 

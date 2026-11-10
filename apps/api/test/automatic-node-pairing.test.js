@@ -63,3 +63,14 @@ test('pairing reports distinct SSH authentication, trust and transport failures 
   assert.ok(!status.message.includes('sensitive SSH output'));assert.equal(f.calls.length,0);
  }
 });
+
+test('standalone Docker target works without Proxmox and rejects malformed addresses',async()=>{
+ const {createAutomaticDockerPairing}=await import('../src/automatic-docker-pairing.js');
+ const service=createAutomaticDockerPairing({config:()=>({}),origin:()=>'https://controller',query:()=>assert.fail('unexpected Proxmox query')});
+ for(const address of ['lab.example','192.0.2.11','2001:db8::1']){
+  const target=await service.target('standalone:'+address);
+  assert.equal(target.host,address);
+  assert.deepEqual(target.identity,{standalone:true});
+ }
+ await assert.rejects(service.target('standalone:host/path'));
+});
