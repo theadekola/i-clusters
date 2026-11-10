@@ -5,21 +5,22 @@ import assert from 'node:assert/strict';
 const base='https://localhost:6002/api';
 const request=async(path,body)=>{const response=await fetch(base+path,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{});return {status:response.status,body:await response.json()};};
 const setupBefore=await request('/auth/setup');
-assert.equal(setupBefore.body.needsOwner,true);assert.equal(setupBefore.body.registrationOpen,false);
+assert.equal(setupBefore.body.needsOwner,true);assert.equal(setupBefore.body.registrationOpen,true);
 const account={name:'CI Owner',username:'ci_owner',email:'owner@example.test',password:'CI-only-password-12345'};
-assert.equal((await request('/auth/register',account)).status,403);
 function claim(user){
  return new Promise(resolve=>{
   const child=execFile('docker',['compose','exec','-T','api','node','scripts/claim-owner.mjs'],(error,stdout,stderr)=>resolve({user,error,stderr}));
   child.stdin.end([user.name,user.username,user.email,user.password,''].join('\n'));
  });
 }
-const competing=await Promise.all([claim(account),claim({...account,username:'ci_second',email:'second@example.test'})]);
-assert.equal(competing.filter(r=>!r.error).length,1);
-assert.match(competing.find(r=>r.error).stderr,/Registration is closed/);
-const owner=competing.find(r=>!r.error).user;
-assert.equal((await request('/auth/setup')).body.needsOwner,false);
-assert.equal((await request('/auth/register',account)).status,403);
+const competing=await Promise.all([request('/auth/register',account),request('/auth/register',{...account,username:'ci_second',email:'second@example.test'})]);
+assert.equal(competing.filter(r=>r.status===201).length,1);
+assert.equal(competing.filter(r=>r.status===409).length,1);
+assert.match(competing.find(r=>r.status===409).body.error,/Registration is closed/);
+const owner=competing.find(r=>r.status===201).body.user;
+const closed=await request('/auth/setup');assert.equal(closed.body.needsOwner,false);assert.equal(closed.body.registrationOpen,false);
+assert.equal((await request('/auth/register',account)).status,409);
+const consoleClaim=await claim({...account,username:'ci_console'});assert.ok(consoleClaim.error);assert.match(consoleClaim.stderr,/Registration is closed/);
 const login=await request('/auth/login',{username:owner.username,password:account.password,remember:true});
 assert.equal(login.status,200);assert.ok(login.body.accessToken);
 assert.equal(owner.username.startsWith('ci_'),true);
@@ -28,7 +29,7 @@ const refreshed=await request('/auth/refresh',{refreshToken:login.body.refreshTo
 assert.equal(refreshed.status,200);assert.equal(refreshed.body.rememberUntil,login.body.rememberUntil);
 assert.equal((await request('/auth/refresh',{refreshToken:login.body.refreshToken})).status,401);
 assert.equal((await request('/auth/login',{email:owner.email,password:account.password})).status,200);
-console.log('Browser registration refusal, concurrent console owner protection and sign-in passed through HTTPS web port 6002 and internal API port 6000.');
+console.log('Browser first-owner registration, concurrent registration protection, closed console claims and sign-in passed through HTTPS web port 6002 and internal API port 6000.');
 // Optional MFA, recovery login, server revocation and password rotation against
 // the real database. Never print setup keys, passwords, tokens or recovery codes.
 const {totp}=await import('../apps/api/src/mfa.js');

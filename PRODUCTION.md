@@ -19,7 +19,7 @@ The default web port is **6002**, mapped to Caddy's internal HTTPS port 443. The
 
 For automatic HTTPS, use `--url https://iclusters.your-domain.example --port 80 --https-port 443`, with DNS pointing at the server and public certificate validation reaching Caddy. If a reverse proxy already manages ports 80/443, proxy to i-Clusters's HTTP port and set `WEB_ORIGIN` to the browser's HTTPS URL. The installer expects `--url` without a port; supply ports through the separate flags. `--ref v1.0.0` pins that release tag once published; verify it exists on the Releases page first. The installer downloads and builds source, installs Docker from its official apt repository when absent, generates secrets, and enables the `i-clusters` systemd service. Existing Docker installations must already have the Compose plugin. It never removes conflicting Docker packages automatically.
 
-The interactive installer prompts for the first owner’s name, username and password on the controller. After an unattended installation, run `sudo iclusters claim-owner` there. Sign in with that account in the browser. Once an owner exists, the console command refuses further claims. Administrators add subsequent users from the Users page.
+Open the dashboard URL printed after installation. When no accounts exist, it displays first-owner registration with full name, username, password and password confirmation. Choose **Create owner account**, then sign in. Registration requires HTTPS, is rate limited and uses an exclusive database lock so simultaneous requests cannot create multiple first owners. Complete registration on your trusted network before exposing the controller publicly. Once an account exists, registration closes and the dashboard shows sign-in. Administrators add subsequent users from the Users page. The console command `sudo iclusters claim-owner` remains an optional alternative for an unclaimed controller.
 
 Application files live in `/opt/i-clusters`; integration credentials are configured in its `.env` or the Proxmox form. Installation requires internet access to GitHub, Docker's package repository and container registries. A private repository needs a separate authenticated checkout and the manual deployment below; tokens are not accepted in installer URLs.
 
@@ -37,7 +37,7 @@ Updates pull the current branch with `git pull --ff-only`, rebuild and check con
 
 ### Manual deployment
 
-Install Docker Engine and the Compose plugin using https://docs.docker.com/engine/install/ubuntu/ . Copy this project to `/opt/i-clusters`. Run `sh deployment/generate-secrets.sh` once, then edit `.env`. Keep the generated database password and JWT secrets. After bringing up the stack, create the first owner on the host using `sudo bash deployment/iclusters claim-owner` from the standard installation in `/opt/i-clusters`; `ADMIN_EMAIL` and `ADMIN_PASSWORD` are no longer used. Existing database accounts remain intact when updating.
+Install Docker Engine and the Compose plugin using https://docs.docker.com/engine/install/ubuntu/ . Copy this project to `/opt/i-clusters`. Run `sh deployment/generate-secrets.sh` once, then edit `.env`. Keep the generated database password and JWT secrets. After bringing up the stack, open its HTTPS dashboard to register the first owner; `ADMIN_EMAIL` and `ADMIN_PASSWORD` are no longer used. Existing database accounts remain intact when updating.
 
 For initial private LAN testing:
 

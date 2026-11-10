@@ -105,15 +105,7 @@ docker compose build --pull
 systemctl daemon-reload
 systemctl enable --now i-clusters.service
 sh deployment/export-controller-ca.sh
-if [[ -f apps/api/scripts/claim-owner.mjs ]]; then
-  if [[ -t 0 && -t 1 ]]; then
-    /usr/local/bin/iclusters claim-owner || fail 'The controller is installed. Run sudo iclusters claim-owner to finish account setup.'
-  else
-    echo 'Before signing in, run sudo iclusters claim-owner on the controller.'
-  fi
-else
-  echo 'This older revision uses browser registration. Keep it private until the owner account is created.'
-fi
+echo 'Open the dashboard to register the first owner account, then sign in.'
 if [[ -n $trusted_host ]]; then
   trusted_args=("$trusted_host")
   if [[ -n $cloudflare_token_file ]]; then trusted_args+=(--token-file "$cloudflare_token_file"); fi
