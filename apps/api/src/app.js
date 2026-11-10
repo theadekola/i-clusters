@@ -74,7 +74,7 @@ import rateLimit from 'express-rate-limit';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import {accountIdentity} from './username.js';
-import {setupStatus} from './setup.js';
+import {registerOwner,setupStatus} from './setup.js';
 import { clusterStore,clusterConfig,publicCluster,validateCluster } from './cluster-config.js';
 import {productRouter,countAction} from './product-usage.js';
 import { pool } from './db.js';
@@ -119,7 +119,18 @@ export function createApp({authenticate=auth,authorize=requireRole,audit=writeAu
 
  app.post('/api/node-agent/setup-script',(req,res)=>{authenticateAgent(req.headers.authorization?.replace(/^Bearer /,''));res.json({script:readFileSync(new URL('./agent-assets/guest-docker-setup.sh',import.meta.url),'utf8')});});
  app.get('/api/auth/setup',async(req,res)=>{res.set('Cache-Control','no-store');res.json(await setupStatus(db));});
- app.post('/api/auth/register',(_req,res)=>res.status(403).json({error:'Create the first owner from the controller console.'}));
+ app.post('/api/auth/register',loginLimiter,async(req,res)=>{
+  res.set('Cache-Control','no-store');
+  try{
+   if(!req.secure)throw httpError('Open i-Clusters over HTTPS before creating the first owner.');
+   const origin=req.get('Origin');
+   if(origin){let parsed;try{parsed=new URL(origin)}catch{throw httpError('Invalid browser origin.',403)}if(parsed.origin!==`https://${req.get('host')}`)throw httpError('Browser origin does not match this controller.',403);}
+   if(!(await setupStatus(db)).needsOwner)throw httpError('Registration is closed. Sign in or ask an administrator for an account.',409);
+   const user=await registerOwner(db,req.body);
+   req.activityUser={sub:user.id,role:user.role};
+   res.status(201).json({user});
+  }finally{if(req.body)req.body.password='';}
+ });
  app.get('/api/health',async(req,res,next)=>{try{await db.query('SELECT 1');res.json({ok:true,version:buildInfo.version,time:new Date().toISOString()});}catch(e){res.status(503).json({ok:false,error:'Database is unavailable'});}});
  app.post('/api/auth/login',loginLimiter,async(req,res)=>{
    browserSession(req);

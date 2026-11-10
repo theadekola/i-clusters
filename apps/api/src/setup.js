@@ -4,7 +4,8 @@ import bcrypt from 'bcryptjs';
 const fail=(message,status=400)=>{throw Object.assign(new Error(message),{status});};
 export async function setupStatus(db) {
  const result=await db.query('SELECT EXISTS(SELECT 1 FROM users) AS registered');
- return {registrationOpen:false,needsOwner:!result.rows[0].registered};
+ const needsOwner=!result.rows[0].registered;
+ return {registrationOpen:needsOwner,needsOwner};
 }
 export async function registerOwner(db,input={}) {
  const name=String(input.name||'').trim(),{email,username}=accountIdentity(input),password=input.password;
