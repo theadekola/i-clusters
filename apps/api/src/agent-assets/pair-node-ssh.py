@@ -16,14 +16,15 @@ def execute(payload,root=pathlib.Path('/'),run=subprocess.run,hostname=socket.ge
             pass  # Both phases share the same authenticated, pinned SSH session.
         elif not set(identity.get('macs',[])).intersection(macs): raise RuntimeError('wrong-guest')
     elif actual!=payload['node']: raise RuntimeError('wrong-node')
+    if docker and not which('systemctl'): raise RuntimeError('systemd-required')
     docker_commands=[]
     if docker:
         allow_setup=payload.get('installDocker') is True
         if not which('docker'):
-            if not allow_setup: raise RuntimeError('docker-missing')
             release=root/'etc/os-release'
             system=dict(line.split('=',1) for line in release.read_text().splitlines() if '=' in line) if release.exists() else {}
-            if system.get('ID','').strip('"') not in ('debian','ubuntu') or not which('apt-get'): raise RuntimeError('docker-missing')
+            if system.get('ID','').strip('"') not in ('debian','ubuntu') or not which('apt-get'): raise RuntimeError('docker-unsupported')
+            if not allow_setup: raise RuntimeError('docker-missing')
             docker_commands=[['apt-get','update'],['apt-get','install','--no-remove','-y','docker.io'],['systemctl','start','docker']]
         else:
             try:
@@ -31,9 +32,9 @@ def execute(payload,root=pathlib.Path('/'),run=subprocess.run,hostname=socket.ge
             except (OSError,subprocess.TimeoutExpired) as error:
                 raise RuntimeError('docker-unavailable') from error
             if engine.returncode:
-                if not allow_setup: raise RuntimeError('docker-unavailable')
+                if not allow_setup: raise RuntimeError('docker-start')
                 docker_commands=[['systemctl','start','docker']]
-    if not all(which(command) for command in (['python3','systemctl'] if docker else ['qm','pct','python3','systemctl'])): raise RuntimeError('not-proxmox')
+    if not docker and not all(which(command) for command in ['qm','pct','python3','systemctl']): raise RuntimeError('not-proxmox')
     url=urllib.parse.urlsplit(payload['url'])
     if url.scheme!='https' or not url.hostname or url.username or url.password or url.path not in ('','/') or url.query or url.fragment: raise RuntimeError('invalid-url')
     context=ssl.create_default_context(cadata=payload.get('ca') or None)
@@ -42,7 +43,9 @@ def execute(payload,root=pathlib.Path('/'),run=subprocess.run,hostname=socket.ge
         with urllib.request.urlopen(payload['url']+'/api/health',context=context,timeout=15) as response:
             if response.status!=200: raise RuntimeError('controller-unreachable')
     config=root/'etc/iclusters-node-agent.json';agent=root/'usr/local/sbin/iclusters-node-agent.py';unit=root/'etc/systemd/system/iclusters-node-agent.service'
-    if any(p.exists() or p.is_symlink() for p in [config,agent,unit,root/'etc/homecloud-node-agent.json',root/'etc/systemd/system/homecloud-node-agent.service']): raise RuntimeError('already-installed')
+    protected=[root/'etc/homecloud-node-agent.json',root/'etc/systemd/system/homecloud-node-agent.service']
+    if not payload.get('resume'): protected.extend([config,agent,unit])
+    if any(p.exists() or p.is_symlink() for p in protected): raise RuntimeError('already-installed')
     if payload['mode']=='probe': return {'ready':True,'hostname':actual}
     source=zlib.decompress(base64.b64decode(payload['source'],validate=True))
     if hashlib.sha256(source).hexdigest()!=payload['revision']: raise RuntimeError('source-mismatch')
@@ -65,12 +68,18 @@ WantedBy=multi-user.target
         os.chmod(lock,0o600);fcntl.flock(handle,fcntl.LOCK_EX|fcntl.LOCK_NB)
         created=[]
         try:
+            files=[(agent,source,0o600),(config,json.dumps({k:payload[k] for k in ['url','id','token','kind','ca'] if k in payload}).encode(),0o600),(unit,text.encode(),0o644)]
+            if payload.get('resume'):
+                for path,content,_ in files:
+                    if path.is_symlink() or (path.exists() and (not path.is_file() or path.read_bytes()!=content)):
+                        raise RuntimeError('already-installed')
             if docker_commands:
                 for command in docker_commands:
                     if run(command,capture_output=True,timeout=180,env={**os.environ,'DEBIAN_FRONTEND':'noninteractive'}).returncode:
                         raise RuntimeError('docker-unavailable')
                 if run(['docker','info'],capture_output=True,timeout=20).returncode: raise RuntimeError('docker-unavailable')
-            for path,content,mode in [(agent,source,0o600),(config,json.dumps({k:payload[k] for k in ['url','id','token','kind','ca'] if k in payload}).encode(),0o600),(unit,text.encode(),0o644)]:
+            for path,content,mode in files:
+                if payload.get('resume') and path.exists(): continue
                 path.parent.mkdir(parents=True,exist_ok=True)
                 fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,mode);created.append(path)
                 with os.fdopen(fd,'wb') as file: file.write(content);file.flush();os.fsync(file.fileno())
@@ -101,5 +110,5 @@ if __name__=='__main__':
         reason=str(error)
         if isinstance(error,ssl.SSLError) or isinstance(getattr(error,'reason',None),ssl.SSLError): reason='controller-tls'
         elif isinstance(error,(urllib.error.URLError,TimeoutError,ConnectionError)): reason='controller-network'
-        allowed=['controller-tls','controller-network','invalid-payload','wrong-guest','docker-missing','docker-unavailable','root-required','wrong-node','not-proxmox','invalid-url','already-installed','source-mismatch','missing-pairing','service-failed','controller-unreachable']
+        allowed=['controller-tls','controller-network','docker-start','systemd-required','docker-unsupported','invalid-payload','wrong-guest','docker-missing','docker-unavailable','root-required','wrong-node','not-proxmox','invalid-url','already-installed','source-mismatch','missing-pairing','service-failed','controller-unreachable']
         print(json.dumps({'error':reason if reason in allowed else 'bootstrap-failed'}));sys.exit(1)

@@ -51,10 +51,10 @@ with tempfile.TemporaryDirectory() as temp:
  guest={**payload,'mode':'probe','kind':'docker','identity':{'uuid':'guest-uuid'}}
  def timeout(*args,**kwargs): raise module.subprocess.TimeoutExpired('docker info',20)
  for expected,available,run in [
-     ('docker-missing',False,lambda *args,**kwargs: (_ for _ in ()).throw(AssertionError('ran a missing CLI'))),
-     ('docker-unavailable',True,lambda *args,**kwargs: types.SimpleNamespace(returncode=1)),
+     ('docker-unsupported',False,lambda *args,**kwargs: (_ for _ in ()).throw(AssertionError('ran a missing CLI'))),
+     ('docker-start',True,lambda *args,**kwargs: types.SimpleNamespace(returncode=1)),
      ('docker-unavailable',True,timeout)]:
-  try: module.execute(guest,root=root,which=lambda _:available,run=run)
+  try: module.execute(guest,root=root,which=lambda command:available or command=='systemctl',run=run)
   except RuntimeError as error: assert str(error)==expected
   else: raise AssertionError('Ineligible guest passed Docker preflight')
   assert not (root/'etc').exists()
@@ -73,3 +73,23 @@ with tempfile.TemporaryDirectory() as temp:
  assert module.execute(external,**options)['installed']
  assert ['apt-get','install','--no-remove','-y','docker.io'] in calls
  assert calls.index(['systemctl','start','docker'])<calls.index(['docker','info'])
+
+with tempfile.TemporaryDirectory() as temp:
+ root=pathlib.Path(temp)
+ test(root)
+ unit=root/'etc/systemd/system/iclusters-node-agent.service'
+ unit.unlink()
+ assert test(root,{**payload,'resume':True})[0]['installed'] and unit.exists()
+ try: test(root,{**payload,'resume':True,'token':'unrelated'})
+ except RuntimeError as error: assert str(error)=='already-installed'
+ else: raise AssertionError('accepted unrelated connector credentials')
+
+with tempfile.TemporaryDirectory() as temp:
+ root=pathlib.Path(temp)
+ standalone={**payload,'mode':'probe','kind':'docker','node':'standalone:lab','identity':{'standalone':True}}
+ for tools,reason in [({'python3'},'systemd-required'),({'python3','systemctl','apt-get'},'docker-missing')]:
+  (root/'etc').mkdir(exist_ok=True)
+  (root/'etc/os-release').write_text('ID=debian\n')
+  try: module.execute(standalone,root=root,which=tools.__contains__)
+  except RuntimeError as error: assert str(error)==reason
+  else: raise AssertionError('missing Docker prerequisite was accepted')
