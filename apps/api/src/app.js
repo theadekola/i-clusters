@@ -64,7 +64,7 @@ import os from 'node:os';
 import {taskInventory,stopTask} from './tasks.js';
 import {discovered,discoveredContainerCount} from './discovery.js';
 import {storageInventory,storageDetails,createStorage,storageSummary,storageConfiguration} from './storage.js';
-import {networkInventory,networkDetails,networkWrite,networkDnsWrite,networkFirewall} from './network.js';
+import {networkInventory,networkDetails,networkWrite,networkDnsInventory,networkDnsWrite,networkFirewall} from './network.js';
 import { updates } from './updates.js';
 import express from 'express';
 import cors from 'cors';
@@ -296,7 +296,7 @@ export function createApp({authenticate=auth,authorize=requireRole,audit=writeAu
  action('post','/proxmox/storage-file-upload','admin','storage.file.import',req=>storageUploads.prepare(req.body,req.user.sub),true);
  app.put('/api/proxmox/storage-file-upload/:upload',authorize('admin'),async(req,res)=>{try{const result=await storageUploads.transfer(req.params.upload,req.user.sub,req);monitor.invalidate();await audit(req,'storage.file.import.complete',result.id,{filename:result.filename,node:result.node},'success');res.json({ok:true,result});}catch(error){req.resume();await audit(req,'storage.file.import.complete','file import',{error:error.message},'failed');res.status(error.status||502).json({error:error.message});}});
 
- read('/network/dns',async()=>{const nodes=await pve('/nodes'),resolvers=[],errors=[];await Promise.all(nodes.map(async n=>{try{if(n.status==='offline')throw new Error('Node is offline');resolvers.push({node:n.node,...await pve(`/nodes/${encode(n.node)}/dns`)});}catch(e){errors.push(`${n.node}: ${e.message}`);}}));return {resolvers,errors,sampledAt:new Date().toISOString()};});
+ read('/network/dns',()=>networkDnsInventory());
  action('put','/network/dns/:node','admin','network.dns.configure',req=>networkDnsWrite(req.params.node,req.body),true);
  read('/network/firewall/:node',req=>networkFirewall(req.params.node));
  action('post','/network/firewall/:node/rules','admin','firewall.rule.create',req=>{const b=req.body;if(!['in','out'].includes(b.type)||!['ACCEPT','DROP','REJECT'].includes(b.action))throw httpError('Invalid rule direction or action');const body={type:b.type,action:b.action,enable:0};for(const k of ['source','dest','proto','dport','comment'])if(typeof b[k]==='string'&&b[k].trim())body[k]=b[k].trim();return pveWrite(`/nodes/${encode(req.params.node)}/firewall/rules`,'POST',body);},true);
@@ -369,13 +369,13 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
  read('/storage/datasets/permissions',async req=>({permissions:await truenas('filesystem.getacl',[await datasetRoot(req.query.dataset),true])}));
  read('/network',async req=>{
 
-   const s=await sampleView(req);const interfaces=[],errors=[];
+   const s=await sampleView(req);const interfaces=[],errors=[];let interfaceCoverage=null;
 
-   if(providers.proxmox.configured())try{const inventory=await networkInventory();interfaces.push(...inventory.interfaces.map(n=>({...n,provider:'proxmox'})));errors.push(...inventory.errors);}catch(e){errors.push(`proxmox: ${e.message}`);}
+   if(providers.proxmox.configured())try{const inventory=await networkInventory();interfaceCoverage=inventory.coverage;interfaces.push(...inventory.interfaces.map(n=>({...n,provider:'proxmox'})));errors.push(...inventory.errors);}catch(e){errors.push(`proxmox: ${e.message}`);}
 
    const selected=await selectedDocker(s,forceRead(req));errors.push(...selected.errors);
 
-   return {interfaces,dockerHost:{id:selected.id,name:selected.inventory?.host?.hostname||null},networks:selected.inventory?.networks||[],services:[],errors,connectors:s.services.filter(x=>['proxmox','docker'].includes(x.provider)),sampledAt:s.sampledAt,refreshing:!!s.refreshing};
+   return {interfaces,interfaceCoverage,dockerNetworksReported:Array.isArray(selected.inventory?.networks),dockerHost:{id:selected.id,name:selected.inventory?.host?.hostname||null},networks:selected.inventory?.networks||[],services:[],errors,connectors:s.services.filter(x=>['proxmox','docker'].includes(x.provider)),sampledAt:s.sampledAt,refreshing:!!s.refreshing};
 
  });
  action('post','/actions/:provider/:resourceType/:resourceId/:action','operator','infrastructure.action',async req=>{

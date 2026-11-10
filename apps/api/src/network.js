@@ -43,13 +43,29 @@ export function networkWrite(node,input,edit=false,write=pveWrite,query=pve){
  return submit();
 }
 
+async function readNodeDns(node,query){
+ const value=await query(`/nodes/${encode(node)}/dns`);
+ if(!value||typeof value!=='object'||Array.isArray(value))throw httpError('DNS configuration could not be verified',502);
+ return value;
+}
+export async function networkDnsInventory(query=pve){
+ const nodes=await query('/nodes'),resolvers=[],errors=[];
+ if(!Array.isArray(nodes))throw httpError('Invalid Proxmox node inventory',502);
+ await Promise.all(nodes.map(async n=>{
+  try{
+   if(n.status==='offline')throw Error('Node is offline');
+   resolvers.push({...await readNodeDns(n.node,query),node:n.node});
+  }catch(error){errors.push(`${n.node}: ${error.message}`);}
+ }));
+ return {resolvers,errors,sampledAt:new Date().toISOString()};
+}
+
 // Proxmox replaces the complete resolver list. Preserve omitted fields and treat
 // explicitly blank server fields as removal, after verifying the edit baseline.
 export async function networkDnsWrite(node,input,query=pve,write=pveWrite){
  const keys=['search','dns1','dns2','dns3'];
  if(!input||typeof input!=='object'||Array.isArray(input))throw httpError('Invalid DNS configuration');
- const current=await query(`/nodes/${encode(node)}/dns`);
- if(!current||typeof current!=='object'||Array.isArray(current))throw httpError('DNS configuration could not be verified',502);
+ const current=await readNodeDns(node,query);
  const normalized=row=>Object.fromEntries(keys.map(key=>[key,String(row[key]??'').trim()]));
  const baseline=normalized(current);
  if(input.expectedConfig!==undefined){

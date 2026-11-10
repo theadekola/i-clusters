@@ -22,3 +22,17 @@ test('Firewall section failures remain null with diagnostics while genuine empty
  assert.equal(result.rules,null);assert.equal(result.logs,null);assert.deepEqual(result.options,{enable:1});assert.equal(result.errors.length,2);assert.ok(calls.every(p=>p.startsWith('/nodes/a/firewall/')));
  const empty=await networkFirewall('a',async p=>p.endsWith('/options')?{enable:0}:[]);assert.deepEqual(empty.rules,[]);assert.deepEqual(empty.logs,[]);assert.deepEqual(empty.errors,[]);
 });
+
+test('DNS inventory distinguishes an empty resolver configuration from a failed node read',async()=>{
+ const {networkDnsInventory}=await import('../src/network.js');
+ const reply=await networkDnsInventory(async path=>{
+  if(path==='/nodes')return [{node:'empty'},{node:'broken'},{node:'offline',status:'offline'}];
+  if(path==='/nodes/empty/dns')return {};
+  if(path==='/nodes/broken/dns')return null;
+  assert.fail('Offline nodes must not be queried');
+ });
+ assert.deepEqual(reply.resolvers,[{node:'empty'}]);
+ assert.equal(reply.errors.length,2);
+ assert.ok(reply.errors.some(message=>message.includes('broken: DNS configuration could not be verified')));
+ assert.ok(reply.errors.includes('offline: Node is offline'));
+});
