@@ -1,3 +1,4 @@
+import {topologyConnections} from './topology-connections.js';
 import {retentionCleanup} from './retention-cleanup.js';
 import {trustSSHHost} from './ssh-host-trust.js';
 import {requestBodyDeadline} from './request-body-deadline.js';
@@ -211,7 +212,7 @@ export function createApp({authenticate=auth,authorize=requireRole,audit=writeAu
    res.json({ok:true,cluster:publicCluster(clusterConfig())});
  });
  const connectionScope=()=>crypto.createHash('sha256').update(JSON.stringify([clusterConfig(),dockerConfig(),['truenas'].map(id=>configuration.resolve(id))])).digest('hex');
- const cachedReads=new Set(['/backups/jobs','/restore','/dashboard','/monitoring','/proxmox','/proxmox/tasks','/docker','/storage','/network','/backups','/schedules','/retention','/proxmox/storage','/storage/disks','/storage/datasets','/storage/snapshots']);
+ const cachedReads=new Set(['/proxmox/topology-connections','/backups/jobs','/restore','/dashboard','/monitoring','/proxmox','/proxmox/tasks','/docker','/storage','/network','/backups','/schedules','/retention','/proxmox/storage','/storage/disks','/storage/datasets','/storage/snapshots']);
  const forceRead=req=>req?.query?.refresh==='1'||req?.get?.('X-IClusters-Refresh')==='1';
  const sampleView=async req=>{if(!monitor.isRefreshing)return monitor.sample(forceRead(req));if(forceRead(req))void monitor.sample(true).catch(()=>{});const s=await monitor.sample();return {...s,refreshing:!!s.refreshing||monitor.isRefreshing()};};
  const read=(path,handler,role='viewer')=>app.get(`/api${path}`,authorize(role),async(req,res)=>{res.set('Cache-Control','no-store');if(!cachedReads.has(path))return res.json(await handler(req));const url=new URL(req.originalUrl,'http://local');url.searchParams.delete('refresh');url.searchParams.sort();const key=JSON.stringify([req.user?.sub,req.user?.role,connectionScope(),selectedAgentHost(),url.pathname+url.search]);res.json(await readCache.run(key,()=>handler(req),{force:forceRead(req),background:true}));});
@@ -301,6 +302,7 @@ export function createApp({authenticate=auth,authorize=requireRole,audit=writeAu
  read('/network/firewall/:node',req=>networkFirewall(req.params.node));
  action('post','/network/firewall/:node/rules','admin','firewall.rule.create',req=>{const b=req.body;if(!['in','out'].includes(b.type)||!['ACCEPT','DROP','REJECT'].includes(b.action))throw httpError('Invalid rule direction or action');const body={type:b.type,action:b.action,enable:0};for(const k of ['source','dest','proto','dport','comment'])if(typeof b[k]==='string'&&b[k].trim())body[k]=b[k].trim();return pveWrite(`/nodes/${encode(req.params.node)}/firewall/rules`,'POST',body);},true);
  action('put','/network/firewall/:node/rules/:pos','admin','firewall.rule.toggle',req=>{const pos=integer(req.params.pos,'Rule position',0,10000);if(![0,1].includes(req.body.enable)||typeof req.body.digest!=='string'||!req.body.digest)throw httpError('A current rule digest and enabled state are required');return pveWrite(`/nodes/${encode(req.params.node)}/firewall/rules/${pos}`,'PUT',{enable:req.body.enable,digest:req.body.digest});},true);
+ read('/proxmox/topology-connections',async req=>{const scope=connectionScope(),s=await sampleView(req);const result=await topologyConnections(s.proxmox||{},pve);unchangedConnection(scope);return result;});
  read('/proxmox/network',()=>networkInventory());
  read('/proxmox/network/:node',req=>networkDetails(req.params.node,req.query.timeframe));
  action('post','/proxmox/network/:node','admin','proxmox.network.create',req=>networkWrite(req.params.node,req.body),true);

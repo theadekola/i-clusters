@@ -12,3 +12,27 @@ export function clusterTopology(data:any,search=''){
  const result=[...nodes.values()].sort((a,b)=>a.name.localeCompare(b.name)).map(node=>({...node,guests:node.guests.filter((g:any)=>!query||matches(node)||matches(g)).sort((a:any,b:any)=>String(a.id).localeCompare(String(b.id),undefined,{numeric:true}))})).filter(node=>!query||matches(node)||node.guests.length);
  return {name:data?.clusterStatus?.find((r:any)=>r.type==='cluster')?.name||'Connected infrastructure',nodes:result};
 }
+
+export function topologyGuestAddress(guest:any,parent?:string){
+ if(topologyState(guest,parent)!=='running')return 'IP unavailable';
+ const addresses=(guest.addresses||[]).filter((v:any)=>typeof v==='string'&&/^(?:\d{1,3}\.){3}\d{1,3}$/.test(v)&&v.split('.').every((p:string)=>Number(p)<=255));
+ return [...new Set(addresses)].join(' · ')||'IP unavailable';
+}
+// One storage entry per server and pool, with links only from current guest
+// configuration. Orphan volumes, bind mounts and inferred IP subnets add no links.
+export function topologyStorage(nodes:any[],pools:any[],connections:any[]){
+ return nodes.map(node=>{
+  const rows=new Map<string,any>();
+  for(const pool of pools||[])if(pool.node===node.name&&(pool.name||pool.storage)){
+   const name=pool.name||pool.storage;rows.set(name,{name,status:pool.status||'unknown',guests:[]});
+  }
+  for(const guest of node.guests){
+   const config=connections.find(c=>c.key===guest.key);if(!config)continue;
+   for(const name of config.storage||[]){
+    if(!rows.has(name))rows.set(name,{name,status:'unknown',guests:[]});
+    rows.get(name).guests.push(guest.key);
+   }
+  }
+  return {node:node.name,pools:[...rows.values()].sort((a,b)=>a.name.localeCompare(b.name))};
+ });
+}

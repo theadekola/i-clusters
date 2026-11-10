@@ -125,3 +125,17 @@
 .cluster-topology-viewport[data-layout=tree] .cluster-topology-links .rx{animation:map-in 1.8s linear infinite}
 .cluster-topology-viewport[data-layout=tree] .cluster-topology-links .tx{animation:map-out 1.8s linear infinite}
 }
+
+/* Storage is grouped once per server below all guest branches. */
+.topology-storage-layer{margin:64px auto 0;max-width:100%;text-align:center}
+.topology-storage-layer h4{margin:0 0 16px;font-size:15px}
+.topology-server-storage{margin:20px 0}
+.topology-server-storage h5{font-size:13px;margin:0 0 14px}
+.topology-storage-pools{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;max-width:720px;margin:auto}
+.topology-storage-pool{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px;min-width:130px;max-width:190px;border:1px solid var(--theme-border,#31506f);border-radius:10px;background:var(--theme-surface,#061323);overflow-wrap:anywhere}
+.topology-storage-pool svg{color:#ffb443}
+.topology-storage-pool small,.topology-storage-layer>small{font-size:11px;color:var(--theme-muted,#adc2da)}
+.cluster-topology-links path.storage-link{stroke:#ffb443;stroke-dasharray:3 6;animation:none;filter:none}
+.cluster-topology-viewport[data-layout=tree] .cluster-topology-links path.storage-link{stroke:#ffb443}
+.topology-vlan-label{display:block;text-align:left;margin:0 0 4px 40px;font-size:11px;color:var(--theme-muted,#adc2da)}
+.topology-guest-identifier{font-size:12px;line-height:1.4;overflow-wrap:anywhere}
