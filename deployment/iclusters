@@ -2,13 +2,21 @@
 set -Eeuo pipefail
 [[ $EUID == 0 ]] || { echo 'Run sudo iclusters ...' >&2; exit 1; }
 cd /opt/i-clusters
+print_dashboard_url() {
+  [[ -r .env ]] || return 0
+  local dashboard_url
+  dashboard_url=$(sed -n 's/^WEB_ORIGIN=//p' .env)
+  if [[ -n $dashboard_url ]]; then
+    printf '\nOpen i-Clusters: %s\n' "$dashboard_url"
+  fi
+}
 command=${1:-help}
 case "$command" in
-  status) docker compose ps;;
+  status) docker compose ps; print_dashboard_url;;
   logs) docker compose logs --tail=100 -f;;
-  start) systemctl start i-clusters;;
+  start) systemctl start i-clusters; print_dashboard_url;;
   stop) systemctl stop i-clusters;;
-  restart) docker compose up -d --wait --wait-timeout 180;;
+  restart) docker compose up -d --wait --wait-timeout 180; print_dashboard_url;;
   config) "${EDITOR:-nano}" .env;;
   trusted-https) shift; exec python3 deployment/trusted-https.py "$@";;
   certificate)
@@ -33,6 +41,7 @@ case "$command" in
     [[ $owner_password == "$owner_confirm" ]] || { echo 'Passwords do not match.' >&2; exit 1; }
     printf '%s\n' "$owner_name" "$owner_username" "$owner_email" "$owner_password" |
       docker compose exec -T api node scripts/claim-owner.mjs
+    print_dashboard_url
     ;;
   recover-account)
     username=${2:?Username required}
