@@ -10,11 +10,11 @@ import {useApi} from '../hooks';
 import {Card,Badge,Modal} from './UI';
 import GuestBootstrap from './GuestBootstrap';
 import GuestPermissionRepair from './GuestPermissionRepair';
-export default function GuestConnections({section,hasCluster,view='grid',search='',revision=0,onChanged}:{view?:'grid'|'list';section:string;hasCluster:boolean;search?:string;revision?:number;onChanged:()=>void}){
+export default function GuestConnections({filter='all',section,hasCluster,view='grid',search='',revision=0,onChanged}:{filter?:string;view?:'grid'|'list';section:string;hasCluster:boolean;search?:string;revision?:number;onChanged:()=>void}){
  const nodes=useApi<any>('/node-agents',{nodes:[]});
  return <div className="connection-guests" id="connection-guest-setup">
- {hasCluster&&<VMConnections view={view} section={section} search={search} revision={revision} onChanged={onChanged}/>}
- {section==='setup'&&<DockerSetup view={view} nodes={nodes} search={search} onChanged={onChanged}/>}
+ {filter!=='docker'&&hasCluster&&<VMConnections view={view} section={section} search={search} revision={revision} onChanged={onChanged}/>}
+ {filter!=='proxmox'&&section==='setup'&&<DockerSetup view={view} nodes={nodes} search={search} onChanged={onChanged}/>}
  </div>;
 }
 function VMConnections({section,view,search,revision,onChanged}:any){
