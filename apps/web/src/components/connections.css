@@ -62,3 +62,5 @@
 .connection-workspaces.tabs .tab{display:inline-flex;align-items:center;gap:8px}.connection-workspaces.tabs .tab>svg{flex:none}
 
 .connection-setup-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:18px}
+
+.guest-agent-installer{border:0;padding:0;margin:0;min-width:0}

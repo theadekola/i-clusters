@@ -99,7 +99,9 @@ if(typeof node!=='string'||!(kind==='docker'?/^[A-Za-z0-9_.-]+:(qemu|lxc)\/\d+$/
   if(input?.confirm!==true||input?.verified!==true)throw fail('Approve installation and verify the SSH host fingerprint.');nodeName(input.node);
   if(typeof input.username!=='string'||!/^[A-Za-z_][A-Za-z0-9_.-]{0,99}$/.test(input.username)||typeof input.password!=='string'||!input.password||input.password.length>2048||/[\r\n\0]/.test(input.password))throw fail('Enter fresh SSH username and password credentials.');
   if(!Number.isInteger(Number(input.port))||Number(input.port)<1||Number(input.port)>65535||!/^SHA256:[A-Za-z0-9+/]{43}$/.test(input.fingerprint||''))throw fail('Enter a valid SSH port and verify the host fingerprint.');
-  const target=await readTarget(input.node);if(input.connectionId!==target.connectionId||input.host!==target.host)throw fail('The selected node address or Proxmox connection changed. Reopen setup.',409);
+  const target=await readTarget(input.node);
+  if(target.guestAgentSetup)throw fail('Verify QEMU Guest Agent before pairing this Docker host.',409);
+  if(input.connectionId!==target.connectionId||input.host!==target.host)throw fail('The selected node address or Proxmox connection changed. Reopen setup.',409);
   if(running.has(input.node))throw fail('Automatic pairing is already running for this node.',409);
   const resumed=input.resumeJob?jobs.get(input.resumeJob):null;
   const pendingRecovery=[...jobs.values()].find(j=>j.node===input.node&&recovery.has(j)&&exists(j));
