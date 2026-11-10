@@ -129,7 +129,7 @@ export function createApp({authenticate=auth,authorize=requireRole,audit=writeAu
    const user=await registerOwner(db,req.body);
    req.activityUser={sub:user.id,role:user.role};
    res.status(201).json({user});
-  }finally{if(req.body)req.body.password='';}
+  }finally{if(req.body){req.body.password='';delete req.body.setupToken;}}
  });
  app.get('/api/health',async(req,res,next)=>{try{await db.query('SELECT 1');res.json({ok:true,version:buildInfo.version,time:new Date().toISOString()});}catch(e){res.status(503).json({ok:false,error:'Database is unavailable'});}});
  app.post('/api/auth/login',loginLimiter,async(req,res)=>{

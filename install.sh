@@ -105,7 +105,6 @@ docker compose build --pull
 systemctl daemon-reload
 systemctl enable --now i-clusters.service
 sh deployment/export-controller-ca.sh
-echo 'Open the dashboard to register the first owner account, then sign in.'
 if [[ -n $trusted_host ]]; then
   trusted_args=("$trusted_host")
   if [[ -n $cloudflare_token_file ]]; then trusted_args+=(--token-file "$cloudflare_token_file"); fi
@@ -124,3 +123,20 @@ installed_url=$(sed -n 's/^WEB_ORIGIN=//p' .env)
 echo "Open guided connection setup after signing in: ${installed_url%/}/settings?tab=Connections&setup=choose"
 echo 'Configure AI and notification channels under Settings > Integrations.'
 printf '\n%s\n\n  Open i-Clusters: %s\n\n' 'i-Clusters installation completed successfully.' "$installed_url"
+
+if [[ -f apps/api/scripts/owner-setup-link.mjs ]]; then
+  setup_origin=${installed_url%%,*}
+  if [[ -n $trusted_host ]]; then
+    setup_origin="https://$trusted_host"
+    if [[ $https_port != 443 ]]; then setup_origin+=":$https_port"; fi
+  fi
+  if [[ -t 1 && $setup_origin == https://* ]]; then
+    /usr/local/bin/iclusters setup-link "$setup_origin" || {
+      link_status=$?
+      # An existing account already closes setup. Preserve normal sign-in.
+      ((link_status == 3)) || exit "$link_status"
+    }
+  else
+    echo 'From a private controller terminal with HTTPS configured, run sudo iclusters setup-link to register.'
+  fi
+fi
