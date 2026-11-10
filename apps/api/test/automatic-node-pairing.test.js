@@ -47,7 +47,7 @@ test('simultaneous automatic installation requests cannot pair the same node twi
  await assert.rejects(f.service.start(await f.input()),{status:409});release();await f.service.wait('node01');assert.equal(f.service.status(job.id).state,'completed');assert.equal(f.calls.filter(c=>c.mode==='install').length,1);
 });
 test('Docker pairing resolves guest IP and UUID without using its Proxmox node address',async()=>{
- const {createAutomaticDockerPairing}=await import('../src/automatic-docker-pairing.js');const service=createAutomaticDockerPairing({config:()=>({url:'https://pve',tokenId:'a@pve!t',tokenSecret:'secret'}),origin:()=> 'https://controller',query:async path=>{if(path==='/cluster/resources')return [{node:'node01',vmid:100,type:'qemu'}];if(path.endsWith('/config'))return {smbios1:'uuid=selected-uuid',net0:'virtio=AA:BB:CC:DD:EE:FF'};if(path.endsWith('/network-get-interfaces'))return {result:[{'ip-addresses':[{'ip-address':'192.0.2.100'}]}]};throw Error('Unexpected '+path)}});const target=await service.target('node01:qemu/100');assert.equal(target.host,'192.0.2.100');assert.equal(target.identity.uuid,'selected-uuid');assert.equal(target.sshTarget,'vm:node01:100');await assert.rejects(service.target('node01:qemu/999'));
+ const {createAutomaticDockerPairing}=await import('../src/automatic-docker-pairing.js');const service=createAutomaticDockerPairing({config:()=>({url:'https://pve',tokenId:'a@pve!t',tokenSecret:'secret'}),origin:()=> 'https://controller',query:async path=>{if(path==='/cluster/resources')return [{node:'node01',vmid:100,type:'qemu',status:'running'}];if(path.endsWith('/config'))return {agent:'1',smbios1:'uuid=selected-uuid',net0:'virtio=AA:BB:CC:DD:EE:FF'};if(path.endsWith('/network-get-interfaces'))return {result:[{'ip-addresses':[{'ip-address':'192.0.2.100'}]}]};throw Error('Unexpected '+path)}});const target=await service.target('node01:qemu/100');assert.equal(target.host,'192.0.2.100');assert.equal(target.identity.uuid,'selected-uuid');assert.equal(target.sshTarget,'vm:node01:100');await assert.rejects(service.target('node01:qemu/999'));
 });
 
 test('pairing reports distinct SSH authentication, trust and transport failures without exposing SSH output',async()=>{
@@ -129,4 +129,42 @@ test('real SSH disconnect after the host accepts installation preserves its regi
   Object.assign(hosts[0],connectorRelease,{online:true,lastSeen:new Date().toISOString()});
   assert.equal(service.status(job.id).state,'completed');assert.deepEqual(phases,['probe','install']);
  }finally{sessions.forEach(connection=>connection.end());await new Promise(resolve=>server.close(resolve))}
+});
+
+test('Docker pairing offers VM agent setup only for an agent prerequisite',async()=>{
+ const {createAutomaticDockerPairing}=await import('../src/automatic-docker-pairing.js');
+ let kind='qemu',status='running',agent='0',failure,interfaces=[];
+ const service=createAutomaticDockerPairing({
+  config:()=>({}),origin:()=>'https://controller',
+  query:async path=>{
+   if(path==='/cluster/resources')return [{node:'node02',vmid:200,type:kind,status,name:'Media'}];
+   if(path.endsWith('/config'))return {agent,net0:'virtio=12:34:56:78:90:AB'};
+   const suffix=kind==='qemu'?'/agent/network-get-interfaces':'/interfaces';
+   assert.ok(path.endsWith(suffix));
+   if(failure)throw failure;
+   return interfaces;
+  },
+ });
+ const vm='node02:qemu/200';
+ const first=await service.target(vm);
+ assert.deepEqual(first.guestAgentSetup,{node:'node02',vmid:'200',name:'Media'});
+ assert.equal(first.host,undefined);
+ await assert.rejects(service.start({node:vm,confirm:true,verified:true,username:'root',password:'fixture',port:22,fingerprint:'SHA256:'+'a'.repeat(43),connectionId:first.connectionId}),/Verify QEMU Guest Agent/);
+ agent='enabled=1';
+ for(const message of ['Proxmox HTTP 500: No QEMU guest agent configured','QEMU guest agent is not running']){
+  failure=Object.assign(Error(message),{providerStatus:500});
+  assert.deepEqual((await service.target(vm)).guestAgentSetup,first.guestAgentSetup);
+ }
+ failure=Object.assign(Error('Permission denied'),{providerStatus:403});
+ await assert.rejects(service.target(vm),/Permission denied/);
+ failure=Object.assign(Error('Proxmox HTTP 500: network unreachable'),{providerStatus:500});
+ await assert.rejects(service.target(vm),/network unreachable/);
+ failure=null;
+ await assert.rejects(service.target(vm),/usable SSH address/);
+ status='stopped';
+ await assert.rejects(service.target(vm),/running guest/);
+ status='running';kind='lxc';agent=undefined;
+ await assert.rejects(service.target('node02:lxc/200'),/network interface/);
+ interfaces=[{inet:'192.0.2.10/24'}];
+ assert.equal((await service.target('node02:lxc/200')).host,'192.0.2.10');
 });

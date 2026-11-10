@@ -41,6 +41,18 @@ After connecting Proxmox, pair each node when Docker guest discovery is needed.
 Secrets stay encrypted on the server and saved values are never shown in forms.
 A saved configuration is distinct from a successful delivery or connection test.
 
+When pairing a Docker host by SSH, select the VM or CT first. If a running VM’s
+agent is disabled or Proxmox reports that its service is down, choose **Install
+QEMU Guest Agent**. On Debian and Ubuntu, enter the VM’s SSH address and Linux
+credentials. Once verified, pairing looks up the same VM’s address and opens
+the Docker connector step. Use **Recheck Guest Agent** after a manual repair or
+a deferred shutdown and start. LXC containers go directly to Docker pairing
+using their Proxmox-reported network interfaces.
+
+Stock ZimaOS uses Buildroot. For a ZimaOS VM with an existing authenticated
+Docker HTTPS endpoint, choose **Direct Docker API** and enter its endpoint and
+certificates. [ZimaOS guest-agent guidance](https://shop.zimaspace.com/en-ca/pages/qemu-guest-agent-zimaos-vm-support)
+
 ## VM guest access
 
 Each VM is identified by its Proxmox node and VM ID. Read-only checks distinguish

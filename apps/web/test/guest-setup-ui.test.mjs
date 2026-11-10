@@ -506,3 +506,46 @@ test('retrying an earlier assistant question preserves the draft and message ord
   assert.equal(button(page,'Retry'),undefined);
  }finally{await page.close()}
 });
+
+for(const outcome of ['verified','deferred','unverified'])test('Docker host pairing handles a '+outcome+' VM guest-agent installation',async()=>{
+ const node='node02:qemu/200',reads=[],writes=[];
+ let reachable=false;
+ const page=await mounted('components/AutomaticNodePairing.tsx',{kind:'docker',node,onBusy(){},onComplete(){}},async(path,init)=>{
+  if(path.includes('/target?')){
+   reads.push(path);
+   return reachable?{host:'192.0.2.200',sshTarget:'vm:node02:200',connectionId:'fixture'}:{guestAgentSetup:{node:'node02',vmid:'200',name:'Media'}};
+  }
+  if(path==='/ssh/fingerprint')return {fingerprint:'SHA256:'+'a'.repeat(43)};
+  assert.equal(path,'/node-agents/guest/agent');
+  writes.push(JSON.parse(init.body));
+  reachable=outcome==='verified';
+  return {result:{requiresPowerCycle:outcome==='deferred',agentVerified:reachable,message:'Setup result'}};
+ });
+ try{
+  assert.equal(button(page,'Install, Pair & Verify Automatically'),undefined);
+  assert.equal(page.container.querySelector('a').getAttribute('href'),'/settings?tab=Connections&setup=direct');
+  await page.click(button(page,'Install QEMU Guest Agent'));
+  await changeControl(page.container.querySelector('input[name=host]'),'192.0.2.200');
+  await act(async()=>new Promise(r=>setTimeout(r,320)));
+  page.container.querySelector('input[name=password]').value='temporary';
+  await page.click(button(page,'Install / Start & Verify'));
+  assert.equal(writes.length,1);
+  assert.equal(writes[0].purpose,'guest-agent');
+  assert.equal(writes[0].vmid,'200');
+  assert.equal(writes[0].node,'node02');
+  if(outcome!=='verified'){
+   if(outcome==='deferred')await page.click([...document.body.querySelectorAll('button')].find(b=>b.textContent==='Later'));
+   assert.equal(button(page,'Install, Pair & Verify Automatically'),undefined);
+   assert.equal(reads.length,1);
+   await page.click(button(page,'Recheck Guest Agent'));
+   if(outcome==='deferred')assert.ok(button(page,'Restart & Verify'));
+   reachable=true;
+   await act(async()=>new Promise(r=>setTimeout(r,370)));
+   await page.click(button(page,'Recheck Guest Agent'));
+  }
+  assert.ok(reads.every(p=>p.endsWith(encodeURIComponent(node))));
+  assert.equal(page.container.querySelector('[aria-label="Node SSH address"]').value,'192.0.2.200');
+  assert.equal(page.container.querySelector('[aria-label="SSH / sudo password"]').value,'');
+  assert.equal(button(page,'Install, Pair & Verify Automatically').disabled,true);
+ }finally{await page.close()}
+});
