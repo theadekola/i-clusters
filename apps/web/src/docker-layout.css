@@ -115,3 +115,8 @@
  .docker-manager .docker-table td:first-child{width:auto}
  .docker-manager .docker-table td:last-child{width:auto;white-space:normal}
 }
+
+.docker-resource-actions{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:12px;margin:14px 0}
+.docker-resource-actions>.header-actions{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:8px;min-width:0}
+@media(max-width:600px){.docker-resource-actions,.docker-resource-actions>.header-actions{justify-content:flex-start;width:100%}}
+.content.content .docker-manager>.docker-page-header>.docker-host-selector{margin-left:0;justify-self:start;justify-content:flex-start}

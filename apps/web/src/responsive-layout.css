@@ -223,3 +223,10 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
 :is(.content,.modal) td :is(.row-actions,[class*="-actions"]) > :is(button,a.btn) {
   flex: none;
 }
+
+.cluster-access-checklist p{margin:0 0 10px}
+.cluster-access-checklist ol{margin:0;padding-inline-start:22px;line-height:1.6}
+.cluster-access-checklist li+li{margin-top:6px}
+.cluster-access-checklist details{margin-top:12px}
+.cluster-access-checklist summary{cursor:pointer;font-weight:600}
+.cluster-access-checklist details p{margin:10px 0 0;overflow-wrap:anywhere}

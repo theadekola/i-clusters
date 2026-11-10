@@ -60,3 +60,5 @@
 .connections-page>.settings-overview-heading{margin:0}.connections-page>.settings-overview-tabs,.connections-page>.connection-workspaces{margin:0;padding-bottom:7px}.connections-page .connection-heading-actions{margin-left:auto}
 @media(max-width:700px){.connections-page .connection-heading-actions{margin-left:0}.connections-page .connection-heading-actions>.btn{flex:1 1 180px;white-space:normal}}
 .connection-workspaces.tabs .tab{display:inline-flex;align-items:center;gap:8px}.connection-workspaces.tabs .tab>svg{flex:none}
+
+.connection-setup-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:18px}

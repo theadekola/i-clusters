@@ -8,6 +8,9 @@ export function ClusterConnection({compact=false,label='Cluster Settings',primar
  const {data:session}=useApi<any>('/auth/me',null);
  const owner=session?.user?.role==='owner';
  const [open,setOpen]=useState(false),[cluster,setCluster]=useState<any>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[nodes,setNodes]=useState<any[]>([]),[success,setSuccess]=useState('');
+ const accessPanel=useRef<HTMLDivElement>(null);
+ const accessIssue=/management access|permission report|API token|inventory access|PVEAdmin/i.test(error);
+ useEffect(()=>{if(open&&error&&accessIssue)accessPanel.current?.scrollIntoView?.({block:'nearest'})},[open,error,accessIssue]);
  const close=()=>{if(busy)return;setOpen(false);if(success){setSuccess('');onConnected?.();window.dispatchEvent(new Event('iclusters-connection'));onSaved?.()}};
  const load=async()=>{setBusy(true);setError('');try{const response:any=await api('/connections/proxmox');setCluster(response.cluster);setNodes([]);setMessage('');setSuccess('');setOpen(true);}catch(e:any){setError(e.message);}finally{setBusy(false);}};
  const autoOpened=useRef(false);
@@ -48,7 +51,7 @@ export function ClusterConnection({compact=false,label='Cluster Settings',primar
  <a href="https://pve.proxmox.com/pve-docs/pveum.1.html" target="_blank" rel="noopener noreferrer">Proxmox user and API token documentation</a>
  </details>
  <p className="muted cluster-wide">New connections accept self-signed Proxmox HTTPS certificates. Existing certificate-verification settings are retained when editing. Connection details are encrypted on the server.</p>
- {error&&<p role="alert" className="login-error cluster-wide">{error}</p>}{message&&<p role="status" className="cluster-wide">{message}</p>}
+ {error&&(accessIssue?<div ref={accessPanel} role="alert" className="login-error cluster-wide cluster-access-checklist"><p>Check that all four Proxmox settings are configured, then test the connection again.</p><ol><li><strong>User account:</strong> Enabled, with the correct realm.</li><li><strong>User permission:</strong> PVEAdmin at / with Propagate enabled.</li><li><strong>API token:</strong> Full user@realm!token ID, correct secret, unexpired, with Privilege Separation enabled.</li><li><strong>Token permission:</strong> PVEAdmin at / with Propagate enabled.</li></ol><details><summary>Technical details</summary><p>{error}</p></details></div>:<p role="alert" className="login-error cluster-wide">{error}</p>)}{message&&<p role="status" className="cluster-wide">{message}</p>}
  {!!nodes.length&&<ul className="cluster-wide">{nodes.map(n=><li key={n.name}>{n.name} — {n.status||'Unknown'}</li>)}</ul>}
  <div className="modal-actions cluster-wide"><button className="btn secondary" type="button" aria-busy={busy} disabled={busy} onClick={close}>Cancel</button><button className="btn secondary" type="submit" value="test" aria-busy={busy} disabled={busy}>Test Connection</button><button className="btn primary" type="submit" value="save" aria-busy={busy} disabled={busy}>{busy?'Connecting…':'Save'}</button></div>
  </form></Modal></>;
