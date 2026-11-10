@@ -73,9 +73,8 @@ Use a dedicated Ubuntu server or VM with systemd, Git/network access and capacit
 
 ```sh
 sudo apt-get update
-sudo apt-get install -y curl
+sudo apt-get install -y curl ca-certificates
 curl -fsSL https://raw.githubusercontent.com/theadekola/i-clusters/main/install.sh -o /tmp/iclusters-install.sh
-less /tmp/iclusters-install.sh
 sudo bash /tmp/iclusters-install.sh
 ```
 

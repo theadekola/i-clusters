@@ -8,10 +8,8 @@ On Ubuntu with systemd, install from the public `theadekola/i-clusters` reposito
 
 ```sh
 sudo apt-get update
-sudo apt-get install -y curl
+sudo apt-get install -y curl ca-certificates
 curl -fsSL https://raw.githubusercontent.com/theadekola/i-clusters/main/install.sh -o /tmp/iclusters-install.sh
-# Inspect the downloaded installer before running it.
-less /tmp/iclusters-install.sh
 sudo bash /tmp/iclusters-install.sh
 ```
 
