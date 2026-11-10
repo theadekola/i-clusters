@@ -105,8 +105,6 @@ docker compose build --pull
 systemctl daemon-reload
 systemctl enable --now i-clusters.service
 sh deployment/export-controller-ca.sh
-installed_url=$(sed -n 's/^WEB_ORIGIN=//p' .env)
-echo "i-Clusters installed at $installed_url"
 if [[ -f apps/api/scripts/claim-owner.mjs ]]; then
   if [[ -t 0 && -t 1 ]]; then
     /usr/local/bin/iclusters claim-owner || fail 'The controller is installed. Run sudo iclusters claim-owner to finish account setup.'
@@ -129,5 +127,8 @@ elif grep -qx 'CADDY_TLS=tls internal' .env; then
   fi
   echo 'Install the profile in Settings, then enable the matching root in General > About > Certificate Trust Settings.'
 fi
+# Read the final URL after optional trusted HTTPS updates the configuration.
+installed_url=$(sed -n 's/^WEB_ORIGIN=//p' .env)
 echo "Open guided connection setup after signing in: ${installed_url%/}/settings?tab=Connections&setup=choose"
 echo 'Configure AI and notification channels under Settings > Integrations.'
+printf '\n%s\n\n  Open i-Clusters: %s\n\n' 'i-Clusters installation completed successfully.' "$installed_url"
