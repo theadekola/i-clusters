@@ -29,3 +29,11 @@ test('running QEMU processes preserve paused and suspended guest power states on
   assert.equal(topologyState(tree.nodes[0].guests[0],'offline'),'unknown');
  }
 });
+
+test('storage groups per server and pool and only links guests with current attached storage mappings',async()=>{
+ const {topologyStorage,topologyGuestAddress}=await import('data:text/javascript;base64,'+Buffer.from(built.outputFiles[0].text).toString('base64'));
+ const nodes=clusterTopology({nodes:[{name:'one',status:'online'},{name:'two',status:'online'}],vms:[{node:'one',id:100},{node:'one',id:101},{node:'two',id:100}]}).nodes;
+ const result=topologyStorage(nodes,[{node:'one',name:'local',status:'online'},{node:'one',name:'backup',status:'online'},{node:'two',name:'local',status:'online'}],[{key:'one:qemu:100',storage:['local']},{key:'one:qemu:101',storage:['local']}]);
+ assert.equal(result[0].pools.length,2);assert.deepEqual(result[0].pools.find(p=>p.name==='local').guests,['one:qemu:100','one:qemu:101']);assert.deepEqual(result[1].pools[0].guests,[]);
+ assert.equal(topologyGuestAddress({status:'running',addresses:['192.0.2.10','999.1.1.1','::1']},'online'),'192.0.2.10');assert.equal(topologyGuestAddress({status:'running',addresses:['192.0.2.10']},'offline'),'IP unavailable');assert.equal(topologyGuestAddress({status:'stopped',addresses:['192.0.2.10']},'online'),'IP unavailable');
+});
