@@ -1,6 +1,7 @@
 // Exercises real PostgreSQL transactions through the Compose API in isolated CI.
 import fs from 'node:fs';
 import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
 import assert from 'node:assert/strict';
 const base='https://localhost:6002/api';
 const request=async(path,body)=>{const response=await fetch(base+path,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{});return {status:response.status,body:await response.json()};};
@@ -13,6 +14,13 @@ function claim(user){
   child.stdin.end([user.name,user.username,user.email,user.password,''].join('\n'));
  });
 }
+const localLink=()=>promisify(execFile)('docker',['compose','exec','-T','api','node','scripts/owner-setup-link.mjs']);
+assert.equal((await request('/auth/register',account)).status,403);
+const link=await localLink();
+const setupUrl=new URL(link.stdout.trim());
+assert.equal(setupUrl.origin,'https://localhost:6002');
+account.setupToken=setupUrl.hash.slice('#owner-setup='.length);
+assert.ok(/^[a-f0-9]{64}$/.test(account.setupToken));
 const competing=await Promise.all([request('/auth/register',account),request('/auth/register',{...account,username:'ci_second',email:'second@example.test'})]);
 assert.equal(competing.filter(r=>r.status===201).length,1);
 assert.equal(competing.filter(r=>r.status===409).length,1);
@@ -20,6 +28,7 @@ assert.match(competing.find(r=>r.status===409).body.error,/Registration is close
 const owner=competing.find(r=>r.status===201).body.user;
 const closed=await request('/auth/setup');assert.equal(closed.body.needsOwner,false);assert.equal(closed.body.registrationOpen,false);
 assert.equal((await request('/auth/register',account)).status,409);
+await assert.rejects(localLink(),error=>error.code===3 && /Registration is closed/.test(error.stderr) && !error.stdout);
 const consoleClaim=await claim({...account,username:'ci_console'});assert.ok(consoleClaim.error);assert.match(consoleClaim.stderr,/Registration is closed/);
 const login=await request('/auth/login',{username:owner.username,password:account.password,remember:true});
 assert.equal(login.status,200);assert.ok(login.body.accessToken);

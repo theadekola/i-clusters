@@ -3,8 +3,8 @@ import pg from 'pg';
 const { Pool } = pg;
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-export async function migrate() {
-  await pool.query(`
+export async function migrate(db = pool) {
+  await db.query(`
     CREATE TABLE IF NOT EXISTS users (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       email TEXT UNIQUE NOT NULL,
@@ -16,6 +16,11 @@ export async function migrate() {
       two_factor_enabled BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       last_login TIMESTAMPTZ
+    );
+    CREATE TABLE IF NOT EXISTS owner_setup_link (
+      singleton BOOLEAN PRIMARY KEY CHECK (singleton),
+      token_digest TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL
     );
     ${usageSchema}
     ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;

@@ -9,7 +9,21 @@ export default function Login({onLogin}:{onLogin:()=>void}){
  const[username,setUsername]=useState(''),[password,setPassword]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(false);
  const[name,setName]=useState(''),[confirmPassword,setConfirmPassword]=useState('');
  const[needsOwner,setNeedsOwner]=useState<boolean|null>(null),[message,setMessage]=useState(()=>sessionStorage.getItem('iclusters_session_message')||'');
- const checkSetup=()=>api<any>('/auth/setup').then(r=>{setNeedsOwner(!!(r.needsOwner||r.registrationOpen));setError('');}).catch(e=>setError(e.message));
+ const [setupToken,setSetupToken]=useState('');
+ useEffect(()=>{
+  const readLink=()=>{
+   const {hash,pathname,search,protocol}=window.location;
+   if(!hash.startsWith('#owner-setup='))return;
+   const token=hash.slice('#owner-setup='.length);
+   window.history.replaceState(window.history.state,'',pathname+search);
+   setSetupToken(protocol==='https:'&&/^[a-f0-9]{64}$/.test(token)?token:'');
+   setError('');
+  };
+  readLink();
+  window.addEventListener('hashchange',readLink);
+  return ()=>window.removeEventListener('hashchange',readLink);
+ },[]);
+ const checkSetup=()=>api<any>('/auth/setup').then(r=>{const open=!!(r.needsOwner||r.registrationOpen);setNeedsOwner(open);if(!open)setSetupToken('');setError('');}).catch(e=>setError(e.message));
  useEffect(()=>{sessionStorage.removeItem('iclusters_session_message');checkSetup()},[]);
  const submit=async(e:any)=>{
   e.preventDefault();if(loading)return;setError('');
@@ -17,19 +31,21 @@ export default function Login({onLogin}:{onLogin:()=>void}){
   setLoading(true);
   try{
    if(needsOwner){
-    const r=await api<any>('/auth/register',{method:'POST',body:JSON.stringify({name,username,password})});
-    setUsername(r.user.username);setPassword('');setConfirmPassword('');setShowPassword(false);setNeedsOwner(false);setMessage('Owner account created. Sign in to continue.');return;
+    const r=await api<any>('/auth/register',{method:'POST',body:JSON.stringify({name,username,password,setupToken})});
+    setUsername(r.user.username);setPassword('');setConfirmPassword('');setShowPassword(false);setNeedsOwner(false);setSetupToken('');setMessage('Owner account created. Sign in to continue.');return;
    }
    const r=await api<any>(challenge?'/auth/mfa':'/auth/login',{method:'POST',body:JSON.stringify(challenge?{challengeToken:challenge,code:factor}:{username,password,remember})});
    if(r.mfaRequired){setChallenge(r.challengeToken);setPassword('');setFactor('');setMessage('Enter your authenticator code or one unused recovery code.');return}
    setTokens(r.accessToken,r.refreshToken,remember,r.rememberUntil,r.cookieSession===true);onLogin();
   }catch(e:any){
-   if(needsOwner&&e.status===409){setNeedsOwner(false);setPassword('');setConfirmPassword('');setMessage(e.message)}
+   if(needsOwner&&e.status===409){setNeedsOwner(false);setSetupToken('');setPassword('');setConfirmPassword('');setMessage(e.message)}
+   else if(needsOwner&&e.status===403){setSetupToken('');setPassword('');setConfirmPassword('');setError(e.message)}
    else setError(e.message);
   }finally{setLoading(false)}
  };
  const logo=<div className="login-logo"><img className="iclusters-product-logo" src={productLogo} alt=""/><strong><span>i-</span>Clusters</strong></div>;
  if(needsOwner===null)return <div className="login-page"><div className="login-card">{logo}<h1>Welcome to i-Clusters</h1>{error?<><p role="alert" className="login-error">{error}</p><button className="btn primary" onClick={checkSetup}>Retry</button></>:<p>Checking first-use setup…</p>}</div></div>;
+ if(needsOwner&&!setupToken)return <div className="login-page"><div className="login-card">{logo}<h1>Open your private setup link</h1>{error&&<p role="alert" className="login-error">{error}</p>}<p>Use the link printed by the installer. To replace a lost or expired link, run this command on the controller.</p><code>sudo iclusters setup-link</code><button className="btn secondary" onClick={checkSetup}>Retry</button></div></div>;
  return <div className="login-page"><form className="login-card" onSubmit={submit}>{logo}<h1>{needsOwner?'Create your owner account':'Sign in to your account'}</h1><p className="muted">{needsOwner?'Register the first owner to finish setting up i-Clusters.':'Your infrastructure, connected.'}</p>{error&&<div role="alert" className="login-error">{error}</div>}{message&&<p role="status">{message}</p>}
   {needsOwner&&<label><span><User size={15}/> Full name</span><input id="registration-name" value={name} onChange={e=>setName(e.target.value)} autoComplete="name" maxLength={100} disabled={loading} required/></label>}
   {!challenge&&<><label><span><User size={15}/> Username</span><input value={username} onChange={e=>setUsername(e.target.value)} type="text" placeholder="Enter your username" autoCapitalize="none" spellCheck={false} maxLength={needsOwner?64:254} pattern={needsOwner?'[A-Za-z0-9](?:[A-Za-z0-9_.]|-){2,63}':undefined} autoComplete="username" disabled={loading} required/></label>

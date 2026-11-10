@@ -31,6 +31,12 @@ case "$command" in
     esac
     ;;
   backup) bash deployment/controller-backup.sh "${2:?Backup directory required}" "${3:?age public recipient required}";;
+  setup-link)
+    [[ -t 1 ]] || { echo 'Open a private controller terminal to display a setup link.' >&2; exit 1; }
+    echo 'Private first-owner setup'
+    docker compose exec -T api node scripts/owner-setup-link.mjs "${2:-}" </dev/null
+    echo 'This private setup link expires in 30 minutes. Issuing another link replaces it.'
+    ;;
   claim-owner)
     [[ -t 0 ]] || { echo 'Run sudo iclusters claim-owner from an interactive controller console.' >&2; exit 1; }
     read -r -p 'Owner name: ' owner_name
@@ -52,5 +58,5 @@ case "$command" in
     unset account_password account_confirm
     ;;
   update) shift; bash deployment/upgrade.sh "$@";;
-  *) echo 'Usage: sudo iclusters {status|logs|start|stop|restart|config|certificate|trusted-https|update|backup|claim-owner|recover-account}';;
+  *) echo 'Usage: sudo iclusters {status|logs|start|stop|restart|config|certificate|trusted-https|update|backup|setup-link|claim-owner|recover-account}';;
 esac
