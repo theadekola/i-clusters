@@ -182,6 +182,8 @@ try{
  await test('network inventory, traffic and staged writes use real endpoints with role and confirmation checks',async()=>{
    const inventory=await call('/proxmox/network');assert.equal(inventory.body.interfaces[0].status,'up');assert.equal(inventory.body.interfaces[1].status,'up');assert.equal(inventory.body.interfaces[1]['vlan-id'],20);
    const map=await call('/network');assert.equal(map.body.interfaces[0].status,'up');assert.ok(map.body.interfaces[0].displayAddresses.includes('192.0.2.10/24'));
+   assert.deepEqual(map.body.interfaceCoverage,inventory.body.coverage);assert.equal(map.body.dockerNetworksReported,false);
+   const dnsReport=await call('/network/dns');assert.equal(dnsReport.status,200);assert.equal(dnsReport.body.resolvers[0].dns1,'192.0.2.1');
    const detail=await call('/proxmox/network/pve');assert.equal(detail.body.history[0].netin,125000);assert.equal(detail.body.dns.dns1,'192.0.2.1');assert.deepEqual(detail.body.errors,[]);
    const dns={search:'example.test',dns1:'',dns2:'2001:db8::1',dns3:'',expectedConfig:{search:'example.test',dns1:'192.0.2.1',dns2:'',dns3:''}};
    assert.equal((await call('/network/dns/pve','PUT',dns,{'x-test-role':'operator'})).status,403);

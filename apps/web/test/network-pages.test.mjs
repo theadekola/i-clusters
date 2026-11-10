@@ -52,3 +52,65 @@ test('Network overview omits the removed firewall page and quick actions',async(
  const page=await mounted('pages/Network.tsx',{},async p=>p==='/auth/me'?{user:{role:'owner'}}:{interfaces:[],networks:[],connectors:[],nodes:[]});
  try{assert.equal(button(page.container,'Firewall'),undefined);assert.ok(!page.container.textContent.includes('Quick Actions'));assert.ok(!page.container.textContent.includes('Firewall Services'));assert.ok(button(page.container,'DNS'));assert.ok(button(page.container,'Routing'));}finally{await page.close()}
 });
+
+test('Docker network details stay scoped to the reporting Engine and unavailable reads do not become empty inventory',async()=>{
+ const network={id:'common',name:'media',driver:'bridge',scope:'local',subnets:'172.22.0.0/16',gateways:'172.22.0.1'};
+ let summary={interfaces:[],interfaceCoverage:null,dockerNetworksReported:true,dockerHost:{id:'alpha',name:'media-server'},networks:[network]};
+ const page=await mounted('pages/Network.tsx',{},async p=>p==='/network'?summary:p==='/docker/hosts'?{hosts:[]}:p==='/proxmox'?{nodes:[]}:{});try{
+  await page.click(button(page.container,'Docker Networks'));
+  await page.click(button(page.container,'Details'));
+  const details=Object.fromEntries([...page.container.querySelectorAll('.modal dl div')].map(row=>[row.querySelector('dt').textContent,row.querySelector('dd').textContent]));
+  assert.deepEqual(details,{Name:'media',Host:'media-server',Driver:'bridge',Scope:'local',Subnet:'172.22.0.0/16',Gateways:'172.22.0.1'});
+  summary={...summary,dockerHost:{id:'beta',name:'second'},dockerNetworksReported:false,errors:['Could not read beta inventory'],networks:[]};
+  await refresh('/network');
+  assert.equal(page.container.querySelector('.modal'),null);
+  assert.match(page.container.textContent,/Docker network inventory unavailable/);
+  assert.match(page.container.textContent,/Could not read beta inventory/);
+  assert.match(page.container.querySelector('.network-stats').textContent,/Docker NetworksUnknown/);
+  summary={...summary,dockerNetworksReported:true,errors:[]};await refresh('/network');
+  assert.match(page.container.querySelector('.network-stats').textContent,/Docker Networks0/);
+ }finally{await page.close()}
+});
+test('routing counts a successfully read empty node and keeps an unreadable node unknown',async()=>{
+ let report={nodes:[{node:'down'},{node:'up'}],interfaces:[],errors:['down: unavailable'],coverage:{readNodes:['up'],missingNodes:['down']}};
+ const page=await mounted('pages/NetworkRouting.tsx',{onMap(){}},async p=>p==='/proxmox/network'?report:{});try{
+  const counts=()=>[...page.container.querySelectorAll('.route-node-count strong')].map(e=>e.textContent);
+  assert.deepEqual(counts(),['Unknown','0']);
+  report={...report,coverage:{readNodes:[],missingNodes:['up','down']}};await refresh('/proxmox/network');
+  assert.deepEqual(counts(),['Unknown','Unknown']);
+  assert.doesNotMatch(page.container.querySelector('.route-ring-legend').textContent,/0%/);
+ }finally{await page.close()}
+});
+test('DNS counts domains independently across nodes and preserves unknown assignment counts',async()=>{
+ let report={resolvers:[{node:'a',search:'corp.test lab.test lab.test'},{node:'b',search:'lab.test'}],errors:[]};
+ const page=await mounted('pages/NetworkDNS.tsx',{},async p=>p==='/network/dns'?report:{});try{
+  assert.deepEqual([...page.container.querySelectorAll('.list-row')].map(row=>[row.firstChild.textContent,row.lastChild.textContent]),[['corp.test','1 node'],['lab.test','2 nodes']]);
+  report={resolvers:[],errors:['a: offline','b: offline']};await refresh('/network/dns');
+  assert.deepEqual([...page.container.querySelectorAll('.dns-ring-legend b')].map(e=>e.textContent),['Unknown','Unknown','Unknown']);
+ }finally{await page.close()}
+});
+test('traffic shares require paired samples from the same timestamp',async()=>{
+ let history=[{time:100,netin:125000},{time:200,netout:375000}];
+ const page=await mounted('pages/NetworkTraffic.tsx',{},async p=>p==='/proxmox/network'?{nodes:[{node:'a'}],interfaces:[]}:{history});try{
+  assert.match(page.container.querySelector('.traffic-ring').textContent,/Unavailable/);
+  history=[...history,{time:300,netin:3,netout:1}];await refresh('/proxmox/network/a');
+  assert.match(page.container.querySelector('.traffic-ring-legend').textContent,/75.0%.*25.0%/);
+ }finally{await page.close()}
+});
+test('device details show the reported guest addresses and power state without marking a partial inventory complete',async()=>{
+ const page=await mounted('pages/NetworkDevices.tsx',{},async p=>p==='/docker/hosts'?{hosts:[]}:{resourceInventoryComplete:false,services:[{provider:'proxmox',status:'reachable'}],guests:[{id:'104',type:'qemu',name:'app',node:'one',status:'running',powerStatus:'paused',addresses:['192.0.2.104']}]});try{
+  assert.match(page.container.querySelector('.device-details-card').textContent,/192\.0\.2\.104/);
+  assert.match(page.container.querySelector('tbody').textContent,/paused/);
+  assert.match(page.container.querySelector('.network-stats').textContent,/Reported Devices/);
+  assert.equal([...page.container.querySelectorAll('a')].find(a=>a.textContent==='Add Connection').getAttribute('href'),'/settings?tab=Connections&setup=choose');
+ }finally{await page.close()}
+});
+test('map distinguishes unverified, partially available and explicitly offline nodes',async()=>{
+ let state={nodeInventory:{complete:false},nodes:[{name:'one',status:'unknown'}]};
+ const page=await mounted('pages/Network.tsx',{},async p=>p==='/proxmox'?state:{});try{
+  const root=()=>page.container.querySelector('.cluster-topology-root small').textContent;
+  assert.equal(root(),'Unknown');
+  state={...state,nodes:[{name:'one',status:'online'}]};await refresh('/proxmox');assert.equal(root(),'Partial availability');
+  state={nodeInventory:{complete:true,members:['one']},nodes:[{name:'one',status:'offline'}]};await refresh('/proxmox');assert.equal(root(),'Nodes unavailable');
+ }finally{await page.close()}
+});

@@ -21,3 +21,11 @@ test('verified membership never recreates a departed node from stale guest rows 
 test('unverified membership retains a guest-referenced unknown node without claiming its removal',()=>{assert.equal(clusterTopology({nodeInventory:{complete:false,members:[]},vms:[{node:'node02',id:200}]}).nodes[0].name,'node02')});
 
 test('guest display names never fall back to VM or CT numbers',()=>{assert.equal(topologyGuestName({id:100,name:'Control VM',kind:'qemu'}),'Control VM');assert.equal(topologyGuestName({id:100,name:'100',kind:'qemu'}),'Unnamed virtual machine');assert.equal(topologyGuestName({id:130,kind:'lxc'}),'Unnamed container')});
+
+test('running QEMU processes preserve paused and suspended guest power states on the map',()=>{
+ for(const powerStatus of ['paused','suspended']){
+  const tree=clusterTopology({nodes:[{name:'a',status:'online'}],vms:[{node:'a',id:104,status:'running',powerStatus}]});
+  assert.equal(topologyState(tree.nodes[0].guests[0],'online'),powerStatus);
+  assert.equal(topologyState(tree.nodes[0].guests[0],'offline'),'unknown');
+ }
+});
