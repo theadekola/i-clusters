@@ -1,3 +1,4 @@
+import {readDurableJson,writeDurableJson} from './durable-json.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -35,5 +36,15 @@ export function createClusterStore(file,secret=()=>process.env.JWT_SECRET,valida
 }
 const directory=process.env.DATA_DIR||path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../runtime');
 export const clusterStore=createClusterStore(path.join(directory,'proxmox-connection.json'));
-export function clusterConfig(){return clusterStore.read()||{name:'Environment cluster',url:process.env.PROXMOX_URL?.replace(/\/$/,''),tokenId:process.env.PROXMOX_TOKEN_ID,tokenSecret:process.env.PROXMOX_TOKEN_SECRET,verifyTls:process.env.PROXMOX_VERIFY_TLS!=='false'};}
+const disconnected=path.join(directory,'proxmox-disconnected.json');
+export function disconnectCluster(){
+ const config=clusterConfig();
+ if(config.url)writeDurableJson(disconnected,{url:config.url,name:config.name});
+ clusterStore.remove();
+}
+export function clusterConfig(){
+ const saved=clusterStore.read();if(saved)return saved;
+ const previous=readDurableJson(disconnected);
+ if(previous||process.env.ICLUSTERS_CLUSTER_PROFILE)return {name:previous?.name||'Default cluster',previousUrl:previous?.url};
+ return {name:'Environment cluster',url:process.env.PROXMOX_URL?.replace(/\/$/,''),tokenId:process.env.PROXMOX_TOKEN_ID,tokenSecret:process.env.PROXMOX_TOKEN_SECRET,verifyTls:process.env.PROXMOX_VERIFY_TLS!=='false'};}
 export function publicCluster(config){if(!config?.url)return null;const url=new URL(config.url);return {name:config.name,host:url.hostname,port:Number(url.port||443),tokenId:config.tokenId,verifyTls:config.verifyTls,hasCa:!!config.ca,source:clusterStore.read()?'saved':'environment'};}

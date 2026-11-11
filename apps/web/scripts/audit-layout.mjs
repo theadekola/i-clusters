@@ -97,17 +97,32 @@ const certArgs=tls.https?['--ignore-certificate-errors-spki-list='+createHash('s
 const listen={host:'127.0.0.1',port:0,...tls};
 const failures=[],server=await (process.env.LAYOUT_PRODUCTION==='1'?preview({root,preview:listen}):createServer({root,server:listen}));
 let restartPower='running',restartVerified=false,restartRecord=null,allowRestartCompletion=false,restartWrites=[];
+const officeId='aaaa0000-0000-4000-8000-000000000001';
 let updateWrites=0;
 let browser,clusterSaves=0,clusterTests=0,aiModelReads=0,aiTests=0,aiSaves=0;
 try{
  if(server.listen)await server.listen();const base=server.resolvedUrls.local[0];
  browser=await chromium.launch({headless:true,...(browserExecutable?{executablePath:browserExecutable}:{}),args:['--no-sandbox','--disable-dev-shm-usage',...certArgs,...(browserTools?['--no-zygote','--single-process']:[])]});
- const page=await browser.newPage({ignoreHTTPSErrors:!!process.env.LAYOUT_HTTPS_CERT});if(process.env.LAYOUT_CONNECTION_CHOICES)page.on('dialog',dialog=>dialog.accept());
+ const context=await browser.newContext({ignoreHTTPSErrors:!!process.env.LAYOUT_HTTPS_CERT});
+ const page=await context.newPage();if(process.env.LAYOUT_CONNECTION_CHOICES)page.on('dialog',dialog=>dialog.accept());
  await page.addInitScript(locale=>{if(!localStorage.getItem('iclusters_language'))localStorage.setItem('iclusters_language',locale);if(!sessionStorage.getItem('language-login-audit'))localStorage.setItem('iclusters_access_token','layout-fixture');localStorage.setItem('iclusters_last_activity',String(Date.now()));},auditLocale);
  await page.addInitScript(theme=>{if(theme)localStorage.setItem('iclusters_appearance',JSON.stringify({theme,preset:'ocean'}))},process.env.LAYOUT_THEME||'');
- await page.route('**/api/**',async route=>{
+ await page.context().route('**/api/**',async route=>{
   readCount++;if(checkRefresh)await new Promise(resolve=>setTimeout(resolve,150));
   const path=new URL(route.request().url()).pathname.replace('/api','');
+  if(process.env.LAYOUT_CLUSTER_SWITCH){
+   if(path==='/cluster-profiles')return route.fulfill({json:{clusters:[
+    {id:'default',name:'Homelab',configured:true,endpoint:'home.example:8006'},
+    {id:officeId,name:'Office Cluster',configured:true,endpoint:'office.example:8006'}
+   ]}});
+   if(path.startsWith('/cluster-profiles/'+officeId+'/api/')){
+    const local=path.slice(('/cluster-profiles/'+officeId+'/api').length);
+    assert.equal(route.request().method(),'GET','Switching clusters only reads the selected environment');
+    assert.ok(!['/users','/auth/me','/cluster-profiles'].includes(local),'Account routes stay global');
+    const result=fixture(local);
+    return route.fulfill({json:local==='/proxmox'?{...result,cluster:{name:'Office Cluster',url:'https://office.example:8006'}}:result});
+   }
+  }
   if(process.env.LAYOUT_GUEST_RESTART){
    if(path==='/connections/proxmox/guests')return route.fulfill({json:{guests:[{id:'100',node:'node01',name:'Control-VM',status:restartVerified?'connected':'disabled'}]}});
    if(path==='/node-agents/guest/agent')return route.fulfill({json:{result:{requiresPowerCycle:true,agentVerified:false,message:'Setup installed. Shutdown and start required.'}}});
@@ -304,6 +319,39 @@ try{
     }
    }
 
+  }
+  if(process.env.LAYOUT_CLUSTER_SWITCH){
+   await page.goto(base+'proxmox?tab=Virtual+Machines&vmid=100');
+   const header=page.getByRole('button',{name:'Switch cluster',exact:true});
+   await header.filter({hasText:'Homelab'}).waitFor();
+   const toggle=await page.locator('.nav-toggle').boundingBox(),button=await header.boundingBox();
+   assert.ok(button.x>=toggle.x+toggle.width-1&&button.x-toggle.x-toggle.width<28&&Math.abs((button.y+button.height/2)-(toggle.y+toggle.height/2))<5,'Switcher sits immediately beside the hamburger');
+   const other=await page.context().newPage();
+   try{
+    await other.goto(base+'proxmox');
+    await other.getByRole('heading',{name:/Proxmox Cluster: Homelab/}).waitFor();
+    await header.click();
+    const dialog=page.getByRole('dialog',{name:'Switch cluster',exact:true});
+    assert.ok(await dialog.getByRole('button',{name:'Add cluster',exact:true}).isVisible());
+    await dialog.getByRole('button',{name:/Office Cluster/}).click();
+    const office=base+'clusters/'+officeId+'/proxmox';
+    await page.waitForURL(office);
+    await page.getByRole('heading',{name:/Proxmox Cluster: Office Cluster/}).waitFor();
+    await page.reload();await header.filter({hasText:'Office Cluster'}).waitFor();
+    await other.route('**/api/auth/me',r=>r.fulfill({json:{user:{id:'viewer',name:'Viewer',role:'viewer'}}}));
+    await other.reload();await other.getByRole('heading',{name:/Proxmox Cluster: Homelab/}).waitFor();
+    await other.getByRole('button',{name:'Switch cluster',exact:true}).click();
+    const viewerDialog=other.getByRole('dialog',{name:'Switch cluster'});
+    await viewerDialog.getByRole('button',{name:/Office Cluster/}).waitFor();
+    assert.equal(await viewerDialog.getByRole('button',{name:'Add cluster',exact:true}).count(),0);
+    await header.click();await dialog.getByRole('button',{name:'Add cluster',exact:true}).click();
+    const add=page.getByRole('dialog',{name:'Add Cluster',exact:true});
+    assert.equal(await add.locator('input[name=host]').inputValue(),'');
+    assert.equal(await add.locator('input[name=verifyTls]').isChecked(),true);
+    await add.getByRole('button',{name:'Cancel',exact:true}).click();
+    await dialog.getByRole('button',{name:/Homelab/}).click();
+    await page.waitForURL(base+'proxmox');
+   }finally{await other.close()}
   }
   if(process.env.LAYOUT_UPDATE_NOTICE==='available'&&!process.env.LAYOUT_ROLE){
    await page.goto(base);await page.getByRole('button',{name:'Review software update',exact:true}).click();

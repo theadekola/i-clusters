@@ -15,3 +15,15 @@ PVEAdmin supports VM/CT power and configuration but does not grant Proxmox ACL a
 New connections accept self-signed HTTPS certificates. Editing retains the existing verification policy and retains a saved CA only for the same host and port. Secrets are encrypted on the server and are never returned to the browser; re-enter the token secret when editing.
 
 Reference: [Proxmox user management and API tokens](https://pve.proxmox.com/pve-docs/pveum.1.html).
+
+## Switch between clusters
+
+1. Sign in as the installation owner and open **Switch cluster** beside the hamburger menu. An existing installation shows its current Proxmox connection here automatically.
+2. Choose **Add cluster**. Give the cluster a recognisable name and enter one reachable Proxmox API endpoint, its token ID and its secret. TLS verification is enabled in this form. Supply the issuing public CA certificate for a private CA. **Test Connection** previews discovery and checks permissions. **Save** repeats those checks and saves the profile.
+3. Close the success message to open the new cluster. Use the header button to return to any saved cluster. The button shows the current cluster name. The list shows its endpoint to distinguish clusters with similar names.
+
+Each browser tab keeps its own cluster in its address. You can bookmark a cluster or monitor two side by side. Switching opens the same main page and clears guest selections. A maintenance task already submitted to Proxmox stays with the cluster that accepted it. Switch back to follow its progress.
+
+Accounts and roles are shared across the installation. Each account has its existing role on every saved cluster. Monitoring history, audit views, connector pairings, Docker hosts, SSH approvals, and infrastructure operations belong to the selected cluster. Configure each cluster's integrations there. Pair one connector per node where needed, using the instructions generated in that cluster. Register each independent cluster once, using a stable hostname for its API. Removing an added cluster takes it out of the switcher. Adding the same endpoint again restores access to that cluster’s saved history and pairings.
+
+The controller must be able to reach each Proxmox endpoint and any SSH targets used for management. Connectors must be able to reach the controller over HTTPS. Back up the entire controller runtime, PostgreSQL database and original encryption secrets together. Additional profiles live under the runtime's `clusters/` directory. The original connection keeps its existing files, URLs and connector addresses.

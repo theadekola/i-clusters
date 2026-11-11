@@ -4,7 +4,7 @@ Owners open **Settings → Connections → Add Connection**. Shortcuts on Proxmo
 
 ## Proxmox Node
 
-Test and save the Proxmox API connection using the existing token, CA and permission controls. i-Clusters supports one active API connection. Saving replaces that connection and verifies resource access first; a successful test does not grant management permissions.
+Test and save the Proxmox API connection using the existing token, CA and permission controls. Use **Switch cluster** beside the hamburger menu to add an independent cluster. Saving verifies its resource access first; a successful test does not grant management permissions.
 
 Pair each Proxmox node for Docker guest discovery. The root installer requires qm, pct, Python 3, curl and systemd. Its outbound HTTPS connector discovers running guests without exposing their Docker API ports. The pairing code expires after ten minutes and can be consumed once. Existing connectors remain compatible. Display names are separate from the node hostname used by guest setup.
 
@@ -22,7 +22,7 @@ Click **Verify & Connect** after installation. i-Clusters resolves the connector
 
 ## Advanced: Direct Docker API
 
-Use an already configured Docker HTTPS endpoint with trusted CA and client certificates. Test Connection checks the proposed endpoint. Save & Connect also checks the Engine before encrypting credentials. One direct endpoint is supported. Pairing does not require a direct endpoint; unconfigured direct endpoints no longer appear as errors in host selectors.
+Use an already configured Docker HTTPS endpoint with trusted CA and client certificates. Test Connection checks the proposed endpoint. Save & Connect also checks the Engine before encrypting credentials. Each cluster supports one direct Docker endpoint. Pairing does not require a direct endpoint; unconfigured direct endpoints no longer appear as errors in host selectors.
 
 ## Connection cards and removal
 

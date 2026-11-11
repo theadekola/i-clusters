@@ -7,7 +7,7 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const fail = (message,status=409) => Object.assign(Error(message),{status});
 const terminal = ['complete','failed','reviewed'];
 const publicRow = ({owner_id,cluster,revision,...row}) => row;
-const clusterId = config => createHash('sha256').update(String(config.url||'').replace(/\/$/,'')).digest('hex');
+const clusterId = config => createHash('sha256').update(String(process.env.ICLUSTERS_CLUSTER_PROFILE||config.url||'').replace(/\/$/,'')).digest('hex');
 const bootGrace = 30000;
 
 export function createGuestRestarts(db,{config=clusterConfig,request=pve,now=Date.now}={}) {

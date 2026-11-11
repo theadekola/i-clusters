@@ -1,6 +1,7 @@
+import {clusterStorageKey,clusterApiPath,approvalDescription} from './cluster-context';
 import {updateAwareError} from './software-update-state';
 import {requestWithDeadline,waitForRequest} from './request-deadline';
-export function setDockerHost(id:string){localStorage.setItem('iclusters_docker_host',id);window.dispatchEvent?.(new Event('iclusters-connection'));}
+export function setDockerHost(id:string){localStorage.setItem(clusterStorageKey('iclusters_docker_host'),id);window.dispatchEvent?.(new Event('iclusters-connection'));}
 import {getAccessToken,getRefreshToken,setTokens,clearTokens,usesCookieSession} from './session';
 export {getAccessToken,setTokens,clearTokens} from './session';
 const API = import.meta.env.VITE_API_URL || '';
@@ -55,17 +56,17 @@ export async function api<T = any>(path: string, options: RequestInit = {}, conf
   try{
   const headers:any = { 'X-IClusters-Browser':'1', ...Object.fromEntries(new Headers(options.headers).entries()) };
   if(!Object.hasOwn(headers,'content-type'))headers['Content-Type']='application/json';
-  const host=localStorage.getItem('iclusters_docker_host');if(host&&!Object.hasOwn(headers,'x-iclusters-docker-host')&&(/^\/(?:docker|actions\/docker)(?:\/|\?|$)|^\/(?:storage|network)(?:\?|$)/.test(path)))headers['X-IClusters-Docker-Host']=host;
+  const host=localStorage.getItem(clusterStorageKey('iclusters_docker_host'));if(host&&!Object.hasOwn(headers,'x-iclusters-docker-host')&&(/^\/(?:docker|actions\/docker)(?:\/|\?|$)|^\/(?:storage|network)(?:\?|$)/.test(path)))headers['X-IClusters-Docker-Host']=host;
   const token=getAccessToken(); if(token) headers.Authorization=`Bearer ${token}`;
   if(confirmation) headers['X-IClusters-Confirm']=confirmation;
   const deadline=options.method==='POST'&&/^\/ssh\/session\/[^/]+$/.test(path)?10000:/^\/proxmox\/storage-file-upload\//.test(path)?7200000:/^\/storage\/datasets\/(?:guest-(?:layout|expand)|edit)(?:\?|$)/.test(path)?300000:/^\/operations\/[^/]+\/tools$/.test(path)?390000:path.startsWith('/auth/')?30000:/^\/(?:node-agents\/guest\/(?:agent|bootstrap|setup)|docker\/image\/(?:pull|build))(?:[/?]|$)/.test(path)?1020000:undefined;
   const readResponse=async(res:Response)=>({res,body:rawResponse&&res.ok?undefined:await res.json().catch(()=>({}))});
-  let {res,body} = await requestWithDeadline(`${API}/api${path}`, { ...options, headers },readResponse,deadline,rawResponse);
+  let {res,body} = await requestWithDeadline(`${API}${clusterApiPath(path)}`, { ...options, headers },readResponse,deadline,rawResponse);
 
   if(res.status===401 && (!path.startsWith('/auth/')||path==='/auth/me')){
     if(renewedSession(token)||await waitForRequest(refreshAccessToken(token),options.signal)){
       renewedSession(token);
-      headers.Authorization=`Bearer ${getAccessToken()}`;({res,body}=await requestWithDeadline(`${API}/api${path}`,{...options,headers},readResponse,deadline,rawResponse));
+      headers.Authorization=`Bearer ${getAccessToken()}`;({res,body}=await requestWithDeadline(`${API}${clusterApiPath(path)}`,{...options,headers},readResponse,deadline,rawResponse));
     }
   }
   if(rawResponse&&res.ok)return res as T;
@@ -80,12 +81,12 @@ export async function api<T = any>(path: string, options: RequestInit = {}, conf
 }
 
 export async function confirmedApi<T=any>(path:string, options:RequestInit={},review?:{title?:string;description?:string}):Promise<T>{
- const host=localStorage.getItem('iclusters_docker_host')||'';let confirmation:string|undefined,grant='';
+ const host=localStorage.getItem(clusterStorageKey('iclusters_docker_host'))||'';let confirmation:string|undefined,grant='';
  for(let attempt=0;attempt<4;attempt++){
-  if(review&&host!==(localStorage.getItem('iclusters_docker_host')||''))throw new Error('Docker host changed. Action cancelled.');
+  if(review&&host!==(localStorage.getItem(clusterStorageKey('iclusters_docker_host'))||''))throw new Error('Docker host changed. Action cancelled.');
   try{return await api<T>(path,{...options,headers:{...Object.fromEntries(new Headers(options.headers).entries()),'X-IClusters-Docker-Host':host,...(grant?{'X-IClusters-SSH-Grant':grant}:{})}},confirmation)}catch(e:any){
-   if(e.status===409&&e.body?.confirmationPhrase){const phrase=e.body.confirmationPhrase;if(e.body.sshTarget){grant=await new Promise<string>((resolve,reject)=>window.dispatchEvent(new CustomEvent('iclusters-ssh-approval',{detail:{target:e.body.sshTarget,title:review?.title,description:review?.description||e.body.approvalDescription,path,dockerHost:host,method:options.method||'POST',body:JSON.parse(String(options.body||'{}')),resolve,reject}})));confirmation=phrase;continue;}const entered=await new Promise<string>((resolve,reject)=>window.dispatchEvent(new CustomEvent('iclusters-action-confirmation',{detail:{phrase,path,title:review?.title,description:review?.description||e.body.approvalDescription,resolve,reject}})));if(entered!==phrase)throw new Error('Confirmation cancelled');confirmation=phrase;continue;}
-   if(e.status===428&&e.body?.sshTarget){grant=await new Promise<string>((resolve,reject)=>window.dispatchEvent(new CustomEvent('iclusters-ssh-approval',{detail:{target:e.body.sshTarget,title:review?.title,description:review?.description||e.body.approvalDescription,path,dockerHost:host,method:options.method||'POST',body:JSON.parse(String(options.body||'{}')),resolve,reject}})));continue;}
+   if(e.status===409&&e.body?.confirmationPhrase){const phrase=e.body.confirmationPhrase;if(e.body.sshTarget){grant=await new Promise<string>((resolve,reject)=>window.dispatchEvent(new CustomEvent('iclusters-ssh-approval',{detail:{target:e.body.sshTarget,title:review?.title,description:approvalDescription(review?.description||e.body.approvalDescription),path,dockerHost:host,method:options.method||'POST',body:JSON.parse(String(options.body||'{}')),resolve,reject}})));confirmation=phrase;continue;}const entered=await new Promise<string>((resolve,reject)=>window.dispatchEvent(new CustomEvent('iclusters-action-confirmation',{detail:{phrase,path,title:review?.title,description:approvalDescription(review?.description||e.body.approvalDescription),resolve,reject}})));if(entered!==phrase)throw new Error('Confirmation cancelled');confirmation=phrase;continue;}
+   if(e.status===428&&e.body?.sshTarget){grant=await new Promise<string>((resolve,reject)=>window.dispatchEvent(new CustomEvent('iclusters-ssh-approval',{detail:{target:e.body.sshTarget,title:review?.title,description:approvalDescription(review?.description||e.body.approvalDescription),path,dockerHost:host,method:options.method||'POST',body:JSON.parse(String(options.body||'{}')),resolve,reject}})));continue;}
    throw e;
   }
  }

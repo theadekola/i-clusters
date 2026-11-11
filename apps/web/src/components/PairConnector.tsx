@@ -1,3 +1,4 @@
+import {connectorBase} from '../cluster-context';
 import RefreshButton from './RefreshButton';
 import AutomaticNodePairing from './AutomaticNodePairing';
 import {useEffect,useRef,useState} from 'react';
@@ -7,7 +8,7 @@ import {createPortal} from 'react-dom';
 import {api,setDockerHost} from '../api';
 
 export default function PairConnector({kind,onPaired,onComplete}:{kind:'proxmox'|'docker';onPaired?:()=>void;onComplete?:()=>void}){
- const navigate=useNavigate(),secure=window.location.protocol==='https:',origin=window.location.origin;
+ const navigate=useNavigate(),secure=window.location.protocol==='https:',origin=window.location.origin+connectorBase;
  const [automatic,setAutomatic]=useState(false),[installing,setInstalling]=useState(false);
  const automaticTrigger=useRef<HTMLButtonElement>(null),previousAutomatic=useRef(false);
  useEffect(()=>{if(previousAutomatic.current&&!automatic)automaticTrigger.current?.focus({preventScroll:true});previousAutomatic.current=automatic},[automatic]);

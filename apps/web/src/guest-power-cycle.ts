@@ -1,3 +1,4 @@
+import {clusterBase} from './cluster-context';
 import {api,confirmedApi} from './api';
 
 export type GuestKind='vm'|'lxc';
@@ -56,5 +57,5 @@ export async function submitRestart(target:{node:string;kind:GuestKind;id:string
 export function historyLink(record:Pick<RestartRecord,'id'> & {task?:string|null}){
   const params=new URLSearchParams({tab:'Tasks & Logs',restart:record.id});
   if(record.task)params.set('task',record.task);
-  return '/proxmox?'+params;
+  return clusterBase+'/proxmox?'+params;
 }

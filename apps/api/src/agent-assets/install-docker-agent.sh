@@ -6,7 +6,7 @@ command -v python3 >/dev/null
 command -v systemctl >/dev/null
 command -v curl >/dev/null
 read -rp 'i-Clusters HTTPS URL: ' hub
-python3 -c 'import sys,urllib.parse; u=urllib.parse.urlsplit(sys.argv[1]); assert u.scheme=="https" and u.hostname and not u.username and not u.password and u.path in ("","/") and not u.query and not u.fragment, "Enter an i-Clusters HTTPS origin without credentials or a path"' "$hub"
+python3 -c 'import re,sys,urllib.parse; u=urllib.parse.urlsplit(sys.argv[1]); assert u.scheme=="https" and u.hostname and not u.username and not u.password and (u.path in ("","/") or re.fullmatch(r"/api/cluster-profiles/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",u.path)) and not u.query and not u.fragment, "Enter the i-Clusters HTTPS address shown in the pairing dialog"' "$hub"
 if ! test -S /var/run/docker.sock; then
   . /etc/os-release
   case "$ID" in debian|ubuntu) ;; *) echo 'Install and start Docker manually on this OS, then retry.'; exit 1 ;; esac

@@ -1,3 +1,4 @@
+import {clusterStorageKey} from './cluster-context';
 import {isSoftwareUpdating} from './software-update-state';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from './api';
@@ -8,7 +9,7 @@ type Resource={path:string;scope:string;data:any;hasData:boolean;error:string;lo
 const resources=new Map<string,Resource>();
 let eventWindow:Window|undefined;
 const identity=()=>{const token=window.sessionStorage.getItem('iclusters_access_token')||window.localStorage.getItem('iclusters_access_token')||'';try{const claim=JSON.parse(window.atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));if(typeof claim.sub==='string')return JSON.stringify([claim.sub,claim.role]);}catch{}return token};
-const scope=()=>JSON.stringify([identity(),window.localStorage.getItem('iclusters_docker_host')||'']);
+const scope=()=>JSON.stringify([identity(),window.localStorage.getItem(clusterStorageKey('iclusters_docker_host'))||'']);
 const emit=(entry:Resource)=>entry.listeners.forEach(notify=>notify());
 function invalidate(){for(const entry of resources.values()){entry.updated=0;entry.generation++;entry.controller?.abort();entry.pending=undefined;entry.loading=false;emit(entry);}queueMicrotask(()=>{for(const entry of resources.values())if(entry.listeners.size&&entry.scope===scope())void load(entry,true,true);});}
 function clear(){for(const entry of resources.values()){entry.generation++;entry.controller?.abort();entry.hasData=false;entry.data=undefined;entry.error='';entry.updated=0;entry.pending=undefined;entry.loading=false;emit(entry);}resources.clear();}
