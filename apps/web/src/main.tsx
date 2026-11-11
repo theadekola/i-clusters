@@ -1,3 +1,4 @@
+import {clusterBase} from './cluster-context';
 import InterfaceMotion from './components/InterfaceMotion';
 import {initializeLocale} from './i18n/locale';
 import './i18n/language.css';
@@ -34,7 +35,7 @@ if(location.pathname==='/connection-check.html'){
 }else{
  applyAppearance();
  void initializeLocale().then(()=>ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode><BrowserRouter><InterfaceMotion/><PageBoundary><App /><InstallPrompt/></PageBoundary></BrowserRouter></React.StrictMode>
+  <React.StrictMode><BrowserRouter basename={clusterBase||'/'}><InterfaceMotion/><PageBoundary><App /><InstallPrompt/></PageBoundary></BrowserRouter></React.StrictMode>
  ));
  startWorkerUpdates();
 }

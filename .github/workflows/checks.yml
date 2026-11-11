@@ -72,6 +72,8 @@ jobs:
           ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules node apps/web/scripts/check-dashboard-recovery.mjs
           ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules node apps/web/scripts/check-popup-layout.mjs
           ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_CHECK_TYPOGRAPHY=1 LAYOUT_WIDTHS=1280,768,390,320 node apps/web/scripts/audit-layout.mjs
+      - name: Check cluster switching on desktop and mobile
+        run: ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_ROUTES=/proxmox LAYOUT_WIDTHS=1280,390,320 LAYOUT_CLUSTER_SWITCH=1 node apps/web/scripts/audit-layout.mjs
       - name: Exercise live language switching on desktop and mobile
         run: ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_ROUTES=/ LAYOUT_WIDTHS=1280,390 LAYOUT_CHECK_LANGUAGES=1 node apps/web/scripts/audit-layout.mjs
       - name: Save popup layout screenshots on failure
@@ -90,7 +92,9 @@ jobs:
           docker compose up -d --build --wait --wait-timeout 180
           docker compose exec -T caddy cat /data/caddy/pki/authorities/local/root.crt > /tmp/iclusters-ci-root.crt
           curl --fail --show-error --cacert /tmp/iclusters-ci-root.crt https://localhost:6002/api/health
-          docker compose run --rm --no-deps -T -v "$PWD/apps/api/test:/app/test:ro" api sh -c 'OWNER_SETUP_TEST_DATABASE_URL="$DATABASE_URL" node --test test/owner-setup-postgres.test.js test/guest-restarts.test.js'
+          mkdir -p "$RUNNER_TEMP/cluster-test-tls"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=localhost -keyout "$RUNNER_TEMP/cluster-test-tls/key.pem" -out "$RUNNER_TEMP/cluster-test-tls/cert.pem"
+          docker compose run --rm --no-deps -T -e ICLUSTERS_TEST_TLS_DIR=/tmp/cluster-test-tls -v "$RUNNER_TEMP/cluster-test-tls:/tmp/cluster-test-tls:ro" -v "$PWD/apps/api/test:/app/test:ro" api sh -c 'OWNER_SETUP_TEST_DATABASE_URL="$DATABASE_URL" node --test test/owner-setup-postgres.test.js test/guest-restarts.test.js test/multi-cluster.test.js'
           NODE_EXTRA_CA_CERTS=/tmp/iclusters-ci-root.crt node deployment/check-registration.mjs
           NODE_EXTRA_CA_CERTS=/tmp/iclusters-ci-root.crt node deployment/check-mobile-assets.mjs
           NODE_EXTRA_CA_CERTS=/tmp/iclusters-ci-root.crt node deployment/check-browser-certificate.mjs

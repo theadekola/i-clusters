@@ -1,0 +1,9 @@
+.topbar .cluster-switch-button{display:inline-flex;align-items:center;gap:.4rem;flex:0 1 auto;min-width:0;max-width:16rem;min-height:36px;padding:.35rem .55rem;border:1px solid var(--theme-border,#31465a);border-radius:8px;color:inherit;background:var(--theme-input,#102132);font:inherit;cursor:pointer}
+.cluster-switch-button span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.cluster-switch-button svg,.cluster-switch-list svg{flex:none}
+.cluster-switch-list{display:grid;gap:.5rem}
+.cluster-switch-list .btn{width:100%;justify-content:flex-start;text-align:start}
+.cluster-switch-list .btn span{overflow-wrap:anywhere;flex:1}
+.cluster-switch-list [aria-current=true]{border-color:var(--theme-accent,#498fcf)}
+@media(max-width:600px){.topbar.topbar{gap:5px}.topbar .cluster-switch-button{min-height:40px;padding:.25rem .35rem;gap:.25rem;font-size:.79rem}.cluster-switch-button svg:last-child{display:none}}
+.cluster-switch-list small{display:block;font-weight:400;opacity:.8}

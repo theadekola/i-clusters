@@ -94,6 +94,8 @@ export async function migrate(db = pool) {
       ip TEXT,
       request_id TEXT
     );
+    ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS cluster_id TEXT NOT NULL DEFAULT 'default';
+    CREATE INDEX IF NOT EXISTS audit_logs_cluster_time ON audit_logs(cluster_id,created_at DESC);
     CREATE TABLE IF NOT EXISTS action_approvals (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL,

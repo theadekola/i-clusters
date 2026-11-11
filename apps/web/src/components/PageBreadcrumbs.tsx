@@ -1,3 +1,4 @@
+import {clusterStorageKey} from '../cluster-context';
 import {useEffect,useState} from 'react';
 import {Link,useLocation} from 'react-router-dom';
 import {useApi} from '../hooks';
@@ -10,8 +11,8 @@ function Trail({host}:{host?:string}){
 }
 function DockerTrail(){
  const live=useApi<any>('/docker/hosts',{hosts:[]});
- const [selected,setSelected]=useState(()=>localStorage.getItem('iclusters_docker_host')||'');
- useEffect(()=>{const changed=()=>setSelected(localStorage.getItem('iclusters_docker_host')||'');window.addEventListener('iclusters-connection',changed);return()=>window.removeEventListener('iclusters-connection',changed)},[]);
+ const [selected,setSelected]=useState(()=>localStorage.getItem(clusterStorageKey('iclusters_docker_host'))||'');
+ useEffect(()=>{const changed=()=>setSelected(localStorage.getItem(clusterStorageKey('iclusters_docker_host'))||'');window.addEventListener('iclusters-connection',changed);return()=>window.removeEventListener('iclusters-connection',changed)},[]);
  const host=live.data.hosts?.find((item:any)=>item.id===selected);
  return <Trail host={host?.name||host?.node||(selected?'Selected host':'Direct Engine')}/>;
 }

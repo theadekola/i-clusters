@@ -1,4 +1,5 @@
 """Fixed SSH bootstrap, scoped to one verified Proxmox node. Input is never shell text."""
+import re
 import urllib.error
 import ast,base64,fcntl,hashlib,json,os,pathlib,shutil,socket,ssl,subprocess,sys,tempfile,urllib.request,urllib.parse,zlib
 
@@ -36,7 +37,7 @@ def execute(payload,root=pathlib.Path('/'),run=subprocess.run,hostname=socket.ge
                 docker_commands=[['systemctl','start','docker']]
     if not docker and not all(which(command) for command in ['qm','pct','python3','systemctl']): raise RuntimeError('not-proxmox')
     url=urllib.parse.urlsplit(payload['url'])
-    if url.scheme!='https' or not url.hostname or url.username or url.password or url.path not in ('','/') or url.query or url.fragment: raise RuntimeError('invalid-url')
+    if url.scheme!='https' or not url.hostname or url.username or url.password or (url.path not in ('','/') and not re.fullmatch(r'/api/cluster-profiles/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}',url.path)) or url.query or url.fragment: raise RuntimeError('invalid-url')
     context=ssl.create_default_context(cadata=payload.get('ca') or None)
     if check_url: check_url(payload['url'],context)
     else:

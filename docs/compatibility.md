@@ -11,6 +11,6 @@ Applies to 1.0.0. Developed by The Adekola Labs.
 | Guest setup | UI offers supported Debian/Ubuntu Linux flows; VM paths need guest agent or verified SSH bootstrap | No Windows Docker provisioning. Do not run generic setup in appliances such as TrueNAS. |
 | Browsers | Responsive web interface; automated DOM/UI tests and wake-lock lifecycle simulations | Record accessibility and performance on the specific iOS, Android and desktop devices used by the installation. Wake locks are best effort. |
 | Notifications | Nine configured external channel adapters and local activity | Test the actual configured destination and outage/recovery delivery. Queuing is not proof of delivery. |
-| Deployment tenancy | One controller, database and API process per customer | User roles are installation-wide. No shared SaaS tenant isolation or horizontal multi-writer journal coordination. |
+| Deployment tenancy | One controller and account database per installation, with an isolated runtime for each additional cluster | User roles are installation-wide. No shared SaaS tenant isolation or horizontal multi-writer journal coordination. |
 
 There is no advertised maximum fleet size or concurrent-user guarantee yet. Complete a measured soak at the intended fleet size before agreeing capacity or availability targets. Unsupported integrations must not be advertised based on a screenshot or a successful TCP connection.

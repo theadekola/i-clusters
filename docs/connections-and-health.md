@@ -35,8 +35,7 @@ date and time, with the complete timestamp available on hover.
 
 **Add Connection** offers Proxmox API, Proxmox node pairing, standalone Docker,
 TrueNAS, AI Assistant and notification channels. Direct Docker HTTPS API setup
-is under Advanced connection methods. One active Proxmox API endpoint and one
-optional direct Docker API endpoint are supported. Saving replaces that endpoint.
+is under Advanced connection methods. Each saved cluster has its own Proxmox API endpoint and optional direct Docker endpoint. Select the cluster beside the hamburger menu before adding its connections.
 After connecting Proxmox, pair each node when Docker guest discovery is needed.
 Secrets stay encrypted on the server and saved values are never shown in forms.
 A saved configuration is distinct from a successful delivery or connection test.

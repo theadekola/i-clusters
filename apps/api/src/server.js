@@ -1,22 +1,22 @@
-import {createHistoryCleanup} from './alert-history-cleanup.js';
-import {get,mutate} from './store.js';
 import 'dotenv/config';
 import path from 'node:path';
-import fs from 'node:fs';
-import {fileURLToPath} from 'node:url';
-import {apiPolicy} from './api-policy.js';
+import express from 'express';
 import {startUsageReports} from './product-usage.js';
-import { migrate,pool } from './db.js';
-import { createApp } from './app.js';
-import { monitor } from './monitor.js';
+import {migrate,pool} from './db.js';
+import {createApp} from './app.js';
+import {closeSessionAccess} from './ssh-access.js';
+import {createClusterProfiles,dataDirectory} from './cluster-profiles.js';
+import {createClusterWorkers} from './cluster-workers.js';
+import {runClusterService} from './cluster-service.js';
+
 await migrate();
 startUsageReports(pool);
-const server=createApp({operationJournalFile:path.join(process.env.DATA_DIR||fileURLToPath(new URL('../runtime',import.meta.url)),'docker-operation-journal.json')}).listen(Number(process.env.PORT||6000),'0.0.0.0',()=>console.log('i-Clusters live API listening'));
-// Per-route middleware retains the shorter deadline for ordinary request bodies.
-server.requestTimeout=7200000;
-const historyCleanup=createHistoryCleanup({get,mutate});
-const cleanup=()=>{try{historyCleanup.runDue()}catch(error){console.error('Alert history cleanup:',error.message)}};
-const sample=()=>{if(process.env.DATA_DIR&&fs.existsSync(path.join(process.env.DATA_DIR,'maintenance.json')))return;cleanup();return monitor.sample(true).catch(error=>console.error('Monitoring:',error.message));};
-sample();
-const timer=setInterval(sample,apiPolicy.monitorIntervalMs);timer.unref();
-for(const signal of ['SIGTERM','SIGINT'])process.on(signal,()=>{clearInterval(timer);server.close(()=>process.exit(0));});
+const directory=dataDirectory(),profiles=createClusterProfiles(directory),workers=createClusterWorkers(profiles,directory);
+const gateway=express();
+if(process.env.TRUST_PROXY)gateway.set('trust proxy',Number(process.env.TRUST_PROXY)||1);
+gateway.disable('x-powered-by');
+gateway.use('/api/cluster-profiles/:id/api',workers.route);
+gateway.use(createApp({profiles,onClusterAdded:workers.sync,onSessionRevoked(user,sid){closeSessionAccess(user,sid);workers.revoke(user,sid)},
+  operationJournalFile:path.join(directory,'docker-operation-journal.json')}));
+runClusterService(gateway,{port:Number(process.env.PORT||6000),host:'0.0.0.0',controllerDirectory:directory,
+  onListen:port=>console.log('i-Clusters live API listening on',port),onSample:workers.sync,onStop:workers.close});

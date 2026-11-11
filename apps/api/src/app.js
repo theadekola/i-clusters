@@ -1,3 +1,5 @@
+import {createClusterProfiles} from './cluster-profiles.js';
+import {disconnectCluster} from './cluster-config.js';
 import {createGuestRestarts} from './guest-restarts.js';
 import {topologyConnections} from './topology-connections.js';
 import {retentionCleanup} from './retention-cleanup.js';
@@ -87,7 +89,7 @@ import { request,pve,docker,dockerSnapshot,proxmoxVmAction,proxmoxLxcAction,prox
 import { encode,required,integer,httpError,retention,pveWrite,backupJobs,createBackupJob,runBackupJob,toggleBackupJob,backupArchives,restoreArchive,truenas } from './infrastructure.js';
 
 
-export function createApp({authenticate=auth,authorize=requireRole,audit=writeAudit,monitor=liveMonitor,db=pool,configuration=configurationStore,activity=headerNotifications,notificationService=notifier,connectorUpdates=connectorUpdater,autoConnectorUpdates=automaticConnectorUpdates,connectionService=connectionActions,connectorAddress=connectorSSHAddress,guestPermissions=guestPermissionRepair,powerPermissions=powerPermissionSetup,guestConnectionReader=createGuestConnectionReader({config:clusterConfig}),imageUpdates=dockerImageUpdates,imageUpdateInstaller=installDockerImageUpdate,dockerUpdateQuery=docker,operationJournalFile,nodePairing=automaticNodePairing,storageEditor=storageResourceEditor,guestStorageService=guestStorage,storageConfigurationManager=storageConfigurationService}={}){
+export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:createClusterProfiles(),onClusterAdded=()=>{},onSessionRevoked=closeSessionAccess,authenticate=auth,authorize=requireRole,audit=writeAudit,monitor=liveMonitor,db=pool,configuration=configurationStore,activity=headerNotifications,notificationService=notifier,connectorUpdates=connectorUpdater,autoConnectorUpdates=automaticConnectorUpdates,connectionService=connectionActions,connectorAddress=connectorSSHAddress,guestPermissions=guestPermissionRepair,powerPermissions=powerPermissionSetup,guestConnectionReader=createGuestConnectionReader({config:clusterConfig}),imageUpdates=dockerImageUpdates,imageUpdateInstaller=installDockerImageUpdate,dockerUpdateQuery=docker,operationJournalFile,nodePairing=automaticNodePairing,storageEditor=storageResourceEditor,guestStorageService=guestStorage,storageConfigurationManager=storageConfigurationService}={}){
 
  const app=express(),readCache=createReadCache(),reportPerformance=createReportPerformance();
  app.use((req,res,next)=>{const started=performance.now();res.on('finish',()=>{if(req.method==='GET'&&req.route?.path)reportPerformance.record(req.route.path,performance.now()-started,res.statusCode)});next()});
@@ -148,9 +150,9 @@ export function createApp({authenticate=auth,authorize=requireRole,audit=writeAu
  app.post('/api/auth/mfa',loginLimiter,async(req,res)=>{try{browserSession(req);const {user,remember}=await completeMfaLogin(db,req.body.challengeToken,req.body.code);req.activityUser={sub:user.id,role:user.role};await db.query('UPDATE users SET last_login=NOW() WHERE id=$1',[user.id]);sessionResponse(req,res,{user:{id:user.id,username:user.username,name:user.name,role:user.role},...await issueTokens(user,{remember,device:req.get('User-Agent')})});}catch(e){res.status(e.status||503).json({error:e.status?e.message:'Account verification is temporarily unavailable.'});}});
  app.get('/api/auth/me',authenticate,(req,res)=>res.json({user:req.user}));
  app.use('/api',authenticate);
- app.use('/api',(req,res,next)=>{if(!['GET','HEAD'].includes(req.method)&&process.env.DATA_DIR&&existsSync(process.env.DATA_DIR+'/maintenance.json'))return res.status(503).json({error:'Controller maintenance is in progress. Retry after it completes.'});next();});
+ app.use('/api',(req,res,next)=>{if(!['GET','HEAD'].includes(req.method)&&(process.env.ICLUSTERS_CONTROLLER_DATA||process.env.DATA_DIR)&&existsSync((process.env.ICLUSTERS_CONTROLLER_DATA||process.env.DATA_DIR)+'/maintenance.json'))return res.status(503).json({error:'Controller maintenance is in progress. Retry after it completes.'});next();});
  app.use('/api/product',productRouter(db));
- app.use('/api/account',accountSecurityRouter({db,audit,limiter:loginLimiter,onSessionRevoked:closeSessionAccess}));
+ app.use('/api/account',accountSecurityRouter({db,audit,limiter:loginLimiter,onSessionRevoked}));
  app.use('/api',(req,res,next)=>{for(const [key,value] of Object.entries(req.headers))if(key.startsWith('x-homecloud-')&&!Object.hasOwn(req.headers,key.replace('x-homecloud-','x-iclusters-')))req.headers[key.replace('x-homecloud-','x-iclusters-')]=value;next()});
  app.use('/api',(req,res,next)=>agentContext.run({host:String(req.headers['x-iclusters-docker-host']||'')},next));
 
@@ -205,22 +207,44 @@ export function createApp({authenticate=auth,authorize=requireRole,audit=writeAu
  app.delete('/api/connections/docker',authorize('owner'),async(req,res)=>{dockerStore.remove();await monitor.invalidate();await audit(req,'connection.docker.remove','docker',{},'success');res.json({ok:true,connection:publicDocker()});});
  app.get('/api/connections/proxmox/verify',authorize('owner'),async(req,res)=>{const config=clusterConfig();if(!config.url)return res.json({status:'not-configured',message:'No Proxmox API connection configured.'});try{const resources=await pve('/cluster/resources',{},config);if(!Array.isArray(resources))throw new Error();res.json({status:'reachable',nodes:resources.filter(r=>r.type==='node').map(r=>({name:r.node,status:r.status}))});}catch{res.json({status:'error',message:'Cannot read Proxmox resources. Check token permissions, endpoint and TLS trust.'});}});
  app.get('/api/connections/proxmox',authorize('owner'),(req,res)=>res.json({cluster:publicCluster(clusterConfig())}));
- const testCluster=async input=>{
-   const config=validateCluster(input,clusterConfig());
+ const testCluster=async (input,saved=clusterConfig())=>{
+   const config=validateCluster(input,saved);
    try{const resources=await pve('/cluster/resources',{},config);
      if(!Array.isArray(resources))throw Object.assign(new Error(),{invalidResponse:true});
      if(!resources.some(r=>r.type==='node'))throw Object.assign(new Error(),{noNodes:true});
      return {config,nodes:resources.filter(r=>r.type==='node').map(r=>({name:r.node,status:r.status})),...(input.management===true?{management:await verifyProxmoxManagement(config,resources)}:{})};
    }catch(error){if(error.managementAccess)throw error;throw Object.assign(new Error(proxmoxTestError(error)),{status:502});}
  };
+ if(profiles){
+   app.get('/api/cluster-profiles',authorize('viewer'),(req,res)=>res.set('Cache-Control','no-store').json({clusters:profiles.list()}));
+   app.post('/api/cluster-profiles/test',authorize('owner'),async(req,res)=>{
+     const {nodes,management}=await testCluster({...req.body,management:true},null);
+     res.json({ok:true,nodes,management});
+   });
+   app.post('/api/cluster-profiles',authorize('owner'),async(req,res)=>{
+     const {config,nodes,management}=await testCluster({...req.body,management:true},null);
+     const primary=clusterConfig();
+     let profile;
+     if(!primary.url&&(!primary.previousUrl||new URL(primary.previousUrl).origin===new URL(config.url).origin)){
+       profiles.check(config);clusterStore.save(config);profile={id:'default',name:config.name};
+       await monitor.invalidate();
+     }else profile=profiles.add(config);
+     onClusterAdded();await audit(req,'connection.proxmox.add',profile.id,{name:profile.name,nodeCount:nodes.length},'success');
+     res.status(201).json({ok:true,profile,nodes,management});
+   });
+ }
  app.post('/api/connections/proxmox/test',authorize('owner'),async(req,res)=>{const {nodes,management}=await testCluster(req.body);res.json({ok:true,nodes,...(management?{management}:{})});});
  app.put('/api/connections/proxmox',authorize('owner'),async(req,res)=>{
-   const {config,nodes,management}=await testCluster(req.body);clusterStore.save(config);await monitor.invalidate();
+   const {config,nodes,management}=await testCluster(process.env.ICLUSTERS_CLUSTER_PROFILE?{...req.body,management:true}:req.body);
+   const current=clusterConfig(),bound=current.url||current.previousUrl;
+   if(process.env.ICLUSTERS_CLUSTER_PROFILE&&!current.url)throw httpError('This cluster connection was removed.',410);
+   if(bound&&new URL(bound).origin!==new URL(config.url).origin)throw httpError('Add a separate cluster to connect a different Proxmox endpoint.',409);
+   profiles?.check(config,'default');clusterStore.save(config);await monitor.invalidate();
    await audit(req,'connection.proxmox.save',config.name,{host:config.host,nodeCount:nodes.length},'success');
    res.json({ok:true,cluster:publicCluster(config),nodes,...(management?{management}:{})});
  });
  app.delete('/api/connections/proxmox',authorize('owner'),async(req,res)=>{
-   clusterStore.remove();await monitor.invalidate();await audit(req,'connection.proxmox.remove','proxmox',{},'success');
+   disconnectCluster();await monitor.invalidate();await audit(req,'connection.proxmox.remove','proxmox',{},'success');
    res.json({ok:true,cluster:publicCluster(clusterConfig())});
  });
  const connectionScope=()=>crypto.createHash('sha256').update(JSON.stringify([clusterConfig(),dockerConfig(),['truenas'].map(id=>configuration.resolve(id))])).digest('hex');
@@ -564,7 +588,7 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
    if(user.role==='owner'||roles[user.role]>=roles[req.user.role])throw httpError('Only lower-privilege non-owner accounts can be changed',403);
    return (await db.query(`UPDATE users SET status=CASE status WHEN 'active' THEN 'inactive' ELSE 'active' END WHERE id=$1 RETURNING id,name,status`,[req.params.id])).rows[0];
  },true);
- read('/audit',async()=>({logs:(await db.query(`SELECT id::text,created_at AS time,COALESCE(user_email,'system') AS "user",action,resource,details,status,COALESCE(ip,'-') ip FROM audit_logs ORDER BY created_at DESC LIMIT 500`)).rows}),'auditor');
+ read('/audit',async()=>({logs:(await db.query(`SELECT id::text,created_at AS time,COALESCE(user_email,'system') AS "user",action,resource,details,status,COALESCE(ip,'-') ip FROM audit_logs WHERE cluster_id=$1 ORDER BY created_at DESC LIMIT 500`,[process.env.ICLUSTERS_CLUSTER_PROFILE||'default'])).rows}),'auditor');
  const recoveryTests=createRecoveryTests();
  read('/recovery-tests',()=>recoveryTests.list(),'admin');
  read('/recovery-tests/:id',req=>recoveryTests.inspect(req.params.id),'admin');

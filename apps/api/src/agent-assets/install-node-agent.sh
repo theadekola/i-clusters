@@ -11,7 +11,7 @@ if [[ ${1:-} == --update ]]; then
   [[ $# == 1 && -f $config ]] || { echo 'An existing connector configuration is required.'; exit 1; }
   command -v python3 >/dev/null
   command -v curl >/dev/null
-  hub=$(python3 -c 'import json,sys,urllib.parse; c=json.load(open(sys.argv[1])); u=urllib.parse.urlsplit(c["url"]); assert u.scheme=="https" and u.hostname and not u.username and not u.password and u.path in ("","/") and not u.query and not u.fragment; print(c["url"].rstrip("/"))' "$config")
+  hub=$(python3 -c 'import json,re,sys,urllib.parse; c=json.load(open(sys.argv[1])); u=urllib.parse.urlsplit(c["url"]); assert u.scheme=="https" and u.hostname and not u.username and not u.password and (u.path in ("","/") or re.fullmatch(r"/api/cluster-profiles/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",u.path)) and not u.query and not u.fragment; print(c["url"].rstrip("/"))' "$config")
   umask 077
   next=$(mktemp /usr/local/sbin/.iclusters-node-agent.XXXXXX)
   backup=$(mktemp /usr/local/sbin/.iclusters-node-agent-backup.XXXXXX)
@@ -34,7 +34,7 @@ command -v qm >/dev/null
 command -v pct >/dev/null
 command -v python3 >/dev/null
 read -rp 'i-Clusters HTTPS URL: ' hub
-python3 -c 'import sys,urllib.parse; u=urllib.parse.urlsplit(sys.argv[1]); assert u.scheme=="https" and u.hostname and not u.username and not u.password and u.path in ("","/") and not u.query and not u.fragment, "Enter an i-Clusters HTTPS origin without credentials or a path"' "$hub"
+python3 -c 'import re,sys,urllib.parse; u=urllib.parse.urlsplit(sys.argv[1]); assert u.scheme=="https" and u.hostname and not u.username and not u.password and (u.path in ("","/") or re.fullmatch(r"/api/cluster-profiles/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",u.path)) and not u.query and not u.fragment, "Enter the i-Clusters HTTPS address shown in the pairing dialog"' "$hub"
 read -rsp 'One-time pairing code from i-Clusters: ' pairing
 printf '\n'
 umask 077

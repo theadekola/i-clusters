@@ -1,3 +1,4 @@
+import ClusterSwitcher from './ClusterSwitcher';
 import GuestRestartActivity from './GuestRestartActivity';
 import {ProductVisit} from './ProductFeedback';
 import PageBreadcrumbs from './PageBreadcrumbs';
@@ -89,6 +90,7 @@ export default function Layout() {
     <div className="main-shell" inert={mobile&&menuOpen}>
       <header className="topbar">
         <button ref={toggleRef} className="icon-btn nav-toggle" aria-label={mobile?(menuOpen?'Close navigation':'Open navigation'):(collapsed?'Expand navigation':'Collapse navigation')} aria-controls="primary-navigation" aria-expanded={mobile?menuOpen:!collapsed} onClick={()=>mobile?setMenuOpen(v=>!v):setCollapsed(v=>!v)}><Menu size={19}/></button>
+        <ClusterSwitcher owner={session?.user?.role==='owner'}/>
         <div className="top-actions">{session?.user?.role==='owner' && <UpdateButton/>}<HeaderNotifications/><LanguageSelector compact/><div className="profile-menu" ref={profileRef} onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget as Node))setProfileOpen(false)}}><button type="button" className="profile-trigger" aria-label="User profile" aria-haspopup="menu" aria-controls={profileOpen?'header-profile-options':undefined} aria-expanded={profileOpen} onKeyDown={event=>{if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();setProfileOpen(true)}}} onClick={()=>setProfileOpen(v=>!v)}><CircleUserRound size={23} aria-hidden="true"/></button>{profileOpen&&<div id="header-profile-options" className="profile-dropdown" role="menu"><div className="profile-dropdown-identity"><b translate="no">{session?.user?.name||'Signed in'}</b><small>{session?.user?.role||''}</small></div><button role="menuitem" onClick={signOut}><LogOut size={15}/>Sign out</button></div>}</div></div>
       </header>
       <main className="content"><PageBreadcrumbs/>{['operator','admin','owner'].includes(session?.user?.role)&&<GuestRestartActivity key={session.user.id}/>}<ProductVisit path={location.pathname} search={location.search}/><PersistentShell authorized={['admin','owner'].includes(session?.user?.role)}/><div key={location.pathname}><Outlet/></div></main>
