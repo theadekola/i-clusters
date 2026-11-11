@@ -2,137 +2,48 @@ import test, {after} from 'node:test';
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 
-const bundle = await build({
-  entryPoints: [new URL('../src/guest-power-cycle.ts', import.meta.url).pathname],
-  bundle: true, write: false, platform: 'node', format: 'esm',
-  plugins: [{name: 'test-api', setup(builder) {
-    builder.onResolve({filter: /\/api$/}, () => ({path: 'api', namespace: 'fixture'}));
-    builder.onLoad({filter: /.*/, namespace: 'fixture'}, () => ({
-      contents: 'export const api=(...args)=>globalThis.cycleAPI(...args); export const confirmedApi=api;'
-    }));
+const bundle=await build({
+  entryPoints:[new URL('../src/guest-power-cycle.ts',import.meta.url).pathname],bundle:true,write:false,platform:'node',format:'esm',
+  plugins:[{name:'test-api',setup(builder){
+    builder.onResolve({filter:/\/api$/},()=>({path:'api',namespace:'fixture'}));
+    builder.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:'export const api=(...args)=>globalThis.cycleAPI(...args);export const confirmedApi=api;'}));
   }}]
 });
-const {powerCycleGuest} = await import('data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].contents).toString('base64'));
-after(() => { delete globalThis.cycleAPI; });
-
-function fixture({kind='vm', initial='running', verify=true, respond} = {}) {
-  const messages = [], writes = [], reads = [], checkpoint = {};
-  let power = initial;
-  globalThis.cycleAPI = async (path, options) => {
-    if (options.method === 'POST') {
-      assert.deepEqual(JSON.parse(options.body), {node: 'n1'});
-      writes.push(path);
-    } else reads.push(path);
-    const response = respond?.(path, options);
-    if (response !== undefined) return response;
-    if (path === `/proxmox/${kind}/n1/107/details?view=power`) return {status: {status: power}};
-    if (path === `/actions/proxmox/${kind}/107/reboot` || path === `/actions/proxmox/${kind}/107/start`) return {result: {task: 'UPID:n1:power'}};
-    if (path === '/tasks/n1/UPID%3An1%3Apower') {
-      power = 'running';
-      return {status: 'stopped', exitstatus: 'OK'};
-    }
-    if (path === '/proxmox/vm/n1/107/details?view=agent') return {os: {result: {name: 'Debian'}}};
-    assert.fail('Unexpected endpoint ' + path);
+const {submitRestart,restartMessage,historyLink}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].contents).toString('base64'));
+after(()=>{delete globalThis.cycleAPI});
+const id='d413df36-81b8-4c18-b006-28f514f61895';
+for(const kind of ['vm','lxc'])for(const power of ['running','stopped'])test(kind+' '+power+' binds its one maintenance request to the scoped receipt',async()=>{
+  const writes=[],target={id:'107',node:'n1',name:'guest',kind,reason:'update'};
+  globalThis.cycleAPI=async(path,init)=>{
+    if(path===`/proxmox/${kind}/n1/107/details?view=power`)return {status:{status:power}};
+    assert.equal(path,`/actions/proxmox/${kind}/107/${power==='running'?'reboot':'start'}`);
+    writes.push(JSON.parse(init.body));return {result:{restart:{id}}};
   };
-  return {writes, reads, messages, checkpoint, run: (signal = new AbortController().signal) =>
-    powerCycleGuest('n1', '107', kind, message => messages.push(message), signal, checkpoint, verify)};
-}
-
-for (const kind of ['vm','lxc']) test(kind + ' OS update submits one host-managed restart and confirms running without an agent', async () => {
-  const f = fixture({kind, verify: false});
-  await f.run();
-  assert.deepEqual(f.writes, [`/actions/proxmox/${kind}/107/reboot`]);
-  assert.deepEqual(f.reads, [`/proxmox/${kind}/n1/107/details?view=power`, '/tasks/n1/UPID%3An1%3Apower', `/proxmox/${kind}/n1/107/details?view=power`]);
-  assert.match(f.messages.join(' '), /shutting down.*automatically.*confirm the guest is running/i);
+  await submitRestart(target,'cluster',id,new AbortController().signal);
+  assert.deepEqual(writes,[{node:'n1',maintenance:{id,cluster:'cluster',name:'guest',reason:'update'}}]);
 });
 
-test('VM setup reports observed shutdown and waits for fresh agent data after boot', async () => {
-  let polls = 0, powerReads = 0, probes = 0;
-  const f = fixture({respond(path) {
-    if (path.includes('/tasks/') && ++polls === 1) return {status: 'running'};
-    if (path.endsWith('=power') && ++powerReads === 2) return {status: {status: 'stopped'}};
-    if (path.endsWith('=agent') && ++probes === 1) return {os: {result: null}};
-  }});
-  await f.run();
-  assert.equal(probes, 2);
-  assert.deepEqual(f.writes, ['/actions/proxmox/vm/107/reboot']);
-  assert.ok(f.messages.includes('Starting the guest…'));
-  assert.match(f.messages.at(-1), /verifying guest access/i);
+test('recovery requests startup only and binds the superseded task',async()=>{
+  const target={id:'107',node:'n1',name:'guest',kind:'lxc',reason:'update'};
+  const record={id,node:'n1',guest:'107',kind:'lxc',phase:'recoverable',task:'old-task'};
+  let writes=0;
+  globalThis.cycleAPI=async(path,options)=>{
+    assert.equal(path,'/actions/proxmox/lxc/107/start');assert.equal(JSON.parse(options.body).maintenance.previousTask,'old-task');
+    writes++;return {result:{restart:{id}}};
+  };
+  for(const bad of [{phase:'monitoring'},{task:null},{guest:'108'},{kind:'vm'}])
+    await assert.rejects(submitRestart(target,'cluster',id,new AbortController().signal,{...record,...bad}));
+  await submitRestart(target,'cluster',id,new AbortController().signal,record);assert.equal(writes,1);
 });
 
-test('a guest already powered off is started directly', async () => {
-  const f = fixture({kind:'lxc', initial:'stopped'});
-  await f.run();
-  assert.deepEqual(f.writes, ['/actions/proxmox/lxc/107/start']);
-  assert.ok(!f.reads.some(path => path.endsWith('=agent')));
+test('unknown power state prevents any write',async()=>{
+  globalThis.cycleAPI=async(path)=>{assert.ok(path.endsWith('?view=power'));return {status:{status:'running',qmpstatus:'paused'}}};
+  await assert.rejects(submitRestart({node:'n1',kind:'vm',id:'107',reason:'setup',name:'guest'},'cluster',id,new AbortController().signal),/power state/);
 });
-
-test('failed native restart reports the provider error without another write', async () => {
-  const f = fixture({respond(path) {
-    if (path.includes('/tasks/')) return {status:'stopped', exitstatus:'ERROR: shutdown timed out'};
-  }});
-  await assert.rejects(f.run(), /shutdown timed out/);
-  assert.equal(f.writes.length, 1);
-  assert.ok(!f.reads.some(path => path.endsWith('=agent')));
-});
-
-test('unknown or paused guest state prevents submission', async () => {
-  for (const status of [{}, {status:'running',qmpstatus:'paused'}]) {
-    const f = fixture({respond: () => ({status})});
-    await assert.rejects(f.run(), /power state is unavailable/);
-    assert.deepEqual(f.writes, []);
-  }
-});
-
-test('an unknown task receipt or lost action response cannot replay the restart on retry', async () => {
-  for (const outcome of ['empty', 'null', 'disconnected']) {
-    const f = fixture({respond(path) {
-      if (path.includes('/actions/')) {
-        if (outcome === 'empty') return {result:{}};
-        if (outcome === 'null') return null;
-        throw new TypeError('Network error');
-      }
-    }});
-    await assert.rejects(f.run(), /task history/);
-    await assert.rejects(f.run(), /task history/);
-    assert.equal(f.writes.length, 1);
-  }
-});
-
-test('interrupted monitoring can resume the accepted task without a second power request', async () => {
-  const controller = new AbortController();
-  let interrupt = true;
-  const f = fixture({respond(path) {
-    if (path.includes('/tasks/') && interrupt) {
-      controller.abort();
-      throw controller.signal.reason;
-    }
-  }});
-  await assert.rejects(f.run(controller.signal), {name:'AbortError'});
-  interrupt = false;
-  await f.run();
-  assert.equal(f.writes.length, 1);
-  assert.equal(f.reads.filter(p => p.includes('/tasks/')).length, 2);
-});
-
-test('retrying verification checks the running VM and agent without repeating a successful task', async () => {
-  let denied = true;
-  const f = fixture({respond(path) {
-    if (path.endsWith('=agent') && denied) throw Object.assign(Error('Access denied'), {status:403});
-  }});
-  await assert.rejects(f.run(), /Access denied/);
-  denied = false;
-  await f.run();
-  assert.equal(f.writes.length, 1);
-  assert.equal(f.reads.filter(p => p.includes('/tasks/')).length, 1);
-});
-
-test('temporary connection loss during restart retries task reads only', async () => {
-  let attempts = 0;
-  const f = fixture({respond(path) {
-    if (path.includes('/tasks/') && ++attempts === 1) throw Object.assign(Error('Gateway unavailable'), {status:502});
-  }});
-  await f.run();
-  assert.equal(attempts, 2);
-  assert.equal(f.writes.length, 1);
+test('progress distinguishes confirmed power, agent and incomplete receipts and links the exact restart',()=>{
+  assert.match(restartMessage({phase:'unknown'}),/may have been accepted/);
+  assert.match(restartMessage({phase:'recoverable'}),/stopped/);
+  assert.match(restartMessage({phase:'verifying'}),/Verifying/);
+  assert.match(restartMessage({phase:'complete',kind:'vm',reason:'setup'}),/Agent has responded/);
+  assert.equal(new URL(historyLink({id}),'https://fixture').searchParams.get('restart'),id);
 });

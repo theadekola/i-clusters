@@ -1,3 +1,4 @@
+import {createGuestRestarts} from './guest-restarts.js';
 import {topologyConnections} from './topology-connections.js';
 import {retentionCleanup} from './retention-cleanup.js';
 import {trustSSHHost} from './ssh-host-trust.js';
@@ -394,8 +395,17 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
    return {interfaces,interfaceCoverage,dockerNetworksReported:Array.isArray(selected.inventory?.networks),dockerHost:{id:selected.id,name:selected.inventory?.host?.hostname||null},networks:selected.inventory?.networks||[],services:[],errors,connectors:s.services.filter(x=>['proxmox','docker'].includes(x.provider)),sampledAt:s.sampledAt,refreshing:!!s.refreshing};
 
  });
+ const guestRestarts=createGuestRestarts(db);
+ read('/maintenance/restarts',req=>guestRestarts.list(req.user.sub),'operator');
+ read('/maintenance/restarts/:id',req=>guestRestarts.status(req.user.sub,req.params.id),'operator');
+ read('/maintenance/restarts/:id/history',req=>guestRestarts.history(req.user.sub,req.params.id,req.query.hours),'operator');
+ app.delete('/api/maintenance/restarts/:id',authorize('operator'),async(req,res)=>res.json(await guestRestarts.dismiss(req.user.sub,req.params.id)));
  action('post','/actions/:provider/:resourceType/:resourceId/:action','operator','infrastructure.action',async req=>{
    const {provider,resourceType,resourceId,action:operation}=req.params;const body=req.body||{};
+   if(provider==='proxmox'&&body.maintenance){
+     const restart=await guestRestarts.submit(req.user.sub,resourceType,resourceId,operation,body);
+     return {node:restart.node,task:restart.task,jobId:restart.id,restart};
+   }
    if(provider==='proxmox'&&resourceType==='vm'){const node=required(body.node,'Node');return {node,task:await proxmoxVmAction(node,resourceId,operation,body)};}
    if(provider==='proxmox'&&resourceType==='lxc'){
      const node=required(body.node,'Node');return {node,task:await proxmoxLxcAction(node,resourceId,operation,body)};

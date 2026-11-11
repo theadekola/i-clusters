@@ -17,6 +17,18 @@ export async function migrate(db = pool) {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       last_login TIMESTAMPTZ
     );
+    CREATE TABLE IF NOT EXISTS guest_restarts (
+      id UUID PRIMARY KEY, owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      cluster TEXT NOT NULL, node TEXT NOT NULL, kind TEXT NOT NULL, guest TEXT NOT NULL,
+      name TEXT NOT NULL, reason TEXT NOT NULL, operation TEXT NOT NULL, task TEXT,
+      phase TEXT NOT NULL DEFAULT 'submitting', power TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '',
+      started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), stopped_since TIMESTAMPTZ,
+      revision INTEGER NOT NULL DEFAULT 0, dismissed BOOLEAN NOT NULL DEFAULT FALSE
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS guest_restart_active ON guest_restarts(cluster,guest)
+      WHERE phase NOT IN ('complete','failed','reviewed');
+    CREATE INDEX IF NOT EXISTS guest_restart_owner ON guest_restarts(owner_id,cluster) WHERE NOT dismissed;
     CREATE TABLE IF NOT EXISTS owner_setup_link (
       singleton BOOLEAN PRIMARY KEY CHECK (singleton),
       token_digest TEXT NOT NULL,

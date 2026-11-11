@@ -19,14 +19,27 @@ const state=taskState;
 const seconds=(t:any)=>Number.isFinite(t.starttime)?Math.max(0,(t.endtime??Date.now()/1000)-t.starttime):null;
 const duration=(v:any)=>v==null?'Unknown':v<60?`${Math.floor(v)}s`:`${Math.floor(v/60)}m ${Math.floor(v%60)}s`;
 const colors=['#22c55e','#3b82f6','#ef4444','#a855f7','#f59e0b','#14b8a6'];
-export default function ProxmoxTasks({navigation,role,clusterUrl,hours,data}:{navigation?:import('react').ReactNode;data?:any;role?:string;clusterUrl?:string;hours:string}){
- const reports=useResourceRefresh(['/proxmox/tasks']);
+export default function ProxmoxTasks({navigation,role,clusterUrl,hours,data,restartId='',requestedTask=''}:{requestedTask?:string;restartId?:string;navigation?:import('react').ReactNode;data?:any;role?:string;clusterUrl?:string;hours:string}){
+ const taskPath=restartId?'/maintenance/restarts/'+encodeURIComponent(restartId)+'/history':'/proxmox/tasks';
+ const reports=useResourceRefresh([taskPath]);
  const readTask=useRef<null|(()=>Promise<void>)>(null);
- useRefreshHandler('/proxmox/tasks',async()=>{if(readTask.current){setLogLoading(true);await readTask.current()}});
+ useRefreshHandler(taskPath,async()=>{if(readTask.current){setLogLoading(true);await readTask.current()}});
  const refresh=reports.refresh;
- const live=useApi<any>(`/proxmox/tasks?hours=${hours}`,null),navigate=useNavigate(),rows=live.data?.tasks||[];
+ const live=useApi<any>(`${taskPath}?hours=${hours}`,null),navigate=useNavigate(),rows=live.data?.tasks||[];
  const [search,setSearch]=useState(''),[category,setCategory]=useState('all'),[node,setNode]=useState('all'),[status,setStatus]=useState('all'),[type,setType]=useState('all'),[page,setPage]=useState(0),[size,setSize]=useState(10),[selected,setSelected]=useState<any>(null),[details,setDetails]=useState<any>(null),[logs,setLogs]=useState<any[]>([]),[offset,setOffset]=useState(0),[auto,setAuto]=useState(true),[error,setError]=useState(''),[busy,setBusy]=useState(false),[logLoading,setLogLoading]=useState(false),[loadedOffset,setLoadedOffset]=useState<number|null>(null),[run,setRun]=useState(false),[historyDays,setHistoryDays]=useState('7');
- const historyLive=useApi<any>(`/proxmox/tasks?hours=${Number(historyDays)*24}`,null);
+ const historyLive=useApi<any>(`${taskPath}?hours=${Number(historyDays)*24}`,null);
+ const openedReceipt=useRef('');
+ const receipt=live.data?.restart;
+ useEffect(()=>{
+  if(!receipt)return;
+  const upid=requestedTask||receipt.task;
+  if(!upid||openedReceipt.current===upid)return;
+  const item=live.data.tasks.find((t:any)=>t.upid===upid);
+  if(!item&&upid!==receipt.task){setError('The selected task is outside the returned guest history.');return}
+  openedReceipt.current=upid;
+  setSelected(item||{node:receipt.node,id:receipt.guest,upid,type:(receipt.kind==='vm'?'qm':'vz')+receipt.operation,starttime:Date.parse(receipt.attempt_at)/1000});
+  setOffset(0);
+ },[receipt,live.data,requestedTask]);
  const selectionVersion=useRef(0),mounted=useRef(true);
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;selectionVersion.current++;};},[]);
  const logBox=useRef<HTMLPreElement>(null),admin=['owner','admin'].includes(role||'');
@@ -47,6 +60,7 @@ export default function ProxmoxTasks({navigation,role,clusterUrl,hours,data}:{na
  const visibleTypes=distribution(t=>taskCategory(t.type||'')),visibleStatuses=distribution(state);
  const chart=(title:string,items:any[],filter:'type'|'status')=><Card className="task-ring-card"><h3>{title}</h3><DistributionSummary items={items.map((d:any,i:number)=>({id:d.name,name:d.name,value:d.value,color:filter==='status'?taskStatusColor[d.name]||colors[i%colors.length]:colors[i%colors.length],onClick:()=>{if(filter==='status')setStatus(d.name);else{setSearch('');setType('all');setCategory(d.name)}}}))} total={rows.length.toLocaleString()} label="Total tasks"/></Card>;
  return <section className="task-manager"><ProxmoxSectionHeader title={<><PageIcon name="monitoring" className="page-title-icon"/>Tasks &amp; Logs</>} description="Live cluster operations and node task logs." actions={<>{!navigation&&<RefreshButton className="btn secondary" aria-busy={live.loading||reports.refreshing||logLoading} disabled={live.loading||reports.refreshing||logLoading} onClick={refresh}><RefreshCw size={15}/> Refresh</RefreshButton>}<button className="btn primary" onClick={()=>setRun(true)} disabled={!admin}><Play size={15}/> Run Task</button></>}/>
+ {receipt&&<p><b>{receipt.name}</b> ({receipt.node} / {receipt.guest}) <button type="button" className="btn secondary small" onClick={()=>navigate('/proxmox?tab=Tasks%20%26%20Logs')}>View All Tasks</button></p>}
  {(live.error||error)&&<p className="error" role="alert">{live.error||error}</p>}{live.data?.errors?.map((e:string)=><p className="error" key={e}>{e}</p>)}{live.data?.truncated?.length>0&&<p className="muted">Showing up to 500 tasks per node. Narrow the time range to see more detail. Counts describe the returned tasks.</p>}
  <div className="task-stats metric-grid">{[[Play,rows.filter((t:any)=>state(t)==='Running').length,'Running Tasks'],[CheckCircle,rows.filter((t:any)=>state(t)==='Completed').length,'Completed'],[AlertTriangle,rows.filter((t:any)=>state(t)==='Failed').length,'Failed Tasks'],[Clock,duration(avg),'Average Duration']].map(([Icon,value,label]:any)=><Card className="vm-stat" key={label}><span className="vm-stat-icon"><Icon size={25}/></span><div><small>{label}</small><strong>{inventoryComplete(live.data,live.error)?value:'Unknown'}</strong><small className="muted">Returned tasks · last {hours} hours</small></div></Card>)}</div>
  {navigation}

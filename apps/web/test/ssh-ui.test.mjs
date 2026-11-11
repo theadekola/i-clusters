@@ -361,7 +361,7 @@ test('guest toolbar exposes OS Update and sizes 10–15 before Copy; completed u
 });
 
 for (const [kind,label] of [['vm','VM'],['lxc','CT']]) test(label + ' update shell confirms one restart and shows completion before closing',async()=>{
- const writes=[];
+ const writes=[];let row;
  let closed=0;
  const page=await mounted('components/SSHAccess.tsx',{
   ...terminalProps,target:kind+':pve:120',updateTab:true,onDisconnect(){closed++}
@@ -369,21 +369,39 @@ for (const [kind,label] of [['vm','VM'],['lxc','CT']]) test(label + ' update she
   if(path.endsWith('/output'))return new Response(JSON.stringify({closed:true,output:'',updateResult:{osVersion:'Debian',rebootRequired:true}})+'\n');
   if(path.startsWith('/ssh/session/'))return {};
   if(path===`/proxmox/${kind}/pve/120/details?view=power`)return {status:{status:'running'}};
-  if(path==='/tasks/pve/restart-task')return {status:'stopped',exitstatus:'OK'};
+  if(path==='/maintenance/restarts')return {cluster:'fixture',restarts:row?[row]:[]};
+  if(row&&path==='/maintenance/restarts/'+row.id)return {...row,phase:'complete',power:'running'};
   assert.equal(path,`/actions/proxmox/${kind}/120/reboot`);
   writes.push(JSON.parse(options.body));
-  return {result:{task:'restart-task'}};
+  row={id:writes[0].maintenance.id,node:'pve',kind,guest:'120',reason:'update',phase:'monitoring',task:'restart-task',started_at:new Date().toISOString(),updated_at:new Date().toISOString()};
+  return {result:{task:row.task,restart:row}};
  });
  try{
   const button=text=>[...document.body.querySelectorAll('button')].find(b=>b.textContent===text);
   await page.click(button('Restart '+label));
   assert.deepEqual(writes,[]);
   await page.click(button('Shutdown, Start & Verify'));
-  assert.deepEqual(writes,[{node:'pve'}]);
+  assert.equal(writes.length,1);assert.equal(writes[0].node,'pve');assert.equal(writes[0].maintenance.reason,'update');
   assert.match(document.body.querySelector('.connection-success').textContent,/Proxmox confirms the guest is running/);
   assert.equal(closed,0);
   await act(async()=>new Promise(resolve=>setTimeout(resolve,2100)));
   assert.equal(closed,1);
+ }finally{await page.close()}
+});
+
+test('node approval resolves its host once before enabling the confirmation button',async()=>{
+ const calls=[];
+ const props={target:'node:pve',action:{path:'/actions/proxmox/lxc/120/start',method:'POST',body:{node:'pve'}},onConnected(){}};
+ const page=await mounted('components/SSHAccess.tsx',props,async(path)=>{
+  calls.push(path);return {host:'192.0.2.10',fingerprint:'SHA256:fixture'};
+ },true,false,['/'],'SSHLogin');
+ try{
+  await act(async()=>new Promise(r=>setTimeout(r,350)));
+  await act(async()=>new Promise(r=>setTimeout(r,350)));
+  const address=page.container.querySelector('[name=host]');
+  assert.equal(address.value,'192.0.2.10');assert.equal(address.readOnly,true);
+  assert.deepEqual(calls,['/ssh/fingerprint']);
+  assert.equal(page.container.querySelector('[type=submit]').disabled,false);
  }finally{await page.close()}
 });
 
