@@ -12,7 +12,7 @@ Sign-out does not cancel already submitted server jobs or sign out other devices
 
 The sign-in page includes password visibility and disables submission while login is pending. Page requests load quietly without a floating loading indicator or spinner.
 
-## Server sessions and optional MFA (3.1.0 release candidates)
+## Server sessions and optional MFA
 
 The browser refresh token is a Secure, HttpOnly, SameSite=Strict cookie. JavaScript stores only the short-lived access token and session/deadline markers. Native/legacy API clients retain body-based refresh support. Explicit logout revokes the current server session; legacy sessions without a device ID revoke all sessions. Settings → Security lists revocable sessions for the current account and supports password changes. Revocation also closes associated SSH sessions and action grants. Optional MFA uses an authenticator setup key and ten one-time recovery codes. Disabling MFA or changing a password requires reauthentication and a fresh sign-in afterward. Browser inactivity expiry clears local access but is not server-side idle revocation.
 

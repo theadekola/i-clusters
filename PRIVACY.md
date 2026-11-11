@@ -1,8 +1,10 @@
 # Privacy and data handling
 
-Updated: 20 October 2026. Developed by The Adekola Labs.
+Updated 11 November 2026. Developed by The Adekola Labs.
 
 This document describes the i-Clusters application's data flows. It is not a privacy notice for every independently operated installation. The person or organisation operating an installation decides its access, connected systems, retention, backups and any additional proxy or hosting logs. Contact that operator about data on their instance.
+
+The [website Privacy Policy](https://www.i-clusters.com/privacy.html) covers information the public site receives, including support messages, feedback and aggregate usage reports. Direct website privacy requests to [website support](https://www.i-clusters.com/support.html) or support@i-clusters.com.
 
 ## Information processed
 
@@ -15,6 +17,7 @@ This document describes the i-Clusters application's data flows. It is not a pri
 | Supported integration secrets and saved connection details | Server-side connection configuration; supported credential stores encrypt secret values using deployment key material |
 | SSH/SFTP credentials and terminal/file data | Authenticated operations against the selected target; saved SSH details are managed separately from active sessions |
 | Browser access tokens, session markers and preferences; HttpOnly refresh cookie | Sign-in and preferences; short-lived access tokens and preferences use local/session storage, while browser refresh credentials use a Secure, HttpOnly cookie |
+| Guest maintenance restart records | The controller stores the initiating account, cluster and guest identifiers, power state, task receipt, timestamps and progress in PostgreSQL so the operator can resume a restart. |
 | Encrypted Docker operation journal | Installation checkpoints and recovery, including configuration required to restore the original container |
 | Notification delivery records | Local delivery queue/history, errors and captured alert information |
 

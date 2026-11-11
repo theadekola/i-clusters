@@ -1,6 +1,6 @@
 # Operational monitoring, recovery tests and remote access
 
-These features are available for controlled evaluation. They do not change the commercial acceptance gates or publish a new release.
+The i-Clusters source release includes the following operations and remote-access features.
 
 ## Hardware and power
 

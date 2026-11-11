@@ -795,9 +795,13 @@ test('Collapsed navigation retains accessible names and hover labels',async()=>{
   for(const link of links){assert.ok(link.getAttribute('aria-label')?.trim());assert.equal(link.title,link.getAttribute('aria-label'));}
  }finally{await page.close();}
 });
-test('A plain version number does not claim commercial release acceptance',async()=>{
+test('About identifies the source release and links its verification to the recorded run',async()=>{
  const page=await mounted('components/AboutSettings.tsx',{data:{system:{version:'1.0.0'}},owner:false,search:''},async()=>({}));try{
-  assert.ok(page.container.textContent.includes('Evaluation build'));assert.ok(page.container.textContent.includes('Commercial release acceptance is pending.'));assert.equal(page.container.textContent.includes('Versioned release'),false);
+  assert.ok(page.container.textContent.includes('Source release'));
+  const evidence=page.container.querySelector('a[href="https://github.com/theadekola/i-clusters/actions/runs/42959774625"]');
+  assert.match(evidence.textContent,/Verified release checks/);
+  assert.match(evidence.textContent,/Version 1\.0\.0 API, browser, deployment and recovery results/);
+  assert.ok(page.container.textContent.includes('Not embedded in this build'));
  }finally{await page.close();}
 });
 

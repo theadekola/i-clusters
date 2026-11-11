@@ -1,8 +1,8 @@
 # Security and operational scope
 
-Published by **The Adekola Labs**. Applies to the 3.1.0 release-candidate series; see [release policy](docs/release-policy.md).
+Published by **The Adekola Labs**. Applies to the i-Clusters 1.0.0 source release. See the [release policy](docs/release-policy.md).
 
-i-Clusters controls privileged infrastructure. Use dedicated provider identities and grant only the permissions needed for the selected features. The MIT licence is not a security guarantee.
+i-Clusters controls privileged infrastructure. Use dedicated provider identities and grant only the permissions needed for the selected features. See the [Apache License 2.0](LICENSE) for warranty and liability terms.
 
 ## Reporting vulnerabilities
 
@@ -66,4 +66,4 @@ output are excluded from update status, notifications and audit details.
 
 ## Release validation and response
 
-CI gates tests, deployment, encrypted controller restore, production dependency checks and fixable HIGH/CRITICAL container-image findings. Reports and SBOMs accompany release candidates. Unfixed findings remain in scan reports and require operator review; they are not evidence of zero risk. Independent penetration testing and live provider/device acceptance remain separate gates. See [operations](docs/operations.md) for incident handling and recovery. Only one API controller process is supported per installation; local journals do not coordinate multiple writers.
+CI gates tests, deployment, encrypted controller restore, production dependency checks and fixable HIGH/CRITICAL container-image findings. Successful CI runs retain scan reports, component inventories and image identities as workflow artifacts. Unfixed findings remain in scan reports and require operator review; they are not evidence of zero risk. Record independent assessments and live provider and device checks in the deployment’s acceptance record. See [operations](docs/operations.md) for incident handling and recovery. Only one API controller process is supported per installation; local journals do not coordinate multiple writers.

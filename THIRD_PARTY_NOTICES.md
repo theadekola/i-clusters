@@ -1,6 +1,6 @@
 # Third-party notices
 
-The Adekola Labs develops and publishes i-Clusters. First-party source uses the MIT licence in LICENSE. Changing the public developer/company attribution does not remove third-party rights.
+The Adekola Labs develops and publishes i-Clusters. Copyright © 2026 The Adekola Labs. First-party source is licensed under the [Apache License 2.0](LICENSE).
 
 Dependencies retain their respective licences. The API and web lockfiles and generated CycloneDX SBOMs identify selected components; consult each distributed package's licence before redistribution. SBOM metadata is an inventory aid, not a complete legal clearance report.
 

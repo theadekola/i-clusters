@@ -2,15 +2,15 @@
 
 <img src="apps/web/public/assets/iclusters-192.png" alt="i-Clusters logo" width="96"/>
 
-[Website](https://www.i-clusters.com) | [Support](https://support.i-clusters.com)
+[Website](https://www.i-clusters.com) | [Support](https://www.i-clusters.com/support.html)
 
 **Your infrastructure, in one interface.**
 
 i-Clusters is a self-hosted interface for managing Proxmox VE environments, virtual machines, LXC containers, Docker and TrueNAS. Keep the server names you use in Proxmox VE. It brings inventory, monitoring, supported infrastructure actions, backups, SSH terminals and SFTP into one responsive interface.
 
-Developed by **The Adekola Labs**. Application version: **1.0.0** (release baseline; publication paused). Licence: [MIT](LICENSE).
+**i-Clusters 1.0.0 is available as a source release** under the [Apache License 2.0](LICENSE). Developed by **The Adekola Labs**.
 
-**Release status:** controlled evaluation candidate, with separate controllers per customer. Production provider acceptance, physical-device testing and independent security review remain open. See [release notes](docs/releases/v1.0.0.md), [CHANGELOG](CHANGELOG.md), [release policy](docs/release-policy.md) and [acceptance checklist](docs/acceptance-checklist.md).
+**Release verification.** Automated checks verified the API, desktop and mobile browser layouts, installation, and controller recovery. See the [verification results](https://github.com/theadekola/i-clusters/actions/runs/42959774625) and [v1.0.0 release notes](docs/releases/v1.0.0.md).
 
 ## Contents
 
@@ -203,7 +203,7 @@ Do not post credentials, environment files, private SSH material or full unredac
 
 ## Documentation and project policies
 
-Commercial deployment status and remaining release gates: [20 October readiness review](docs/audits/2026-10-20-commercial-readiness.md).
+For a customer installation, record the tested provider versions and recovery results in the [deployment checklist](docs/acceptance-checklist.md).
 
 | Document | Contents |
 | --- | --- |
@@ -217,7 +217,8 @@ Commercial deployment status and remaining release gates: [20 October readiness 
 | [Security](SECURITY.md) | Implemented controls, reporting and operational boundaries |
 | [Privacy](PRIVACY.md) | Stored information, external requests and deployment responsibilities |
 | [Terms of use](TERMS.md) | Self-hosted usage and responsibility boundaries |
-| [Licence](LICENSE) | MIT application licence |
+| [Website Terms of Service](https://www.i-clusters.com/terms.html) and [Privacy Policy](https://www.i-clusters.com/privacy.html) | Public website, support forms and reporting services |
+| [Licence](LICENSE) | Apache License 2.0 for the application |
 | [Icon assets](docs/icon-assets.md) | Third-party artwork sources and separate licences |
 
 Use [GitHub Issues](https://github.com/theadekola/i-clusters/issues) for reproducible bugs and feature requests. For vulnerabilities, follow [SECURITY.md](SECURITY.md) and avoid public disclosure of exploitable details.
