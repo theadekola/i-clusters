@@ -1,3 +1,4 @@
+import {createPortal} from 'react-dom';
 import BrandIcon from './BrandIcon';
 import {lockPageScroll} from '../scroll-lock';
 import {cardValue} from './ReportLoading';
@@ -27,7 +28,7 @@ export function Button({children,onClick,variant='primary',disabled=false}:{chil
 
 const modalLayers:HTMLDivElement[]=[];
 let nextModalLayer=1000;
-export function Modal({open,onClose,title,children,success,closeDisabled=false}:{open:boolean;onClose:()=>void;title:string;children:React.ReactNode;success?:string;closeDisabled?:boolean}) {
+export function Modal({open,onClose,title,children,success,closeDisabled=false,portal=false}:{open:boolean;onClose:()=>void;title:string;children:React.ReactNode;success?:string;closeDisabled?:boolean;portal?:boolean}) {
   const dialog=useRef<HTMLDivElement>(null),close=useRef(onClose),titleId=useId();close.current=()=>{if(!closeDisabled)onClose()};
   useEffect(()=>{
     if(!open)return;
@@ -43,9 +44,10 @@ export function Modal({open,onClose,title,children,success,closeDisabled=false}:
     return()=>{document.removeEventListener('keydown',key);const layer=modalLayers.indexOf(element);if(layer>=0)modalLayers.splice(layer,1);if(!modalLayers.length)nextModalLayer=1000;unlock();if(previous?.isConnected)previous.focus({preventScroll:true});};
   },[open]);
   if(!open) return null;
-  return <div className="modal-backdrop" onMouseDown={()=>close.current()}><div ref={dialog} className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} onMouseDown={e=>e.stopPropagation()}>
+  const backdrop=<div className="modal-backdrop" onMouseDown={()=>close.current()}><div ref={dialog} className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} onMouseDown={e=>e.stopPropagation()}>
     <div className="modal-head"><h3 id={titleId}>{title}</h3><button type="button" className="icon-btn" aria-label="Close dialog" disabled={closeDisabled} onClick={()=>close.current()}><X size={18}/></button></div>{success?<ConnectionSuccess message={success} onDone={()=>close.current()}/>:children}
-  </div></div>
+  </div></div>;
+  return portal?createPortal(backdrop,document.body):backdrop;
 }
 
 export function usePopupSuccess(open:boolean){

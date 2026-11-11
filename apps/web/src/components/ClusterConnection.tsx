@@ -32,7 +32,7 @@ export function ClusterConnection({compact=false,createNew=false,label='Cluster 
  if(!owner)return null;
  return <>{compact?<button className={`btn ${primary?'primary':'secondary'}`} aria-busy={busy} disabled={busy} onClick={load}><Server size={15}/>{label}</button>:<Card className="cluster-connection"><div><h3><Server size={20}/> Cluster connection</h3><p>Connect a Proxmox cluster or standalone node. Its nodes and guests load automatically.</p><p className="muted">Save independent clusters and switch between them in the header.</p></div><button className="btn primary" aria-busy={busy} disabled={busy} onClick={load}>Add / Edit Cluster</button></Card>}
  {!open&&error&&<p role="alert" className="login-error">{error}</p>}{!open&&message&&<p role="status">{message}</p>}
- <Modal open={open} title={cluster?'Edit Cluster':'Add Cluster'} onClose={close} success={success}>
+ <Modal portal={createNew} open={open} title={cluster?'Edit Cluster':'Add Cluster'} onClose={close} success={success}>
  <div className="cluster-provider"><Server size={22}/> Proxmox VE</div>
  <form className="form-grid cluster-form" onSubmit={submit}>
  <label>Cluster name<input name="name" required maxLength={100} defaultValue={cluster?.name||''} placeholder="Production Cluster"/></label>
