@@ -96,7 +96,7 @@ const certArgs=tls.https?['--ignore-certificate-errors-spki-list='+createHash('s
  .update(new X509Certificate(tls.https.cert).publicKey.export({type:'spki',format:'der'})).digest('base64')]:[];
 const listen={host:'127.0.0.1',port:0,...tls};
 const failures=[],server=await (process.env.LAYOUT_PRODUCTION==='1'?preview({root,preview:listen}):createServer({root,server:listen}));
-let restartPower='running',restartVerified=false,restartPolls=0,restartWrites=[];
+let restartPower='running',restartVerified=false,restartRecord=null,allowRestartCompletion=false,restartWrites=[];
 let updateWrites=0;
 let browser,clusterSaves=0,clusterTests=0,aiModelReads=0,aiTests=0,aiSaves=0;
 try{
@@ -115,13 +115,26 @@ try{
     const view=new URL(route.request().url()).searchParams.get('view');
     return route.fulfill({json:view==='agent'?{os:{result:{name:'Debian'}}}:{status:{status:restartPower}}});
    }
-   if(path.startsWith('/actions/proxmox/vm/100/')){
-    const operation=path.split('/').at(-1);assert.equal(operation,'reboot');
-    if(!route.request().headers()['x-iclusters-ssh-grant'])return route.fulfill({status:409,json:{confirmationPhrase:'CONFIRM FIXTURE RESTART',sshTarget:'node:node01'}});
-    restartWrites.push(operation);return route.fulfill({json:{result:{task:operation+'-fixture-task'}}});
+   if(path==='/maintenance/restarts')return route.fulfill({json:{cluster:'fixture-cluster',restarts:restartRecord?[restartRecord]:[]}});
+   if(restartRecord&&path==='/maintenance/restarts/'+restartRecord.id){
+    if(allowRestartCompletion && restartRecord.phase==='monitoring'){restartRecord={...restartRecord,phase:'complete',power:'running',updated_at:new Date().toISOString()};restartPower='running';restartVerified=true}
+    return route.fulfill({json:restartRecord});
+   }
+   if(restartRecord&&path==='/maintenance/restarts/'+restartRecord.id+'/history')
+    return route.fulfill({json:{restart:restartRecord,tasks:[],nodes:[{node:'node01'}],errors:[],truncated:[],coverage:{complete:true}}});
+   if(path.startsWith('/tasks/node01/'))return route.fulfill({json:path.endsWith('/log')?{logs:[{n:1,t:'fixture restart log'}]}:{status:'stopped',exitstatus:'OK'}});
+   if(path.startsWith('/actions/proxmox/')){
+    const operation=path.split('/').at(-1),m=route.request().postDataJSON().maintenance;
+    if(!route.request().headers()['x-iclusters-ssh-grant'])return route.fulfill({status:operation==='start'?428:409,json:{confirmationPhrase:'CONFIRM FIXTURE RESTART',sshTarget:'node:node01'}});
+    if(operation==='start'){assert.equal(m.previousTask,restartRecord.task);assert.equal(restartRecord.phase,'recoverable')}
+    else assert.equal(operation,'reboot');
+    restartWrites.push(operation);restartPower='stopped';
+    restartRecord={id:m.id,node:'node01',kind:path.split('/')[3],guest:path.split('/')[4],name:m.name,reason:m.reason,
+      phase:'monitoring',power:'stopped',operation,task:operation+'-fixture-task',started_at:restartRecord?.started_at||new Date().toISOString(),updated_at:new Date().toISOString()};
+    return route.fulfill({json:{result:{task:restartRecord.task,restart:restartRecord}}});
    }
    if(path==='/ssh/connect')return route.fulfill({json:{token:'fixture-approval'}});
-   if(path.startsWith('/tasks/node01/')){await new Promise(resolve=>setTimeout(resolve,150));if(++restartPolls===1){restartPower='stopped';return route.fulfill({json:{status:'running'}})}restartPower='running';restartVerified=true;return route.fulfill({json:{status:'stopped',exitstatus:'OK'}});}
+
   }
   if(process.env.LAYOUT_UPDATE_NOTICE&&path==='/updates'&&route.request().method()==='POST'){updateWrites++;return route.fulfill({json:{ok:true,state:'queued'}})}
   if(process.env.LAYOUT_CONNECTION_CHOICES){
@@ -318,14 +331,54 @@ try{
    await page.goto(base+'docker');const picker=page.getByLabel('Docker host for resource views',{exact:true});await picker.waitFor();assert.equal(await picker.locator('option[value="docker-fixture"]').innerText(),'control-vm');
   }
   if(process.env.LAYOUT_GUEST_RESTART){
-   restartPower='running';restartVerified=false;restartPolls=0;restartWrites=[];
+   restartPower='running';restartVerified=false;restartRecord=null;allowRestartCompletion=false;restartWrites=[];
    await page.goto(base+'settings?tab=Connections&section=setup');await page.getByRole('button',{name:'Set Up Guest Agent',exact:true}).click();
    const setup=page.getByRole('dialog',{name:'Set Up QEMU Guest Agent · Control-VM',exact:true});await setup.getByLabel('VM SSH address',{exact:true}).fill('192.0.2.100');await setup.getByLabel(copy('SSH / sudo password'),{exact:true}).fill('fixture-only');await setup.getByRole('button',{name:'Install / Start & Verify',exact:true}).click();
    const restart=page.getByRole('dialog',{name:'Restart VM · Control-VM',exact:true});await restart.waitFor();assert.deepEqual(restartWrites,[],'Installing must not restart without explicit consent');assert.equal(await restart.evaluate(e=>e.closest('.modal-backdrop').parentElement===document.body),true);
    if(process.env.LAYOUT_SCREENSHOTS)await restart.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-guest-restart.png`});await restart.getByRole('button',{name:'Shutdown, Start & Verify',exact:true}).click();assert.equal(await restart.getByRole('button',{name:copy('Close dialog'),exact:true}).isDisabled(),true);
    const approval=page.getByRole('dialog',{name:'Authenticate node:node01',exact:true});await approval.waitFor();await approval.getByLabel('Password',{exact:true}).fill('fixture-only');
    assert.ok(await approval.evaluate(e=>e.contains(document.activeElement)),'Nested SSH approval owns keyboard focus');assert.ok(Number(await approval.evaluate(e=>e.closest('.modal-backdrop').style.zIndex))>Number(await restart.evaluate(e=>e.closest('.modal-backdrop').style.zIndex)),'SSH approval is above restart popup');
-   assert.equal(await restart.getByRole('button',{name:'Shutdown, Start & Verify',exact:true}).evaluate(e=>getComputedStyle(e,'::before').animationName),'update-rotate');await approval.getByRole('button',{name:'Confirm',exact:true}).click();await restart.getByText('Starting the guest…',{exact:false}).waitFor();await restart.getByText('The VM is running and QEMU Guest Agent has responded.').waitFor();await restart.waitFor({state:'detached'});assert.deepEqual(restartWrites,['reboot']);await page.locator('.connection-success').waitFor();
+   assert.equal(await restart.getByRole('button',{name:'Shutdown, Start & Verify',exact:true}).evaluate(e=>getComputedStyle(e,'::before').animationName),'update-rotate');await approval.getByRole('button',{name:'Confirm',exact:true}).click();await restart.getByText('Starting the guest…',{exact:false}).waitFor();allowRestartCompletion=true;await restart.getByText('The VM is running and QEMU Guest Agent has responded.').waitFor();await restart.waitFor({state:'detached'});assert.deepEqual(restartWrites,['reboot']);await page.locator('.connection-success').waitFor();
+   for(const kind of ['vm','lxc']){
+    // The provider has finished the original restart while the browser was away.
+    allowRestartCompletion=false;
+    restartRecord={...restartRecord,id:kind+'-resume-fixture',name:'Recovery '+kind,kind,guest:kind==='vm'?'100':'120',reason:'update',operation:'reboot',phase:'booting',power:'stopped',task:'previous-'+kind};
+    await page.goto(base);await page.reload();
+    const resume=page.getByRole('region',{name:'Guest restarts'}).getByRole('button',{name:new RegExp('Recovery '+kind)});
+    await resume.click();
+    const dialog=page.getByRole('dialog',{name:new RegExp('Restart .*Recovery '+kind)});
+    await dialog.getByText(/Last confirmed power state/).waitFor();
+    assert.equal(await dialog.getByRole('link',{name:'View task log'}).getAttribute('href'),'/proxmox?tab=Tasks+%26+Logs&restart='+kind+'-resume-fixture&task=previous-'+kind);
+    const count=restartWrites.length;
+    assert.equal(await dialog.getByRole('button',{name:/^Start (VM|CT)$/}).count(),0);
+    restartRecord={...restartRecord,phase:'recoverable'};
+    await dialog.getByRole('button',{name:'Check progress'}).click();
+    const recover=dialog.getByRole('button',{name:kind==='vm'?'Start VM':'Start CT',exact:true});
+    await recover.waitFor();assert.equal(restartWrites.length,count);
+    await recover.click();
+    const approve=page.getByRole('dialog',{name:'Authenticate node:node01',exact:true});
+    await approve.getByLabel('Password',{exact:true}).fill('fixture-only');
+    await approve.getByRole('button',{name:'Confirm',exact:true}).click();
+    await dialog.getByText('Starting the guest…',{exact:true}).waitFor();
+    assert.deepEqual(restartWrites.slice(count),['start']);
+    allowRestartCompletion=true;
+    await dialog.getByText(/Restart complete. Proxmox confirms/).waitFor();
+    const logUrl=await dialog.getByRole('link',{name:'View task log'}).getAttribute('href');
+    await dialog.getByRole('button',{name:'Close',exact:true}).click();
+    await page.goto(new URL(logUrl,base).toString());
+    await page.getByText('fixture restart log',{exact:false}).waitFor();
+    assert.deepEqual(restartWrites.slice(count),['start']);
+   }
+   restartRecord={...restartRecord,id:'missing-receipt',task:null,phase:'unknown'};
+   await page.goto(base);
+   await page.getByRole('region',{name:'Guest restarts'}).getByRole('button',{name:/Recovery lxc/}).click();
+   const uncertain=page.getByRole('dialog',{name:'Restart CT · Recovery lxc'});
+   assert.equal(await uncertain.getByRole('button',{name:'Start CT',exact:true}).count(),0);
+   const historyUrl=await uncertain.getByRole('link',{name:'View guest task history'}).getAttribute('href');
+   await page.goto(new URL(historyUrl,base).toString());
+   await page.locator('.task-manager').getByText('Recovery lxc',{exact:true}).waitFor();
+   assert.equal(await page.getByRole('heading',{name:'Task Details'}).count(),0);
+   assert.deepEqual(restartWrites,['reboot','start','start']);
   }
   if(process.env.LAYOUT_CONNECTION_CHOICES){
    const openPicker=async()=>{

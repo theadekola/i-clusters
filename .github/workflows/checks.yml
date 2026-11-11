@@ -90,7 +90,7 @@ jobs:
           docker compose up -d --build --wait --wait-timeout 180
           docker compose exec -T caddy cat /data/caddy/pki/authorities/local/root.crt > /tmp/iclusters-ci-root.crt
           curl --fail --show-error --cacert /tmp/iclusters-ci-root.crt https://localhost:6002/api/health
-          docker compose run --rm --no-deps -T -v "$PWD/apps/api/test:/app/test:ro" api sh -c 'OWNER_SETUP_TEST_DATABASE_URL="$DATABASE_URL" node --test test/owner-setup-postgres.test.js'
+          docker compose run --rm --no-deps -T -v "$PWD/apps/api/test:/app/test:ro" api sh -c 'OWNER_SETUP_TEST_DATABASE_URL="$DATABASE_URL" node --test test/owner-setup-postgres.test.js test/guest-restarts.test.js'
           NODE_EXTRA_CA_CERTS=/tmp/iclusters-ci-root.crt node deployment/check-registration.mjs
           NODE_EXTRA_CA_CERTS=/tmp/iclusters-ci-root.crt node deployment/check-mobile-assets.mjs
           NODE_EXTRA_CA_CERTS=/tmp/iclusters-ci-root.crt node deployment/check-browser-certificate.mjs

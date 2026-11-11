@@ -38,7 +38,7 @@ export default function ProxmoxOverview(){
  const [params,setParams]=useSearchParams(),navigate=useNavigate();
  const requested=params.get('tab')||'',action=params.get('action');
  const view=action==='Create VM'?'Virtual Machines':action==='Create CT'?'LXC Containers':tabs.includes(requested)?requested:'Overview';
- const setView=(tab:string)=>{if(!tabs.includes(tab))return;const next=new URLSearchParams(params);next.set('tab',tab);for(const key of ['action','search','status','page','guest'])next.delete(key);if(tab!=='Nodes'){next.delete('node');next.delete('nodeTab');}setParams(next);};
+ const setView=(tab:string)=>{if(!tabs.includes(tab))return;const next=new URLSearchParams(params);next.set('tab',tab);for(const key of ['action','search','status','page','guest','restart','task'])next.delete(key);if(tab!=='Nodes'){next.delete('node');next.delete('nodeTab');}setParams(next);};
  const openNode=(name:string)=>{const next=new URLSearchParams(params);next.set('tab','Nodes');next.set('node',name);next.set('nodeTab','Overview');next.delete('action');setParams(next);};
  const openNodeServices=(name:string)=>{const next=new URLSearchParams(params);next.set('tab','Nodes');next.set('node',name);next.set('nodeTab','Services');next.delete('action');setParams(next);};
  const data=live.error?null:live.data,nodes=data?.nodes||[],vms=data?.vms||[],lxc=data?.lxc||[],storage=data?.storage||[],errors=data?.errors||[],services=data?.nodeServices||[];
@@ -74,7 +74,7 @@ export default function ProxmoxOverview(){
  :view==='Virtual Machines'?<VirtualMachines loading={live.loading&&!live.error} navigation={navigation} data={data} role={session.data?.user?.role} clusterUrl={data?.cluster?.url} refresh={refresh}/>
  :view==='LXC Containers'?<LxcContainers loading={live.loading&&!live.error} navigation={navigation} data={data} role={session.data?.user?.role} clusterUrl={data?.cluster?.url} refresh={refresh}/>
  :view==='Storage'?<ProxmoxStorage navigation={navigation} role={session.data?.user?.role} clusterUrl={data?.cluster?.url}/>
- :view==='Tasks & Logs'?<ProxmoxTasks navigation={navigation} data={data} role={session.data?.user?.role} clusterUrl={data?.cluster?.url} hours={hours}/>
+ :view==='Tasks & Logs'?<ProxmoxTasks key={JSON.stringify([params.get('restart'),params.get('task')])} requestedTask={params.get('task')||''} restartId={params.get('restart')||''} navigation={navigation} data={data} role={session.data?.user?.role} clusterUrl={data?.cluster?.url} hours={hours}/>
  :view==='Networks'?<ProxmoxNetworks navigation={navigation} role={session.data?.user?.role} clusterUrl={data?.cluster?.url}/>
  :null}
  {taskResult&&<Card><div className="widget-title"><h3>Task Result</h3><button className="btn ghost" onClick={()=>setTaskResult(null)}>Close</button></div><pre className="live-output">{JSON.stringify(taskResult,null,2)}</pre></Card>}

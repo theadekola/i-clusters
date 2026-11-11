@@ -96,6 +96,22 @@ Agent on the selected VM before continuing. An OS update uses the same dialog
 when a restart is required and checks that the VM or CT is running. Choose
 **Later** to defer the restart.
 
+If you close the browser, sign back in and open the guest under **Guest restarts**.
+The controller saves the request and its Proxmox task ID before returning the
+receipt. Opening the entry checks the existing task. The dialog shows the last
+confirmed power state and elapsed time. **View task log** opens the specific
+task. If the provider did not return an ID, **View guest task history** shows
+tasks for that guest on its node.
+
+If the task has finished and the guest stays stopped for at least 30 seconds of
+observation, i-Clusters checks the node’s active tasks. **Start VM** or **Start
+CT** appears when startup is available. Approve it once to request startup.
+The controller checks placement, power state and active tasks again before
+sending the command. A token needs effective Sys.Audit on the node to verify
+all active tasks. Completed results remain accessible under **Recent guest
+restarts**. **End tracking** closes a verification or recovery record without
+changing guest power.
+
 ## Optional Docker guest setup
 
 Needs Setup lists eligible unconnected Debian/Ubuntu guests separately. Install
