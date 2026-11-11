@@ -2,11 +2,13 @@
 
 Developed by **The Adekola Labs**.
 
-## Unreleased
+## Changes on main
+
+- Adopt Apache License 2.0 for first-party software and link the verified source release and public website policies from Settings → About.
 
 - Keep Docker connection status beside its host title, add Storage Configuration summary cards with explicit data coverage, remove duplicate Shell/SFTP/Users paths, and remove legacy Docker/Network tab font overrides.
 
-- Align Monitoring provider links with its actions; standardize typography throughout pages, tabs, cards and controls; name collapsed navigation links; clarify evaluation status and record live audit/commercial acceptance limits. Patch Vite to 6.4.5 and require full responsive route checks in CI.
+- Align Monitoring provider links with its actions; standardize typography throughout pages, tabs, cards and controls; name collapsed navigation links; document the scope of live audits and customer acceptance. Patch Vite to 6.4.5 and require full responsive route checks in CI.
 
 - Keep acknowledged conditions in the Active Alerts view until resolution, align alert filter rows on desktop, and omit PR-number suffixes from software update notes.
 
@@ -33,9 +35,9 @@ Developed by **The Adekola Labs**.
 - Restore the original page and system image icons used before PR #191.
 - Add five complete bundled interface language packs with regional flag images, persistent live switching and build-time coverage checks.
 
-## v1.0.0 — release-notes baseline, 29 October 2026
+## v1.0.0 source release
 
-The release series starts at v1.0.0. Publication remains paused pending acceptance; a version number is not production approval. See the [v1.0.0 release notes](docs/releases/v1.0.0.md).
+Version 1.0.0 is distributed from source. Automated checks cover installation, browser functionality and controller recovery. See the [v1.0.0 release notes](docs/releases/v1.0.0.md).
 
 - Unified Proxmox VE, Docker and TrueNAS inventory with supported infrastructure management, backups, monitoring and notifications.
 - Responsive pages and tabs, consistent pending indicators, automatic SSH pairing and separate restart/update review popups.

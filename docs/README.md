@@ -1,6 +1,6 @@
 # i-Clusters documentation
 
-Developed by **The Adekola Labs** · Current release baseline: **1.0.0**.
+Developed by **The Adekola Labs** · Current source release: **1.0.0**.
 
 | Need | Guide |
 | --- | --- |
@@ -14,7 +14,7 @@ Developed by **The Adekola Labs** · Current release baseline: **1.0.0**.
 | Backups and controller restore | [Security/recovery](../deployment/SECURITY-AND-RECOVERY.md), [acceptance](acceptance-checklist.md) |
 | Operations and incidents | [Operations](operations.md), [warning recovery](monitoring-warning-recovery.md) |
 | Commercial acceptance | [Procedure](commercial-acceptance.md), [private record template](acceptance-record.example.json), [acceptance checklist](acceptance-checklist.md) |
-| Evaluation status | [Latest live/interface assessment](audits/2026-11-05-live-interface-and-commercial-review.md), [earlier release assessment](audits/2026-10-20-release-candidate.md) |
+| Historical reviews | [November live/interface assessment](audits/2026-11-05-live-interface-and-commercial-review.md), [earlier release assessment](audits/2026-10-20-release-candidate.md) |
 | Interface consistency | [Typography scale](interface-typography.md) |
 | Policies and contribution | [Security](../SECURITY.md), [privacy](../PRIVACY.md), [terms](../TERMS.md), [contributing](../CONTRIBUTING.md), [notices](../THIRD_PARTY_NOTICES.md) |
 

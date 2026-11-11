@@ -1,8 +1,8 @@
-# Commercial acceptance and remaining launch gates
+# Customer deployment acceptance
 
 Developed by The Adekola Labs. Updated 21 October 2026.
 
-Publication and new release notes remain paused. The current design supports a dedicated controller per customer. It is not a shared multi-tenant SaaS service. These procedures collect evidence; they do not create a compliance, uptime or security certification.
+Use these procedures to record the behaviour of a dedicated controller on each customer’s infrastructure. Record the deployment revision and the scope of the checks alongside the results.
 
 ## Evidence and approval
 

@@ -1,12 +1,12 @@
-Developed by **The Adekola Labs**. Updated 20 October 2026.
-
 # Terms of use for the self-hosted application
 
-Effective date: 16 October 2026.
+Updated 11 November 2026 by The Adekola Labs.
 
 ## Licence and scope
 
-i-Clusters's application source is provided under the [MIT License](LICENSE). That licence governs permission to use, copy, modify, distribute and sell copies of the software, including its copyright-notice requirements and warranty/liability disclaimer. This document explains operational responsibilities; it does not add licence restrictions or replace the MIT License. Third-party dependencies and artwork retain their respective licences and notices. The application licence does not imply endorsement or grant rights in third-party trademarks.
+The [Apache License 2.0](LICENSE) governs the use, modification and distribution of first-party i-Clusters software. It sets out the copyright and patent grants, redistribution conditions, warranty disclaimer and limitations of liability. Bundled dependencies and artwork retain their own licences and attribution. See [third-party notices](THIRD_PARTY_NOTICES.md).
+
+The [website Terms of Service](https://www.i-clusters.com/terms.html) cover browsing the public site, using its forms and making donations. The [website Privacy Policy](https://www.i-clusters.com/privacy.html) explains how the site handles those interactions.
 
 ## Your installation
 
@@ -28,6 +28,6 @@ You choose and provide access to connected providers, notification channels and 
 
 Use the [repository issue tracker](https://github.com/theadekola/i-clusters/issues) for non-sensitive reproducible problems or feature requests. Do not include credentials or private infrastructure data. For security vulnerabilities, follow [SECURITY.md](SECURITY.md). No specific response time is promised.
 
-## Release candidates
+## Release and support
 
-The 3.1.0 release-candidate series is for evaluation. Publication is currently paused pending fixes and final acceptance; see the release policy for the current candidate. Paid support, hosting, response targets and recovery guarantees require a separate agreement from the actual service operator. The project does not assert a company registration status, statutory compliance certification or universal provider compatibility. Review [release policy](docs/release-policy.md) and complete [acceptance checks](docs/acceptance-checklist.md) before customer production use.
+Version 1.0.0 is distributed as a source release. The [release notes](docs/releases/v1.0.0.md) link to the automated verification results. Paid hosting, support response times and recovery commitments depend on the operator’s service agreement.

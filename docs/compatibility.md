@@ -9,7 +9,7 @@ Applies to 1.0.0. Developed by The Adekola Labs.
 | Docker | Paired Linux hosts/eligible Linux Proxmox guests or authenticated direct Engine API; image updates for supported lifecycle/configuration | Shared namespaces/lifecycle dependencies, local-only images and digest-pinned tag checks have explicit restrictions. Compose file deployment and coordinated stack migration are not supplied. |
 | TrueNAS | HTTPS JSON-RPC integration for 25.04+ method families, with method-dependent compatibility | Exact SCALE releases, credentials, certificate trust and each enabled write operation require live acceptance. No universal compatibility claim. |
 | Guest setup | UI offers supported Debian/Ubuntu Linux flows; VM paths need guest agent or verified SSH bootstrap | No Windows Docker provisioning. Do not run generic setup in appliances such as TrueNAS. |
-| Browsers | Responsive web interface; automated DOM/UI tests and wake-lock lifecycle simulations | Physical Safari/iOS, Android and desktop accessibility/performance checks remain open until recorded. Wake locks are best effort. |
+| Browsers | Responsive web interface; automated DOM/UI tests and wake-lock lifecycle simulations | Record accessibility and performance on the specific iOS, Android and desktop devices used by the installation. Wake locks are best effort. |
 | Notifications | Nine configured external channel adapters and local activity | Test the actual configured destination and outage/recovery delivery. Queuing is not proof of delivery. |
 | Deployment tenancy | One controller, database and API process per customer | User roles are installation-wide. No shared SaaS tenant isolation or horizontal multi-writer journal coordination. |
 

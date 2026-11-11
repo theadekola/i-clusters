@@ -48,7 +48,7 @@ Integrations and Advanced are removed from Settings navigation. Old links redire
 
 General-settings exports contain site name, description and refresh interval. Imports validate and stage only those fields for review before explicit restoration. Credentials, user accounts, application data, browser preferences and infrastructure backups are excluded. Export/import lives under System → Backup & Restore. The separate settings tab is removed; its old links redirect to System.
 
-About uses reported version facts and verified project links. Build number, UTC date and source revision come from build-time API metadata; development builds without metadata are labelled explicitly. About links to the MIT License, security guidance, privacy/data handling and terms of use, plus the full README and architecture diagrams. Shared instance-name/description inputs stay in General. Project documentation and issue links are consolidated into Quick Links rather than repeated in a Support card.
+About uses reported version facts and verified project links. Build number, UTC date and source revision come from build-time API metadata; development builds without metadata are labelled explicitly. About links to the Apache License 2.0, verified release checks, security guidance, controller terms and privacy documentation, and the public website’s Terms of Service and Privacy Policy. Shared instance-name/description inputs stay in General. Project documentation and issue links are consolidated into Quick Links rather than repeated in a Support card.
 
 All tabs retain responsive layouts, search where applicable and the existing permission checks. Removing duplicate sections does not add new provider capabilities or change live infrastructure.
 

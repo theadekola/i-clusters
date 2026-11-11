@@ -308,7 +308,7 @@ New installations detect the VM address and configure HTTPS at `https://VM-IP:60
 
 Browsers and manually paired nodes must trust Caddy’s local CA. Automatic SSH node pairing transfers the public CA into that connector’s configuration and keeps certificate verification enabled without changing the node’s global trust store. Export it with `sudo docker compose --project-directory /opt/i-clusters -f /opt/i-clusters/docker-compose.yml exec -T caddy cat /data/caddy/pki/authorities/local/root.crt`. Install the certificate in the client’s trusted root store. i-Clusters cannot automatically alter trust stores on users’ computers. Existing paired agents using an old address need to reconnect using the new HTTPS address.
 
-## Release candidate operations
+## Source release operations
 
 Published by The Adekola Labs. Follow the [release policy](docs/release-policy.md), [compatibility scope](docs/compatibility.md), [operations guide](docs/operations.md) and [acceptance checklist](docs/acceptance-checklist.md). Optional MFA is user-controlled under Settings → Security. Use the HTTPS endpoint for Secure browser cookies and screen-awake support. Screen locks are best effort; server-side jobs remain independent.
 
