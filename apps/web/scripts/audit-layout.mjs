@@ -321,6 +321,20 @@ try{
 
   }
   if(process.env.LAYOUT_CLUSTER_SWITCH){
+   const originalViewport=page.viewportSize();
+   await page.setViewportSize({width,height:width<=390?600:800});
+   async function assertCentered(dialog){
+    await dialog.waitFor();
+    await page.waitForFunction(el=>{
+     const r=el.getBoundingClientRect();
+     return Math.abs(r.left+r.width/2-document.documentElement.getBoundingClientRect().width/2)<2&&Math.abs(r.top+r.height/2-innerHeight/2)<2
+      &&r.top>=0&&r.bottom<=innerHeight&&r.left>=0&&r.right<=innerWidth;
+    },await dialog.elementHandle(),{timeout:5000}).catch(async()=>{
+     const name=await dialog.getByRole('heading').first().textContent();
+     const viewport=await page.evaluate(()=>({width:document.documentElement.getBoundingClientRect().width,height:innerHeight}));
+     assert.fail(name+' should be centered in '+JSON.stringify(viewport)+', got '+JSON.stringify(await dialog.boundingBox()));
+    });
+   }
    await page.goto(base+'proxmox?tab=Virtual+Machines&vmid=100');
    const header=page.getByRole('button',{name:'Switch cluster',exact:true});
    await header.filter({hasText:'Homelab'}).waitFor();
@@ -332,6 +346,7 @@ try{
     await other.getByRole('heading',{name:/Proxmox Cluster: Homelab/}).waitFor();
     await header.click();
     const dialog=page.getByRole('dialog',{name:'Switch cluster',exact:true});
+    await assertCentered(dialog);
     assert.ok(await dialog.getByRole('button',{name:'Add cluster',exact:true}).isVisible());
     await dialog.getByRole('button',{name:/Office Cluster/}).click();
     const office=base+'clusters/'+officeId+'/proxmox';
@@ -346,12 +361,21 @@ try{
     assert.equal(await viewerDialog.getByRole('button',{name:'Add cluster',exact:true}).count(),0);
     await header.click();await dialog.getByRole('button',{name:'Add cluster',exact:true}).click();
     const add=page.getByRole('dialog',{name:'Add Cluster',exact:true});
+    await assertCentered(add);
+    const save=add.getByRole('button',{name:'Save',exact:true});
+    await save.scrollIntoViewIfNeeded();
+    assert.ok(await save.evaluate(el=>{
+     const r=el.getBoundingClientRect();
+     return r.top>=0&&r.bottom<=innerHeight&&el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));
+    }),'Save is reachable inside the centered form');
     assert.equal(await add.locator('input[name=host]').inputValue(),'');
     assert.equal(await add.locator('input[name=verifyTls]').isChecked(),true);
     await add.getByRole('button',{name:'Cancel',exact:true}).click();
+    await assertCentered(dialog);
+    assert.ok(await dialog.getByRole('button',{name:'Add cluster',exact:true}).evaluate(el=>el===document.activeElement),'Closing the form returns focus to the switcher');
     await dialog.getByRole('button',{name:/Homelab/}).click();
     await page.waitForURL(base+'proxmox');
-   }finally{await other.close()}
+   }finally{await other.close();await page.setViewportSize(originalViewport)}
   }
   if(process.env.LAYOUT_UPDATE_NOTICE==='available'&&!process.env.LAYOUT_ROLE){
    await page.goto(base);await page.getByRole('button',{name:'Review software update',exact:true}).click();

@@ -27,7 +27,7 @@ export default function ClusterSwitcher({owner}:{owner:boolean}){
       aria-haspopup="dialog" aria-expanded={open} onClick={()=>{setOpen(true);void refresh()}}>
       <Layers size={17} aria-hidden="true"/><span id="current-cluster-name" translate={current?.configured?'no':undefined}>{current?.configured?displayName:'Clusters'}</span><ChevronDown size={14} aria-hidden="true"/>
     </button>
-    <Modal open={open} title="Switch cluster" onClose={()=>setOpen(false)}>
+    <Modal portal open={open} title="Switch cluster" onClose={()=>setOpen(false)}>
       {error&&<p role="alert" className="error">{error}</p>}
       <div className="cluster-switch-list">{profiles.map(profile=><button key={profile.id} type="button" className="btn secondary"
         aria-current={profile.id===clusterId?'true':undefined} onClick={()=>select(profile.id)}>
