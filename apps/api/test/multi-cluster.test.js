@@ -58,6 +58,7 @@ async function provider(name,tls){
     else if(route==='/cluster/backup')data=[{id:name+'-job',node:'node01',storage:disk.storage,enabled:1,schedule:'daily',vmid:'100'}];
     else if(route==='/nodes/node01/tasks'||route==='/cluster/tasks')data=url.searchParams.has('source')&&url.searchParams.get('source')==='active'?[]:[task];
     else if(route==='/access/permissions')data={[url.searchParams.get('path')]:Object.fromEntries(privileges.map(p=>[p,1]))};
+    else if(route==='/nodes/node01/qemu/100/config'&&url.searchParams.get('current')==='1')data={scsi0:disk.storage+':vm-100-disk-0,size=12G',scsi1:`/dev/disk/by-id/${name}-drive,size=${name==='Office'?512:128}G`,ide2:'none,media=cdrom'};
     else if(route.endsWith('/status/current')||route.endsWith('/config'))data=route.includes('/lxc/')?ct:vm;
     else if(route.includes('/tasks/')&&route.endsWith('/status'))data=fixture.finished?{status:'stopped',exitstatus:'OK'}:{status:'running'};
     else data=[];
@@ -183,10 +184,14 @@ test('two independent clusters isolate duplicate guest IDs, approvals and in-fli
     }});
     const datasets=await api(prefix+'/storage/datasets',{token:owner});
     assert.ok(JSON.stringify(datasets).includes(name+'-tank/data'));
+    const attached=datasets.resources.filter(r=>r.type==='VM host disk');
+    assert.equal(attached.length,1);assert.equal(attached[0].resourceId,'/dev/disk/by-id/'+name+'-drive');
+    assert.equal(attached[0].size,(name==='Office'?512:128)*1024**3);assert.equal(attached[0].used,null);
     const shares=await api(prefix+'/storage/shares',{token:owner});
     assert.ok(JSON.stringify(shares).includes(name+'-share'));
     const inventory=await api(prefix+'/proxmox?refresh=1',{token:owner});
     assert.equal(inventory.vms[0].id,'100');assert.equal(inventory.vms[0].name,name+'-VM');
+    assert.equal(inventory.vms[0].attachedDisks.find(d=>d.kind==='host').size,attached[0].size);
     assert.equal(inventory.lxc[0].name,name+'-CT');
     assert.equal(inventory.nodes[0].cpu,name==='Home'?20:60);
     assert.equal(inventory.clusterStatus.find(row=>row.type==='cluster')?.name,name==='Office'?'Office-membership':undefined);

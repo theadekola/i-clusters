@@ -1,7 +1,8 @@
 import {createGuestAddressReader} from './guest-addresses.js';
 import {dockerPullProgress} from './docker-pull-progress.js';
 import {publicComposeLabels} from './docker-public.js';
-import {createGuestFilesystemReader} from './guest-filesystem-cache.js';
+import {createVmReadingCache} from './vm-reading-cache.js';
+import {vmDiskSizes} from './proxmox-volume.js';
 import {createHash} from 'node:crypto';
 import {guestNetwork,ctExtra,guestGeneral,allocateGuestId,vmHardware} from './guest-create-options.js';
 import {assertGuestPlacement} from './ssh-target.js';
@@ -51,7 +52,8 @@ const form = obj => new URLSearchParams(Object.entries(obj).filter(([,v])=>v!==u
 
 export function proxmoxConfigured(){const c=clusterConfig();return !!(c.url&&c.tokenId&&c.tokenSecret)}
 const readGuestAddresses=createGuestAddressReader();
-const readGuestFilesystems=createGuestFilesystemReader(guestFilesystemUsage);
+const readGuestFilesystems=createVmReadingCache('agent/get-fsinfo',guestFilesystemUsage);
+const readVmDisks=createVmReadingCache('config?current=1',vmDiskSizes);
 export async function proxmoxSnapshot(query=pve){
   const inventory=await query('/cluster/resources');
   if(!Array.isArray(inventory))throw new Error('Unexpected cluster resource inventory');
@@ -94,9 +96,12 @@ export async function proxmoxSnapshot(query=pve){
   const percent=(used,total)=>typeof used==='number'&&typeof total==='number'&&total>0?Math.round(used/total*100):null;
   const running=resources.filter(r=>r.type==='qemu'&&r.status==='running');
   const identity=createHash('sha256').update(JSON.stringify(clusterConfig())).digest('hex');
-  const vmFilesystems=await readGuestFilesystems(running,query,identity);
-  const addressReadings=await readGuestAddresses(resources.filter(r=>['qemu','lxc'].includes(r.type)),query,identity);
-  const guests=type=>resources.filter(r=>r.type===type).map(r=>({networkSample:!unavailable.has(r.node)&&r.status==='running'?r.networkSample??null:null,...addressReadings.get(`${r.node}/${r.type}/${r.vmid}`),id:String(r.vmid),name:r.name||String(r.vmid),node:r.node,type,status:r.status,template:r.template===true||Number(r.template)===1,powerStatus:type==='qemu'&&r.status==='running'&&['paused','suspended'].includes(r.qmpstatus)?r.qmpstatus:r.status,nodeAvailable:!unavailable.has(r.node),reportedStatus:r.reportedStatus,cpu:r.cpu==null?null:Math.round(r.cpu*100),memory:r.mem==null?null:r.mem,memoryTotal:r.maxmem??null,memoryPercent:percent(r.mem,r.maxmem),disk:type==='qemu'?(vmFilesystems.get(String(r.vmid))?.used??null):(r.disk??null),diskTotal:type==='qemu'?(vmFilesystems.get(String(r.vmid))?.total??null):(r.maxdisk??null),diskFree:type==='qemu'?(vmFilesystems.get(String(r.vmid))?.free??null):null,diskCapacity:r.maxdisk??null,diskPercent:type==='qemu'?percent(vmFilesystems.get(String(r.vmid))?.used,vmFilesystems.get(String(r.vmid))?.total):percent(r.disk,r.maxdisk),uptime:r.uptime??null}));
+  const [vmFilesystems,vmDisks,addressReadings]=await Promise.all([
+    readGuestFilesystems(running,query,identity),
+    readVmDisks(resources.filter(r=>r.type==='qemu'&&!unavailable.has(r.node)),query,identity),
+    readGuestAddresses(resources.filter(r=>['qemu','lxc'].includes(r.type)),query,identity)
+  ]);
+  const guests=type=>resources.filter(r=>r.type===type).map(r=>({networkSample:!unavailable.has(r.node)&&r.status==='running'?r.networkSample??null:null,...addressReadings.get(`${r.node}/${r.type}/${r.vmid}`),id:String(r.vmid),name:r.name||String(r.vmid),node:r.node,type,status:r.status,template:r.template===true||Number(r.template)===1,powerStatus:type==='qemu'&&r.status==='running'&&['paused','suspended'].includes(r.qmpstatus)?r.qmpstatus:r.status,nodeAvailable:!unavailable.has(r.node),reportedStatus:r.reportedStatus,cpu:r.cpu==null?null:Math.round(r.cpu*100),memory:r.mem==null?null:r.mem,memoryTotal:r.maxmem??null,memoryPercent:percent(r.mem,r.maxmem),disk:type==='qemu'?(vmFilesystems.get(String(r.vmid))?.used??null):(r.disk??null),diskTotal:type==='qemu'?(vmFilesystems.get(String(r.vmid))?.total??null):(r.maxdisk??null),diskFree:type==='qemu'?(vmFilesystems.get(String(r.vmid))?.free??null):null,diskCapacity:r.maxdisk??null,...(type==='qemu'?{attachedDisks:vmDisks.get(String(r.vmid))??null}:{}),diskPercent:type==='qemu'?percent(vmFilesystems.get(String(r.vmid))?.used,vmFilesystems.get(String(r.vmid))?.total):percent(r.disk,r.maxdisk),uptime:r.uptime??null}));
   let clusterStatus=[];
   try{const rows=await query('/cluster/status');if(!Array.isArray(rows)||rows.some(r=>!r||typeof r!=='object'))throw new Error('Unexpected cluster status response');clusterStatus=rows;}catch(e){errors.push(`Cluster status: ${e.message}`);}
   const backupHistory={verified:false,tasks:[]};

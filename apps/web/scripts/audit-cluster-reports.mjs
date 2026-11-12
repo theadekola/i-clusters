@@ -21,7 +21,7 @@ const sections={
  '/ai':[''],'/tools/shell':[''],'/tools/sftp':[''],'/users':['','Audit Logs'],
  '/settings':['General','System','Security','Connections','Integrations','Appearance','About']
 };
-const markers=['VM','CT','pool','engine','container','job','volume','tank','disk','share','membership','rule','controller'];
+const markers=['VM','CT','pool','engine','container','job','volume','tank','disk','drive','share','membership','rule','controller'];
 const controllerPaths=new Set(['auth','account','users','product','updates','cluster-profiles','health']);
 
 export async function auditClusterReports({base,owner,profile,tls}){
@@ -130,6 +130,15 @@ export async function auditClusterReports({base,owner,profile,tls}){
      assert.equal(new URL(page.url()).pathname,new URL(dest).pathname);
      const expected=({'/proxmox:Virtual Machines':'-VM','/proxmox:LXC Containers':'-CT','/docker:Containers':'-container','/docker:Volumes':'-volume','/storage:Storage Pools':'-pool','/storage:Datasets / Volumes':'-tank/data','/storage:Shares':'-share','/alerts:Alert Rules':'-rule','/network:Devices':'-VM'})[pathname+':'+tab];
      await inspect(pathname+'/'+tab,expected?scopeName+expected:'');
+     if(pathname==='/proxmox'&&tab==='Virtual Machines'){
+      const capacity=scopeName==='Home'?'140.0 GiB':'524.0 GiB';
+      await page.locator('.vm-stats .vm-stat').filter({hasText:'Attached disk capacity'}).getByText(capacity,{exact:true}).waitFor();
+     }
+     if(pathname==='/storage'&&tab==='Datasets / Volumes'){
+      const device=page.getByRole('row',{name:'Select /dev/disk/by-id/'+scopeName+'-drive',exact:true});
+      await device.getByText(scopeName==='Home'?'128.0 GiB':'512.0 GiB',{exact:true}).waitFor();
+      assert.equal(await device.getByRole('button').isDisabled(),true);
+     }
      const details=({'/proxmoxVirtual Machines':['.vm-detail','.vm-detail-tabs'],'/proxmoxLXC Containers':['.vm-detail','.vm-detail-tabs'],'/networkDevices':['.device-details-card','.tabs'],'/users':['.users-details','.tabs']})[pathname+tab];
      if(details){
       const [region,bar]=details,buttons=page.locator(region).locator(bar).getByRole('button');

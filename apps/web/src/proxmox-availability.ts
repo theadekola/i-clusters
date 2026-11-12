@@ -20,7 +20,18 @@ export function proxmoxAvailability(data:any){
 export function guestAvailability(rows:any[]){
  const live=rows.filter(row=>row.nodeAvailable!==false&&row.status!=='unknown');
  const memory=live.filter(row=>measured(row.memory)&&measured(row.memoryTotal)&&row.memoryTotal>0);
- const disk=live.filter(row=>measured(row.disk)&&measured(row.diskTotal)&&row.diskTotal>0);
- return {memory:total(memory,'memory'),memoryTotal:total(memory,'memoryTotal'),disk:total(disk,'disk'),diskTotal:total(disk,'diskTotal'),
+ const disk=live.filter(row=>measured(row.disk)&&measured(row.diskTotal)&&row.diskTotal>0&&row.disk<=row.diskTotal);
+ const roots=live.filter(row=>measured(row.diskTotal)&&row.diskTotal>0);
+ return {diskReadings:disk.length,rootCapacity:total(roots,'diskTotal'),rootReadings:roots.length,memory:total(memory,'memory'),memoryTotal:total(memory,'memoryTotal'),disk:total(disk,'disk'),diskTotal:total(disk,'diskTotal'),
   coverage:`Memory ${memory.length}/${rows.length} · disk ${disk.length}/${rows.length} guests measured. Missing or offline readings are excluded.`};
+}
+
+export function vmDiskCapacity(vm:any){
+ const disks=vm.nodeAvailable===false?null:vm.attachedDisks;
+ if(Array.isArray(disks)){
+  const known=disks.filter(d=>measured(d.size)&&d.size>0);
+  return {bytes:known.length?total(known,'size'):disks.length?null:0,complete:known.length===disks.length,bootOnly:false};
+ }
+ const boot=vm.nodeAvailable!==false&&measured(vm.diskCapacity)&&vm.diskCapacity>0?vm.diskCapacity:null;
+ return {bytes:boot,complete:false,bootOnly:boot!==null};
 }
