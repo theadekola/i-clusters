@@ -1,3 +1,4 @@
+import {clusterReportFilename,reportCluster} from '../cluster-context';
 import RefreshButton from '../components/RefreshButton';
 import ClusterTopology from '../components/ClusterTopology';
 import {InspectableRow,SelectionBody} from '../components/TableActions';
@@ -30,7 +31,7 @@ export default function Network(){
  const rows=(dockerKnown?networks:[]).filter((r:any)=>JSON.stringify(r).toLowerCase().includes(search.trim().toLowerCase()));
  const network=tab==='Docker Networks'&&dockerKnown&&selected&&selected.host===data?.dockerHost?.id?networks.find((r:any)=>r.id===selected?.id):null;
  const inspect=(r:any)=>setSelected({id:r.id,host:data?.dockerHost?.id});
- const exportReport=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({network:data,topology:cluster.data},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='iclusters-network.json';a.click();URL.revokeObjectURL(url)};
+ const exportReport=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({sourceCluster:reportCluster(),network:data,topology:cluster.data},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=clusterReportFilename('iclusters-network.json');a.click();URL.revokeObjectURL(url)};
  const navigation=<Tabs items={['Network Map','Interfaces','Devices','Routing','DNS','Traffic Analysis','Docker Networks']} active={tab} onChange={v=>{setTab(v);setSearch('');setSelected(null)}}/>;
  return <div className="network-overview">{overview&&<PageHeader title="Network Overview" subtitle="Explore connected nodes, virtual machines and containers." actions={<><RefreshButton className="btn secondary" aria-busy={live.loading||cluster.loading} disabled={live.loading||cluster.loading} onClick={()=>Promise.all([live.refresh(),cluster.refresh()])}><RefreshCw size={15}/> Refresh</RefreshButton><button className="btn secondary" disabled={!data} onClick={exportReport}><Download size={15}/> Export</button><Link className="btn primary" to="/proxmox?tab=Networks"><NetworkIcon size={14}/>Manage Interfaces</Link></>}/>}
  {overview&&live.error&&<p role="alert" className="error">{live.error}</p>}

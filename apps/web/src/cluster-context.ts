@@ -12,7 +12,18 @@ export function clusterLocation(id:string,route='/proxmox'){
   return (id==='default'?'':'/clusters/'+encodeURIComponent(id))+route;
 }
 let activeName='';
-export function nameCluster(name:string){activeName=name}
+type ReportCluster={id:string;name?:string;endpoint?:string|null};
+let source:ReportCluster={id:clusterId};
+export function nameCluster(name:string,profile?:ReportCluster){
+  activeName=name;
+  source=profile?.id===clusterId?{id:clusterId,name:profile.name,endpoint:profile.endpoint}:{id:clusterId};
+}
+export function reportCluster(){return {...source}}
+export function clusterReportFilename(filename:string){
+  if(clusterId==='default')return filename;
+  const label=source.name?.replace(/[^a-zA-Z0-9_-]+/g,'-').slice(0,40);
+  return [label,encodeURIComponent(clusterId),filename].filter(Boolean).join('-');
+}
 export function approvalDescription(detail?:string){
   return activeName?[`Cluster: ${activeName}`,detail].filter(Boolean).join(' · '):detail;
 }

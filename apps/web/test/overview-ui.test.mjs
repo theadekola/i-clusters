@@ -157,3 +157,8 @@ test('node-scoped LXC and Docker totals have distinct destinations',async()=>{
   assert.equal(dockerURL.pathname,'/docker');assert.equal(dockerURL.searchParams.get('tab'),'Containers');assert.equal(dockerURL.searchParams.get('host'),'agent:qemu/101');
  }finally{await page.close()}
 });
+
+test('overview distinguishes an offline cluster from a responding API',async()=>{
+ const page=await mounted('pages/Overview.tsx',{},async p=>p==='/cluster-profiles'?{clusters:[{id:'default',name:'Fixture',configured:true,status:'offline'}]}:p==='/backups'?{points:[],jobs:[]}:sample());
+ try{assert.match(page.container.querySelector('.overview-toolbar p').textContent,/Offline/);assert.doesNotMatch(page.container.querySelector('.overview-toolbar p').textContent,/Connected infrastructure responding/)}finally{await page.close()}
+});

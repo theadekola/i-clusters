@@ -32,3 +32,21 @@ test('VM and CT outages reach the bell and enabled channels once, with independe
  assert.equal(forGuest('202').status,'resolved');
  assert.equal(messages.filter(m=>m.includes('Database')).length,2);assert.equal(messages.filter(m=>m.includes('Media')).length,2);
 });
+
+test('a failed Proxmox read drops earlier guest and node data while another provider is still scanning',async()=>{
+ const state={metrics:[],rules:[],alerts:[]},store={get:()=>state,mutate:fn=>fn(state)};
+ let fail=false,unblock;
+ const monitor=createMonitor({proxmox:{configured:()=>true,read:async()=>{
+   if(fail)throw Error('Fixture offline');
+   return {nodes:[{name:'shared-node',status:'online'}],vms:[{id:'100',name:'earlier guest'}],lxc:[],storage:[]};
+ }}},store,async()=>[],async()=>{if(fail)await new Promise(resolve=>{unblock=resolve});return {hosts:[]}});
+ await monitor.sample(true);fail=true;
+ const scan=monitor.sample(true);
+ try{
+   await new Promise(resolve=>setImmediate(resolve));
+   const reading=await monitor.sample();
+   assert.equal(reading.services.find(row=>row.id==='proxmox').status,'error');
+   assert.equal(reading.proxmox,undefined);
+   assert.deepEqual(reading.hosts,[]);
+ }finally{unblock?.();await scan}
+});

@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import {buildInfo} from './build-info.js';
 export function updateChanges(changes){return [...new Set((Array.isArray(changes)?changes:[]).filter(line=>typeof line==='string').map(line=>line.trim()).filter(line=>line&&!/^(?:merge\b|pull request\b|merged? pull request\b)/i.test(line)))];}
 
-export function updateBridge(directory=process.env.DATA_DIR||'runtime'){
+export function updateBridge(directory=process.env.ICLUSTERS_CONTROLLER_DATA||process.env.DATA_DIR||'runtime'){
  const statusFile=path.join(process.env.UPDATE_STATUS_DIR||directory,'update-status.json'),requestFile=path.join(directory,'update-request.json');
  return {
   status(){try{const status=JSON.parse(fs.readFileSync(statusFile,'utf8')),age=Date.now()-Date.parse(status.checkedAt),enabled=Number.isFinite(age)&&age>=-60000&&age<15*60*1000;return {...status,version:buildInfo.version,buildNumber:buildInfo.buildNumber,changes:updateChanges(status.changes),configured:true,enabled,...(!enabled?{state:'unavailable',lastState:status.state,message:'The Ubuntu updater has not reported a recent check. Open About and check for updates, or inspect the iclusters-updater service on the VM.'}:{}),pending:fs.existsSync(requestFile),checking:fs.existsSync(path.join(directory,'update-check.json'))||enabled&&status.state==='checking'};}catch{return {version:buildInfo.version,buildNumber:buildInfo.buildNumber,changes:[],configured:!!process.env.UPDATE_STATUS_DIR&&fs.existsSync(process.env.UPDATE_STATUS_DIR),enabled:false,available:false,state:'unavailable',message:'The Ubuntu updater has not reported status. On Ubuntu run: cd /opt/i-clusters && sudo bash deployment/setup-updater.sh'};}},

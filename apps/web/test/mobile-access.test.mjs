@@ -17,3 +17,16 @@ test('service worker leaves APIs untouched and never caches authenticated naviga
  fail=true;events.fetch({request:{method:'GET',mode:'navigate',url:'https://host/'},respondWith:p=>response=p});const offline=await response;assert.equal(offline.status,503);assert.equal(offline.headers.get('Cache-Control'),'no-store');assert.match(await offline.text(),/Connection interrupted/);
  assert.equal(source.includes('caches.'),false);
 });
+
+test('secondary dashboard links and exported reports retain the selected cluster identity',async()=>{
+ const id='aaaabbbb-0000-4000-8000-000000000001',origin='https://controller.example';
+ const result=await build({stdin:{contents:"export * from './mobile-access';export * from './cluster-context'",resolveDir:new URL('../src/',import.meta.url).pathname},bundle:true,format:'esm',write:false,define:{'globalThis.window':JSON.stringify({location:{pathname:'/clusters/'+id+'/settings'}})}});
+ const scope=await import('data:text/javascript;base64,'+Buffer.from(result.outputFiles[0].text).toString('base64'));
+ scope.nameCluster('Office',{id,name:'Office / Test',endpoint:'office.example:8006'});
+ assert.equal(scope.dashboardLink(origin),origin+'/clusters/'+id+'/');
+ assert.equal(scope.dashboardLink(origin+'/?token=secret'),'');
+ assert.deepEqual(scope.reportCluster(),{id,name:'Office / Test',endpoint:'office.example:8006'});
+ assert.equal(scope.clusterReportFilename('report.csv'),'Office-Test-'+id+'-report.csv');
+ scope.nameCluster('',{id:'default',name:'Other'});
+ assert.deepEqual(scope.reportCluster(),{id});
+});
