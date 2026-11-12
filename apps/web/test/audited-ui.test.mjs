@@ -62,9 +62,14 @@ test('mobile navigation opens, closes, traps focus and closes after selecting a 
  }finally{await page.close();}
 });
 
-test('desktop navigation still collapses without opening a mobile drawer',async()=>{
+test('desktop navigation starts closed, toggles its icon and saves an explicit open preference',async()=>{
  const page=await mounted('components/Layout.tsx',{},async()=>({user:{role:'viewer'}}),false);
- try{const toggle=page.container.querySelector('.nav-toggle');assert.equal(toggle.getAttribute('aria-expanded'),'true');await page.click(toggle);assert.ok(page.container.querySelector('.sidebar.collapsed'));assert.equal(toggle.getAttribute('aria-expanded'),'false');assert.equal(page.container.querySelector('.nav-backdrop'),null);await page.click(toggle);assert.equal(page.container.querySelector('.sidebar.collapsed'),null);}finally{await page.close();}
+ try{
+  const toggle=page.container.querySelector('.nav-toggle'),sidebar=page.container.querySelector('.sidebar');
+  assert.equal(toggle.getAttribute('aria-expanded'),'false');assert.ok(toggle.querySelector('.lucide-panel-left-open'));assert.ok(sidebar.hasAttribute('inert'));
+  await page.click(toggle);assert.equal(toggle.getAttribute('aria-expanded'),'true');assert.ok(toggle.querySelector('.lucide-panel-left-close'));assert.equal(sidebar.hasAttribute('inert'),false);assert.equal(localStorage.getItem('iclusters_sidebar'),'open');
+  await page.click(toggle);assert.ok(sidebar.classList.contains('collapsed'));assert.equal(page.container.querySelector('.nav-backdrop'),null);
+ }finally{await page.close()}
 });
 test('LXC matches the VM detail layout and switches container hardware and resource data',async()=>{
  const data={errors:[],nodes:[{name:'pve'}],storage:[],lxc:[{id:'130',name:'first-ct',node:'pve',status:'running',cpu:2,memory:128,memoryTotal:512,memoryPercent:25,disk:100,diskTotal:1000,diskPercent:10},{id:'131',name:'second-ct',node:'pve',status:'running',cpu:3,memory:256,memoryTotal:512,memoryPercent:50,disk:400,diskTotal:1000,diskPercent:40}]};
@@ -789,7 +794,6 @@ test('Monitoring groups provider links with its controls and keeps diagnostics r
 });
 test('Collapsed navigation retains accessible names and hover labels',async()=>{
  const page=await mounted('components/Layout.tsx',{},async()=>({user:{role:'owner'}}),false);try{
-  await page.click(page.container.querySelector('.nav-toggle'));
   assert.ok(page.container.querySelector('.sidebar.collapsed'));
   const links=[...page.container.querySelectorAll('nav[aria-label="Pages"] a')];assert.ok(links.length>=10);
   for(const link of links){assert.ok(link.getAttribute('aria-label')?.trim());assert.equal(link.title,link.getAttribute('aria-label'));}

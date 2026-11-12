@@ -1,6 +1,7 @@
 // The original runtime is the default profile. Additional profile directories are
 // published atomically, after the connection has passed the ordinary save checks.
 import fs from 'node:fs';
+import {createClusterReachability} from './cluster-reachability.js';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
@@ -48,5 +49,13 @@ export function createClusterProfiles(directory=dataDirectory(),primary=clusterC
       return {id,name:config.name};
     }finally{if(fs.existsSync(staging))fs.rmSync(staging,{recursive:true,force:true})}
   }
-  return {allIds,ids,exists,folder,add,check,list:()=>entries().map(({id,config})=>({id,name:config?.name||'Default cluster',endpoint:config?.url?new URL(config.url).host:null,configured:!!config?.url}))};
+  const statuses=createClusterReachability();
+  async function list(query){
+    const rows=entries(),health=await statuses(rows,query);
+    return rows.map(({id,config},i)=>({
+      id,name:config?.name||'Default cluster',endpoint:config?.url?new URL(config.url).host:null,
+      configured:!!config?.url,status:health[i]
+    }));
+  }
+  return {allIds,ids,exists,folder,add,check,list};
 }

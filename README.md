@@ -110,7 +110,7 @@ Open **Settings → Connections → Add Connection**.
 
 | Connection | Setup |
 | --- | --- |
-| Proxmox Node | Enter cluster endpoint/token/TLS settings, test and save, then select the node and choose Connect Automatically with SSH, or use the manual pairing instructions. Use **Switch cluster** beside the hamburger menu to add and switch between independent clusters. Each tab keeps its own selection. See [managing multiple clusters](docs/proxmox-connection.md#switch-between-clusters). |
+| Proxmox Node | Enter cluster endpoint/token/TLS settings, test and save, then select the node and choose Connect Automatically with SSH, or use the manual pairing instructions. Use **Switch cluster** beside the navigation toggle to add and switch between independent clusters. Each tab keeps its own selection. See [managing multiple clusters](docs/proxmox-connection.md#switch-between-clusters). |
 | Docker Host | Create a short-lived pairing command and run it on the Linux Docker host. Verify the discovered Engine before opening Docker. |
 | Advanced: Direct Docker API | Use an existing authenticated HTTPS Docker endpoint with the required CA/client certificates. This is optional for paired hosts. |
 | TrueNAS | Use its configuration popup to save the HTTPS origin, API key, supported protocol and trusted CA as required. |

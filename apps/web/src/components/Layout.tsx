@@ -10,12 +10,12 @@ import BrandIcon from './BrandIcon';
 import HeaderNotifications from './HeaderNotifications';
 import LanguageSelector from './LanguageSelector';
 import {canAccessPage} from '../permissions';
-import {applyAppearance,watchSystemTheme} from '../appearance';
+import {applyAppearance,watchSystemTheme,loadSidebarDisplay} from '../appearance';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Boxes, Container, Database, Network, HardDriveDownload,
   CalendarClock, History, RotateCcw, Activity, Bell, Sparkles, Users, Settings,
-  Terminal, FolderOpen, Menu, X, Cloud, LogOut, CircleUserRound
+  Terminal, FolderOpen, PanelLeftOpen, PanelLeftClose, X, Cloud, LogOut, CircleUserRound
 } from 'lucide-react';
 import { useState,useEffect,useRef } from 'react';
 import UpdateButton from './UpdateButton';
@@ -33,9 +33,12 @@ const sections = [
 
 export default function Layout() {
   useEffect(()=>{applyAppearance();return watchSystemTheme();},[]);
-  const [collapsed, setCollapsed] = useState(()=>localStorage.getItem('iclusters_sidebar')==='collapsed');
-  useEffect(()=>{const changed=()=>setCollapsed(localStorage.getItem('iclusters_sidebar')==='collapsed');window.addEventListener('iclusters-sidebar',changed);return()=>window.removeEventListener('iclusters-sidebar',changed);},[]);
-  useEffect(()=>{localStorage.setItem('iclusters_sidebar',collapsed?'collapsed':'expanded');},[collapsed]);
+  const [collapsed, setCollapsed] = useState(()=>loadSidebarDisplay()==='collapsed');
+  useEffect(()=>{const changed=()=>setCollapsed(loadSidebarDisplay()==='collapsed');window.addEventListener('iclusters-sidebar',changed);return()=>window.removeEventListener('iclusters-sidebar',changed);},[]);
+  function toggleDesktop(){
+    setCollapsed(!collapsed);
+    try{localStorage.setItem('iclusters_sidebar',collapsed?'open':'collapsed')}catch{/* The toggle still works for this visit. */}
+  }
   const [mobile, setMobile] = useState(()=>window.matchMedia('(max-width: 800px)').matches);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef=useRef<HTMLElement>(null);
@@ -72,11 +75,13 @@ export default function Layout() {
     document.addEventListener('keydown',key);
     return ()=>{unlock();document.removeEventListener('keydown',key);};
   },[mobile,menuOpen]);
+  const navigationOpen=mobile?menuOpen:!collapsed;
+  const NavIcon=navigationOpen?PanelLeftClose:PanelLeftOpen;
   const showLabels=mobile||!collapsed;
   const signOut=async()=>{try{await api('/account/logout',{method:'POST',body:'{}'});clearTokens();window.location.assign('/')}catch(e:any){window.alert(e.message||'Sign-out could not be confirmed. Retry when connected.')}};
   return <div className="app-shell">
     {mobile&&menuOpen&&<button className="nav-backdrop" aria-label="Close navigation" onClick={closeMenu}/>}
-    <aside id="primary-navigation" ref={menuRef} className={`sidebar${!mobile&&collapsed?' collapsed':''}${mobile&&menuOpen?' mobile-open':''}`} inert={mobile&&!menuOpen} role={mobile&&menuOpen?'dialog':undefined} aria-modal={mobile&&menuOpen?true:undefined} aria-label="Main navigation">
+    <aside id="primary-navigation" ref={menuRef} className={`sidebar${!mobile&&collapsed?' collapsed':''}${mobile&&menuOpen?' mobile-open':''}`} inert={!navigationOpen} role={mobile&&menuOpen?'dialog':undefined} aria-modal={mobile&&menuOpen?true:undefined} aria-label="Main navigation">
       <div className="brand"><div className="brand-icon"><img className="iclusters-product-logo" src={productLogo} alt=""/></div>{showLabels && <b title={configuration?.settings?.siteName}>{configuration?.settings?.siteName||'i-Clusters'}</b>}{mobile&&<button className="icon-btn nav-close" aria-label="Close navigation" onClick={closeMenu}><X size={20}/></button>}</div>
       <nav className="nav-scroll" aria-label="Pages">
         {sections.map(sec => <div className="nav-section" key={sec.title}>
@@ -89,7 +94,7 @@ export default function Layout() {
     </aside>
     <div className="main-shell" inert={mobile&&menuOpen}>
       <header className="topbar">
-        <button ref={toggleRef} className="icon-btn nav-toggle" aria-label={mobile?(menuOpen?'Close navigation':'Open navigation'):(collapsed?'Expand navigation':'Collapse navigation')} aria-controls="primary-navigation" aria-expanded={mobile?menuOpen:!collapsed} onClick={()=>mobile?setMenuOpen(v=>!v):setCollapsed(v=>!v)}><Menu size={19}/></button>
+        <button ref={toggleRef} className="icon-btn nav-toggle" aria-label={navigationOpen?'Close navigation':'Open navigation'} aria-controls="primary-navigation" aria-expanded={navigationOpen} onClick={()=>mobile?setMenuOpen(v=>!v):toggleDesktop()}><NavIcon size={19} aria-hidden="true"/></button>
         <ClusterSwitcher owner={session?.user?.role==='owner'}/>
         <div className="top-actions">{session?.user?.role==='owner' && <UpdateButton/>}<HeaderNotifications/><LanguageSelector compact/><div className="profile-menu" ref={profileRef} onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget as Node))setProfileOpen(false)}}><button type="button" className="profile-trigger" aria-label="User profile" aria-haspopup="menu" aria-controls={profileOpen?'header-profile-options':undefined} aria-expanded={profileOpen} onKeyDown={event=>{if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();setProfileOpen(true)}}} onClick={()=>setProfileOpen(v=>!v)}><CircleUserRound size={23} aria-hidden="true"/></button>{profileOpen&&<div id="header-profile-options" className="profile-dropdown" role="menu"><div className="profile-dropdown-identity"><b translate="no">{session?.user?.name||'Signed in'}</b><small>{session?.user?.role||''}</small></div><button role="menuitem" onClick={signOut}><LogOut size={15}/>Sign out</button></div>}</div></div>
       </header>
