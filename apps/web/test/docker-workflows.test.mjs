@@ -167,3 +167,23 @@ test('all Docker tabs keep the shared host header above incomplete guest discove
   try{const header=page.container.querySelector('.docker-page-header');assert.match(header.textContent,/Docker Host: Not connected/);assert.match(header.textContent,/Unavailable/);assert.ok(header.querySelector('a[href="/settings?tab=Connections&setup=docker"]'));assert.ok(button(page.container,'Refresh Docker'));assert.equal(page.container.querySelectorAll('.docker-host-selector.compact').length,1);const note=[...page.container.querySelectorAll('p')].find(p=>p.textContent==='Guest inventory is read-only.');assert.ok(header.compareDocumentPosition(note)&4);assert.equal(page.container.querySelectorAll('.docker-page-header').length,1);}finally{await page.close()}
  }
 });
+
+test('Docker distinguishes guest observations, unavailable inventory and measurements from a connected Engine',async()=>{
+ const row=(id,status)=>({id,name:id,status,host:'guest-source'});
+ const guest=(containers)=>({readOnly:true,containers,discoveryLimitations:['Guest agent unavailable.']});
+ const cases=[
+  [guest([]),'Inventory incomplete or unavailable',true],
+  [guest([row('observed','running')]),'1 reported',false],
+  [inventory('empty',[]),'0 running · 0 stopped',false],
+  [inventory('measured',[row('one','running'),row('two','exited'),row('three','paused'),row('four','restarting')]),'1 running · 1 stopped · Other 2',false]
+ ];
+ for(const [data,summary,unavailable] of cases){
+  const page=await mounted('pages/Docker.tsx',{},p=>p==='/docker'?data:dockerFixture(p));
+  try{
+   assert.equal(page.container.querySelector('.docker-counts').textContent,summary);
+   assert.equal(page.container.textContent.includes('Docker inventory unavailable'),unavailable);
+   assert.equal(!!page.container.querySelector('[aria-label="Containers pagination"]'),!unavailable);
+   if(data.readOnly&&data.containers.length)assert.equal(page.container.querySelector('.docker-row-host').textContent,'guest-source');
+  }finally{await page.close()}
+ }
+});

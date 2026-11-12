@@ -14,6 +14,7 @@ A saved profile name identifies a connection chosen by the owner. To compare two
 | Proxmox → Nodes | The node list and details called every discovered server a cluster member. | Membership now requires both a cluster record and a matching node record from Proxmox. Node Information shows the reported cluster name when available. Missing membership evidence displays **Not reported**. |
 | Settings → General and Connections → Remote Access | The homepage, mobile QR code, copied address and open-dashboard buttons used the installation root from a secondary profile. | These links carry the selected profile to the destination browser. QR generation retains its HTTPS checks. |
 | Notifications and software updates | A secondary worker could look for the installation updater in its own data directory. | The update bridge uses the controller directory for shared updater state. The test checks that the same software update is visible from both profiles. |
+| Docker | With guest discovery only, an unavailable container inventory displayed zero running and zero stopped. Paused and restarting Engine containers also counted as stopped. | Empty guest discovery displays unavailable. Partial results show the number of reported rows and their source hosts. Only a measured Engine inventory shows state totals. Resource tabs that require an Engine identify the missing connection. |
 | Downloads | Exports from two clusters with matching guest, disk or container IDs could have identical filenames and no source information. | Secondary-profile report filenames include the profile ID and its display name when available. Overview, discovery, Monitoring, backup reports, audit JSON, network and provider diagnostics JSON include a `sourceCluster` object. Existing CSV columns, file payloads and default-profile filenames are retained. |
 
 ## Coverage by area
@@ -36,6 +37,28 @@ A saved profile name identifies a connection chosen by the owner. To compare two
 ## Evidence and limits
 
 The source scan counted 705 JSX button templates across 129 files and found zero missing handlers or invalid form-button wiring under its checks. The mobile layout audit rendered 58 pages and sections at 390 pixels. These counts describe different checks. A button template can appear repeatedly for different resources and roles.
+
+The two-profile browser pass recorded 156 view and section visits, 88 refresh clicks, 110 distinct scoped API method/path combinations and 10 downloaded JSON reports. All 10 downloads identified the expected profile. The reporting pass observed zero cross-profile requests, foreign inventory markers or HTTP errors from the API.
+
+The separate button replay recorded 328 dialog openings and 17 downloads. It intercepted writes to 24 distinct method/path combinations and lacked recorded responses for 32 follow-up reads. Click counts represent interactions with a control, and do not certify that a provider finished the action.
+
+| Area | Secondary views | Clicked | Disabled | Unavailable on replay |
+| --- | ---: | ---: | ---: | ---: |
+| Overview | 1 | 11 | 0 | 0 |
+| Proxmox | 18 | 319 | 10 | 0 |
+| Docker | 6 | 64 | 11 | 1 |
+| Storage | 7 | 111 | 14 | 0 |
+| Network | 9 | 92 | 5 | 0 |
+| Backups and legacy backup links | 10 | 312 | 26 | 3 |
+| Monitoring | 3 | 27 | 4 | 5 |
+| Alerts | 3 | 65 | 7 | 0 |
+| AI Assistant | 1 | 2 | 0 | 0 |
+| Shell and SFTP | 2 | 18 | 0 | 0 |
+| Users and audit | 7 | 88 | 11 | 0 |
+| Settings | 11 | 199 | 29 | 8 |
+| **Total** | **78** | **1,308** | **117** | **17** |
+
+Of the 17 unavailable control occurrences, 14 had labels that changed with fixture readings. The other three were the container actions menu and the schedule deletion button on two routes. Focused component tests select the container or open the schedule details first, verify the dialog and assert the selected resource. The schedule test confirms both routes send a deletion only after confirmation, using a simulated provider.
 
 The integration tests use separate Proxmox HTTPS endpoints, Docker Engine endpoint fixtures and TrueNAS WebSockets, a real PostgreSQL database, and real SSH/SFTP protocol exchanges with a test host. They verify cluster-specific results and report provenance without relying on distinct node names or guest IDs.
 
