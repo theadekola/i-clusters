@@ -22,14 +22,14 @@ async function listen(server){
 }
 async function provider(name,tls){
   const writes=[],secret=randomBytes(16).toString('hex');
-  const fixture={writes,finished:false};
+  const fixture={writes,finished:false,nodeStatus:'online'};
   const server=https.createServer(tls,(req,res)=>{
     const url=new URL(req.url,'https://fixture'),route=url.pathname.replace('/api2/json','');
     let data;
     if(req.headers.authorization!=='PVEAPIToken=fixture@pve!hub='+secret){res.writeHead(401);res.end();return}
     if(req.method==='POST'){writes.push(route);data='UPID:fixture-'+name}
     else if(route==='/cluster/resources')data=[{node:'node01',type:'node',status:'online'},{node:'node01',type:'qemu',id:'qemu/100',vmid:100,name:name+'-VM',status:'running'}];
-    else if(route==='/nodes'||route==='/cluster/status')data=[{name:'node01',node:'node01',type:'node',ip:'127.0.0.1',status:'online'}];
+    else if(route==='/nodes'||route==='/cluster/status')data=[{name:'node01',node:'node01',type:'node',ip:'127.0.0.1',status:fixture.nodeStatus}];
     else if(route==='/access/permissions')data={[url.searchParams.get('path')]:Object.fromEntries(privileges.map(p=>[p,1]))};
     else if(route.endsWith('/status/current'))data={status:'running',name:name+'-VM'};
     else if(route.includes('/tasks/')&&route.endsWith('/status'))data=fixture.finished?{status:'stopped',exitstatus:'OK'}:{status:'running'};
@@ -98,9 +98,12 @@ test('two independent clusters isolate duplicate guest IDs, approvals and in-fli
   await api('/cluster-profiles',{token:viewer,body:office.config,status:403});
   const {profile}=await api('/cluster-profiles',{token:owner,body:office.config,status:201});
   const scope='/cluster-profiles/'+profile.id+'/api';
+  office.nodeStatus='offline';
   const profiles=(await api('/cluster-profiles',{token:viewer})).clusters;
   assert.deepEqual(profiles.map(p=>p.id),['default',profile.id]);
-  for(const item of profiles)assert.deepEqual(Object.keys(item).sort(),['configured','endpoint','id','name']);
+  assert.deepEqual(profiles.map(p=>p.status),['online','offline']);
+  office.nodeStatus='online';
+  for(const item of profiles)assert.deepEqual(Object.keys(item).sort(),['configured','endpoint','id','name','status']);
   assert.ok(!(await fs.readFile(path.join(dir,'clusters',profile.id,'proxmox-connection.json'),'utf8')).includes(office.config.tokenSecret));
   await api('/cluster-profiles',{token:owner,body:office.config,status:409});
   await api('/cluster-profiles/'+randomUUID()+'/api/connections/proxmox',{token:owner,status:404});

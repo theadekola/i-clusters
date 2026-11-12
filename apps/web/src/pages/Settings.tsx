@@ -8,7 +8,7 @@ import {Link,Navigate,useSearchParams} from 'react-router-dom';
 import {Settings as SettingsIcon,Server,Shield,Link2,Palette,Archive,SlidersHorizontal,Globe,LayoutGrid,Gauge,Info,Search,Download,Upload,ExternalLink,CheckCircle} from 'lucide-react';
 import {useApi,clearApiCache} from '../hooks';
 import {api} from '../api';
-import {appearanceDefaults,loadAppearance,saveAppearanceWithSidebar} from '../appearance';
+import {appearanceDefaults,loadAppearance,loadSidebarDisplay,saveAppearanceWithSidebar} from '../appearance';
 import {loadDashboardWidgets,saveDashboardWidgets} from '../dashboard-preferences';
 import {Card} from '../components/UI';
 import ConnectionManager from '../components/ConnectionManager';
@@ -41,13 +41,13 @@ function SettingsOverview({category,change}:{category:string;change:(tab:string)
  const [params,setParams]=useSearchParams();
  const locale=useLocale();
  const live=useApi<any>('/settings',null),session=useApi<any>('/auth/me',null);
- const [appearance,setAppearance]=useState(loadAppearance),[sidebar,setSidebar]=useState(()=>localStorage.getItem('iclusters_sidebar')==='collapsed'?'collapsed':'expanded'),[widgets,setWidgets]=useState<string[]>(loadDashboardWidgets),[search,setSearch]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
+ const [appearance,setAppearance]=useState(loadAppearance),[sidebar,setSidebar]=useState<string>(loadSidebarDisplay),[widgets,setWidgets]=useState<string[]>(loadDashboardWidgets),[search,setSearch]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
  const settingsSave=useRef<Promise<void>>(Promise.resolve());
  const data=live.data,admin=['admin','owner'].includes(session.data?.user?.role),owner=session.data?.user?.role==='owner',system=data?.system;
  const section=(name:string)=>{setSearch('');setMessage('');setError('');change(name)};
  const toggleWidget=(name:string,value:boolean)=>{setMessage('');try{const current=loadDashboardWidgets(),next=value?[...new Set([...current,name])]:current.filter(w=>w!==name);saveDashboardWidgets(next);setWidgets(next);setError('');setMessage('Dashboard preferences saved.')}catch(e:any){setError(e.message||'Dashboard preferences could not be saved.')}};
  const saveShared=(patch:Partial<{siteName:string;description:string;refresh:number}>)=>{if(!admin)return Promise.reject(Error('Administrator access is required.'));const task=settingsSave.current.catch(()=>{}).then(async()=>{setBusy(true);try{const latest=await api('/settings');const settings={siteName:latest.settings.siteName,description:latest.settings.description||'',refresh:latest.settings.refresh,...patch};await api('/settings',{method:'PUT',body:JSON.stringify(settings)});live.setData({...latest,settings});window.dispatchEvent(new Event('iclusters-settings'))}finally{setBusy(false)}});settingsSave.current=task;return task};
- const persistAppearance=(next:typeof appearance)=>{const current=loadAppearance(),patch=Object.fromEntries(Object.entries(next).filter(([key,value])=>value!==(appearance as any)[key]));saveAppearanceWithSidebar({...current,...patch},localStorage.getItem('iclusters_sidebar')==='collapsed'?'collapsed':'expanded');setAppearance(loadAppearance())};
+ const persistAppearance=(next:typeof appearance)=>{const current=loadAppearance(),patch=Object.fromEntries(Object.entries(next).filter(([key,value])=>value!==(appearance as any)[key]));saveAppearanceWithSidebar({...current,...patch},loadSidebarDisplay());setAppearance(loadAppearance())};
  const persistSidebar=(next:string)=>{saveAppearanceWithSidebar(loadAppearance(),next);setSidebar(next)};
  const exportSettings=()=>{try{const url=URL.createObjectURL(new Blob([JSON.stringify({schema:1,settings:data.settings},null,2)],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='iclusters-settings.json';link.click();URL.revokeObjectURL(url);setMessage('General settings exported. Credentials and accounts are excluded.');}catch{setError('Settings export is unavailable in this browser.')}};
  const show=(section:string,title:string,keywords='')=>category===section&&`${title} ${translate(title)} ${keywords} ${translate(keywords)}`.toLowerCase().includes(search.trim().toLowerCase());
@@ -72,7 +72,7 @@ function SettingsOverview({category,change}:{category:string;change:(tab:string)
 
 
  {category==='About'&&<AboutSettings data={data} owner={owner} search={search}/>}
- {category==='Appearance'&&<AppearanceSettings value={appearance} sidebar={sidebar} busy={busy} search={search} onChange={persistAppearance} onSidebar={persistSidebar} onReset={()=>{saveAppearanceWithSidebar({...appearanceDefaults},'expanded');setAppearance(loadAppearance());setSidebar('expanded')}}/>}
+ {category==='Appearance'&&<AppearanceSettings value={appearance} sidebar={sidebar} busy={busy} search={search} onChange={persistAppearance} onSidebar={persistSidebar} onReset={()=>{saveAppearanceWithSidebar({...appearanceDefaults},'collapsed');setAppearance(loadAppearance());setSidebar('collapsed')}}/>}
  {category==='System'&&'backup restore export import settings'.includes(search.toLowerCase())&&<SettingsBackup value={data.settings} admin={admin} onSave={saveShared} onExport={exportSettings}/>}
  </div>{category==='System'&&owner&&<IntegrationChecks search={search}/>}<footer className="settings-overview-footer"><span><i/>Settings loaded from the server</span><span>i-Clusters {system?.version||''}</span><span>{admin?'Shared settings: administrator access':'Shared settings: read only'} · Preferences: this browser</span></footer></>}
  </>;

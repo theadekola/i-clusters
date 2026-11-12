@@ -53,7 +53,7 @@ checking these layouts. Visit each primary route and its tab query strings at
    inside their own containers.
 4. Buttons, filters, forms and dialog content fit the available width. Check both
    comfortable and compact appearance, the desktop collapsed sidebar, and the
-   mobile hamburger menu.
+   mobile navigation toggle.
 5. Double metric text sizes to check that cards expand without clipping text.
    Real Safari/iOS keyboard and browser zoom behavior still requires device QA.
 

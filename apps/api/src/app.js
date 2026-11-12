@@ -216,7 +216,7 @@ export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:c
    }catch(error){if(error.managementAccess)throw error;throw Object.assign(new Error(proxmoxTestError(error)),{status:502});}
  };
  if(profiles){
-   app.get('/api/cluster-profiles',authorize('viewer'),(req,res)=>res.set('Cache-Control','no-store').json({clusters:profiles.list()}));
+   app.get('/api/cluster-profiles',authorize('viewer'),async(req,res)=>res.set('Cache-Control','no-store').json({clusters:await profiles.list(pve)}));
    app.post('/api/cluster-profiles/test',authorize('owner'),async(req,res)=>{
      const {nodes,management}=await testCluster({...req.body,management:true},null);
      res.json({ok:true,nodes,management});

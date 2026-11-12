@@ -230,3 +230,9 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
 .cluster-access-checklist details{margin-top:12px}
 .cluster-access-checklist summary{cursor:pointer;font-weight:600}
 .cluster-access-checklist details p{margin:10px 0 0;overflow-wrap:anywhere}
+
+@media(min-width:801px){
+ .sidebar.collapsed{display:none}
+ .sidebar.collapsed+.main-shell{margin-left:0;width:100%}
+}
+.pve-health>svg.pve-offline{color:var(--theme-danger,#e85664)}

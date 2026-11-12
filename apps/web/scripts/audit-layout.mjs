@@ -112,8 +112,8 @@ try{
   const path=new URL(route.request().url()).pathname.replace('/api','');
   if(process.env.LAYOUT_CLUSTER_SWITCH){
    if(path==='/cluster-profiles')return route.fulfill({json:{clusters:[
-    {id:'default',name:'Homelab',configured:true,endpoint:'home.example:8006'},
-    {id:officeId,name:'Office Cluster',configured:true,endpoint:'office.example:8006'}
+    {id:'default',name:'Homelab',configured:true,status:'online',endpoint:'home.example:8006'},
+    {id:officeId,name:'Office Cluster',configured:true,status:'offline',endpoint:'office.example:8006'}
    ]}});
    if(path.startsWith('/cluster-profiles/'+officeId+'/api/')){
     const local=path.slice(('/cluster-profiles/'+officeId+'/api').length);
@@ -338,23 +338,49 @@ try{
    await page.goto(base+'proxmox?tab=Virtual+Machines&vmid=100');
    const header=page.getByRole('button',{name:'Switch cluster',exact:true});
    await header.filter({hasText:'Homelab'}).waitFor();
-   const toggle=await page.locator('.nav-toggle').boundingBox(),button=await header.boundingBox();
-   assert.ok(button.x>=toggle.x+toggle.width-1&&button.x-toggle.x-toggle.width<28&&Math.abs((button.y+button.height/2)-(toggle.y+toggle.height/2))<5,'Switcher sits immediately beside the hamburger');
+   await header.getByText('Online',{exact:true}).waitFor();
+   assert.equal(await page.locator('#primary-navigation').isVisible(),false,'Navigation is initially closed');
+   await page.locator('.nav-toggle').click();
+   await page.locator('#primary-navigation').waitFor();
+   await page.locator(width<=800?'.nav-close':'.nav-toggle').click();
+   await page.locator('#primary-navigation').waitFor({state:'hidden'});
+   const adjacent=await header.evaluate(el=>{
+    const toggle=document.querySelector('.nav-toggle').getBoundingClientRect(),button=el.getBoundingClientRect();
+    const gap=button.left-toggle.right;
+    return gap>=-1&&gap<28&&Math.abs((button.y+button.height/2)-(toggle.y+toggle.height/2))<5;
+   });
+   assert.ok(adjacent,'Switcher sits immediately beside the navigation toggle');
+   assert.ok(await page.locator('.top-actions').evaluate(el=>parseFloat(getComputedStyle(el).columnGap)<=6),'Header actions are grouped together');
+   assert.ok(await header.evaluate(el=>{
+    const name=el.querySelector('#current-cluster-name').getBoundingClientRect(),status=el.querySelector('.badge').getBoundingClientRect();
+    return name.width>0&&status.width>0&&status.left>=name.right-1&&Math.abs((name.top+name.height/2)-(status.top+status.height/2))<2;
+   }),'The active cluster name and status fit on the same line');
    const other=await page.context().newPage();
    try{
     await other.goto(base+'proxmox');
-    await other.getByRole('heading',{name:/Proxmox Cluster: Homelab/}).waitFor();
+    await other.getByRole('heading',{name:'Proxmox Cluster',exact:true}).waitFor();
     await header.click();
     const dialog=page.getByRole('dialog',{name:'Switch cluster',exact:true});
     await assertCentered(dialog);
     assert.ok(await dialog.getByRole('button',{name:'Add cluster',exact:true}).isVisible());
-    await dialog.getByRole('button',{name:/Office Cluster/}).click();
+    const officeRow=dialog.getByRole('button',{name:/Office Cluster/});
+    for(const [row,name,status] of [[officeRow,'Office Cluster','Offline'],[dialog.getByRole('button',{name:/Homelab/}),'Homelab','Online']]){
+     const n=await row.getByText(name,{exact:true}).boundingBox(),badge=await row.getByText(status,{exact:true}).boundingBox();
+     assert.ok(n&&badge&&Math.abs((n.y+n.height/2)-(badge.y+badge.height/2))<2,'Status appears on the same line as the name');
+    }
+    const homeUrl=page.url(),confirm=page.getByRole('dialog',{name:'Confirm cluster switch',exact:true});
+    await officeRow.click();await assertCentered(confirm);assert.equal(page.url(),homeUrl);
+    await confirm.getByRole('button',{name:'No',exact:true}).click();
+    assert.equal(page.url(),homeUrl);assert.ok(await officeRow.evaluate(el=>el===document.activeElement));
+    await officeRow.click();await confirm.getByRole('button',{name:'Yes',exact:true}).click();
     const office=base+'clusters/'+officeId+'/proxmox';
     await page.waitForURL(office);
-    await page.getByRole('heading',{name:/Proxmox Cluster: Office Cluster/}).waitFor();
+    await page.getByRole('heading',{name:'Proxmox Cluster',exact:true}).waitFor();
     await page.reload();await header.filter({hasText:'Office Cluster'}).waitFor();
+    await header.getByText('Offline',{exact:true}).waitFor();
+    await page.locator('.pve-health').getByText('Offline',{exact:true}).waitFor();
     await other.route('**/api/auth/me',r=>r.fulfill({json:{user:{id:'viewer',name:'Viewer',role:'viewer'}}}));
-    await other.reload();await other.getByRole('heading',{name:/Proxmox Cluster: Homelab/}).waitFor();
+    await other.reload();await other.locator('.cluster-switch-button').filter({hasText:'Homelab'}).waitFor();await other.getByRole('heading',{name:'Proxmox Cluster',exact:true}).waitFor();
     await other.getByRole('button',{name:'Switch cluster',exact:true}).click();
     const viewerDialog=other.getByRole('dialog',{name:'Switch cluster'});
     await viewerDialog.getByRole('button',{name:/Office Cluster/}).waitFor();
@@ -374,6 +400,7 @@ try{
     await assertCentered(dialog);
     assert.ok(await dialog.getByRole('button',{name:'Add cluster',exact:true}).evaluate(el=>el===document.activeElement),'Closing the form returns focus to the switcher');
     await dialog.getByRole('button',{name:/Homelab/}).click();
+    await confirm.getByRole('button',{name:'Yes',exact:true}).click();
     await page.waitForURL(base+'proxmox');
    }finally{await other.close();await page.setViewportSize(originalViewport)}
   }

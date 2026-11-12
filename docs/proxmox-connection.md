@@ -18,9 +18,9 @@ Reference: [Proxmox user management and API tokens](https://pve.proxmox.com/pve-
 
 ## Switch between clusters
 
-1. Sign in as the installation owner and open **Switch cluster** beside the hamburger menu. An existing installation shows its current Proxmox connection here automatically.
+1. Sign in as the installation owner and open **Switch cluster** beside the navigation toggle. An existing installation shows its current Proxmox connection here automatically.
 2. Choose **Add cluster**. Give the cluster a recognisable name and enter one reachable Proxmox API endpoint, its token ID and its secret. TLS verification is enabled in this form. Supply the issuing public CA certificate for a private CA. **Test Connection** previews discovery and checks permissions. **Save** repeats those checks and saves the profile.
-3. Close the success message to open the new cluster. Use the header button to return to any saved cluster. The button shows the current cluster name. The list shows its endpoint to distinguish clusters with similar names.
+3. Close the success message to open the new cluster. Use the header button to return to any saved cluster. The header and the list show each cluster’s connection status beside its name. Select a different cluster, check its name and endpoint, then choose **Yes** to switch or **No** to stay. Online means at least one Proxmox node reports online. Offline means the controller cannot reach the endpoint or all reported nodes are offline. Unknown means the reading is inconclusive, for example after a token or certificate error.
 
 Each browser tab keeps its own cluster in its address. You can bookmark a cluster or monitor two side by side. Switching opens the same main page and clears guest selections. A maintenance task already submitted to Proxmox stays with the cluster that accepted it. Switch back to follow its progress.
 
