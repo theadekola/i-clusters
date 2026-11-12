@@ -6,7 +6,7 @@
 .modal :is(.restore-facts,.retention-facts,.destination-facts) dd{overflow-wrap:anywhere;min-width:0}
 .content .backup-archives-workspace{grid-template-columns:minmax(0,1fr)}
 .backup-archives-workspace .backup-side{display:none}
-.backup-manager .page-header>.header-actions{display:flex;flex-wrap:wrap;gap:10px}
+.backup-manager .page-header>.header-actions{display:flex;flex-wrap:nowrap;gap:10px}
 @media(max-width:600px){.backup-manager .page-header>.header-actions>.btn{flex:1 1 140px}.modal .destination-detail-actions{display:flex;flex-wrap:wrap;gap:8px}}
 
 .backup-grid-card{min-width:0;border:1px solid var(--theme-border);border-radius:12px;background:var(--theme-surface);padding:12px}
@@ -15,7 +15,7 @@
 .backup-grid-card>.backup-row-actions{justify-content:flex-end;padding-top:8px}
 .modal:has(.operational-panel){width:min(920px,calc(100vw - 32px));max-width:920px}
 
-.backup-manager .page-header>.header-actions,.network-traffic>.network-panel-head>.header-actions{align-items:center;flex-wrap:wrap;min-width:0}
+.backup-manager .page-header>.header-actions,.network-traffic>.network-panel-head>.header-actions{align-items:center;flex-wrap:nowrap;min-width:0}
 .backup-manager .page-header>.header-actions>select{width:auto;flex:none}
 @media(max-width:600px){.backup-manager .page-header>.header-actions>select{flex:1 1 160px;min-width:0}.network-traffic>.network-panel-head>.header-actions{width:100%}}
 
@@ -82,3 +82,5 @@
   .backup-archives-workspace .backup-table td:nth-child(3) { display: none; }
   :is(.backup-archives-workspace .backup-table,.schedule-overview .schedule-table) td:last-child button { min-height: 44px; }
 }
+.content :is(.network-traffic,.backup-manager) {grid-template-columns:minmax(0,1fr);min-inline-size:0}
+.content :is(.network-traffic,.backup-manager) > :is(.page-header,.network-panel-head) {min-inline-size:0}

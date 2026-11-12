@@ -111,7 +111,7 @@
 .cluster-topology-viewport[data-layout=tree] .cluster-topology-guest{min-height:54px;height:auto;color:#ecf5ff;gap:4px}
 .cluster-topology-viewport[data-layout=tree] .cluster-topology-guest .topology-system-icon{width:36px;flex-basis:36px}
 .cluster-topology-viewport[data-layout=tree] .cluster-topology-root{color:#ecf5ff}
-.cluster-topology-viewport[data-layout=tree] .cluster-topology-guest .topology-system-state,.cluster-topology-viewport[data-layout=tree] .cluster-topology-ip{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.cluster-topology-viewport[data-layout=tree] .cluster-topology-guest .topology-system-state,.cluster-topology-viewport[data-layout=tree] .cluster-topology-ip{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .cluster-topology-viewport[data-layout=tree] .cluster-topology-guest b{font-size:12px;font-weight:450}
 .cluster-topology-viewport[data-layout=tree] .topology-online .topology-system-state{color:#72ef9c}
 .cluster-topology-viewport[data-layout=tree] .cluster-topology-links path{animation:none;stroke:#498995;stroke-width:1.4;filter:none}
