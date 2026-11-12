@@ -408,7 +408,7 @@ try{
    await page.goto(base);await page.getByRole('button',{name:'Review software update',exact:true}).click();
    const review=page.getByRole('dialog',{name:'Software update',exact:true});await review.waitFor();assert.equal(updateWrites,0,'Opening review does not install');assert.match(await review.innerText(),/fixture-old-release/);assert.match(await review.innerText(),/Fix SSH popup layout/);
    if(process.env.LAYOUT_SCREENSHOTS)await review.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-software-update-review.png`});
-   await review.getByRole('button',{name:'Update Software',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.software-update-review .update-spinner'));assert.equal(updateWrites,1);assert.equal(await page.locator('.connection-notice').count(),0);assert.equal(await page.locator('.update-message').count(),0);
+   await review.getByRole('button',{name:'Update Software',exact:true}).click();await review.getByRole('progressbar',{name:'Software update stage progress'}).waitFor();assert.equal(updateWrites,1);assert.equal(await page.locator('.connection-notice').count(),0);assert.equal(await page.locator('.update-message').count(),0);
    assert.ok(await review.getByRole('status').first().isVisible());await review.getByRole('button',{name:'Close',exact:true}).click();
    await page.evaluate(()=>sessionStorage.removeItem('iclusters_update_started'));updateWrites=0;
   }
