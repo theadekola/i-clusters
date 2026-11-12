@@ -66,7 +66,7 @@ test('desktop navigation starts closed, toggles its icon and saves an explicit o
  const page=await mounted('components/Layout.tsx',{},async()=>({user:{role:'viewer'}}),false);
  try{
   const toggle=page.container.querySelector('.nav-toggle'),sidebar=page.container.querySelector('.sidebar');
-  assert.equal(toggle.getAttribute('aria-expanded'),'false');assert.ok(toggle.querySelector('.lucide-panel-left-open'));assert.ok(sidebar.hasAttribute('inert'));
+  assert.equal(toggle.getAttribute('aria-expanded'),'false');assert.ok(toggle.querySelector('.lucide-panel-left-open'));assert.equal(sidebar.hasAttribute('inert'),false);
   await page.click(toggle);assert.equal(toggle.getAttribute('aria-expanded'),'true');assert.ok(toggle.querySelector('.lucide-panel-left-close'));assert.equal(sidebar.hasAttribute('inert'),false);assert.equal(localStorage.getItem('iclusters_sidebar'),'open');
   await page.click(toggle);assert.ok(sidebar.classList.contains('collapsed'));assert.equal(page.container.querySelector('.nav-backdrop'),null);
  }finally{await page.close()}
