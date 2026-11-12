@@ -1,6 +1,7 @@
 // Optional end-to-end audit. Called only by the disposable PostgreSQL/HTTPS
 // integration fixture; no live controller URL or production credential is used.
 import assert from 'node:assert/strict';
+import {createHash,X509Certificate} from 'node:crypto';
 import {cp,mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';
 import os from 'node:os';
 import {observedButtons,recordedKey,sweepClusterButtons} from './cluster-control-sweep.mjs';
@@ -33,9 +34,12 @@ export async function auditClusterReports({base,owner,profile,tls}){
  try{
   await cp(path.join(root,'dist'),assets,{recursive:true});
   server=await preview({root,build:{outDir:assets},preview:{host:'127.0.0.1',port:0,https:tls,proxy:{'/api':{target:base,changeOrigin:true}}}});
-  browser=await chromium.launch({headless:true,executablePath,args:['--no-sandbox','--disable-dev-shm-usage',...(browserTools?['--no-zygote','--single-process']:[])]});
+  // Trust this run's disposable preview key for parallel CSS and module requests.
+  const previewKey=new X509Certificate(tls.cert).publicKey.export({type:'spki',format:'der'});
+  const previewFingerprint=createHash('sha256').update(previewKey).digest('base64');
+  browser=await chromium.launch({headless:true,executablePath,args:['--ignore-certificate-errors-spki-list='+previewFingerprint,'--no-sandbox','--disable-dev-shm-usage',...(browserTools?['--no-zygote','--single-process']:[])]});
   const origin=new URL(server.resolvedUrls.local[0]).origin;
-  const context=await browser.newContext({ignoreHTTPSErrors:true,serviceWorkers:'block',viewport:{width:1366,height:900}});
+  const context=await browser.newContext({serviceWorkers:'block',viewport:{width:1366,height:900}});
   await context.addInitScript(token=>{
     sessionStorage.setItem('iclusters_access_token',token);
     sessionStorage.setItem('iclusters_last_activity',String(Date.now()));
