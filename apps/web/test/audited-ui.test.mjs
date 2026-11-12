@@ -864,7 +864,7 @@ test('host picker retains the active filter, search and layout when guest status
 test('VMs show measured filesystem usage on desktop and omit allocation labels across layouts',async()=>{
  const GiB=1024**3;
  const vm={id:'100',node:'n',name:'fixture',status:'running',diskCapacity:120*GiB,attachedDisks:[{kind:'managed',size:120*GiB}]};
- const data={nodes:[{name:'n'}],vms:[{...vm,disk:20*GiB,diskFree:60*GiB,diskTotal:80*GiB,diskPercent:25},{...vm,id:'101',name:'no-agent'}]};
+ const data={nodes:[{name:'n'}],vms:[{...vm,disk:20*GiB,diskTotal:80*GiB,diskPercent:25},{...vm,id:'101',name:'no-agent'}]};
  const page=await mounted('pages/VirtualMachines.tsx',{data,role:'viewer',refresh:async()=>{}},async()=>({config:{},errors:['os: No QEMU guest agent configured']}));
  try{
   assert.match(page.container.querySelector('.vm-stats').textContent,/Disk Usage20\.0 GiBof 80\.0 GiB/);
