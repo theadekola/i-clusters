@@ -339,11 +339,28 @@ try{
    const header=page.getByRole('button',{name:'Switch cluster',exact:true});
    await header.filter({hasText:'Homelab'}).waitFor();
    await header.getByText('Online',{exact:true}).waitFor();
-   assert.equal(await page.locator('#primary-navigation').isVisible(),false,'Navigation is initially closed');
-   await page.locator('.nav-toggle').click();
-   await page.locator('#primary-navigation').waitFor();
-   await page.locator(width<=800?'.nav-close':'.nav-toggle').click();
-   await page.locator('#primary-navigation').waitFor({state:'hidden'});
+   const sidebar=page.locator('#primary-navigation'),navToggle=page.locator('.nav-toggle'),desktop=width>800;
+   const proxmoxLink=sidebar.getByRole('link',{name:'Proxmox',exact:true});
+   assert.equal(await navToggle.getAttribute('aria-expanded'),'false');
+   assert.equal(await sidebar.isVisible(),desktop,'Only desktop keeps page icons visible when collapsed');
+   if(desktop){
+    assert.ok(await proxmoxLink.locator('svg,img').first().isVisible());
+    assert.equal(await proxmoxLink.textContent(),'');
+    assert.equal(await proxmoxLink.getAttribute('title'),'Proxmox');
+    const dockerLink=sidebar.getByRole('link',{name:'Docker',exact:true});
+    await dockerLink.focus();await page.keyboard.press('Enter');await page.waitForURL(base+'docker');
+    await proxmoxLink.click();await page.waitForURL(base+'proxmox');
+    assert.equal(await navToggle.getAttribute('aria-expanded'),'false');
+   }
+   await navToggle.click();await sidebar.waitFor();
+   assert.ok(await proxmoxLink.getByText('Proxmox',{exact:true}).isVisible());
+   await page.locator(desktop?'.nav-toggle':'.nav-close').click();
+   if(desktop){
+    await page.waitForFunction(()=>document.querySelector('.sidebar').getBoundingClientRect().width===72);
+    const rail=await sidebar.boundingBox(),shell=await page.locator('.main-shell').boundingBox();
+    assert.ok(Math.abs(shell.x-rail.x-rail.width)<2,'Content has space for the collapsed icon rail');
+    assert.ok(await proxmoxLink.isVisible());
+   }else await sidebar.waitFor({state:'hidden'});
    const adjacent=await header.evaluate(el=>{
     const toggle=document.querySelector('.nav-toggle').getBoundingClientRect(),button=el.getBoundingClientRect();
     const gap=button.left-toggle.right;
