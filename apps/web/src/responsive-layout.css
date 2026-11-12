@@ -287,7 +287,13 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
 .content .vm-summary {grid-template-columns:repeat(auto-fit,minmax(min(100%,12rem),1fr))}
 .content .vm-summary-facts>div {flex-wrap:wrap}
 .content .vm-summary-facts dd {margin-inline-start:auto;max-inline-size:100%;overflow-wrap:break-word}
-.content .schedule-legend span {overflow-wrap:normal;min-inline-size:min-content}
+.content :is(.history-legend,.schedule-legend) span {overflow-wrap:normal;min-inline-size:min-content}
+.content .device-resource {grid-template-columns:minmax(min-content,1fr) minmax(1.5rem,1fr) max-content}
+.content .device-resource>b {white-space:nowrap;overflow-wrap:normal}
+.content .card:has(>.history-distribution,>.schedule-distribution) {container-type:inline-size}
+@container (max-width:21rem){
+  .content :is(.history-distribution,.schedule-distribution) {grid-template-columns:minmax(0,1fr)!important}
+}
 
 :is(.content,.modal) .form-grid>.action-row { grid-column:1/-1; }
 :is(.content,.modal) .action-row { padding-block:3px; }
