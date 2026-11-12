@@ -54,6 +54,7 @@ function fixture(path){
  if(process.env.LAYOUT_PROXMOX_SAVE&&path==='/connections/proxmox')return {cluster:null};
  if(path==='/auth/me')return {user:{id:'owner',name:'Layout Review',role:process.env.LAYOUT_ROLE||'owner'}};
  if(path==='/header-notifications')return {attentionCount:1,updateCount:1,criticalCount:0,attention:[{id:'update',kind:'update',title:'Docker image update available',message:'control-vm / zabbix-postgres · postgres:16 has a new registry image',severity:'info',link:'/docker?tab=Updates'}]};
+ if(path==='/proxmox/tasks')return {tasks:[{upid:'UPID:node01:00000001:00000001:00000001:aptupdate::root@pam:',node:'node01',type:'aptupdate',status:'OK',starttime:Math.floor(Date.now()/1000)-80,endtime:Math.floor(Date.now()/1000)-72}]};
  if(path==='/docker/updates')return {rows:[],settings:{enabled:true,intervalHours:6}};
  if(path==='/account/sessions')return {sessions:[]};
  if(path==='/account/security')return {mfaEnabled:false,recoveryCodesRemaining:0};
@@ -75,6 +76,45 @@ function fixture(path){
  if(path==='/ssh/fingerprint')return {host:'192.0.2.100',fingerprint:'SHA256:'+'a'.repeat(43)};
  return sample;
 }
+const checkActionRows=process.env.LAYOUT_CHECK_ACTION_ROWS==='1'||process.env.LAYOUT_CHECK_TYPOGRAPHY==='1';
+function actionLayoutIssues(root){
+ const issues=new Set(),rows='[class$="-actions"],[class*="-actions "],.action-row,.schedule-quick,.vm-create-footer,.ssh-dialog-footer';
+ const visible=e=>e.getClientRects().length&&e.checkVisibility({contentVisibilityAuto:true,visibilityProperty:true})&&!e.closest('details:not([open])');
+ const sameLine=(controls,name)=>{
+  const boxes=controls.filter(visible).map(el=>el.getBoundingClientRect());
+  if(boxes.length>1&&Math.max(...boxes.map(r=>r.top))>=Math.min(...boxes.map(r=>r.bottom))-1)issues.add('Split controls: '+name+' / '+controls.filter(visible).map(e=>e.getAttribute('aria-label')||e.textContent.trim()).join(', '));
+ };
+ for(const cell of root.querySelectorAll('tbody td'))sameLine([...cell.querySelectorAll('button,a.btn')].filter(e=>e.closest('td')===cell),cell.closest('table').className+' cell');
+ for(const group of root.querySelectorAll(rows)){
+  if(group.matches('.top-actions'))continue;
+  sameLine([...group.querySelectorAll('button,a.btn,select')].filter(e=>e.closest(rows)===group&&!e.closest('[role="menu"]')&&(!e.closest('[role="dialog"]')||e.closest('[role="dialog"]')===root)),group.className);
+ }
+ const dockerBar=root.querySelector('.docker-command-bar');
+ if(dockerBar){
+  const controls=[...dockerBar.querySelectorAll('select,button,a.btn,label.event-live')];
+  sameLine(controls,'Docker host and tab actions');
+  const visibleRefresh=[...root.querySelectorAll('button.refresh-button')].filter(visible).filter(b=>/^refresh(?: docker)?$/i.test(b.textContent.trim()));
+  if(visibleRefresh.length>1)issues.add('Duplicate Docker refresh controls');
+  if(dockerBar.scrollWidth>dockerBar.clientWidth+1&&getComputedStyle(dockerBar).overflowX!=='auto')issues.add('Docker commands cannot scroll');
+ }
+ for(const badge of root.querySelectorAll('.badge')){
+  if(!visible(badge))continue;
+  const range=document.createRange();range.selectNodeContents(badge);
+  if(new Set([...range.getClientRects()].filter(r=>r.width&&r.height).map(r=>Math.round(r.top))).size>1&&badge.children.length===0)issues.add('Wrapped badge: '+badge.textContent);
+ }
+ const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+ while(walker.nextNode()){
+  const node=walker.currentNode,parent=node.parentElement;
+  if(!parent||!visible(parent)||parent.closest('svg,script,style,pre,code,textarea,select,[translate="no"],[aria-hidden="true"]'))continue;
+  for(const match of node.textContent.matchAll(/(?:^|\s)(\p{L}{2,28})(?=[\s.,:;!?)]|$)/gu)){
+   const start=match.index+match[0].length-match[1].length;
+   const range=document.createRange();range.setStart(node,start);range.setEnd(node,start+match[1].length);
+   if(new Set([...range.getClientRects()].filter(r=>r.width&&r.height).map(r=>Math.round(r.top))).size>1)issues.add('Split word '+match[1]+' in '+parent.tagName+' '+[parent,parent.parentElement,parent.parentElement?.parentElement,parent.parentElement?.parentElement?.parentElement].map(e=>e?.className).join('/'));
+  }
+ }
+ return [...issues];
+}
+
 const routes=['/','/proxmox','/docker','/storage','/network','/backups','/monitoring','/alerts','/ai','/users','/settings','/tools/sftp','/tools/shell'];
 for(const [page,tabs] of Object.entries({
  proxmox:['Overview','Nodes','Virtual Machines','LXC Containers','Storage','Networks','Tasks & Logs'],
@@ -254,6 +294,11 @@ try{
      return issues;
     });failures.push(...findings.map(issue=>`${width}px ${route}: ${issue}`));
    }
+   if(checkActionRows){
+    const findings=await page.locator('main.content').evaluate(actionLayoutIssues);
+    for(const issue of findings){failures.push(width+'px '+route+': '+issue);console.log('    '+issue);}
+    if(route==='/proxmox'||route==='/proxmox?tab=Overview')await page.locator('.pve-grid').getByText(copy('Completed'),{exact:true}).first().waitFor();
+   }
    const problems=await page.evaluate(()=>{
     const issues=[];
     if(document.documentElement.scrollWidth>innerWidth+1)issues.push('Page has horizontal overflow');
@@ -297,8 +342,8 @@ try{
       if(document.querySelector('.docker-host-picker'))issues.push('Separate host picker panel is still present');
       const picker=document.querySelector('.docker-host-selector.compact'),header=picker?.closest('.page-header,.volume-header,.vm-toolbar');
       if(!header)issues.push('Host selector is outside the page heading');
-      else if(innerWidth>=1440){const heading=header.querySelector('h1,h2'),a=heading?.getBoundingClientRect(),b=picker.getBoundingClientRect();if(a&&Math.min(a.bottom,b.bottom)<=Math.max(a.top,b.top))issues.push('Host selector wraps away from the desktop title');}
-      if(new URLSearchParams(location.search).get('tab')==='Updates'&&!document.querySelector('.docker-updates .page-header .refresh-button'))issues.push('Update check button is outside the header');
+      else if(!header.querySelector('.docker-command-bar')?.contains(picker))issues.push('Host selector is outside the Docker command bar');
+      if(new URLSearchParams(location.search).get('tab')==='Updates'&&!document.querySelector('.docker-page-header .docker-tab-actions .refresh-button'))issues.push('Update check button is outside the header');
      }
      return issues;
     });failures.push(...compact.map(p=>`${width}px ${route}: ${p}`));
@@ -644,11 +689,13 @@ try{
   }
   await page.goto(base);await page.getByRole('button',{name:copy('Add Widget')}).click();
   await page.getByRole('dialog').waitFor();
+  if(checkActionRows)failures.push(...(await page.getByRole('dialog').last().evaluate(actionLayoutIssues)).map(issue=>width+'px dialog: '+issue));
   assert.ok(await page.getByRole('button',{name:copy('Close dialog'),exact:true}).isVisible());
   await page.getByRole('button',{name:copy('Close dialog'),exact:true}).click();
   await page.evaluate(()=>window.dispatchEvent(new CustomEvent('iclusters-ssh-approval',{detail:{target:'docker:11111111-1111-4111-8111-111111111111',path:'/docker/updates/image/install',dockerHost:'11111111-1111-4111-8111-111111111111:node',method:'POST',body:{},resolve(){},reject(){}}})));
   await page.getByLabel(copy('SSH username'),{exact:true}).waitFor();
   assert.ok(await page.getByLabel(copy('SSH / sudo password'),{exact:true}).isVisible());
+  if(checkActionRows)failures.push(...(await page.getByRole('dialog').last().evaluate(actionLayoutIssues)).map(issue=>width+'px dialog: '+issue));
   await page.getByRole('button',{name:copy('Close dialog'),exact:true}).click();
  }
  console.log(`Reviewed ${selectedRoutes.length*widths.length} page/section layouts and ${widths.length*2} dialogs.`);

@@ -70,6 +70,13 @@ test('every Docker resource tab places host selection in its heading before its 
   try{
    const heading=page.container.querySelector('h1,h2'),picker=page.container.querySelector('.docker-host-selector.compact'),metrics=page.container.querySelectorAll('.metric-grid'),nav=page.container.querySelector('[aria-label="Docker resources"]');
    assert.ok(heading.textContent.startsWith(title),tab+' heading');const group=heading.closest('.docker-host-heading');assert.ok(group);assert.equal(group.querySelector(':scope>.badge').textContent,'Connected');assert.equal(heading.querySelector('.badge'),null);assert.equal(page.container.querySelectorAll('.docker-page-header').length,1,tab+' shares one host header');
+   const bar=picker.closest('.docker-command-bar');
+   const actions={Containers:[],Images:['Pull Image','Clean Up','Build Image'],Volumes:['Prune Unused Anonymous Volumes','Create Volume'],'Compose Stacks':['Compose Documentation'],Events:['Export Events','Clear View'],Updates:['Check for Updates']};
+   for(const label of ['Refresh Docker','Manage Connections',...actions[tab]]){
+    const matches=[...bar.querySelectorAll('button,a')].filter(control=>control.textContent.trim()===label);
+    assert.equal(matches.length,1,tab+' shows '+label+' once in the host toolbar');
+   }
+   assert.equal(button(page.container,'Refresh'),undefined,tab+' has a single inventory refresh');
    assert.ok(button(page.container,'Refresh Docker'));assert.ok(page.container.querySelector('a[href="/settings?tab=Connections"]'));
    assert.ok(heading.compareDocumentPosition(picker)&4,tab+' heading precedes host selection');
    assert.equal(metrics.length,count?1:0,tab+' has only its own metrics');if(count){assert.equal(metrics[0].children.length,count,tab+' metrics');assert.ok(picker.compareDocumentPosition(metrics[0])&4,tab+' host selection precedes metrics');assert.ok(metrics[0].compareDocumentPosition(nav)&4,tab+' metrics precede tabs');}
@@ -186,4 +193,27 @@ test('Docker distinguishes guest observations, unavailable inventory and measure
    if(data.readOnly&&data.containers.length)assert.equal(page.container.querySelector('.docker-row-host').textContent,'guest-source');
   }finally{await page.close()}
  }
+});
+
+test('the shared Docker refresh reloads the selected tab and tab commands switch with navigation',async()=>{
+ const calls=[];
+ const page=await mounted('pages/Docker.tsx',{},async(path,init)=>{
+  calls.push(path);
+  if(path.startsWith('/docker/events'))return {events:[],until:1};
+  if(path.startsWith('/docker/volumes/usage'))return {volumes:[]};
+  return dockerFixture(path,init);
+ },true,['/docker?tab=Images']);
+ try{
+  const bar=page.container.querySelector('.docker-command-bar');
+  await page.click(button(bar,'Pull Image'));
+  assert.match(page.container.querySelector('.modal').textContent,/Pull Image/);
+  await page.click(page.container.querySelector('.modal [aria-label="Close dialog"]'));
+  for(const [tab,path] of [['Volumes','/docker/volumes/usage'],['Events','/docker/events']]){
+   await page.click([...page.container.querySelectorAll('[role=tab]')].find(el=>el.textContent===tab));
+   assert.equal(button(bar,'Pull Image'),undefined);
+   const before=calls.filter(call=>call.startsWith(path)).length;
+   await page.click(button(bar,'Refresh Docker'));
+   assert.ok(calls.filter(call=>call.startsWith(path)).length>before,tab+' refresh includes its own readings');
+  }
+ }finally{await page.close()}
 });

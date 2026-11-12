@@ -11,3 +11,5 @@
  .alerts-active .active-alert-toolbar>label,.history-redesign .history-toolbar>.history-search{flex:1 1 100%}
  .alerts-active .active-alert-toolbar>select,.history-redesign .history-toolbar>select{flex:1 1 130px;width:auto}
 }
+.history-redesign .history-date-controls>label{white-space:nowrap;overflow-wrap:normal}
+.history-redesign .history-date-controls input{min-inline-size:0;flex:1 1 auto}

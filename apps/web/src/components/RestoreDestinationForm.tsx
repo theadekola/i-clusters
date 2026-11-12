@@ -18,7 +18,7 @@ export default function RestoreDestinationForm({archive,busy,error,onSubmit}:{ar
  {!ready&&<p role="status">Restore choices require complete guest and storage inventory. Refresh discovery and try again.</p>}
  {ready&&!targets.length&&<p role="status">No compatible active destination storage is reported for this node.</p>}
  {(error||cluster.error||stores.error)&&<p role="alert" className="error">{error||cluster.error||stores.error}</p>}
- <button type="button" className="btn secondary" disabled={busy||cluster.loading||stores.loading} onClick={()=>Promise.all([cluster.refresh(),stores.refresh()])}>Refresh</button>
- <button type="submit" className="btn primary" aria-busy={busy} disabled={busy||!ready||!targets.length}>{busy?'Submitting...':'Restore'}</button>
+ <div className="action-row"><button type="button" className="btn secondary" disabled={busy||cluster.loading||stores.loading} onClick={()=>Promise.all([cluster.refresh(),stores.refresh()])}>Refresh</button>
+ <button type="submit" className="btn primary" aria-busy={busy} disabled={busy||!ready||!targets.length}>{busy?'Submitting...':'Restore'}</button></div>
  </form>;
 }

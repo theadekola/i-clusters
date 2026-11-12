@@ -1,69 +1,43 @@
-/* Every Docker resource view uses the same title, host and action positions. */
-.content .docker-manager .docker-page-header {
+/* The host selector and active tab commands share a locally scrollable row. */
+.content.content .docker-manager > .docker-page-header {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(200px, 240px) minmax(0, 1fr);
-  grid-template-areas: "title host actions";
-  align-items: center;
-  gap: 16px;
-  margin: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin: 0 0 10px;
 }
-.content .docker-manager .docker-page-header > div:first-child {
-  grid-area: title;
-  width: auto;
-  min-width: 0;
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-.content .docker-manager .docker-page-header > .docker-host-selector {
-  grid-area: host;
-  width: 100%;
-  min-width: 0;
-  margin: 0;
-  justify-content: center;
-}
-.content .docker-manager .docker-page-header > .docker-host-selector > label {
+.content.content .docker-manager .docker-command-bar {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
+  align-items: flex-end;
+  gap: 12px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  padding: 3px;
+}
+.docker-command-bar .docker-host-selector.compact {
+  flex: 0 1 280px;
+  min-inline-size: 10rem;
+}
+.docker-command-bar .docker-host-selector.compact > label {
+  display: grid;
   gap: 4px;
   width: 100%;
-  min-width: 0;
 }
-.content .docker-manager .docker-page-header .docker-host-selector select {
-  width: 100%;
-  max-inline-size: 100%;
+.docker-command-bar .docker-host-selector.compact select { width: 100%; max-width: none; }
+.content.content .docker-manager .docker-command-bar > .header-actions {
+  flex: none;
+  flex-wrap: nowrap;
+  width: max-content;
+  max-inline-size: none;
+  margin: 0 0 0 auto;
+  overflow: visible;
 }
-.content .docker-manager .docker-page-header > .header-actions {
-  grid-area: actions;
-  width: auto;
-  min-width: 0;
-  margin: 0;
-  justify-content: flex-end;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.content .docker-manager .docker-page-header > .header-actions > .btn {
-  white-space: normal;
-  text-align: center;
-  overflow-wrap: anywhere;
-}
-@media (max-width: 1399px) {
-  .content .docker-manager .docker-page-header {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas: "title title" "host actions";
-    gap: 12px;
-  }
-  .content .docker-manager .docker-page-header > .docker-host-selector {
-    max-width: 280px;
-  }
-}
-@media (max-width: 600px) {
-  .content .docker-manager .docker-page-header {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "title" "host" "actions";
-  }
-  .content .docker-manager .docker-page-header > .docker-host-selector { max-width: none; }
+.docker-tab-actions { display: flex; align-items: center; flex: none; gap: 8px; }
+.docker-tab-actions:empty { display: none; }
+.docker-command-bar :is(.btn,.event-live) { flex: none; white-space: nowrap; }
+@media (max-width:700px) {
+  .docker-command-bar .docker-host-selector.compact {flex: 0 0 10rem;}
 }
 
 /* Wrap unbroken references and paths instead of making the whole table wider. */
@@ -108,15 +82,10 @@
  .docker-manager .docker-table td:nth-child(n+3):nth-child(-n+5),.docker-manager .docker-table .docker-image{display:none}
  .docker-manager .docker-table .docker-row-host{display:block;color:var(--theme-muted);overflow-wrap:anywhere}
  .docker-manager .docker-table .docker-container-name b{white-space:normal;overflow-wrap:anywhere}
- .docker-manager .docker-table td:last-child{display:flex;flex-wrap:wrap}
+ .docker-manager .docker-table td:last-child{display:block}
  .docker-manager .docker-table .icon-btn{min-width:44px;min-height:44px}
 }
 @media(max-width:700px){
  .docker-manager .docker-table td:first-child{width:auto}
  .docker-manager .docker-table td:last-child{width:auto;white-space:normal}
 }
-
-.docker-resource-actions{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:12px;margin:14px 0}
-.docker-resource-actions>.header-actions{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:8px;min-width:0}
-@media(max-width:600px){.docker-resource-actions,.docker-resource-actions>.header-actions{justify-content:flex-start;width:100%}}
-.content.content .docker-manager>.docker-page-header>.docker-host-selector{margin-left:0;justify-self:start;justify-content:flex-start}

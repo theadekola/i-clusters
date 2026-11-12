@@ -17,7 +17,7 @@ export default function ContainerSSHApproval({request,connection,onApproved,onCa
   <p className="cluster-wide muted ssh-host-status" role="status">{checking?'Checking SSH host identity automatically…':!fingerprint?'SSH host verification is required before continuing.':'SSH host key checked automatically.'}</p>{!fingerprint&&!checking&&<button type="button" className="btn secondary small" disabled={busy||!secure} onClick={()=>setRetry(v=>v+1)} aria-label="Retry SSH verification">Retry SSH verification</button>}
   <label className="cluster-wide"><span><input type="checkbox" checked={consent} required disabled={busy||!secure} onChange={e=>setConsent(e.target.checked)}/> I approve this action for the displayed container and host.</span></label>
   {error&&<p className="cluster-wide error" role="alert">{error}</p>}
-  <button className="btn primary" type="submit" aria-busy={!!(busy||checking)} disabled={!secure||busy||checking||!fingerprint||!consent||!password||!username}>{busy?'Authenticating…':'Confirm Action'}</button><button className="btn secondary" type="button" onClick={onCancel}>Cancel</button>
+  <div className="action-row"><button className="btn primary" type="submit" aria-busy={!!(busy||checking)} disabled={!secure||busy||checking||!fingerprint||!consent||!password||!username}>{busy?'Authenticating…':'Confirm Action'}</button><button className="btn secondary" type="button" onClick={onCancel}>Cancel</button></div>
   {busy&&<div className="cluster-wide"><ReportLoading message="Verifying SSH approval…"/></div>}
  </form>;
 }

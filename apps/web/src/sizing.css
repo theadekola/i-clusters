@@ -86,16 +86,16 @@
   min-width: 0; flex: 1; order: 0;
 }
 .content .metric-grid.metric-grid :is(div, span):has(> strong) {
-  display: block; min-width: 0; overflow-wrap: anywhere;
+  display: block; min-width: 0; overflow-wrap: normal;
 }
 .content .metric-grid.metric-grid :is(strong, .stat-value) {
   display: block; font-size: clamp(18px, 13cqi, var(--metric-value)) !important; line-height: 1.2;
   font-weight: 700; letter-spacing: -.025em; margin: 4px 0;
-  min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere;
+  min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: normal;
 }
 .content .metric-grid.metric-grid :is(small, .small) {
   display: block; font-size: 11px; line-height: 1.4;
-  white-space: normal; overflow-wrap: anywhere;
+  white-space: normal; overflow-wrap: normal;
 }
 .content .metric-grid.metric-grid :is(small, .small) ~ :is(small, .small),
 .content .metric-grid.metric-grid strong + :is(small, span),
