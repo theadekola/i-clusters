@@ -131,8 +131,8 @@ export async function auditClusterReports({base,owner,profile,tls}){
      const expected=({'/proxmox:Virtual Machines':'-VM','/proxmox:LXC Containers':'-CT','/docker:Containers':'-container','/docker:Volumes':'-volume','/storage:Storage Pools':'-pool','/storage:Datasets / Volumes':'-tank/data','/storage:Shares':'-share','/alerts:Alert Rules':'-rule','/network:Devices':'-VM'})[pathname+':'+tab];
      await inspect(pathname+'/'+tab,expected?scopeName+expected:'');
      if(pathname==='/proxmox'&&tab==='Virtual Machines'){
-      const capacity=scopeName==='Home'?'140.0 GiB':'524.0 GiB';
-      await page.locator('.vm-stats .vm-stat').filter({hasText:'Attached disk capacity'}).getByText(capacity,{exact:true}).waitFor();
+      await page.locator('.vm-stats .vm-stat').filter({hasText:'Disk Usage'}).getByText('Unavailable',{exact:true}).waitFor();
+      assert.doesNotMatch(await page.locator('.vm-table').innerText(),/GiB attached|TiB attached/);
      }
      if(pathname==='/storage'&&tab==='Datasets / Volumes'){
       const device=page.getByRole('row',{name:'Select /dev/disk/by-id/'+scopeName+'-drive',exact:true});

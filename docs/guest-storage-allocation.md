@@ -39,6 +39,6 @@ References: [Proxmox VM commands](https://pve.proxmox.com/pve-docs/qm.1.html), [
 
 ## How the storage pages report capacity
 
-**Proxmox → Virtual Machines** reports the capacity of attached data disks from the selected cluster's VM configuration. This includes managed virtual disks and directly attached host devices. The interface reports coverage when a disk size is missing. If only the Proxmox boot disk size is available, the VM row identifies it. Optical media, detached disks, EFI and TPM state do not contribute to this total. Guest filesystem used and free space have their own readings.
+**Proxmox → Virtual Machines** shows measured guest filesystem usage. The Disk column shows used and free space, and the selected VM’s Resource Usage card shows the percentage used. When the guest supplies no filesystem reading, the usage is unavailable.
 
 **Storage → Datasets / Volumes** matches these attachments with pool content and displays direct disks under **Host attachments** with their VM and disk slot. A host disk can be much larger than all the Proxmox pools combined. Pool capacity, used space and free space include only the pools. Host disks are read-only in this view. **Storage → Disks** lists physical devices visible to the host, so adding its values to VM attachments would count the same hardware twice.
