@@ -31,7 +31,7 @@ const upstream=http.createServer(async(req,res)=>{
  else if(req.url==='/api2/json/nodes/pve/config')data={description:'Test node'};
  else if(req.url==='/api2/json/nodes/pve/syslog?limit=200')data=[{n:1,t:'actual system log'}];
  else if(req.url==='/api2/json/nodes/pve/qemu/101/status/current')data={status:'running',cpu:0.1,mem:2,maxmem:4,uptime:500};
- else if(req.url==='/api2/json/nodes/pve/qemu/101/config')data={name:'actual-guest',cores:2,memory:4096,ostype:'l26',agent:'1'};
+ else if(req.url.split('?')[0]==='/api2/json/nodes/pve/qemu/101/config')data={name:req.url.endsWith('?current=1')?'actual-guest':'pending-name',cores:2,memory:4096,ostype:'l26',agent:'1'};
  else if(req.url==='/api2/json/nodes/pve/qemu/101/snapshot')data=[{name:'baseline',snaptime:1700000000}];
  else if(req.url==='/api2/json/nodes/pve/qemu/101/rrddata?timeframe=hour&cf=AVERAGE')data=[{time:1700000000,cpu:.12,mem:2147483648,netin:1024,netout:512}];
  else if(req.url==='/api2/json/nodes/pve/qemu/101/agent/get-osinfo')data={result:{'pretty-name':'Ubuntu 24.04 LTS'}};
