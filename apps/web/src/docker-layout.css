@@ -89,3 +89,9 @@
  .docker-manager .docker-table td:first-child{width:auto}
  .docker-manager .docker-table td:last-child{width:auto;white-space:normal}
 }
+
+/* Resource pages also render independently in detail and inspection views. */
+.content :is(.docker-images,.docker-volumes,.compose-manager,.docker-events,.docker-updates) {
+  min-inline-size: 0;
+  grid-template-columns: minmax(0,1fr);
+}

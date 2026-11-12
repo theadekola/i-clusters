@@ -82,3 +82,5 @@
   .backup-archives-workspace .backup-table td:nth-child(3) { display: none; }
   :is(.backup-archives-workspace .backup-table,.schedule-overview .schedule-table) td:last-child button { min-height: 44px; }
 }
+.content :is(.network-traffic,.backup-manager) {grid-template-columns:minmax(0,1fr);min-inline-size:0}
+.content :is(.network-traffic,.backup-manager) > :is(.page-header,.network-panel-head) {min-inline-size:0}
