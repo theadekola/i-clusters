@@ -140,3 +140,27 @@ test('job inspection shows guest scope and only the result tied to the job',asyn
   assert.match(details.textContent,/ResultOK/);assert.deepEqual(writes,[]);
  }finally{await page.close()}
 });
+
+test('deleting a schedule uses the selected details and requires confirmation on both schedules routes',async()=>{
+ for(const initialEntry of ['/backups?tab=Schedules','/schedules']){
+  const writes=[];
+  const api=async(path,init)=>{
+   if(init?.method==='DELETE'){writes.push(path);return {}}
+   if(path==='/schedules')return {items:[{id:'first',node:'n1'},{id:'second',node:'n2'}]};
+   if(path==='/auth/me')return {user:{role:'owner'}};
+   return {nodes:[],tasks:[]};
+  };
+  const page=await mounted('pages/Schedules.tsx',{initialEntry},api);
+  try{
+   await page.click(page.container.querySelector('[aria-label="Details proxmox:second"]'));
+   const details=page.container.querySelector('.schedule-inline-details');
+   assert.equal(details.open,true);
+   await page.click(button(details,'Delete Schedule'));
+   const dialog=page.container.querySelector('[role="dialog"]');
+   assert.match(dialog.textContent,/Delete second\?/);
+   assert.deepEqual(writes,[]);
+   await page.click(button(dialog,'Delete Schedule'));
+   assert.deepEqual(writes,['/schedules/second']);
+  }finally{await page.close()}
+ }
+});

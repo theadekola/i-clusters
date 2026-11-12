@@ -1,3 +1,4 @@
+import {clusterReportFilename} from '../cluster-context';
 import BrowserCertificateSetup from './BrowserCertificateSetup';
 import {translate} from '../i18n/locale';
 import RefreshButton from './RefreshButton';
@@ -19,7 +20,7 @@ export default function SecuritySettings({user,search}:any){
  const visible=(text:string)=>(text+' '+translate(text)).toLowerCase().includes(search.toLowerCase());
  const fact=(label:string,value:any)=><div className="settings-fact" key={label}><span>{label}</span><b>{value??'Not reported'}</b></div>;
  const loadLogs=async()=>{if(!auditor)return;setReading(true);setError('');try{const {api}=await import('../api');const result=await api('/audit');setLogs(Array.isArray(result.logs)?result.logs.slice(0,5):[]);}catch(e:any){setError(e.message||'Audit records could not be loaded.')}finally{setReading(false)}};
- const downloadLogs=async()=>{if(!auditor)return;setReading(true);setError('');try{const {api}=await import('../api');const result=await api('/audit'),url=URL.createObjectURL(new Blob([JSON.stringify({exportedAt:new Date().toISOString(),logs:result.logs},null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='iclusters-audit-logs.json';a.click();URL.revokeObjectURL(url)}catch(e:any){setError(e.message||'Audit download failed.')}finally{setReading(false)}};
+ const downloadLogs=async()=>{if(!auditor)return;setReading(true);setError('');try{const {api}=await import('../api');const result=await api('/audit'),url=URL.createObjectURL(new Blob([JSON.stringify({exportedAt:new Date().toISOString(),logs:result.logs},null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download=clusterReportFilename('iclusters-audit-logs.json');a.click();URL.revokeObjectURL(url)}catch(e:any){setError(e.message||'Audit download failed.')}finally{setReading(false)}};
  const signOut=async()=>{if(window.confirm('Sign out of i-Clusters on this browser? The current server session will be revoked; other devices stay signed in.')){try{const {api}=await import('../api');await api('/account/logout',{method:'POST',body:'{}'});clearTokens();window.location.assign('/')}catch(e:any){setError(e.message||'Sign-out could not be confirmed.')}}};
  const https=window.location.protocol==='https:';
  return <>{security.error&&<div className="system-settings-feedback"><p role="alert" className="error">{security.error}</p><button type="button" className="btn secondary" onClick={()=>security.refresh()}>Retry Security Policy</button></div>}{security.loading&&!policy&&<p className="system-settings-feedback" role="status"><ReportLoading/></p>}

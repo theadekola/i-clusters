@@ -81,6 +81,13 @@ test('cluster health becomes Unknown after failed refresh and recovers on succes
  let fail=false;const page=await mounted('pages/Proxmox.tsx',{management:()=>null},async p=>{if(p==='/proxmox?refresh=1')fail=true;if((p==='/proxmox'||p==='/proxmox?refresh=1')&&fail)throw Error('Provider unreachable');return reviewApi(p)});
  try{assert.equal(page.container.querySelector('.pve-health b').textContent,'Online');await page.click(page.container.querySelector('[aria-label="Refresh Proxmox"]'));assert.equal(page.container.querySelector('.pve-health b').textContent,'Unknown');assert.ok(page.container.querySelector('[role=alert]').textContent.includes('Provider unreachable'));fail=false;globalThis.__auditApi=reviewApi;await page.click(page.container.querySelector('[aria-label="Refresh Proxmox"]'));assert.equal(page.container.querySelector('.pve-health b').textContent,'Online');}finally{await page.close();}
 });
+test('node membership requires a reported cluster and node entry',async()=>{
+ for(const [clusterStatus,member] of [[[],false],[[{type:'node',name:'n1'}],false],[[{type:'cluster',name:'reported-name'},{type:'node',name:'n1',local:1}],true]]){
+  const data={...reviewFixture,nodes:[{name:'n1',status:'online'}],clusterStatus};
+  const page=await mounted('pages/ClusterNodes.tsx',{data,metrics:[],tasks:[],network:{interfaces:[]},hours:'24',role:'viewer',refresh:async()=>{}},async()=>({}));
+  try{assert.equal(page.container.querySelector('tbody').textContent.includes('Cluster member'),member);assert.equal(page.container.querySelector('.node-information').textContent.includes('reported-name'),member)}finally{await page.close()}
+ }
+});
 test('node detail failures remain visible across detail sections',async()=>{
  const page=await mounted('pages/ClusterNodes.tsx',{data:reviewFixture,metrics:[],tasks:[],network:{interfaces:[]},hours:'24',role:'viewer',refresh:async()=>{}},async()=>{throw Error('Node details unavailable')});try{assert.ok(page.container.querySelector('[role=alert]').textContent.includes('Node details unavailable'));await page.click(button(page,'Services'));assert.ok(page.container.querySelector('[role=alert]').textContent.includes('Node details unavailable'));}finally{await page.close();}
 });

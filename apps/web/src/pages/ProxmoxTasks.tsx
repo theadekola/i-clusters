@@ -1,3 +1,4 @@
+import {clusterReportFilename} from '../cluster-context';
 import {InspectableRow,SelectionBody} from '../components/TableActions';
 import {isActionCancelled} from '../action-cancellation';
 import ProxmoxSectionHeader from '../components/ProxmoxSectionHeader';
@@ -52,7 +53,7 @@ export default function ProxmoxTasks({navigation,role,clusterUrl,hours,data,rest
  useEffect(()=>setPage(p=>Math.min(p,pages-1)),[pages]);
  const close=()=>{selectionVersion.current++;setSelected(null);setDetails(null);setLogs([]);setLoadedOffset(null);setLogLoading(false);setError('')};
  const target=(t:any)=>{const guest=[...(data?.vms||[]),...(data?.lxc||[])].find((g:any)=>g.node===t.node&&String(g.id)===String(t.id));return guest?`${guest.name} (${t.id})`:t.id||'--'};
- const download=()=>{if(loadedOffset!==offset||logLoading)return;const a=document.createElement('a'),url=URL.createObjectURL(new Blob([logs.map(l=>`${l.n}: ${l.t}`).join('\n')],{type:'text/plain'}));a.href=url;a.download=`proxmox-task-log-${selected.node}-${offset}.txt`;a.click();URL.revokeObjectURL(url);};
+ const download=()=>{if(loadedOffset!==offset||logLoading)return;const a=document.createElement('a'),url=URL.createObjectURL(new Blob([logs.map(l=>`${l.n}: ${l.t}`).join('\n')],{type:'text/plain'}));a.href=url;a.download=clusterReportFilename(`proxmox-task-log-${selected.node}-${offset}.txt`);a.click();URL.revokeObjectURL(url);};
  const stop=async()=>{if(!selected||busy)return;const target=selected,version=selectionVersion.current,isCurrent=()=>mounted.current&&version===selectionVersion.current;setBusy(true);setError('');try{const path=`/tasks/${encodeURIComponent(target.node)}/${encodeURIComponent(target.upid)}`;await confirmedApi(path,{method:'DELETE'});await live.refresh();if(!isCurrent())return;const result=await api(path);if(isCurrent())setDetails(result);}catch(e:any){if(isActionCancelled(e))return;if(isCurrent())setError(e.message);}finally{if(mounted.current)setBusy(false);}};
  const finished=rows.filter((t:any)=>Number.isFinite(t.endtime)&&Number.isFinite(t.starttime)&&t.endtime>=t.starttime),avg=finished.length?finished.reduce((s:number,t:any)=>s+(seconds(t)||0),0)/finished.length:null;
  const distribution=(key:(t:any)=>string)=>Object.entries(rows.reduce((a:any,t:any)=>{const k=key(t);a[k]=(a[k]||0)+1;return a;},{})).map(([name,value])=>({name,value}));

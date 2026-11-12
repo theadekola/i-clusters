@@ -1,3 +1,4 @@
+import {clusterReportFilename,reportCluster} from '../cluster-context';
 import {InspectableRow,SelectionBody} from '../components/TableActions';
 import RefreshButton from '../components/RefreshButton';
 import {cardValue} from '../components/ReportLoading';
@@ -61,11 +62,11 @@ export default function BackupReports({navigation,hours,setHours}:{navigation?:i
  };
  const archiveCoverage={inventory:scopedInventory,errors:archiveErrors,partial:archivePartial||!archiveAvailable,unknownSizes:archiveData.unknownSize,unknownDates:archiveData.unknownDate,scope:'Returned archives created in the selected period; node and period filters only'};
  const exportReport=(kind='complete',name='Backup Report')=>{
-  const metadata={exportedAt:new Date().toISOString(),title:name,kind,hours:Number(hours),filters:{node,status,search,taskType},coverage,summary};
+  const metadata={sourceCluster:reportCluster(),exportedAt:new Date().toISOString(),title:name,kind,hours:Number(hours),filters:{node,status,search,taskType},coverage,summary};
   const performance=rows.map((row:any)=>({node:row.node,id:row.id,upid:row.upid,outcome:backupOutcome(row),durationSeconds:backupDuration(row)}));
   const payload={...metadata,...(['complete','activity'].includes(kind)?{tasks:rows}:{}),...(['complete','storage'].includes(kind)?{destinations:measured,storageCoverage,archiveCoverage,archives:archiveData.items,knownArchiveBytes:archiveBytes}:{}),...(['complete','performance'].includes(kind)?{performance}:{}),...(kind==='coverage'?{storageCoverage,archiveCoverage}:{})};
   const csv=kind==='storage'?reportCsv([['Destination','Node','Capacity bytes','Used bytes','Shared'],...measured.map((row:any)=>[row.name,row.node,row.capacity,row.used,row.shared])]):kind==='performance'?reportCsv([['Task ID','Node','Guest','Outcome','Duration seconds'],...performance.map((row:any)=>[row.upid,row.node,row.id,row.outcome,row.durationSeconds])]):kind==='coverage'?reportCsv([['Source','Partial','Errors'],['Tasks',coverage.partial,coverage.errors.join('; ')],['Storage',storageCoverage.partial,storageCoverage.errors.join('; ')],['Archives',archiveCoverage.partial,archiveCoverage.errors.join('; ')]]):backupCsv(rows);
-  const url=URL.createObjectURL(new Blob([format==='csv'?csv:JSON.stringify(payload,null,2)],{type:format==='csv'?'text/csv;charset=utf-8':'application/json'})),anchor=document.createElement('a');anchor.href=url;anchor.download=`${name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,65)||'backup-report'}-${hours}h.${format}`;document.body.appendChild(anchor);anchor.click();anchor.remove();window.setTimeout(()=>URL.revokeObjectURL(url),0);
+  const url=URL.createObjectURL(new Blob([format==='csv'?csv:JSON.stringify(payload,null,2)],{type:format==='csv'?'text/csv;charset=utf-8':'application/json'})),anchor=document.createElement('a');anchor.href=url;anchor.download=clusterReportFilename(`${name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,65)||'backup-report'}-${hours}h.${format}`);document.body.appendChild(anchor);anchor.click();anchor.remove();window.setTimeout(()=>URL.revokeObjectURL(url),0);
  };
  const build=(kind:string,title:string)=>{setReportKind(kind);setReportName(title);setModal('build')};
  const canBuild=reportKind==='storage'?!!storage.data&&!storage.error:reportKind==='coverage'?!!(live.data||storage.data||archives.data):available;

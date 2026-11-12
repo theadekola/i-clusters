@@ -22,7 +22,7 @@ export default function ClusterSwitcher({owner}:{owner:boolean}){
   const label=current?.name||'';
   const displayName=current?.endpoint&&profiles.some(p=>p.id!==current.id&&p.name===label)?label+' · '+current.endpoint:label;
   const approvalLabel=profiles.length>1?displayName:'';
-  useEffect(()=>{nameCluster(approvalLabel)},[approvalLabel]);
+  useEffect(()=>{nameCluster(approvalLabel,current)},[approvalLabel,current]);
   function close(){setPendingId('');setOpen(false)}
   return <>
     <button type="button" className="cluster-switch-button" aria-label="Switch cluster" aria-describedby="active-cluster-summary" title={displayName||'Switch cluster'}

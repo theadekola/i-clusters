@@ -65,7 +65,23 @@ export function createMonitor(sources=providers,persistence={get,mutate},checkSe
   }));row.pending=work;readings.set(name,row);return work;
  }
  async function sample(force=false){
-  if(!force&&latest){if(!inFlight&&Date.now()-completed>=10000)void sample(true).catch(()=>{});latest.alerts=persistence.get().alerts;if(inFlight&&progress){const current={...latest,...progress,services:progressServices(progress.services,latest.services,latest.sampledAt),refreshing:true};return {...current,hosts:hosts(current)};}return latest;}
+  if(!force&&latest){
+    if(!inFlight&&Date.now()-completed>=10000)void sample(true).catch(()=>{});
+    latest.alerts=persistence.get().alerts;
+    if(!inFlight||!progress)return latest;
+    const services=progressServices(progress.services,latest.services,latest.sampledAt);
+    const current={...progress,services,refreshing:true};
+    // Retain inventory only while its own replacement is pending and the
+    // previous successful reading is still recent. A failed read clears it.
+    for(const name of Object.keys(sources)){
+      if(services.some(s=>s.id===name&&s.refreshing&&['reachable','partial'].includes(s.status)))current[name]=latest[name];
+    }
+    if(!current.dockerFleet&&latest.dockerFleet){
+      const recent=new Set(services.filter(s=>s.refreshing&&s.id?.startsWith('docker:')).map(s=>s.hostId));
+      if(recent.size)current.dockerFleet={...latest.dockerFleet,hosts:latest.dockerFleet.hosts.filter(h=>recent.has(h.id))};
+    }
+    return {...current,hosts:hosts(current)};
+  }
   if(!inFlight){
    const ticket=generation,snapshot=empty();progress=snapshot;
    for(const [name,source] of Object.entries(sources))snapshot.services.push({id:name,name,provider:name,status:source.configured()?'pending':'not-configured',response:null});

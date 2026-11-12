@@ -640,8 +640,12 @@ test('alert details enable Resolve after acknowledgement and show the recorded m
 });
 
 test('Monitoring does not degrade healthy endpoints for informational update notices',async()=>{
- const data=monitoringRedesignFixture();data.services=data.services.map(s=>({...s,status:'reachable',error:null}));data.alerts=[{id:'update',title:'Docker image update available',status:'active',severity:'info'}];
+ const data=monitoringRedesignFixture();data.nodes=data.nodes.map(n=>({...n,status:'online'}));data.services=data.services.map(s=>({...s,status:'reachable',error:null}));data.alerts=[{id:'update',title:'Docker image update available',status:'active',severity:'info'}];
  const page=await mounted('pages/Monitoring.tsx',{},monitoringRedesignApi(data));try{assert.equal(page.container.querySelector('.monitor-stat strong').textContent,'Healthy');assert.match(page.container.querySelector('.monitor-stat').textContent,/endpoints responding/)}finally{await page.close()}
+});
+test('Monitoring reports attention when all Proxmox nodes are offline even if the API responds',async()=>{
+ const data=monitoringRedesignFixture();data.nodes=data.nodes.map(n=>({...n,status:'offline'}));data.services=[{provider:'proxmox',status:'reachable'}];data.alerts=[];
+ const page=await mounted('pages/Monitoring.tsx',{},monitoringRedesignApi(data));try{assert.equal(page.container.querySelector('.monitor-stat strong').textContent,'Needs attention')}finally{await page.close()}
 });
 test('Monitoring labels pending collections as refreshing rather than a failed connection',async()=>{
  const data=monitoringRedesignFixture();data.services=[{id:'docker-fleet',provider:'docker',name:'Docker collection',status:'pending'}];data.alerts=[];
