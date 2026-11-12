@@ -354,7 +354,7 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
    if(req.query.view==='power')return {status:await pve(base+'/status/current')};
    if(req.query.view==='agent')return {os:await pve(base+'/agent/get-osinfo',{timeoutMs:4000})};
    await Promise.all([
-     ['status',`${base}/status/current`],['config',`${base}/config`],['snapshots',`${base}/snapshot`],['interfaces',`${base}/agent/network-get-interfaces`],['history',`${base}/rrddata?timeframe=hour&cf=AVERAGE`],['os',`${base}/agent/get-osinfo`]
+     ['status',`${base}/status/current`],['config',`${base}/config?current=1`],['snapshots',`${base}/snapshot`],['interfaces',`${base}/agent/network-get-interfaces`],['history',`${base}/rrddata?timeframe=hour&cf=AVERAGE`],['os',`${base}/agent/get-osinfo`]
    ].map(async([key,path])=>{try{result[key]=await pve(path);}catch(e){result.errors.push(`${key}: ${e.message}`);}}));
    return result;
  });
@@ -399,7 +399,7 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
  action('post','/storage/snapshots/guest/create','operator','proxmox.snapshot.create',req=>guestSnapshot(req.body,'create'));
  action('post','/storage/snapshots/guest/rollback','admin','proxmox.snapshot.rollback',req=>guestSnapshot(req.body,'rollback'),true);
  action('post','/storage/snapshots/guest/delete','admin','proxmox.snapshot.delete',req=>guestSnapshot(req.body,'delete'),true);
- read('/storage/datasets',async req=>{const s=await sampleView(req);return {...await datasetInventory({proxmox:providers.proxmox.configured(),truenasEnabled:providers.truenas.configured(),snapshot:s.truenas||{},guests:s.services.some(x=>x.provider==='proxmox'&&x.status==='reachable')?s.proxmox||{}:{}}),refreshing:!!s.refreshing};});
+ read('/storage/datasets',async req=>{const s=await sampleView(req);return {...await datasetInventory({proxmox:providers.proxmox.configured(),truenasEnabled:providers.truenas.configured(),snapshot:s.truenas||{},guests:s.services.some(x=>x.provider==='proxmox'&&['reachable','partial'].includes(x.status))?s.proxmox||{}:{}}),refreshing:!!s.refreshing};});
 
  const unchangedConnection=scope=>{if(scope!==connectionScope())throw httpError('The storage connection changed. Reopen Edit before saving.',409);};
  read('/storage/datasets/guest-layout',async req=>{const scope=connectionScope(),result=await guestStorageService.inspect(req.query,()=>unchangedConnection(scope));unchangedConnection(scope);return {...result,connectionScope:scope};},'admin');

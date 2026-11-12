@@ -860,3 +860,31 @@ test('host picker retains the active filter, search and layout when guest status
   assert.equal(page.container.querySelector('[aria-label="Grid view"]').getAttribute('aria-pressed'),'true');
  } finally { await page.close(); }
 });
+
+test('VM storage shows attached capacity without guest readings across summary, desktop rows, cards, mobile and details',async()=>{
+ const GiB=1024**3;
+ const vm={id:'100',node:'n',name:'fixture',status:'running',diskCapacity:16*GiB,attachedDisks:[
+  {kind:'managed',size:16*GiB},{kind:'host',size:1024*GiB}]};
+ const page=await mounted('pages/VirtualMachines.tsx',{data:{nodes:[{name:'n'}],vms:[vm]},role:'viewer',refresh:async()=>{}},async()=>({config:{},errors:['os: No QEMU guest agent configured']}));
+ try{
+  assert.match(page.container.querySelector('.vm-stats').textContent,/Attached disk capacity1\.0 TiB1\/1 VMs/);
+  assert.match(page.container.querySelector('.vm-table').textContent,/1\.0 TiB attachedGuest usage unavailable/);
+  assert.match(page.container.querySelector('.mobile-guest-list').textContent,/1\.0 TiB attached/);
+  assert.match(page.container.querySelector('.vm-resource-cards').textContent,/Attached disk capacity1\.0 TiBGuest usage unavailable/);
+  assert.match(page.container.querySelector('.vm-summary-facts').textContent,/QEMU AgentDisabled/);
+  await page.click(page.container.querySelector('[aria-label="Grid view"]'));
+  assert.match(page.container.querySelector('.vm-card-grid').textContent,/1\.0 TiB attached/);
+ }finally{await page.close()}
+});
+
+test('the volumes view lists a direct host attachment and its known size without inventing usage or pool membership',async()=>{
+ const host={id:'host-disk',node:'n',vmid:'100',resourceId:'/dev/fixture',name:'/dev/fixture',disk:'scsi1',type:'VM host disk',provider:'proxmox',pool:null,size:1024**4,used:null,available:null,editable:false,status:'Attached'};
+ const page=await mounted('pages/StorageDatasets.tsx',{onTab(){}},async p=>p==='/auth/me'?{user:{role:'owner'}}:{resources:[host],errors:[],summary:{}});
+ try{
+  const row=page.container.querySelector('[aria-label="Select /dev/fixture"]');
+  assert.match(row.textContent,/100 · scsi1/);assert.match(row.textContent,/Host attachmentsVM host disk1\.0 TiBNot reportedNot reported/);
+  assert.equal(row.querySelector('button').disabled,true);
+  assert.match(page.container.querySelector('.dataset-bottom').textContent,/Reported disk sizes\/dev\/fixture1\.0 TiB/);
+  assert.match(page.container.querySelector('.dataset-stat-grid').textContent,/Mount PointsNot applicable/);
+ }finally{await page.close()}
+});

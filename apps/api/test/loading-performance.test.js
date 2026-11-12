@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {createMonitor} from '../src/monitor.js';import {createDockerFleet} from '../src/docker-fleet.js';import {selectedAgentHost} from '../src/node-agents.js';import {createReadCache} from '../src/read-cache.js';import {createGuestFilesystemReader} from '../src/guest-filesystem-cache.js';
+import {createMonitor} from '../src/monitor.js';import {createDockerFleet} from '../src/docker-fleet.js';import {selectedAgentHost} from '../src/node-agents.js';import {createReadCache} from '../src/read-cache.js';import {createVmReadingCache} from '../src/vm-reading-cache.js';
 const deferred=()=>{let resolve;const promise=new Promise(r=>{resolve=r});return {promise,resolve}};
 const tick=()=>new Promise(r=>setImmediate(r));
 const memory=()=>{const state={metrics:[],rules:[],alerts:[]};return {get:()=>state,mutate:fn=>fn(state)}};
@@ -45,7 +45,7 @@ test('completed provider readings become visible during an unrelated slow refres
  try{const partial=await monitor.sample();assert.equal(partial.proxmox.round,2);assert.equal(partial.refreshing,true);assert.equal(state.get().metrics.length,1);}finally{gate.resolve({hosts:[]});await updating;}
 });
 test('optional filesystem checks have a bounded first wait, reuse work and isolate connection identities',async()=>{
- const gate=deferred();let reads=0;const reader=createGuestFilesystemReader(v=>v,{budget:5}),guests=[{node:'n',vmid:100}];const query=async(p,options)=>{reads++;assert.equal(options.timeoutMs,5000);return gate.promise};
+ const gate=deferred();let reads=0;const reader=createVmReadingCache('agent/get-fsinfo',v=>v,{budget:5}),guests=[{node:'n',vmid:100}];const query=async(p,options)=>{reads++;assert.equal(options.timeoutMs,5000);return gate.promise};
  const initial=await reader(guests,query,'one');assert.equal(initial.get('100'),undefined);await reader(guests,query,'one');assert.equal(reads,1);gate.resolve({used:20});await tick();assert.deepEqual((await reader(guests,query,'one')).get('100'),{used:20});const other=deferred();try{assert.equal((await reader(guests,()=>other.promise,'two')).get('100'),undefined);}finally{other.resolve(null)}
 });
 test('cached summary routes still authenticate every request and isolate actors, roles, queries and explicit refresh',async()=>{

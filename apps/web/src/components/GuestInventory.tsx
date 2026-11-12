@@ -53,10 +53,10 @@ export function GuestStatus({status}:{status:string}){
  return <span className="guest-status" ref={ref}><Badge tone={status==='running'?'green':status==='stopped'?'red':'gray'}>{status||'Unknown'}</Badge></span>;
 }
 
-export function MobileGuestList({guests,kind,selected,select}:{guests:Guest[];kind:Kind;selected:string;select:(id:string)=>void}){
+export function MobileGuestList({guests,kind,selected,select,capacityLabel}:{capacityLabel?:(guest:Guest)=>string;guests:Guest[];kind:Kind;selected:string;select:(id:string)=>void}){
  return <div className="mobile-guest-list">{guests.map(guest=><div className="mobile-guest-row" key={guest.id}>
   <button className="guest-identity" aria-pressed={selected===String(guest.id)} onClick={()=>select(String(guest.id))}>
-   <span><b>{guest.name}</b><small>{kind==='vm'?'VM':'CT'} {guest.id} · {guest.node}</small></span><GuestStatus status={guest.status}/>
+   <span><b>{guest.name}</b><small>{kind==='vm'?'VM':'CT'} {guest.id} · {guest.node}</small>{capacityLabel&&<small>{capacityLabel(guest)}</small>}</span><GuestStatus status={guest.status}/>
   </button>
  </div>)}</div>;
 }
