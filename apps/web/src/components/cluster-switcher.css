@@ -12,3 +12,10 @@
 .topbar .top-actions{gap:6px}
 @media(max-width:600px){.topbar.topbar{gap:5px}.topbar.topbar .top-actions{gap:3px}.topbar .cluster-switch-button{min-height:40px;padding:.25rem .35rem;gap:.25rem;font-size:.79rem}.cluster-switch-button svg:last-child{display:none}}
 @media(max-width:420px){.cluster-switch-button>svg:first-child{display:none}.cluster-switch-button .badge{padding-inline:4px}}
+/* Keep the name, status and full-size action buttons readable on narrow phones. */
+@media(max-width:420px){
+ .topbar.topbar{height:auto;min-height:60px;flex-wrap:wrap;align-content:center;row-gap:0;padding-block:4px}
+ .topbar .cluster-switch-button{min-width:8rem;max-width:calc(100% - 56px)}
+ .topbar .header-notifications,.topbar .header-language-picker{position:static}
+ .topbar .header-notification-panel,.topbar .header-language-picker>:is(.language-options,.language-error){position:absolute;top:calc(100% + 4px);inset-inline-end:8px}
+}
