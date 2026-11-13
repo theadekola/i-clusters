@@ -16,6 +16,6 @@ Each import gets a unique destination filename to preserve existing files. The c
 
 When Proxmox returns an asynchronous task, the UI reports task acceptance and directs the user to task history. Failed or interrupted imports require checking contents before retrying. Upload requests have a longer body deadline; ordinary JSON body reads retain a shorter deadline, and rejected unfinished requests close promptly.
 
-The removed configuration notice and dataset Resource Details popup do not affect the datasets table or Edit workflow. Snapshot and export operations remain available in dataset Quick Actions.
+The removed configuration notice and dataset Resource Details popup do not affect the datasets table or Edit workflow. Dataset Quick Actions includes snapshot creation.
 
 Validation covers configuration revisions and digests, compatible content types, detected mount selection, preservation of occupied storage, scoped backup navigation, binary multipart bytes and lengths, user/connection approval binding, rejected requests and the browser workflows. Live disks are not reconfigured by the tests.

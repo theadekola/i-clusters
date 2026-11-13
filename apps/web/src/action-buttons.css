@@ -1,0 +1,34 @@
+/* The Ocean preset uses the same blue as Add Storage. Custom accents keep
+   their paired foreground colour. Scope the fill to headers and dialogs. */
+:root {
+  --action-fill: var(--app-accent-fill, #2563eb);
+  --action-text: var(--app-accent-text, white);
+}
+:root[data-preset][data-theme][data-appearance] :is(
+  .topbar, .page-header, .header-actions, .pve-heading-actions, .overview-toolbar,
+  .network-panel-head, .settings-overview-heading, .volume-header, .vm-title,
+  .nodes-title, .shell-toolbar, .docker-page-header, .tabs, [role="tablist"],
+  .vm-detail-tabs, .vm-detail-actions, [role="dialog"], [role="alertdialog"]
+) :is(button, a.btn, label.btn, [role="button"]) {
+  --filled-action: 1;
+  background: var(--action-fill) !important;
+  color: var(--action-text) !important;
+  border-color: var(--action-fill) !important;
+  border-radius: var(--app-radius, 12px);
+}
+:root[data-preset] :is(button, a.btn).danger {
+  --action-fill: #b91c1c;
+  --action-text: white;
+}
+:root[data-preset][data-theme][data-appearance] :is(.tabs, [role="tablist"], .vm-detail-tabs, [role="dialog"])
+  button:is(.active, [aria-selected="true"], [aria-pressed="true"]) {
+  box-shadow: inset 0 -3px currentColor !important;
+}
+:root[data-preset][data-theme][data-appearance] :is(
+  .topbar, .page-header, .header-actions, .pve-heading-actions, .overview-toolbar,
+  .network-panel-head, .settings-overview-heading, .volume-header, .vm-title,
+  .nodes-title, .shell-toolbar, .docker-page-header, .tabs, [role="tablist"],
+  .vm-detail-tabs, .vm-detail-actions, [role="dialog"], [role="alertdialog"]
+) :is(button:disabled, [aria-disabled="true"], .btn.disabled) {
+  opacity: .55;
+}

@@ -235,7 +235,7 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
    control reachable when the group is wider than its container. */
 :is(.content.content,.modal.modal) :is(
   .action-row,.schedule-quick,.header-actions,.modal-actions,.vm-create-footer,.ssh-dialog-footer,.pve-heading-actions,
-  .vm-detail-actions,.vm-power-actions,.task-log-actions,.image-popup-actions,
+  .task-log-actions,.image-popup-actions,
   .configuration-actions,.configuration-model-actions,.settings-card-actions,.settings-overview-actions,
   .connection-heading-actions,.connection-setup-actions,
   .system-maintenance-actions,.storage-allocation-actions,.storage-edit-actions,.rule-form-actions,
@@ -274,8 +274,8 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
   word-break: normal;
 }
 .content.content .table-wrap :is(th,td) { word-break: normal; overflow-wrap: normal; }
-.content.content :is(.metric-grid,.vm-resource-cards) strong { overflow-wrap: normal; word-break: normal; }
-.content.content .vm-resource-cards { grid-template-columns: repeat(auto-fit,minmax(min(100%,7.5rem),1fr)); }
+.content.content .metric-grid strong { overflow-wrap: normal; word-break: normal; }
+
 
 .content.content .pve-quick button :is(small,b),
 .content.content .storage-usage span { overflow-wrap: normal; word-break: normal; }

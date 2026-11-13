@@ -235,6 +235,22 @@ try{
   for(const route of selectedRoutes){
    console.log('  '+width+'px '+route);
    errors=[];await page.goto(base.replace(/\/$/,'')+route);await page.locator('.content h1,.content h2').first().waitFor({timeout:15000}).catch(async()=>{throw Error(`Page did not render: ${route}; ${errors.join('; ')}; ${(await page.locator('body').innerText()).slice(0,300)}`)});await page.waitForTimeout(350);
+   if(/^\/proxmox\?tab=(Virtual%20Machines|LXC%20Containers)$/.test(route)){
+    const actions=page.locator('.vm-detail-actions'), resources=page.locator('.vm-resource-cards');
+    await actions.waitFor();
+    const rowPositions=elements=>elements.map(el=>Math.round(el.getBoundingClientRect().top));
+    const actionRows=await actions.getByRole('button').evaluateAll(rowPositions);
+    assert.equal(actionRows.length,7);
+    assert.deepEqual(actionRows.slice(0,4),Array(4).fill(actionRows[0]));
+    assert.deepEqual(actionRows.slice(4),Array(3).fill(actionRows[4]));
+    assert.ok(actionRows[4]>actionRows[0]);
+    const cardRows=await resources.locator(':scope > div').evaluateAll(rowPositions);
+    assert.equal(cardRows.length,4);
+    assert.equal(new Set(cardRows).size,1);
+    for(const group of [actions,resources]){
+     assert.ok(await group.evaluate(el=>el.scrollWidth<=el.clientWidth+1),route+' overflows at '+width);
+    }
+   }
    if(process.env.LAYOUT_HOST_CARDS){
     const checkCards=async()=>{
      const issues=await page.evaluate(()=>{
@@ -301,6 +317,7 @@ try{
       let element=icon;
       for(let depth=0;element&&depth<4;depth++,element=element.parentElement){
        if(element.matches('td,th,tr')||element instanceof SVGElement&&element.tagName.toLowerCase()!=='svg')break;
+       if(element.matches('button,a.btn')&&getComputedStyle(element).getPropertyValue('--filled-action').trim()==='1')break;
        const box=element.getBoundingClientRect();if(box.width>120||box.height>120||!box.width||!box.height||element.textContent.trim()&&!element.matches('.icon-btn'))break;
        const style=getComputedStyle(element);
        if(!clear(style.backgroundColor)||style.backgroundImage!=='none')findings.add(element.tagName.toLowerCase()+'.'+(element.getAttribute('class')||'')+' background='+style.backgroundColor+' image='+style.backgroundImage);
@@ -332,8 +349,7 @@ try{
      await page.getByLabel(copy('Select node'),{exact:true}).selectOption('node01');await assertPlot();await page.getByLabel(copy('History period'),{exact:true}).selectOption('1');await assertPlot();
      await page.getByLabel(copy('History period'),{exact:true}).selectOption('24');await page.getByLabel(copy('Select node'),{exact:true}).selectOption('');await assertPlot();await page.mouse.move(0,0);
     }
-    const downloadEvent=page.waitForEvent('download');await page.getByRole('button',{name:copy('Export overview report'),exact:true}).click();const download=await downloadEvent,report=JSON.parse(readFileSync(await download.path(),'utf8'));
-    assert.ok(Array.isArray(report.history),'Export contains the selected history');assert.equal(report.history.length,mode==='empty'?0:mode==='single'?1:24);if(report.history.length)assert.equal(report.history.at(-1).memory,71,'Export uses actual measurements');
+    assert.equal(await page.getByRole('button',{name:copy('Export overview report'),exact:true}).count(),0);
    }
    if(process.env.LAYOUT_CHECK_TYPOGRAPHY==='1'){
     const findings=await page.evaluate(()=>{

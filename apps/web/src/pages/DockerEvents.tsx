@@ -1,4 +1,3 @@
-import {clusterReportFilename} from '../cluster-context';
 import BrandIcon from '../components/BrandIcon';
 import RefreshButton from '../components/RefreshButton';
 import {cardValue} from '../components/ReportLoading';
@@ -27,10 +26,9 @@ export default function DockerEvents({renderActions,navigation,hostSelector,host
  const filtered=all.filter((e:any)=>(type==='all'||severity(e)===type)&&(source==='all'||e.Type===source)&&(object==='all'||name(e)===object)&&`${name(e)} ${e.Type} ${e.Action||e.status} ${JSON.stringify(e.Actor?.Attributes||{})}`.toLowerCase().includes(search.toLowerCase()));
  const pages=Math.max(1,Math.ceil(filtered.length/rowsPerPage)),current=Math.min(page,pages-1),detail=selected,explanation=detail?describeDockerEvent(detail):null;
  const reset=()=>{setSearch('');setType('all');setSource('all');setObject('all');setPage(0);setCutoff(0)};
- const exportEvents=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({since:data.since,until:data.until,events:filtered},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=clusterReportFilename('docker-events.json');a.click();URL.revokeObjectURL(url)};
  const counts=['Info','Warning','Error'].map(t=>all.filter((e:any)=>severity(e)===t).length),top=Object.entries(all.reduce((acc:any,e:any)=>{acc[name(e)]=(acc[name(e)]||0)+1;return acc},{})).sort((a:any,b:any)=>b[1]-a[1]).slice(0,5);
  const bins=Array.from({length:12},(_,i)=>{const start=(data?.since||0)+i*((data?.until||0)-(data?.since||0))/12,end=start+((data?.until||0)-(data?.since||0))/12;return {start,count:all.filter((e:any)=>time(e)>=start&&time(e)<end).length}}),max=Math.max(1,...bins.map(b=>b.count));
- const headerActions=<><button className="btn secondary" disabled={!data} onClick={exportEvents}>Export Events</button><button className="btn secondary" disabled={!all.length} onClick={()=>{setCutoff(data.until);setSelected(null)}}>Clear View</button><label className="event-live"><input type="checkbox" checked={live} onChange={e=>setLive(e.target.checked)}/> Auto-refresh (10s)</label></>;
+ const headerActions=<><button className="btn secondary" disabled={!all.length} onClick={()=>{setCutoff(data.until);setSelected(null)}}>Clear View</button><label className="event-live"><input type="checkbox" checked={live} onChange={e=>setLive(e.target.checked)}/> Auto-refresh (10s)</label></>;
  return <div className="docker-events">{renderActions?renderActions(headerActions):<div className="volume-header docker-page-header"><div><h2><BrandIcon brand="docker" size={24}/>Events</h2><p className="muted">Docker Engine events retained by the connected daemon.</p></div>{hostSelector}<div className="header-actions">{headerActions}</div></div>}
  {error&&<p role="alert" className="error">{error}</p>}{!host&&<p className="muted">Connect Docker Engine to read events.</p>}
 
