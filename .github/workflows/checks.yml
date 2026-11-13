@@ -12,6 +12,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Validate interface copy
+        run: |
+          npm ci --workspaces=false --prefix apps/web --ignore-scripts
+          node apps/web/scripts/check-language-packs.mjs
       - name: Check Ubuntu shell syntax
         run: |
           bash -n apps/api/src/agent-assets/install-node-agent.sh

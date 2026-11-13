@@ -15,3 +15,18 @@ test('pairing selectors discover only the requested host kind and return distinc
  const failed=await pairingTargets('docker',{...options,query:async()=>{throw {providerStatus:401,message:'secret'}}});assert.equal(failed.targets.length,1);assert.match(failed.discoveryError,/rejected the API token/);
  const unconfigured=await pairingTargets('proxmox',{...options,config:()=>({}),query:async()=>{throw Error('must not run')}});assert.equal(unconfigured.targets.length,1);
 });
+
+test('Docker pairing merges registered, direct and node-reported hosts with matching guests',async()=>{
+ const vm=(vmid,name)=>({node:'east',vmid,type:'qemu',name});
+ const rows=[vm(100,'Example-Server'),vm(103,'renamed'),vm(104,'direct-engine'),vm(105,'new'),vm(106,'unrelated'),vm(107,'unrelated'),vm(108,'other-display-name')];
+ const agents=()=>[{id:'a',name:'example-server',hostname:'example-server',kind:'docker'},
+  {id:'b',name:'old-name',kind:'docker',pairingTarget:'west:qemu/103'},
+  {id:'p',name:'east',kind:'proxmox',hosts:[{id:'qemu/105',name:'new',online:true}]},
+  {id:'c',name:'internal-linux-host',kind:'docker'}];
+ const result=await pairingTargets('docker',{agents,network:()=>[{id:'c',kind:'docker',online:true,network:{interfaces:[{mac:'02:00:00:00:00:64',addresses:['192.0.2.40/24']}]}}],
+  direct:async()=>({id:'direct',name:'direct-engine',aliases:['direct-engine','192.0.2.20']}),
+  config:()=>({url:'https://pve',tokenId:'id',tokenSecret:'secret'}),query:async path=>path==='/cluster/resources'?rows:path.includes('/108/')?{net0:'virtio=02:00:00:00:00:64'}:{}});
+ assert.equal(result.targets.length,rows.length);
+ assert.deepEqual(result.targets.filter(t=>t.paired).map(t=>t.id).sort(),[100,103,104,105,108].map(id=>'east:qemu/'+id));
+ assert.deepEqual(result.targets.filter(t=>!t.paired).map(t=>t.id).sort(),['east:qemu/106','east:qemu/107']);
+});

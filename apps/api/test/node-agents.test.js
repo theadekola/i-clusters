@@ -53,3 +53,10 @@ test('live pull callbacks accept only the selected agent and complete independen
 });
 
 test('operational requests target only the paired node and never publish private VPN fields',async()=>{const paired=a.pairNode(a.createPairing().code,'ops-node'),identity=a.authenticateAgent(paired.token);a.pollAgent(identity,{version:6,hosts:[],results:[]});await assert.rejects(()=>a.operationalAction(paired.id,{action:'vpn-setup',address:'10.77.0.1/24',port:51820}),/version 7/);a.pollAgent(identity,{version:7,hosts:[],operations:{sampledAt:1,vpn:{privateKey:'secret'}},results:[]});assert.ok(!JSON.stringify(a.operationalNodes()).includes('privateKey'));const waiting=a.operationalAction(paired.id,{action:'network-check',url:'http://untrusted'});const job=a.pollAgent(identity,{version:7,hosts:[],results:[]}).jobs[0];assert.equal(job.host,'node');assert.equal(job.operation,'operations');assert.deepEqual(JSON.parse(Buffer.from(job.body,'base64')),{action:'network-check'});await assert.rejects(()=>a.operationalAction(paired.id,{action:'network-check'}),/already|Another/);a.pollAgent(identity,{version:7,hosts:[],results:[{id:job.id,status:200,body:Buffer.from('{"checks":[]}').toString('base64')}]});assert.deepEqual(await waiting,{checks:[]});a.revokeAgent(paired.id)});
+
+test('separate manual codes cannot register the same Docker host twice',()=>{
+ const first=a.createPairing({kind:'docker'}),second=a.createPairing({kind:'docker'});
+ const registered=a.pairNode(first.code,'duplicate-fixture','docker');
+ try{assert.throws(()=>a.pairNode(second.code,'Duplicate-Fixture','docker'),{status:409})}
+ finally{a.revokeAgent(registered.id)}
+});

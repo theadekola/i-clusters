@@ -34,7 +34,7 @@ export function Modal({open,onClose,title,children,success,closeDisabled=false,p
     if(!open)return;
     const previous=document.activeElement as HTMLElement|null,unlock=lockPageScroll(),element=dialog.current!;
     modalLayers.push(element);if(element.parentElement)element.parentElement.style.zIndex=String(++nextModalLayer);
-    const focusable=()=>Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]')||[]).filter(el=>!el.closest('[hidden],[inert]')&&el.getAttribute('type')!=='hidden');
+    const focusable=()=>Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"],summary')||[]).filter(el=>!el.closest('[hidden],[inert]')&&(!el.closest('details:not([open])')||el.matches('details:not([open]) > summary')&&!el.parentElement?.parentElement?.closest('details:not([open])'))&&el.getAttribute('type')!=='hidden');
     const key=(event:KeyboardEvent)=>{
       if(modalLayers.at(-1)!==dialog.current)return;
       if(event.key==='Escape'){event.preventDefault();event.stopPropagation();close.current();}

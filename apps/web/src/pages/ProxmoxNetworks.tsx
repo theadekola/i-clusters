@@ -1,3 +1,4 @@
+import {confirmChoice} from '../confirm-choice';
 import {isActionCancelled} from '../action-cancellation';
 import ProxmoxSectionHeader from '../components/ProxmoxSectionHeader';
 import RefreshButton from '../components/RefreshButton';
@@ -26,7 +27,7 @@ export default function ProxmoxNetworks({navigation,role,clusterUrl,interfaceVie
  const latestInterface=rows.find((r:any)=>r.id===current?.id);
  const staleEdit=modal==='edit'&&!!live.data&&(!latestInterface||!sameNetworkConfig(current,latestInterface));
  useEffect(()=>{if(!current||modal==='edit'||!live.data||live.loading||live.error)return;const latest=rows.find((r:any)=>r.id===current.id);if(!latest){setCurrent(null);setModal(null);}else if(latest!==current)setCurrent(latest);},[live.data,live.loading,live.error,current,modal]);
- const reloadEdit=async()=>{if(!current||busy)return;if(!window.confirm('Reload the interface configuration and discard unsaved edits?'))return;setBusy(true);setError('');try{const result=await api('/proxmox/network'),latest=result.interfaces.find((r:any)=>r.id===current.id);live.setData(result);if(!latest)throw Error('This interface is no longer reported. Close the editor and refresh.');setCurrent(latest);setAddType(latest.type);setEditRevision(v=>v+1);await live.refresh();}catch(e:any){if(isActionCancelled(e))return;setError(e.message);}finally{setBusy(false);}};
+ const reloadEdit=async()=>{if(!current||busy)return;if(!await confirmChoice('Reload the interface configuration and discard unsaved edits?'))return;setBusy(true);setError('');try{const result=await api('/proxmox/network'),latest=result.interfaces.find((r:any)=>r.id===current.id);live.setData(result);if(!latest)throw Error('This interface is no longer reported. Close the editor and refresh.');setCurrent(latest);setAddType(latest.type);setEditRevision(v=>v+1);await live.refresh();}catch(e:any){if(isActionCancelled(e))return;setError(e.message);}finally{setBusy(false);}};
  const traffic=useApi<any>(selectedNode?`/proxmox/network/${encodeURIComponent(selectedNode)}?timeframe=${period}`:'/auth/me',null);
  const trafficPoints=(traffic.data?.node===selectedNode&&Array.isArray(traffic.data?.history)?traffic.data.history:[]).filter((p:any)=>Number.isFinite(p.time)).map((p:any)=>({time:p.time*1000,rx:Number.isFinite(p.netin)&&p.netin>=0?p.netin/125000:null,tx:Number.isFinite(p.netout)&&p.netout>=0?p.netout/125000:null}));
  const latest=[...trafficPoints].sort((a,b)=>a.time-b.time).at(-1);

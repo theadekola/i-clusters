@@ -168,10 +168,10 @@ test('Logs and Back keep the Jellyfin row, host, search, status filter and scrol
  }finally{await page.close()}
 });
 
-test('all Docker tabs keep the shared host header above incomplete guest discovery diagnostics',async()=>{
+test('all Docker tabs show one connection prompt until a Docker host is connected',async()=>{
  for(const tab of ['Containers','Images','Volumes','Compose Stacks','Events','Updates']){
   const page=await mounted('pages/Docker.tsx',{},async p=>p==='/docker'?{readOnly:true,containers:[],images:[],volumes:[],networks:[],stacks:[],note:'Guest inventory is read-only.',discoveryLimitations:['Guest agent unavailable.']}:dockerFixture(p),true,['/docker?tab='+encodeURIComponent(tab)]);
-  try{const header=page.container.querySelector('.docker-page-header');assert.match(header.textContent,/Docker Host: Not connected/);assert.match(header.textContent,/Unavailable/);assert.ok(header.querySelector('a[href="/settings?tab=Connections&setup=docker"]'));assert.ok(button(page.container,'Refresh Docker'));assert.equal(page.container.querySelectorAll('.docker-host-selector.compact').length,1);const note=[...page.container.querySelectorAll('p')].find(p=>p.textContent==='Guest inventory is read-only.');assert.ok(header.compareDocumentPosition(note)&4);assert.equal(page.container.querySelectorAll('.docker-page-header').length,1);}finally{await page.close()}
+  try{const header=page.container.querySelector('.docker-page-header');assert.match(header.textContent,/Docker Host: Not connected/);assert.match(header.textContent,/Unavailable/);assert.ok(header.querySelector('a[href="/settings?tab=Connections&setup=docker"]'));assert.ok(button(page.container,'Refresh Docker'));assert.equal(page.container.querySelectorAll('.docker-host-selector.compact').length,1);const notes=[...page.container.querySelectorAll('p')].filter(p=>p.textContent==='Connect a Docker host to view its resources.');assert.equal(notes.length,1);assert.ok(header.compareDocumentPosition(notes[0])&4);assert.doesNotMatch(page.container.textContent,/Guest inventory is read-only|Guest agent unavailable/);assert.equal(page.container.querySelector('.docker-table,.docker-updates'),null);assert.equal(page.container.querySelectorAll('.docker-page-header').length,1);}finally{await page.close()}
  }
 });
 
@@ -187,10 +187,11 @@ test('Docker distinguishes guest observations, unavailable inventory and measure
  for(const [data,summary,unavailable] of cases){
   const page=await mounted('pages/Docker.tsx',{},p=>p==='/docker'?data:dockerFixture(p));
   try{
+   if(data.readOnly){assert.ok(page.container.textContent.includes('Connect a Docker host to view its resources.'));assert.equal(page.container.querySelector('.docker-table'),null);continue}
    assert.equal(page.container.querySelector('.docker-counts').textContent,summary);
    assert.equal(page.container.textContent.includes('Docker inventory unavailable'),unavailable);
    assert.equal(!!page.container.querySelector('[aria-label="Containers pagination"]'),!unavailable);
-   if(data.readOnly&&data.containers.length)assert.equal(page.container.querySelector('.docker-row-host').textContent,'guest-source');
+
   }finally{await page.close()}
  }
 });
