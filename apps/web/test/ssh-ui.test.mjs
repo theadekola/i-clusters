@@ -240,7 +240,7 @@ test('SSH approval appears while saved connection lookup is pending and cancella
  const page=await mounted('components/SSHAccess.tsx',{},async(p,init)=>{if(p==='/ssh/connections'){reads++;if(reads===1){lookupSignal=init.signal;return waiting}return {}}return {fingerprint:'SHA256:'+'a'.repeat(43),host:'192.0.2.5'}},true,false,['/'],'SSHApproval');
  try{
   await act(async()=>{window.dispatchEvent(new CustomEvent('iclusters-ssh-approval',{detail:{path:'/docker/updates/id/install',body:{},method:'POST',target:'vm:node01:100',resolve(){},reject(){rejected++}}}));await tick()});
-  assert.match(page.container.querySelector('[role=dialog]').textContent,/Preparing host authentication/);assert.equal(page.container.querySelector('form'),null);
+  assert.match(page.container.querySelector('[role=dialog]').textContent,/Loading SSH connection details/);assert.equal(page.container.querySelector('form'),null);
   await page.click(page.container.querySelector('[aria-label="Close dialog"]'));assert.equal(rejected,1);assert.equal(lookupSignal.aborted,true);
   await act(async()=>{window.dispatchEvent(new CustomEvent('iclusters-ssh-approval',{detail:{path:'/docker/updates/id/install',body:{},method:'POST',target:'vm:node01:101',resolve(){},reject(){}}}));await tick()});assert.match(page.container.querySelector('[role=dialog]').textContent,/vm:node01:101/);assert.ok(page.container.querySelector('form'));
   await act(async()=>{finishLookup({});await tick()});assert.match(page.container.querySelector('[role=dialog]').textContent,/vm:node01:101/);
