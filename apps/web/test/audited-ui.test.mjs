@@ -910,7 +910,9 @@ test('VMs show measured filesystem usage on desktop and omit allocation labels a
   assert.match(page.container.querySelector('.vm-resource-cards').textContent,/Disk25%20\.0 GiB used · 60\.0 GiB free/);
   assert.doesNotMatch(page.container.textContent,/120\.0 GiB|attached disk capacity/i);
   await page.click([...page.container.querySelectorAll('.mobile-guest-list .guest-identity')].find(button=>button.textContent.includes('no-agent')));
-  assert.match(page.container.querySelector('.vm-resource-cards').textContent,/DiskUnavailableGuest usage unavailable/);
+  const diskReading=page.container.querySelector('.vm-resource-cards [title="Guest usage unavailable"]');
+  assert.equal(diskReading.textContent,'Not reported');
+  assert.equal(diskReading.closest('div').querySelector('strong').textContent,'N/A');
   assert.match(page.container.querySelector('.vm-summary-facts').textContent,/QEMU AgentDisabled/);
   await page.click(page.container.querySelector('[aria-label="Grid view"]'));
   assert.ok(page.container.querySelector('.vm-card-grid'));
