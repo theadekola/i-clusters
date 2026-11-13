@@ -364,13 +364,15 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
 .pve-wide:has(.reflow-table){container-type:inline-size}
 .reflow-table .cell-label{display:none}
 .pve-grid .reflow-table .pve-text-button[title]{display:block;max-width:clamp(6rem,20cqi,15rem);text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
-@container (max-width:48rem){
+@container (max-width:60rem){
  .pve-page .pve-grid .reflow-table{max-height:none;overflow:visible}
  .pve-page .reflow-table table,.pve-page .reflow-table tbody{display:block;min-width:0;width:100%}
  .pve-page .reflow-table thead{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}
- .pve-page .reflow-table tbody tr{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,8rem),1fr));gap:8px;padding:10px 0;border-bottom:1px solid var(--theme-border)}
+ .pve-page .reflow-table tbody tr{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:10px 0;border-bottom:1px solid var(--theme-border)}
  .pve-page .pve-grid .reflow-table td{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0;max-width:100%;padding:0!important;border:0;white-space:normal;overflow-wrap:anywhere}
  .pve-page .reflow-table .cell-label{display:block;color:var(--theme-muted);font-weight:600}
  .pve-page .reflow-table td > :is(button,span,div){max-width:100%;min-width:0}
  .pve-page .reflow-table .pve-text-button[title]{margin:0;max-width:100%}
 }
+@container (max-width:36rem){.pve-page .reflow-table tbody tr{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@container (max-width:17rem){.pve-page .reflow-table tbody tr{grid-template-columns:minmax(0,1fr)}}
