@@ -5,10 +5,7 @@ const root=new URL('../',import.meta.url),read=name=>JSON.parse(fs.readFileSync(
 const en=read('packs/en.json'),keys=Object.keys(en),manifest=read('manifest.json'),includeApi=fs.existsSync(new URL('../api/src/',root));
 assert.equal(keys.length,manifest.keyCount,'Catalogue manifest is stale. Run npm run i18n:extract.');
 const extracted=collect({includeApi}).keys;
-if(includeApi){
- const missing=extracted.filter(key=>!Object.hasOwn(en,key)),current=new Set(extracted),obsolete=keys.filter(key=>!current.has(key));
- assert.deepEqual({missing,obsolete},{missing:[],obsolete:[]},'Catalogue is stale. Run npm run i18n:extract and update all language packs. '+JSON.stringify({missing,obsolete}));
-}
+if(includeApi)assert.deepEqual(keys,extracted,'Catalogue is stale. Run npm run i18n:extract and update all language packs.');
 else for(const key of extracted)assert.ok(Object.hasOwn(en,key),'Missing interface copy: '+key);
 const placeholders=text=>[...text.matchAll(/\{\d+\}/g)].map(x=>x[0]).sort();
 for(const language of ['fr','es','de','pt']){
