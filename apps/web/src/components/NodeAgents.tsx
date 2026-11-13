@@ -1,3 +1,4 @@
+import {confirmChoice} from '../confirm-choice';
 import {clusterStorageKey} from '../cluster-context';
 import {isActionCancelled} from '../action-cancellation';
 import GuestRestartDialog from './GuestRestartDialog';
@@ -15,7 +16,7 @@ export default function NodeAgents({owner,expandedInitially=false,pairRequest=0,
  const [restart,setRestart]=useState<any>(null),[open,setOpen]=useState(false),[error,setError]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[bootstrap,setBootstrap]=useState<any>(null),[bootstrapSuccess,setBootstrapSuccess]=useState(''),[waiting,setWaiting]=useState<string>(''),[direct,setDirect]=useState<any>(null),[pendingConnection,setPendingConnection]=useState('');
  const working=busy||!!waiting;
  const startWaiting=(id:string)=>{setPendingConnection(id);setWaiting(id)};
- const revoke=async(n:any)=>{if(!window.confirm(`Revoke node agent ${n.name}?`))return;setBusy(true);setError('');setMessage('');try{await api('/node-agents/'+encodeURIComponent(n.id),{method:'DELETE'});setMessage(`Agent ${n.name} revoked.`);await Promise.all([nodes.refresh(),hosts.refresh()]);}catch(e:any){if(isActionCancelled(e))return;setError(e.message);}finally{setBusy(false);}};
+ const revoke=async(n:any)=>{if(!await confirmChoice(`Revoke node agent ${n.name}?`))return;setBusy(true);setError('');setMessage('');try{await api('/node-agents/'+encodeURIComponent(n.id),{method:'DELETE'});setMessage(`Agent ${n.name} revoked.`);await Promise.all([nodes.refresh(),hosts.refresh()]);}catch(e:any){if(isActionCancelled(e))return;setError(e.message);}finally{setBusy(false);}};
  const install=async(n:any,h:any)=>{setBusy(true);setError('');setMessage(`Waiting for confirmed Docker installation on ${n.name} / ${h.name}. This can take several minutes.`);try{const result=await confirmedApi('/node-agents/guest/setup',{method:'POST',body:JSON.stringify({host:n.id+':'+h.id})});setMessage(result.result?.message||'Docker installation completed. Verifying this host before connecting…');if(result.result?.requiresPowerCycle)setRestart({node:n,guest:h});else startWaiting(n.id+':'+h.id);await Promise.all([nodes.refresh(),hosts.refresh()]);}catch(e:any){if(isActionCancelled(e))return;setError(e.message);setMessage('');}finally{setBusy(false);}};
  const pair=()=>setOpen(true);
  useEffect(()=>{if(owner&&pairRequest>0)setOpen(true)},[pairRequest,owner]);

@@ -1,4 +1,5 @@
 import {createAutomaticNodePairing} from './automatic-node-pairing.js';
+import {pairingTargets} from './pairing-targets.js';
 import {pve} from './connectors.js';
 import {targetSSHHost,assertGuestPlacement} from './ssh-target.js';
 
@@ -32,6 +33,11 @@ export function createAutomaticDockerPairing(options={}){
    throw error;
   }
  }
- return createAutomaticNodePairing({...options,kind:'docker',resolveTarget,readyHost:n=>n.hosts?.some(h=>h.id==='node'&&h.online&&!h.setup)});
+ return createAutomaticNodePairing({...options,kind:'docker',resolveTarget,
+  assertAvailable:async(node,address)=>{
+   const {targets}=await pairingTargets('docker',{config:options.config,query,agents:options.nodes,network:options.network,direct:options.direct});
+   if(targets.some(t=>t.paired&&(t.id===node||t.aliases.some(a=>a.toLowerCase()===address.toLowerCase()))))
+    throw Object.assign(Error('This Docker host is already paired.'),{status:409});
+  },readyHost:n=>n.hosts?.some(h=>h.id==='node'&&h.online&&!h.setup)});
 }
 export const automaticDockerPairing=createAutomaticDockerPairing();

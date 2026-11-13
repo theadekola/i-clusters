@@ -38,11 +38,11 @@ export default function AutomaticNodePairing({node,onComplete,onBusy,kind='proxm
  }
  if(kind==='docker'&&reading&&!job)return <p role="status"><ReportLoading inline/>Checking Docker host access…</p>;
  return <form className="form-grid automatic-node-pairing" onSubmit={submit}>
- <p className="cluster-wide">Install and pair the connector on <b>{node}</b> using SSH. The host identity and controller HTTPS connection are checked before installation. </p>
- <p className="cluster-wide muted">Use a Linux root or sudo account on the selected host. Your Proxmox @pve account is not an SSH account. Passwords are used for this setup only and are not saved.</p>
+ <p className="cluster-wide">Install the connector on <b>{node}</b>. It runs as root and grants this controller access to manage Docker.</p>
+ <p className="cluster-wide muted">Use a Linux root or sudo account. The password is used once.</p>
  {!secure&&<p className="cluster-wide error" role="alert">Open i-Clusters over HTTPS before entering SSH credentials.</p>}
  {target?.host&&<><div className="ssh-dialog-row ssh-address-row"><label>Node SSH address<input aria-label="Node SSH address" value={target.host} readOnly/></label><label>SSH port<input aria-label="SSH port" type="number" min="1" max="65535" required value={port} disabled={busy||!!job} onChange={e=>setPort(e.target.value)}/></label></div>
- <p className="cluster-wide muted">Controller: {target.controller}</p>
+ <details className="cluster-wide dialog-details"><summary>Connection details</summary><p>Controller: {target.controller}</p><p>Removing the connection revokes access. Uninstall the service separately on the host.</p></details>
  <div className="ssh-dialog-row ssh-credentials-row"><label>SSH username<input aria-label="SSH username" required value={username} disabled={busy||!!job||!secure} onChange={e=>setUsername(e.target.value)} autoComplete="username"/></label><label>SSH / sudo password<PasswordInput aria-label="SSH / sudo password" required value={password} disabled={busy||!!job||!secure} onChange={e=>setPassword(e.target.value)} autoComplete="new-password"/></label></div>
  {!job&&<><p className="cluster-wide muted ssh-host-status" role="status">{checking?'Checking SSH host identity automatically…':!fingerprint?'SSH host verification is required before continuing.':'SSH host key checked automatically.'}</p>{!fingerprint&&!checking&&<button type="button" className="btn secondary small" disabled={busy||!secure} onClick={()=>setRetry(v=>v+1)} aria-label="Retry SSH verification">Retry SSH verification</button>}
  {kind==='docker'&&<label className="cluster-wide"><span><input type="checkbox" checked={installDocker} onChange={e=>setInstallDocker(e.target.checked)}/> Install Docker if missing on Debian or Ubuntu and start its service if needed.</span></label>}

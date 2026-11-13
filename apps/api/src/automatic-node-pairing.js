@@ -23,7 +23,7 @@ export function executePairingSSH(client,username,password,payload){return new P
  const command='python3 -c '+quote(script),shell=username==='root'?command:"sudo -k -S -p '' /usr/bin/python3 -c "+quote(script);
  client.exec(shell,(error,stream)=>{if(error)return finish(fail('SSH installation could not start.',422));stream.on('data',chunk=>{output=(output+chunk.toString()).slice(-8192)});stream.stderr?.on('data',()=>{});stream.on('error',()=>finish(interrupted('SSH installation was interrupted. Inspect the connector service before retrying.',422)));stream.on('close',code=>{let result;try{result=JSON.parse(output)}catch{return finish(interrupted('SSH installation did not return a verification result. Check root/sudo access.',422))}if(code!==0||result.error)return finish(Object.assign(fail(messages[result.error]||'Connector installation failed. Inspect the node before retrying.',422),{reason:result.error}));finish(null,result)});stream.end((username==='root'?'':password+'\n')+'ICLUSTERS_PAIRING_V1\n'+JSON.stringify(payload));});
 });}
-export function createAutomaticNodePairing({config=clusterConfig,query=pve,nodes=agentNodes,pairing=createPairing,pair=pairNode,revoke=revokeAgent,clientFactory=()=>new Client(),run=executePairingSSH,origin=()=>process.env.WEB_ORIGIN?.split(',')[0],ca=()=>existsSync('/run/iclusters/ca/controller-ca.pem')?readFileSync('/run/iclusters/ca/controller-ca.pem','utf8'):'',now=()=>Date.now(),sleep=ms=>new Promise(r=>setTimeout(r,ms)),heartbeatTimeout=60000,kind='proxmox',resolveTarget,readyHost=()=>true}={}){
+export function createAutomaticNodePairing({config=clusterConfig,query=pve,nodes=agentNodes,pairing=createPairing,pair=pairNode,revoke=revokeAgent,clientFactory=()=>new Client(),run=executePairingSSH,origin=()=>process.env.WEB_ORIGIN?.split(',')[0],ca=()=>existsSync('/run/iclusters/ca/controller-ca.pem')?readFileSync('/run/iclusters/ca/controller-ca.pem','utf8'):'',now=()=>Date.now(),sleep=ms=>new Promise(r=>setTimeout(r,ms)),heartbeatTimeout=60000,kind='proxmox',resolveTarget,assertAvailable,readyHost=()=>true}={}){
  const jobs=new Map(),running=new Map(),recovery=new WeakMap();
  const exists=job=>nodes().some(n=>n.id===job.agentId);
  const binding=()=>crypto.createHash('sha256').update(JSON.stringify(config())).digest('hex');
@@ -71,8 +71,8 @@ if(typeof node!=='string'||!(kind==='docker'?/^[A-Za-z0-9_.-]+:(qemu|lxc)\/\d+$/
    registered={...previous.registration};
   }else{
    job.hostname=probe.hostname;
-   if(nodes().some(n=>n.hostname===probe.hostname))throw fail('This host already has a connector pairing.',409);
-   registered=pair(pairing({kind,name:probe.hostname}).code,probe.hostname,kind);
+   if(nodes().some(n=>n.hostname?.toLowerCase()===probe.hostname.toLowerCase()))throw fail('This host already has a connector pairing.',409);
+   registered=pair(pairing({kind,name:probe.hostname},kind==='docker'?job.node:undefined).code,probe.hostname,kind);
    job.agentId=registered.id;
   }
   Object.assign(job,{state:'installing',message:'Installing and pairing the connector on the verified node.'});
@@ -113,6 +113,10 @@ if(typeof node!=='string'||!(kind==='docker'?/^[A-Za-z0-9_.-]+:(qemu|lxc)\/\d+$/
    if(status.state!=='interrupted')throw fail('Automatic pairing is already running for this node.',409);
   }
   if(!resumed&&nodes().some(n=>n.kind===kind&&(n.hostname===input.node||n.name===input.node)))throw fail('This node already has a pairing. Recheck its existing connector or revoke it before a new installation.',409);
+  if(!resumed&&assertAvailable){
+   await assertAvailable(input.node,target.host);
+   if(running.has(input.node))throw fail('Automatic pairing is already running for this node.',409);
+  }
   if(!resumed&&jobs.size>=100){const old=[...jobs].find(([,j])=>!running.has(j.node)&&!(recovery.has(j)&&exists(j)));if(old)jobs.delete(old[0]);else throw fail('Too many node installations are running.',429)}
   const job=resumed||{id:crypto.randomUUID(),node:input.node,state:'connecting',message:'Connecting to the selected Proxmox node.',startedAt:new Date(now()).toISOString()};job.state='connecting';jobs.set(job.id,job);
   const credentials={installDocker:input.installDocker===true,node:input.node,host:input.host,port:Number(input.port),username:input.username,password:input.password,fingerprint:input.fingerprint,connectionId:input.connectionId};const pending=Promise.resolve().then(()=>perform(job,credentials)).catch(()=>{Object.assign(job,{state:'failed',message:'Installation tracking failed. Inspect the node connector before retrying.'})});running.set(job.node,pending);return {...job};

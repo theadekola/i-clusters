@@ -302,3 +302,45 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
 .modal .widget-options {grid-template-columns:repeat(auto-fit,minmax(min(100%,12rem),1fr))}
 .modal.modal .widget-options label {overflow-wrap:normal}
 .content .nodes-detail-head>div:last-child {min-inline-size:0;max-inline-size:100%}
+
+/* Keep a short prompt compact and let longer SSH forms scroll inside their dialog. */
+.modal.modal:has(.pairing-picker,.ssh-dialog-row,.ssh-connection-form,.confirmation-actions,.guest-restart-sheet,.guest-permission-form,.cluster-switch-target) {
+  width:min(34rem,100%);
+  max-height:min(44rem,calc(100dvh - 32px));
+  scroll-padding-block:12px;
+}
+.modal.modal :is(.pairing-picker,.ssh-pairing-popup,.ssh-connection-form,.connector-update-dialog,.guest-permission-form,.automatic-node-pairing) {
+  min-width:0;
+  line-height:1.45;
+}
+.modal.modal:has(.pairing-picker,.ssh-dialog-row,.ssh-connection-form,.confirmation-actions,.guest-restart-sheet,.guest-permission-form) .modal-head {
+  align-items:center;
+  margin-block-end:8px;
+}
+.modal.modal :is(.pairing-picker,.ssh-connection-form,.connector-update-dialog,.automatic-node-pairing,.form-grid:has(.ssh-dialog-row)) p {
+  margin-block:0;
+}
+.modal.modal :is(.pairing-picker,.ssh-connection-form,.connector-update-dialog,.automatic-node-pairing,.form-grid:has(.ssh-dialog-row)) {
+  display:grid;
+  gap:10px;
+}
+.modal.modal .pairing-picker .form-grid {grid-template-columns:minmax(0,1fr);gap:10px}
+.modal.modal .pairing-picker select {width:100%;min-width:0}
+.modal.modal :is(.dialog-details,.connection-setup-flow details) {margin:0;padding-block:6px}
+.modal.modal .dialog-details summary {cursor:pointer;color:var(--theme-muted);width:fit-content}
+.modal.modal .dialog-details[open] summary {margin-block-end:6px}
+.modal.modal .connection-setup-flow:has(.pairing-picker) {display:grid;gap:10px}
+.modal.modal .connection-setup-flow:has(.pairing-picker) > .btn {justify-self:start}
+.modal.modal :is(.confirmation-actions,.ssh-dialog-footer,.pairing-picker .action-row,.automatic-node-pairing .action-row,.connector-update-dialog .action-row) {
+  display:flex;align-items:center;justify-content:safe flex-end;gap:8px;max-width:100%;
+}
+.modal.modal :is(.confirmation-actions,.ssh-dialog-footer) > .btn {flex:0 0 auto;width:auto;min-width:5rem}
+@media(max-height:480px){
+  .modal.modal:has(.ssh-dialog-row,.pairing-picker,.confirmation-actions) {max-height:calc(100dvh - 24px)}
+}
+
+.modal.modal:has(.docker-update-review),
+.modal.modal:has(>p + .modal-actions) {width:min(34rem,100%);max-height:min(44rem,calc(100dvh - 32px))}
+.modal.modal .guest-permission-form fieldset {max-block-size:12rem;overflow:auto}
+.modal.modal .docker-update-review > p {margin-block:8px}
+.modal.modal .docker-update-review details > p {margin-block:6px}

@@ -549,3 +549,16 @@ for(const outcome of ['verified','deferred','unverified'])test('Docker host pair
   assert.equal(button(page,'Install, Pair & Verify Automatically').disabled,true);
  }finally{await page.close()}
 });
+
+test('already paired guests and matching standalone addresses cannot start another pairing',async()=>{
+ const calls=[],page=await mounted('components/PairConnector.tsx',{kind:'docker'},async path=>{calls.push(path);return {targets:[{id:'n1:qemu/100',name:'Web',label:'Web · VM 100 · n1',paired:true,aliases:['web.lan','192.0.2.11']}]}});
+ try{
+  const select=page.container.querySelector('select'),option=select.querySelector('[value="n1:qemu/100"]');
+  assert.equal(option.disabled,true);assert.match(option.textContent,/Paired/);
+  await changeControl(select,'__standalone');
+  await changeControl(page.container.querySelector('input'),'WEB.LAN');
+  assert.equal(button(page,'Connect Automatically with SSH').disabled,true);
+  assert.equal(button(page,'Prepare Manual Installer').disabled,true);
+  assert.ok(calls.every(path=>path.includes('pairing-targets')));
+ }finally{await page.close()}
+});

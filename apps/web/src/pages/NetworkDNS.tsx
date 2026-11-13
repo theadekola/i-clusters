@@ -1,3 +1,4 @@
+import {confirmChoice} from '../confirm-choice';
 import {isActionCancelled} from '../action-cancellation';
 import RefreshButton from '../components/RefreshButton';
 import ReportLoading from '../components/ReportLoading';
@@ -16,7 +17,7 @@ export default function NetworkDNS({navigation}:{navigation?:import('react').Rea
  const [success,setSuccess]=usePopupSuccess(!!edit);
  const rows=live.data?.resolvers||[],filtered=rows.filter((r:any)=>JSON.stringify(r).toLowerCase().includes(search.toLowerCase())),current=filtered.find((r:any)=>r.node===selected)||filtered[0],admin=['admin','owner'].includes(session.data?.user?.role);
  const latest=rows.find((r:any)=>r.node===edit?.node),stale=!!edit&&!!live.data&&(!latest||!sameDnsConfig(edit,latest));
- const reload=async()=>{if(!edit||busy||!window.confirm('Reload DNS configuration and discard unsaved edits?'))return;setBusy(true);setError('');try{const result=await api('/network/dns'),latest=result.resolvers.find((r:any)=>r.node===edit.node);if(!latest)throw Error('DNS configuration is unavailable for this node.');live.setData(result);setEdit(latest);setEditRevision(v=>v+1)}catch(e:any){if(isActionCancelled(e))return;setError(e.message)}finally{setBusy(false)}};
+ const reload=async()=>{if(!edit||busy||!await confirmChoice('Reload DNS configuration and discard unsaved edits?'))return;setBusy(true);setError('');try{const result=await api('/network/dns'),latest=result.resolvers.find((r:any)=>r.node===edit.node);if(!latest)throw Error('DNS configuration is unavailable for this node.');live.setData(result);setEdit(latest);setEditRevision(v=>v+1)}catch(e:any){if(isActionCancelled(e))return;setError(e.message)}finally{setBusy(false)}};
  const searchDomains=(r:any):string[]=>typeof r.search==='string'?r.search.trim().split(/\s+/).filter(Boolean):[];
  const nodeCount=(count:number)=>count===1?'1 node':`${count} nodes`;
  const resolversKnown=!!live.data&&!live.error&&(rows.length>0||!live.data.errors?.length);

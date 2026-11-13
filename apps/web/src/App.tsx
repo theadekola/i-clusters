@@ -4,6 +4,7 @@ import {isSoftwareUpdating} from './software-update-state';
 import {startSessionActivity} from './session';
 
 import {useApi} from './hooks';
+import ConfirmChoiceDialog from './components/ConfirmChoiceDialog';
 import ActionConfirmation from './components/ActionConfirmation';
 import {SSHApproval} from './components/SSHAccess';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
@@ -26,6 +27,7 @@ const Shell=lazy(()=>import('./pages/Shell'));
 
 export default function App(){
  useLocale();
+ const location=useLocation();
  const [connectionError,setConnectionError]=useState(''),[updating,setUpdating]=useState(isSoftwareUpdating);
  useEffect(()=>{const changed=()=>setUpdating(isSoftwareUpdating());window.addEventListener('iclusters-software-update',changed);const timer=window.setInterval(changed,10000);return()=>{window.removeEventListener('iclusters-software-update',changed);window.clearInterval(timer)}},[]);
  const[authenticated,setAuthenticated]=useState<boolean|null>(null);
@@ -50,7 +52,7 @@ export default function App(){
  const connectionNotice=connectionError&&!updating&&<div className="connection-notice" role="alert"><p><strong>Connection interrupted. Reconnecting automatically.</strong> {connectionError} <a href="/connection-check.html" target={authenticated?'_blank':'_self'} rel="noopener">Connection diagnostics</a></p><button className="btn secondary" onClick={()=>void check()}>Retry connection</button></div>;
  if(authenticated===null||(connectionError&&!authenticated))return <div className="login-page">{connectionNotice||<ReportLoading message="Loading i-Clusters…"/>}</div>;
  if(!authenticated)return <Login onLogin={()=>setAuthenticated(true)}/>;
- return <>{connectionNotice}<Suspense fallback={<ReportLoading message="Loading page…"/>}><Routes><Route element={<Layout/>}><Route path="/" element={<Dashboard/>}/><Route path="/proxmox" element={<Proxmox/>}/><Route path="/docker" element={<Docker/>}/><Route path="/storage" element={<Storage/>}/><Route path="/network" element={<Network/>}/><Route path="/backups" element={<Backups/>}/><Route path="/schedules" element={<BackupRedirect tab="Schedules"/>}/><Route path="/retention" element={<BackupRedirect tab="Retention Policies"/>}/><Route path="/restore" element={<BackupRedirect tab="Restore Points"/>}/><Route path="/monitoring" element={<Monitoring/>}/><Route path="/alerts" element={<Alerts/>}/><Route path="/ai" element={<AI/>}/><Route path="/users" element={<RoleGate roles={['auditor','operator','admin','owner']}><Users/></RoleGate>}/><Route path="/audit" element={<Navigate to="/users?tab=Audit%20Logs" replace/>}/><Route path="/tools/sftp" element={<RoleGate roles={['admin','owner']}><Shell key="sftp" mode="sftp"/></RoleGate>}/><Route path="/tools/shell" element={<RoleGate roles={['admin','owner']}><span/></RoleGate>}/><Route path="/settings" element={<Settings/>}/><Route path="*" element={<div className="card"><h1>Page not found</h1><p>This address does not match a page.</p><Link className="btn primary" to="/">Back to Dashboard</Link></div>}/></Route></Routes></Suspense><SSHApproval/><ActionConfirmation/></>
+ return <>{connectionNotice}<Suspense fallback={<ReportLoading message="Loading page…"/>}><Routes><Route element={<Layout/>}><Route path="/" element={<Dashboard/>}/><Route path="/proxmox" element={<Proxmox/>}/><Route path="/docker" element={<Docker/>}/><Route path="/storage" element={<Storage/>}/><Route path="/network" element={<Network/>}/><Route path="/backups" element={<Backups/>}/><Route path="/schedules" element={<BackupRedirect tab="Schedules"/>}/><Route path="/retention" element={<BackupRedirect tab="Retention Policies"/>}/><Route path="/restore" element={<BackupRedirect tab="Restore Points"/>}/><Route path="/monitoring" element={<Monitoring/>}/><Route path="/alerts" element={<Alerts/>}/><Route path="/ai" element={<AI/>}/><Route path="/users" element={<RoleGate roles={['auditor','operator','admin','owner']}><Users/></RoleGate>}/><Route path="/audit" element={<Navigate to="/users?tab=Audit%20Logs" replace/>}/><Route path="/tools/sftp" element={<RoleGate roles={['admin','owner']}><Shell key="sftp" mode="sftp"/></RoleGate>}/><Route path="/tools/shell" element={<RoleGate roles={['admin','owner']}><span/></RoleGate>}/><Route path="/settings" element={<Settings/>}/><Route path="*" element={<div className="card"><h1>Page not found</h1><p>This address does not match a page.</p><Link className="btn primary" to="/">Back to Dashboard</Link></div>}/></Route></Routes></Suspense><SSHApproval/><ActionConfirmation/><ConfirmChoiceDialog key={location.pathname+location.search}/></>
 }
 
 function BackupRedirect({tab}:{tab:string}){const location=useLocation();const query=new URLSearchParams(location.search);query.set('tab',tab);return <Navigate to={`/backups?${query}`} replace/>;}
