@@ -56,7 +56,7 @@
 }
 .content.content .report-unified :is(.report-source-note, .report-pagination small, .report-pagination span) { font-size: 11px; }
 
-/* Summary cards reflow with the available content width, including sidebar changes. */
+/* Summary cards share a desktop row and reflow on handheld screens. */
 .content .metric-grid.metric-grid {
   --metric-icon: 32px; --metric-value: 20px;
   display: grid;
@@ -437,3 +437,26 @@
   padding-right: calc(var(--metric-icon) + 8px);
 }
 .content .connection-overview.metric-grid > button > svg { display: none; }
+
+@media(min-width:801px){
+ .content .metric-grid.metric-grid {
+   grid-template-columns:none;
+   grid-auto-flow:column;
+   grid-auto-columns:minmax(0,1fr);
+ }
+}
+@container(max-width:9rem){
+ .content .metric-grid.metric-grid :is([class$="-icon"], i):has(> svg),
+ .content .metric-grid.metric-grid > * > :is(span:has(> svg),svg),
+ .content .metric-grid.metric-grid > .card > button > span:has(> svg),
+ .content .metric-grid.metric-grid .performance-stat-content > span {display:none}
+ .content .metric-grid.metric-grid :is(div, span):has(> strong) > :is(strong,small,.small,span):first-child,
+ .content .metric-grid.metric-grid :is(div, span):has(> strong) > strong {padding-right:0}
+}
+
+@media (min-width:801px) and (max-width:1000px){
+ .content .metric-grid.metric-grid {--metric-padding:5px;gap:5px}
+}
+@container(max-width:5.5rem){
+ .content .metric-grid.metric-grid :is(strong,.stat-value){font-size:1rem!important}
+}

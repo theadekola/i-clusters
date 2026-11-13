@@ -49,7 +49,10 @@ function fixture(path){
  }
 
  if(path==='/dashboard'&&process.env.LAYOUT_CHART_HISTORY)return {...sample,metrics:process.env.LAYOUT_CHART_HISTORY==='empty'?[]:sample.metrics.slice(-1)};
- if(process.env.LAYOUT_HOST_CARDS&&path==='/connections/health')return {connections:[{id:'proxmox',kind:'proxmox',provider:'proxmox',name:'Fixture cluster',source:'saved',status:'online'},{id:'engine:node',agentId:'engine',kind:'docker',provider:'docker',name:'Fixture Docker',status:'online'}]};
+ if(process.env.LAYOUT_HOST_CARDS&&path==='/connections/health')return {connections:[
+  {id:'proxmox',kind:'proxmox',provider:'proxmox',name:'Fixture cluster',method:'Proxmox API',endpoint:'https://192.0.2.10:8006',source:'saved',status:'online',checkedAt:now},
+  ...['engine','build','services'].map(id=>({id:id+':node',agentId:id,kind:'docker',provider:'docker',name:id,method:'Paired Docker host',endpoint:id,status:'online',checkedAt:now}))
+ ]};
  if(process.env.LAYOUT_HOST_CARDS&&path==='/connections/proxmox/guests')return {guests:[{id:'100',node:'node01',name:'Fixture guest with a long name',status:'connected',detail:'Debian'}]};
  if(path==='/auth/setup')return {registrationOpen:false};
  if(aiFixture&&path==='/configuration/ai')return aiFixture;
@@ -236,16 +239,36 @@ try{
     const checkCards=async()=>{
      const issues=await page.evaluate(()=>{
       const issues=[];
-      for(const el of document.querySelectorAll('.metric-grid,.reflow-table,.connection-row-actions,.shell-view-switch,.shell-host')){
+      for(const el of document.querySelectorAll('.metric-grid,.connection-row-actions,.shell-view-switch,.shell-host')){
        if(el.clientWidth&&el.scrollWidth>el.clientWidth+1)issues.push(el.className+' '+el.scrollWidth+'/'+el.clientWidth);
       }
-      for(const group of document.querySelectorAll('.guest-title-line,.host-identity,.shell-view-switch,.connection-inventory .connection-row-actions')){
+      for(const grid of document.querySelectorAll('.metric-grid')){
+       const cards=[...grid.children].filter(el=>el.getBoundingClientRect().width);
+       if(innerWidth>800&&new Set(cards.map(el=>Math.round(el.getBoundingClientRect().top))).size>1)issues.push('Split summary row: '+grid.className);
+      }
+      for(const table of document.querySelectorAll('.summary-table')){
+       if(!table.querySelector('thead')?.offsetHeight)issues.push('Missing shared table header');
+       for(const row of table.querySelectorAll('tbody tr')){
+        if(new Set([...row.cells].map(td=>td.offsetTop)).size>1)issues.push('Split record: '+table.getAttribute('aria-label'));
+       }
+       if(innerWidth>800&&table.scrollWidth>table.clientWidth+1)issues.push('Desktop table overflow: '+table.getAttribute('aria-label')+' '+table.scrollWidth+'/'+table.clientWidth);
+       if(table.scrollWidth>table.clientWidth+1){
+        table.scrollLeft=table.scrollWidth;
+        if(table.scrollLeft+table.clientWidth<table.scrollWidth-1)issues.push('Final column unreachable');
+        table.scrollLeft=0;
+       }
+      }
+      for(const group of document.querySelectorAll('.guest-title-line,.host-identity,.shell-view-switch,.connection-method-time,.connection-inventory .connection-row-actions')){
        if(!group.clientWidth)continue;
        const children=[...group.children],rects=children.map(el=>el.getBoundingClientRect());
        if(Math.max(...rects.map(r=>r.top))>=Math.min(...rects.map(r=>r.bottom)))issues.push('Misaligned '+group.className+' ('+group.clientWidth+'px): '+children.map(el=>el.textContent.trim()+' '+Math.round(el.getBoundingClientRect().width)+'px').join(', '));
        if(group.matches('.host-identity')&&!children[1]?.title)issues.push('Missing full guest name');
       }
-      for(const btn of document.querySelectorAll('.btn.text-action')){
+      for(const grid of document.querySelectorAll('.connection-inventory.grid')){
+       if(grid.querySelector('code'))issues.push('Repeated endpoint in connection inventory');
+       if(innerWidth>800&&grid.children.length===4&&new Set([...grid.children].map(card=>card.offsetTop)).size!==1)issues.push('Four connected sources should share a row');
+      }
+      for(const btn of document.querySelectorAll('.btn.text-action,.quick-grid .btn,.pve-quick button,.storage-quick .btn.secondary')){
        if(btn.clientWidth&&getComputedStyle(btn).backgroundColor!=='rgba(0, 0, 0, 0)')issues.push('Painted '+btn.textContent);
       }
       return issues;
@@ -335,7 +358,9 @@ try{
    const problems=await page.evaluate(()=>{
     const issues=[];
     if(document.documentElement.scrollWidth>innerWidth+1)issues.push('Page has horizontal overflow');
-    for(const grid of document.querySelectorAll('.metric-grid,.reflow-table')){
+    for(const grid of document.querySelectorAll('.metric-grid')){
+     const cards=[...grid.children].filter(el=>el.getBoundingClientRect().width);
+     if(innerWidth>800&&new Set(cards.map(el=>Math.round(el.getBoundingClientRect().top))).size>1)issues.push('Split desktop summary row: '+grid.className);
      if(grid.clientWidth&&grid.scrollWidth>grid.clientWidth+1)issues.push('Horizontal card overflow: '+grid.className);
     }
     const scrollContainer=e=>{for(let p=e.parentElement;p&&p!==document.body;p=p.parentElement){const c=getComputedStyle(p);if(/auto|scroll|hidden|clip/.test(c.overflowX))return true;}return false;};
