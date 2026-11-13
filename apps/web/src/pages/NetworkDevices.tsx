@@ -1,4 +1,3 @@
-import {clusterReportFilename,reportCluster} from '../cluster-context';
 import RefreshButton from '../components/RefreshButton';
 import NodeAvailability from '../components/NodeAvailability';
 import ReportLoading from '../components/ReportLoading';
@@ -7,7 +6,7 @@ import PageIcon from '../components/PageIcon';
 import {InspectableRow,TableAction,SelectionBody} from '../components/TableActions';
 import {useState} from 'react';
 import {Link} from 'react-router-dom';
-import {Server,Monitor,RefreshCw,Download,Container,Eye,Search,ExternalLink} from 'lucide-react';
+import {Server,Monitor,RefreshCw,Container,Eye,Search,ExternalLink} from 'lucide-react';
 import {setDockerHost} from '../api';
 import {useApi} from '../hooks';
 import {Card,Badge,Stat,Tabs} from '../components/UI';
@@ -22,9 +21,8 @@ export default function NetworkDevices({navigation}:{navigation?:import('react')
  const online=(r:any)=>['online','running','reachable'].includes(r.status),types=Array.from(new Set<string>(rows.map(r=>r.kind)));
  const filtered=rows.filter(r=>(type==='all'||r.kind===type)&&(status==='all'||(status==='online'?online(r):!online(r)))&&`${r.name} ${r.node||''} ${r.address||r.ip||''} ${(r.addresses||[]).join(' ')} ${r.kind}`.toLowerCase().includes(search.toLowerCase()));
  const current=filtered.find(r=>r.id===selected)||filtered[0],pages=Math.max(1,Math.ceil(filtered.length/rowsPerPage)),safePage=Math.min(page,pages-1);
- const exportReport=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({sourceCluster:reportCluster(),sampledAt:data?.sampledAt,devices:rows},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=clusterReportFilename('iclusters-devices.json');a.click();URL.revokeObjectURL(url)};
  const top=rows.filter(r=>typeof r[metric]==='number').sort((a,b)=>b[metric]-a[metric]).slice(0,5);
- return <section className="network-devices"><div className="network-panel-head"><div><h2><PageIcon name="network" className="page-title-icon"/>Devices</h2><p className="muted small">Detected nodes, virtual machines, containers and Docker hosts.</p></div><div className="header-actions"><RefreshButton className="btn secondary" aria-busy={live.loading||agents.loading} disabled={live.loading||agents.loading} onClick={()=>Promise.all([live.refresh(),agents.refresh()])}><RefreshCw size={15}/> Refresh Devices</RefreshButton><button className="btn secondary" disabled={!data} onClick={exportReport}><Download size={15}/> Export</button><Link className="btn primary" to="/settings?tab=Connections&setup=choose">Add Connection</Link></div></div>
+ return <section className="network-devices"><div className="network-panel-head"><div><h2><PageIcon name="network" className="page-title-icon"/>Devices</h2><p className="muted small">Detected nodes, virtual machines, containers and Docker hosts.</p></div><div className="header-actions"><RefreshButton className="btn secondary" aria-busy={live.loading||agents.loading} disabled={live.loading||agents.loading} onClick={()=>Promise.all([live.refresh(),agents.refresh()])}><RefreshCw size={15}/> Refresh Devices</RefreshButton><Link className="btn primary" to="/settings?tab=Connections&setup=choose">Add Connection</Link></div></div>
  <NodeAvailability data={data}/>
  <div className="network-stats metric-grid"><Stat reading={live} label={complete?'Total Devices':'Reported Devices'} value={complete||rows.length>0?rows.length:'Unknown'} icon={<Monitor/>}/><Stat reading={live} label="Proxmox Nodes" value={proxmoxKnown?data?.nodes?.length??0:'Unknown'} icon={<Server/>}/><Stat reading={agents} label="Docker Hosts" value={dockerKnown?agents.data.hosts.length:'Unknown'} icon={<Server/>}/><Stat reading={live} label="Online" value={complete?rows.filter(online).length:'Unknown'} icon={<Monitor/>}/><Stat reading={live} label="Offline / Unknown" value={complete?rows.filter(r=>!online(r)).length:'Unknown'} icon={<Monitor/>}/></div>
  {diagnostics.map((message,i)=><p key={i} role="alert" className="error">{message}</p>)}{!complete&&!live.loading&&!agents.loading&&<p role="status" className="muted">Device inventory is incomplete. Reported rows remain visible; full totals are unavailable; entries below are reported devices only.</p>}

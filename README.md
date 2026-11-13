@@ -30,7 +30,7 @@ i-Clusters is a self-hosted interface for managing Proxmox VE environments, virt
 
 | Area | Implemented functionality |
 | --- | --- |
-| Overview | Observed infrastructure health, node/guest inventory, resource history, configurable dashboard widgets and report export |
+| Overview | Observed infrastructure health, node/guest inventory, resource history and configurable dashboard widgets |
 | Proxmox VE | Nodes, VM/LXC inventory, create-VM configuration, lifecycle actions, snapshots, storage, network and provider task inspection |
 | Docker | Paired host discovery or optional direct Engine API; container inventory, metrics, logs and lifecycle; image inspection/pull/build; networks, volumes and supported cleanup |
 | Existing Compose projects | Discover and start, stop or restart their existing containers; Compose file deployment is not provided |

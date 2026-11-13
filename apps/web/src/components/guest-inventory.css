@@ -1,8 +1,43 @@
 .mobile-guest-list{display:none}
 .guest-status{border-radius:5px;outline:2px solid transparent}
-.guest-inventory .vm-power-actions{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
-.guest-inventory .vm-power-actions>button{padding:9px 4px;gap:4px}
-.guest-inventory .vm-power-actions>button>svg{flex-shrink:0}
+.guest-inventory .vm-detail-stack { container: guest-details / inline-size; }
+.guest-inventory .vm-detail-actions,
+.guest-inventory .vm-resource-cards {
+ display: grid;
+ grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.guest-inventory .vm-power-actions {
+ grid-column: 1 / -1;
+ display: grid;
+ grid-template-columns: repeat(3, minmax(0, 1fr));
+ gap: 7px;
+}
+.content .guest-inventory .vm-detail-actions button {
+ min-inline-size: 0;
+ padding-inline: 4px;
+ gap: 4px;
+ white-space: normal;
+ overflow-wrap: anywhere;
+}
+.guest-inventory .vm-detail-actions svg { flex: none; }
+.guest-inventory .vm-resource-cards small {
+ flex-wrap: wrap;
+ white-space: nowrap;
+}
+@container guest-details (max-width: 21rem) {
+ .guest-inventory .vm-resource-cards { gap: 4px; }
+ .guest-inventory .vm-resource-cards small {
+  flex-direction: column;
+  align-items: flex-start;
+ }
+ .guest-inventory .vm-resource-cards > div { padding-inline: 4px; }
+ .content .guest-inventory .vm-resource-cards strong {
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+ }
+ .guest-inventory .vm-no-history { overflow-wrap: anywhere; }
+ .guest-inventory .vm-network-rate span { flex-wrap: wrap; }
+}
 @media(max-width:700px){
  .guest-inventory .vm-list-card>.table-wrap,.guest-inventory .vm-list-card>.vm-card-grid,.guest-inventory .vm-layout{display:none}
  .guest-inventory .mobile-guest-list{display:grid;gap:5px}

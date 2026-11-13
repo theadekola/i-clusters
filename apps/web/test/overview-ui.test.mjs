@@ -129,11 +129,11 @@ test('independent overview readings appear while dashboard inventory is still pe
   assert.ok(servers.querySelector('strong [role=status]'));
   assert.equal(stat(page,'Backups').querySelector('strong').textContent,'1');
   assert.equal(stat(page,'Alerts').querySelector('strong').textContent,'2');
-  assert.equal(page.container.querySelector('[aria-label="Export overview report"]').disabled,true);
+  assert.equal(page.container.querySelector('[aria-label="Export overview report"]'),null);
   await act(async()=>finish(sample()));
   assert.equal(stat(page,'Total Servers'),servers);
   assert.equal(servers.querySelector('strong').textContent,'2');
-  assert.equal(page.container.querySelector('[aria-label="Export overview report"]').disabled,false);
+  assert.equal(page.container.querySelector('[aria-label="Export overview report"]'),null);
  }finally{await page.close()}
 });
 

@@ -2,7 +2,7 @@
 // integration fixture; no live controller URL or production credential is used.
 import assert from 'node:assert/strict';
 import {createHash,X509Certificate} from 'node:crypto';
-import {cp,mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';
+import {cp,mkdtemp,rm,writeFile} from 'node:fs/promises';
 import os from 'node:os';
 import {observedButtons,recordedKey,sweepClusterButtons} from './cluster-control-sweep.mjs';
 import path from 'node:path';
@@ -46,7 +46,7 @@ export async function auditClusterReports({base,owner,profile,tls}){
   },owner);
   let burst=0,windowStart=Date.now();
   const snapshots=new Map(),views=[],requestScopes=new WeakMap();
-  const skippedRefresh=[],violations=[],errors=new Map(),calls=new Set(),controls=new Set(),downloads=[],requests=new Set();
+  const skippedRefresh=[],violations=[],errors=new Map(),calls=new Set(),controls=new Set(),requests=new Set();
   let visits=0,refreshes=0,links=0,tabs=0,detailClicks=0;
   await context.route('**/*',async route=>{
    const request=route.request(),url=new URL(request.url());
@@ -94,6 +94,7 @@ export async function auditClusterReports({base,owner,profile,tls}){
    const main=page.locator('main.content');
    if(expected)await main.getByText(expected,{exact:false}).filter({visible:true}).first().waitFor({timeout:8000}).catch(e=>{throw Error(pathname+' expected '+expected+': '+e.message)});
    await page.waitForLoadState('networkidle',{timeout:6000}).catch(()=>{});
+   assert.equal(await main.getByRole('button',{name:/^export(?:\s|$)/i}).count(),0,pathname+': export action');
    const text=await main.innerText();
    assert.ok(!text.includes('This page could not load'),pathname+': page error boundary');
    const foreign=page.url().includes('/clusters/'+profile+'/')?'Home':'Office';
@@ -158,16 +159,13 @@ export async function auditClusterReports({base,owner,profile,tls}){
       const homepage=await page.getByRole('link',{name:'Open i-Clusters homepage'}).getAttribute('href');
       assert.equal(new URL(homepage).pathname,prefix||'/');
      }
-     const exportLabel=({'/':'Export overview report','/monitoring':'Export monitoring','/networkDevices':'Export','/backupsReports':'Export Report','/usersAudit Logs':'Create Audit Report'})[pathname+tab];
-     if(exportLabel){
-      const button=page.locator('main').getByRole('button',{name:exportLabel,exact:true});
-      const [download]=await Promise.all([page.waitForEvent('download',{timeout:10000}),button.click({timeout:8000})]);
-      const report=JSON.parse(await readFile(await download.path(),'utf8'));
+     if(pathname==='/users'&&tab==='Audit Logs'){
+      await page.getByRole('button',{name:'Create Audit Report'}).click();
+      const dialog=page.getByRole('dialog',{name:'Audit Report'});
+      const report=JSON.parse(await dialog.locator('pre').innerText());
       assert.equal(report.sourceCluster.id,prefix?profile:'default');
       assert.equal(report.sourceCluster.name,scopeName==='Home'?'Environment cluster':'Office');
-      if(pathname==='/')assert.ok(report.guests.some(g=>g.name===scopeName+'-VM'));
-      if(prefix)assert.ok(download.suggestedFilename().includes(profile));
-      downloads.push(download.suggestedFilename());
+      await dialog.getByRole('button',{name:'Close dialog'}).click();
      }
     }
    }
@@ -193,8 +191,7 @@ export async function auditClusterReports({base,owner,profile,tls}){
   await page.close();await Promise.all([...requests]);
   if(violations.length)console.error('Scope or browser errors:',JSON.stringify(violations.slice(0,8)));
   assert.deepEqual(violations,[]);
-  assert.equal(new Set(downloads).size,downloads.length);
-  const result={visits,detailClicks,skippedRefresh,sidebarClicks:links,sectionClicks:tabs,refreshClicks:refreshes,distinctControls:controls.size,distinctScopedMethodsAndPaths:calls.size,downloads,providerResponses:Object.fromEntries(errors)};
+  const result={visits,detailClicks,skippedRefresh,sidebarClicks:links,sectionClicks:tabs,refreshClicks:refreshes,distinctControls:controls.size,distinctScopedMethodsAndPaths:calls.size,providerResponses:Object.fromEntries(errors)};
   console.log('Reports:',JSON.stringify(result));
   if(process.env.ICLUSTERS_AUDIT_OUTPUT)await writeFile(process.env.ICLUSTERS_AUDIT_OUTPUT,JSON.stringify(result,null,2));
   if(process.env.ICLUSTERS_AUDIT_CONTROLS==='1'){

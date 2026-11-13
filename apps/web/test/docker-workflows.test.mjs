@@ -71,7 +71,7 @@ test('every Docker resource tab places host selection in its heading before its 
    const heading=page.container.querySelector('h1,h2'),picker=page.container.querySelector('.docker-host-selector.compact'),metrics=page.container.querySelectorAll('.metric-grid'),nav=page.container.querySelector('[aria-label="Docker resources"]');
    assert.ok(heading.textContent.startsWith(title),tab+' heading');const group=heading.closest('.docker-host-heading');assert.ok(group);assert.equal(group.querySelector(':scope>.badge').textContent,'Connected');assert.equal(heading.querySelector('.badge'),null);assert.equal(page.container.querySelectorAll('.docker-page-header').length,1,tab+' shares one host header');
    const bar=picker.closest('.docker-command-bar');
-   const actions={Containers:[],Images:['Pull Image','Clean Up','Build Image'],Volumes:['Prune Unused Anonymous Volumes','Create Volume'],'Compose Stacks':['Compose Documentation'],Events:['Export Events','Clear View'],Updates:['Check for Updates']};
+   const actions={Containers:[],Images:['Pull Image','Clean Up','Build Image'],Volumes:['Prune Unused Anonymous Volumes','Create Volume'],'Compose Stacks':['Compose Documentation'],Events:['Clear View'],Updates:['Check for Updates']};
    for(const label of ['Refresh Docker','Manage Connections',...actions[tab]]){
     const matches=[...bar.querySelectorAll('button,a')].filter(control=>control.textContent.trim()===label);
     assert.equal(matches.length,1,tab+' shows '+label+' once in the host toolbar');
