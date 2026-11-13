@@ -17,3 +17,85 @@
 .guest-inventory .vm-detail-actions button:disabled {
   opacity: .55;
 }
+
+/* Page navigation uses the same strip and selected-tab underline as Storage. */
+:root[data-preset] .content :is(.tabs, .pve-tabbar > [role="tablist"], .nodes-detail-tabs, .vm-detail-tabs):not(:where(.modal *)) {
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: flex-start;
+  gap: 8px;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-block-end: 1px solid var(--theme-border);
+  border-radius: 0;
+}
+
+:root[data-preset] .content :is(.tabs, .pve-tabbar > [role="tablist"], .nodes-detail-tabs, .vm-detail-tabs):not(:where(.modal *)) > :is(button, a) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  gap: 6px;
+  padding: 11px 14px;
+  margin: 0;
+  min-block-size: 44px;
+  font-size: var(--type-tab);
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-decoration: none;
+  background: transparent;
+  color: var(--theme-muted);
+  border: 0;
+  border-block-end: 2px solid transparent;
+  border-radius: 0;
+  box-shadow: none;
+
+  &:is(.active, [aria-selected="true"], [aria-current="page"]) {
+    background: var(--theme-highlight) !important;
+    color: var(--theme-icon) !important;
+    border-block-end-color: var(--app-accent) !important;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--app-accent);
+    outline-offset: -3px;
+  }
+}
+
+/* Only page-heading actions share the Add Storage fill. Portalled Docker
+   and Proxmox commands are direct children of their own action rows. */
+.content :is(.page-header, .docker-command-bar, .vm-title, section > .network-panel-head) > .header-actions,
+.content .pve-heading > .pve-heading-actions,
+.content .settings-overview-heading > .settings-overview-actions {
+  margin-inline-start: auto;
+  margin-inline-end: 0;
+  justify-content: safe flex-end;
+}
+
+:root[data-preset][data-theme][data-appearance] .content :is(
+  .page-header > .header-actions, .docker-command-bar > .header-actions, .docker-tab-actions,
+  .vm-title > .header-actions, section > .network-panel-head > .header-actions,
+  .pve-heading-actions, .pve-context-actions, .settings-overview-heading > .settings-overview-actions
+) > :is(button, a.btn, label.btn):not(:where(.modal *)) {
+  --filled-action: 1;
+  background: var(--app-accent-fill) !important;
+  color: var(--app-accent-text) !important;
+  border-color: var(--app-accent-fill) !important;
+  border-radius: var(--app-radius);
+  margin-inline: 0;
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-text);
+    outline-offset: -3px;
+  }
+}
+
+.monitoring-overview > .monitoring-actions {
+  min-inline-size: 0;
+}
