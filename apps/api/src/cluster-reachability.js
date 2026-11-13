@@ -16,9 +16,9 @@ async function readStatus(config,query){
 }
 export function createClusterReachability(now=Date.now){
   const cache=new Map();
-  return async function statuses(entries,query){
+  return async function statuses(entries,query,fresh=false){
     const active=new Set(entries.map(entry=>entry.id));
-    for(const id of cache.keys())if(!active.has(id))cache.delete(id);
+    if(!fresh)for(const id of cache.keys())if(!active.has(id))cache.delete(id);
     return Promise.all(entries.map(async({id,config})=>{
       if(!config?.url||!config.tokenId||!config.tokenSecret){
         cache.delete(id);
@@ -26,7 +26,7 @@ export function createClusterReachability(now=Date.now){
       }
       const signature=createHash('sha256').update(JSON.stringify(config)).digest('hex');
       const cached=cache.get(id);
-      if(cached?.signature===signature&&cached.expires>now())return cached.result;
+      if(cached?.signature===signature&&(cached.expires===Infinity||!fresh&&cached.expires>now()))return cached.result;
       const entry={signature,expires:Infinity};
       entry.result=readStatus(config,query).finally(()=>{entry.expires=now()+10000});
       cache.set(id,entry);

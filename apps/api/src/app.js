@@ -24,7 +24,7 @@ import {operationalNodes,operationalAction} from './node-agents.js';
 import {changeAlertStatus} from './alert-status.js';
 import {sessionResponse,refreshCredential,browserSession} from './browser-sessions.js';
 import {accountSecurityRouter} from './account-security.js';
-import {beginMfaLogin,completeMfaLogin} from './mfa.js';
+import {beginMfaLogin,completeMfaLogin,requirePassword} from './mfa.js';
 import {truenasTestError} from './truenas-test-error.js';
 import {connectionActions} from './connection-actions.js';
 import {dockerImageUpdates} from './docker-image-updates.js';
@@ -217,6 +217,9 @@ export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:c
  };
  if(profiles){
    app.get('/api/cluster-profiles',authorize('viewer'),async(req,res)=>res.set('Cache-Control','no-store').json({clusters:await profiles.list(pve)}));
+   app.get('/api/cluster-profiles/:id/health',authorize('owner'),async(req,res)=>{
+     res.set('Cache-Control','no-store').json(await profiles.health(req.params.id,pve));
+   });
    app.post('/api/cluster-profiles/test',authorize('owner'),async(req,res)=>{
      const {nodes,management}=await testCluster({...req.body,management:true},null);
      res.json({ok:true,nodes,management});
@@ -243,7 +246,13 @@ export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:c
    await audit(req,'connection.proxmox.save',config.name,{host:config.host,nodeCount:nodes.length},'success');
    res.json({ok:true,cluster:publicCluster(config),nodes,...(management?{management}:{})});
  });
- app.delete('/api/connections/proxmox',authorize('owner'),async(req,res)=>{
+ app.delete('/api/connections/proxmox',authorize('owner'),loginLimiter,async(req,res)=>{
+   try{
+     await requirePassword(db,req.user.sub,req.body?.password);
+   }catch(error){
+     if(error.status===401)throw httpError('Invalid credentials',403);
+     throw error;
+   }finally{if(req.body)delete req.body.password}
    disconnectCluster();await monitor.invalidate();await audit(req,'connection.proxmox.remove','proxmox',{},'success');
    res.json({ok:true,cluster:publicCluster(clusterConfig())});
  });

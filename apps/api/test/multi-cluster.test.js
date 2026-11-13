@@ -264,7 +264,12 @@ test('two independent clusters isolate duplicate guest IDs, approvals and in-fli
     const {auditClusterReports}=await import('../../web/scripts/audit-cluster-reports.mjs');
     await auditClusterReports({base,owner,profile:profile.id,tls});
   }
-  await api(scope+'/connections/proxmox',{method:'DELETE',token:owner});
+  const probe='/cluster-profiles/'+profile.id+'/health';
+  office.nodeStatus='offline';
+  assert.deepEqual(await api(probe,{token:owner}),{id:profile.id,status:'offline'});
+  await api(scope+'/connections/proxmox',{method:'DELETE',token:owner,status:403});
+  assert.equal((await config(scope)).port,office.config.port);
+  await api(scope+'/connections/proxmox',{method:'DELETE',token:owner,body:{password}});
   await api(scope+'/connections/proxmox',{token:owner,status:404});
   assert.equal((await config('')).port,home.config.port);
   const restored=await api('/cluster-profiles',{token:owner,body:office.config,status:201});

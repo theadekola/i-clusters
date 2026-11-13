@@ -1,5 +1,5 @@
 import {confirmChoice} from '../confirm-choice';
-import {clusterId,clusterLocation} from '../cluster-context';
+import {clusterId} from '../cluster-context';
 import RefreshButton from './RefreshButton';
 import PageIcon from './PageIcon';
 import {connectionTestState} from '../connection-test-state';
@@ -12,13 +12,14 @@ import BrandIcon from './BrandIcon';
 import ConfigurationDialog from './ConfigurationDialog';
 import {useEffect,useState,type ReactNode} from 'react';
 import {Link,useNavigate,useSearchParams} from 'react-router-dom';
-import {Plus,Search,Check,ArrowUpRight,Settings,LayoutGrid,List,RefreshCw,Wifi,AlertCircle,Bell,Clock,Trash2,Download} from 'lucide-react';
+import {Plus,Search,Check,ArrowUpRight,Settings,LayoutGrid,List,RefreshCw,Wifi,AlertCircle,Bell,Layers,Clock,Trash2,Download} from 'lucide-react';
 import {useApi} from '../hooks';
 import {api,setDockerHost} from '../api';
 import {Card,Badge,Modal} from './UI';
 import {ClusterConnection} from './ClusterConnection';
 import DockerConnection from './DockerConnection';
 import PairConnector from './PairConnector';
+import ClusterHosts,{RemoveClusterDialog} from './ClusterHosts';
 import GuestConnections from './GuestConnections';
 import ConnectionHealthGuide from './ConnectionHealthGuide';
 import './connections.css';
@@ -49,7 +50,8 @@ function OwnerConnections({navigation}:{navigation?:ReactNode}){
  useEffect(()=>setCheckFailure(''),[health.data]);
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[statuses,setStatuses]=useState<Record<string,any>>({}),[search,setSearch]=useState(''),[filter,setFilter]=useState('all'),[sort,setSort]=useState('name'),[view,setView]=useState<'grid'|'list'>('grid'),[selected,setSelected]=useState('');
  useEffect(()=>{if(window.location.hash==='#connection-health')document.getElementById('connection-health')?.scrollIntoView?.({block:'start'});},[]);
- const section=['connected','setup','notifications','remote'].includes(query.get('section')||'')?query.get('section')!:window.location.hash==='#connection-health'?'setup':'connected';
+ const [removeProfile,setRemoveProfile]=useState<{id:string;name:string;endpoint?:string}|null>(null);
+ const section=['host','connected','setup','notifications','remote'].includes(query.get('section')||'')?query.get('section')!:window.location.hash==='#connection-health'?'setup':'connected';
  const changeSection=(value:string)=>{const next=new URLSearchParams(query);next.set('tab','Connections');next.set('section',value);next.delete('setup');setQuery(next)};
  const setup=query.get('setup')||'',choose=(kind:string)=>{setSelected('');const next=new URLSearchParams(query);next.set('tab','Connections');if(kind)next.set('setup',kind);else next.delete('setup');setQuery(next);};
  useEffect(()=>{if(setup)document.getElementById('connection-add-setup')?.scrollIntoView?.({behavior:'smooth',block:'start'});},[setup]);
@@ -64,7 +66,7 @@ function OwnerConnections({navigation}:{navigation?:ReactNode}){
   if(connect&&row.kind==='docker'&&(row.id==='direct'||row.verifyHost)){setDockerHost(row.id==='direct'?'':row.verifyHost);navigate('/docker');}else if(connect)navigate(row.manage);
  }catch(e:any){setError(e.message);setStatuses(s=>({...s,[row.id]:{status:'unverified',checkedAt:new Date().toISOString()}}));setSelected(row.id);}finally{setBusy(false)}};
  const removal=(row:any)=>row.id==='proxmox'&&row.source==='saved'?'/connections/proxmox':row.id==='direct'&&row.source==='saved'?'/connections/docker':row.agentId&&(!row.id.includes(':')||row.id===row.agentId+':node')?'/node-agents/'+encodeURIComponent(row.agentId):null;
- const remove=async(row:any)=>{const path=removal(row);if(!path||!await confirmChoice('Remove this connection? This revokes i-Clusters access; it does not delete hosts, VMs or containers.'))return;setBusy(true);setError('');setMessage('');try{await api(path,{method:'DELETE'});if(path==='/connections/proxmox'&&clusterId!=='default'){window.location.assign(clusterLocation('default'));return}setStatuses(s=>{const next={...s};delete next[row.id];return next});setSelected('');window.dispatchEvent(new Event('iclusters-settings'));await refresh();setMessage('Connection removed. Connector services must be uninstalled separately on their hosts.');}catch(e:any){setError(e.message)}finally{setBusy(false)}};
+ const remove=async(row:any)=>{const path=removal(row);if(path==='/connections/proxmox'){setRemoveProfile({id:clusterId,name:row.name,endpoint:row.endpoint});return}if(!path||!await confirmChoice('Remove this connection? This revokes i-Clusters access; it does not delete hosts, VMs or containers.'))return;setBusy(true);setError('');setMessage('');try{await api(path,{method:'DELETE'});setStatuses(s=>{const next={...s};delete next[row.id];return next});setSelected('');window.dispatchEvent(new Event('iclusters-settings'));await refresh();setMessage('Connection removed. Connector services must be uninstalled separately on their hosts.');}catch(e:any){setError(e.message)}finally{setBusy(false)}};
  // Configuration remains visible if a health read fails; unverified is never presented as online.
  const fallback=[...(cluster.data.cluster?[{id:'proxmox',kind:'proxmox',provider:'proxmox',name:cluster.data.cluster.name,endpoint:cluster.data.cluster.host,source:cluster.data.cluster.source,method:'Proxmox API',manage:'/proxmox'}]:[]),...nodes.data.nodes.map((n:any)=>({id:n.kind==='docker'?n.id+':node':n.id,agentId:n.id,kind:n.kind==='docker'?'docker':'proxmox',provider:n.kind==='docker'?'docker':'proxmox',name:n.name,endpoint:n.hostname||n.name,method:'Paired connector',manage:'/docker'})),...(direct.data.connection?[{id:'direct',kind:'docker',provider:'docker',name:'Direct Docker API',endpoint:direct.data.connection.url,source:direct.data.connection.source,method:'Advanced · Docker HTTPS API',manage:'/docker'}]:[])].map(r=>({...r,status:'unverified',issues:[]}));
  const rows=(health.data.connections?.length?health.data.connections:fallback).map((r:any)=>({...connectionTestState(r,statuses[r.id]),...(health.error?{status:'unverified'}:{}),connector:nodes.data.nodes.find((n:any)=>n.id===r.agentId)}));
@@ -81,9 +83,10 @@ function OwnerConnections({navigation}:{navigation?:ReactNode}){
  <ConnectionHeader actions={<div className="settings-overview-actions connection-heading-actions"><RefreshButton className="btn secondary" aria-busy={busy||health.loading} disabled={busy||health.loading} onClick={checkSetup}><RefreshCw size={16}/>{busy?'Checking…':'Recheck Connections'}</RefreshButton><button className="btn primary" aria-busy={busy} disabled={busy} onClick={()=>choose('choose')}><Plus size={17}/>Add Connection</button></div>}/>
  {navigation}
  <div className="connection-overview metric-grid" aria-label="Connection summary"><button type="button" onClick={()=>changeSection('connected')}><span className="connection-stat-icon"><Wifi size={22}/></span><span><strong>{cardValue(ready.length,summaryReading)}</strong><small>Connected sources</small></span><Check size={18}/></button><button type="button" onClick={()=>changeSection('setup')}><span className="connection-stat-icon warning"><AlertCircle size={22}/></span><span><strong>{cardValue(attention.length,summaryReading)}</strong><small>Sources needing attention</small></span><ArrowUpRight size={18}/></button><button type="button" onClick={()=>navigate('/settings?tab=Integrations')}><span className="connection-stat-icon"><Bell size={22}/></span><span><strong>{notifications.error?'Unknown':notifications.data?notifications.data.channels?.length||0:'…'}</strong><small>Notification channels configured</small></span><ArrowUpRight size={18}/></button></div>
- <nav className="connection-workspaces tabs" aria-label="Connection sections">{[['connected','Connected',Wifi],['setup','Needs Setup',Settings],['remote','Remote Access',Wifi]].map(([id,label,Glyph]:any)=><button type="button" key={id} aria-current={section===id?'page':undefined} className={`tab ${section===id?'active':''}`} onClick={()=>changeSection(id)}><Glyph size={18}/>{label}</button>)}</nav>
+ <nav className="connection-workspaces tabs" aria-label="Connection sections">{[['host','Host',Layers],['connected','Connected',Wifi],['setup','Needs Setup',Settings],['remote','Remote Access',Wifi]].map(([id,label,Glyph]:any)=><button type="button" key={id} aria-current={section===id?'page':undefined} className={`tab ${section===id?'active':''}`} onClick={()=>changeSection(id)}><Glyph size={18}/>{label}</button>)}</nav>
  {(error||cluster.error||direct.error||nodes.error||health.error)&&<div className="connection-feedback" role="alert"><p className="error">{error||cluster.error||direct.error||nodes.error||health.error}</p><button type="button" className="btn secondary small" aria-busy={busy} disabled={busy} onClick={checkSetup}>Retry connection checks</button></div>}{message&&<p role="status" className="connection-feedback">{message}</p>}
- {section==='remote'?<RemoteAccessLayout/>:<>
+ {removeProfile&&<RemoveClusterDialog profile={removeProfile} onClose={()=>setRemoveProfile(null)} onRemoved={()=>{setRemoveProfile(null);setSelected('');void refresh()}}/>}
+ {section==='host'?<ClusterHosts/>:section==='remote'?<RemoteAccessLayout/>:<>
  <div className="connection-section-heading" id="connection-health"><div><h2>{section==='connected'?'Connected sources':'Complete your connections'}</h2><p>{section==='connected'?'Verified infrastructure sources and their management pages.':'Resolve access issues below. Guest agents and optional Docker setup are listed separately.'}</p></div><label className="connection-search"><Search size={17}/><input aria-label="Search connections" placeholder="Search name, node or address…" value={search} onChange={e=>setSearch(e.target.value)}/></label></div>
  <div className="connections-controls"><div className="connection-filters" role="group" aria-label="Filter connection type">{['all','proxmox','docker','other'].map(kind=><button className={`btn secondary small ${filter===kind?'active':''}`} aria-pressed={filter===kind} key={kind} onClick={()=>setFilter(kind)}>{kind==='all'?'All':kind==='other'?'Services':titles[kind]} ({count(kind)})</button>)}</div><div className="connection-view"><button className="icon-btn" aria-label="Grid view" aria-pressed={view==='grid'} onClick={()=>setView('grid')}><LayoutGrid size={19}/></button><button className="icon-btn" aria-label="List view" aria-pressed={view==='list'} onClick={()=>setView('list')}><List size={19}/></button><select aria-label="Sort connections" value={sort} onChange={e=>setSort(e.target.value)}><option value="name">Name (A–Z)</option><option value="status">Status</option></select></div></div>
  {health.loading&&!rows.length&&<p role="status"><ReportLoading/></p>}

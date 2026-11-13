@@ -1,24 +1,18 @@
 import {useEffect,useState} from 'react';
-import {Check,ChevronDown,Layers} from 'lucide-react';
-import {useLocation} from 'react-router-dom';
+import {Check,ChevronDown,Layers,Settings} from 'lucide-react';
+import {useLocation,useNavigate} from 'react-router-dom';
 import {clusterId,clusterLocation,nameCluster} from '../cluster-context';
-import {useClusterProfiles,type ClusterProfile} from '../cluster-profiles';
-import {Badge,Modal} from './UI';
+import {useClusterProfiles,hostSettingsPath} from '../cluster-profiles';
+import ClusterStatus from './ClusterStatus';
+import {Modal} from './UI';
 import {ClusterConnection} from './ClusterConnection';
 import './cluster-switcher.css';
 
-function ClusterStatus({profile,error,checking=false}:{profile?:ClusterProfile;error:string;checking?:boolean}){
-  if(!profile&&checking&&!error)return <Badge tone="gray">Checking</Badge>;
-  if(profile&&!profile.configured)return <Badge tone="gray">Not connected</Badge>;
-  if(!error&&profile?.status==='online')return <Badge tone="green">Online</Badge>;
-  if(!error&&profile?.status==='offline')return <Badge tone="red">Offline</Badge>;
-  return <Badge tone="gray">Unknown</Badge>;
-}
 export default function ClusterSwitcher({owner}:{owner:boolean}){
   const {profiles,current,error,refresh,loading}=useClusterProfiles();
   const [open,setOpen]=useState(false),[pendingId,setPendingId]=useState('');
   const target=profiles.find(p=>p.id===pendingId);
-  const location=useLocation();
+  const location=useLocation(),navigate=useNavigate();
   const label=current?.name||'';
   const displayName=current?.endpoint&&profiles.some(p=>p.id!==current.id&&p.name===label)?label+' · '+current.endpoint:label;
   const approvalLabel=profiles.length>1?displayName:'';
@@ -40,7 +34,9 @@ export default function ClusterSwitcher({owner}:{owner:boolean}){
         </span>{profile.endpoint&&<small translate="no">{profile.endpoint}</small>}</span>
         {profile.id===clusterId&&<Check size={17} aria-label="Selected"/>}
       </button>)}</div>
-      {owner&&<div className="modal-actions"><ClusterConnection compact createNew label="Add cluster" onConnected={()=>{close();void refresh()}}/></div>}
+      {owner&&<div className="cluster-switch-actions"><ClusterConnection compact createNew label="Add cluster" onConnected={()=>{close();void refresh()}}/>
+        <button type="button" className="btn secondary" onClick={()=>{close();navigate(hostSettingsPath)}}><Settings size={16}/><span>Settings</span></button>
+      </div>}
     </Modal>
     <Modal portal open={open&&!!target} title="Confirm cluster switch" onClose={()=>setPendingId('')}>
       {target&&<><p>Switch to this cluster?</p><p className="cluster-switch-target" translate="no"><strong>{target.name}</strong>{target.endpoint&&<small>{target.endpoint}</small>}</p>

@@ -6,7 +6,10 @@ export const clusterId=segment||'default';
 export const clusterBase=segment?'/clusters/'+segment:'';
 export const connectorBase=segment?'/api/cluster-profiles/'+encodeURIComponent(segment):'';
 const controllerRoute=/^\/(?:auth|account|users|product|updates|cluster-profiles)(?:[/?]|$)/;
-export function clusterApiPath(route:string){return (controllerRoute.test(route)?'':connectorBase)+'/api'+route}
+export function clusterApiPath(route:string,profile=clusterId){
+  const prefix=profile==='default'||controllerRoute.test(route)?'':'/api/cluster-profiles/'+encodeURIComponent(profile);
+  return prefix+'/api'+route;
+}
 export function clusterStorageKey(key:string){return segment?key+':cluster:'+segment:key}
 export function clusterLocation(id:string,route='/proxmox'){
   return (id==='default'?'':'/clusters/'+encodeURIComponent(id))+route;

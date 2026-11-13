@@ -19,3 +19,18 @@
  .topbar .header-notifications,.topbar .header-language-picker{position:static}
  .topbar .header-notification-panel,.topbar .header-language-picker>:is(.language-options,.language-error){position:absolute;top:calc(100% + 4px);inset-inline-end:8px}
 }
+
+.cluster-switch-actions,.cluster-host-actions{display:flex;align-items:center;gap:.5rem}
+.cluster-switch-actions{justify-content:center;margin-top:.75rem}
+.cluster-host-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-grid)}
+.cluster-host-heading{display:flex;align-items:center;gap:.4rem;min-width:0}
+.cluster-host-heading h3{flex:1;min-width:0;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cluster-host-heading svg,.cluster-host-heading .badge{flex:none}
+.cluster-host-card p{overflow-wrap:anywhere;color:var(--theme-muted);margin:.5rem 0}
+.cluster-host-card .btn.text-action{padding-inline:3px}
+.cluster-host-card>small{display:block}
+.cluster-removal-form,.cluster-removal-form label{display:grid;gap:.5rem}
+.cluster-removal-form input{width:100%}
+.cluster-removal-form .confirmation-actions{margin-top:.5rem}
+@media(max-width:1100px){.cluster-host-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.cluster-host-grid{grid-template-columns:minmax(0,1fr)}}

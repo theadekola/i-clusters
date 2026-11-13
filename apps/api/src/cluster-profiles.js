@@ -57,5 +57,11 @@ export function createClusterProfiles(directory=dataDirectory(),primary=clusterC
       configured:!!config?.url,status:health[i]
     }));
   }
-  return {allIds,ids,exists,folder,add,check,list};
+  async function health(id,query){
+    const config=id==='default'?primary():exists(id)?createClusterStore(filename(id)).read():null;
+    if(!config?.url)throw Object.assign(Error('This cluster connection is unavailable.'),{status:404});
+    const [status]=await statuses([{id,config}],query,true);
+    return {id,status};
+  }
+  return {allIds,ids,exists,folder,add,check,list,health};
 }

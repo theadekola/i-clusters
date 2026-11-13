@@ -1,0 +1,32 @@
+{
+  "en": {
+    "check": "Check health",
+    "remove": "Remove cluster",
+    "password": "i-Clusters administrator password",
+    "empty": "No clusters connected."
+  },
+  "de": {
+    "check": "Zustand prüfen",
+    "remove": "Cluster entfernen",
+    "password": "i-Clusters-Administratorpasswort",
+    "empty": "Keine Cluster verbunden."
+  },
+  "es": {
+    "check": "Comprobar estado",
+    "remove": "Eliminar clúster",
+    "password": "Contraseña de administrador de i-Clusters",
+    "empty": "No hay clústeres conectados."
+  },
+  "fr": {
+    "check": "Vérifier l’état",
+    "remove": "Retirer le cluster",
+    "password": "Mot de passe administrateur i-Clusters",
+    "empty": "Aucun cluster connecté."
+  },
+  "pt": {
+    "check": "Verificar estado",
+    "remove": "Remover cluster",
+    "password": "Palavra-passe de administrador do i-Clusters",
+    "empty": "Nenhum cluster ligado."
+  }
+}

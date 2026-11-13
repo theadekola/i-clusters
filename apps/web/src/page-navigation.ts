@@ -31,7 +31,7 @@ export function pageTrail(pathname:string,search:string,host?:string,role?:strin
  if(pathname==='/docker'&&host)trail.push({label:host,to:'/docker'});
  if(tab)trail.push({label:tab});
  if(pathname==='/settings'&&tab==='Connections'){
-  const nested:Record<string,string>={connected:'Connected',setup:'Needs Setup',notifications:'Notifications',remote:'Remote Access'};
+  const nested:Record<string,string>={host:'Host',connected:'Connected',setup:'Needs Setup',notifications:'Notifications',remote:'Remote Access'};
   const sub=nested[params.get('section')||'']||(requested==='Notifications'?'Notifications':'Connected');
   trail[trail.length-1].to='/settings?tab=Connections';trail.push({label:sub});
  }
