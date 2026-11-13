@@ -52,8 +52,9 @@ function refreshAccessToken(previous:string){
  return refreshInFlight;
 }
 
-export async function api<T = any>(path: string, options: RequestInit = {}, confirmation?: string, rawResponse=false): Promise<T> {
+export async function api<T = any>(path: string, options: RequestInit & {clusterProfile?:string} = {}, confirmation?: string, rawResponse=false): Promise<T> {
   try{
+  const {clusterProfile,...requestOptions}=options;
   const headers:any = { 'X-IClusters-Browser':'1', ...Object.fromEntries(new Headers(options.headers).entries()) };
   if(!Object.hasOwn(headers,'content-type'))headers['Content-Type']='application/json';
   const host=localStorage.getItem(clusterStorageKey('iclusters_docker_host'));if(host&&!Object.hasOwn(headers,'x-iclusters-docker-host')&&(/^\/(?:docker|actions\/docker)(?:\/|\?|$)|^\/(?:storage|network)(?:\?|$)/.test(path)))headers['X-IClusters-Docker-Host']=host;
@@ -61,12 +62,12 @@ export async function api<T = any>(path: string, options: RequestInit = {}, conf
   if(confirmation) headers['X-IClusters-Confirm']=confirmation;
   const deadline=options.method==='POST'&&/^\/ssh\/session\/[^/]+$/.test(path)?10000:/^\/proxmox\/storage-file-upload\//.test(path)?7200000:/^\/storage\/datasets\/(?:guest-(?:layout|expand)|edit)(?:\?|$)/.test(path)?300000:/^\/operations\/[^/]+\/tools$/.test(path)?390000:path.startsWith('/auth/')?30000:/^\/(?:node-agents\/guest\/(?:agent|bootstrap|setup)|docker\/image\/(?:pull|build))(?:[/?]|$)/.test(path)?1020000:undefined;
   const readResponse=async(res:Response)=>({res,body:rawResponse&&res.ok?undefined:await res.json().catch(()=>({}))});
-  let {res,body} = await requestWithDeadline(`${API}${clusterApiPath(path)}`, { ...options, headers },readResponse,deadline,rawResponse);
+  let {res,body} = await requestWithDeadline(`${API}${clusterApiPath(path,clusterProfile)}`, { ...requestOptions, headers },readResponse,deadline,rawResponse);
 
   if(res.status===401 && (!path.startsWith('/auth/')||path==='/auth/me')){
     if(renewedSession(token)||await waitForRequest(refreshAccessToken(token),options.signal)){
       renewedSession(token);
-      headers.Authorization=`Bearer ${getAccessToken()}`;({res,body}=await requestWithDeadline(`${API}${clusterApiPath(path)}`,{...options,headers},readResponse,deadline,rawResponse));
+      headers.Authorization=`Bearer ${getAccessToken()}`;({res,body}=await requestWithDeadline(`${API}${clusterApiPath(path,clusterProfile)}`,{...requestOptions,headers},readResponse,deadline,rawResponse));
     }
   }
   if(rawResponse&&res.ok)return res as T;

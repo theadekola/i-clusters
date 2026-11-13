@@ -1,6 +1,7 @@
 import {useApi} from './hooks';
 import {clusterId} from './cluster-context';
 
+export const hostSettingsPath='/settings?tab=Connections&section=host';
 export type ClusterProfile={id:string;name:string;configured:boolean;endpoint?:string;status:'online'|'offline'|'unknown'|'not-configured'};
 export function useClusterProfiles(){
   const {data,error,refresh,loading}=useApi<{clusters:ClusterProfile[]}>('/cluster-profiles',{clusters:[]},15000);

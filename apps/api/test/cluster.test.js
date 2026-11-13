@@ -1,3 +1,5 @@
+import {randomBytes} from 'node:crypto';
+import bcrypt from 'bcryptjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -8,10 +10,10 @@ import { spawnSync } from 'node:child_process';
 
 const temporaryRoot=path.resolve('runtime');fs.mkdirSync(temporaryRoot,{recursive:true});
 process.env.DATA_DIR=fs.mkdtempSync(path.join(temporaryRoot,'iclusters-cluster-'));
-process.env.JWT_SECRET='cluster-test-key'.repeat(5);
-process.env.JWT_REFRESH_SECRET='cluster-refresh-test-key'.repeat(4);
+process.env.JWT_SECRET=randomBytes(32).toString('hex');
+process.env.JWT_REFRESH_SECRET=randomBytes(32).toString('hex');
 const {validateCluster,createClusterStore,clusterStore}=await import('../src/cluster-config.js');
-const input={name:'Lab',host:'localhost',port:8006,tokenId:'lab@pve!hub',tokenSecret:'private-test-token',verifyTls:true,ca:''};
+const input={name:'Lab',host:'localhost',port:8006,tokenId:'lab@pve!hub',tokenSecret:randomBytes(32).toString('hex'),verifyTls:true,ca:''};
 await test('cluster credentials are encrypted, authenticated and validated',()=>{
  const file=path.join(process.env.DATA_DIR,'test.json'),store=createClusterStore(file,()=>process.env.JWT_SECRET);
  store.save(input);assert.deepEqual(store.read(),validateCluster(input));
@@ -35,8 +37,10 @@ await test('owner can test and save a live cluster, secrets stay hidden and fail
  });
  await new Promise(resolve=>upstream.listen(0,'127.0.0.1',resolve));
  const {createApp}=await import('../src/app.js');const {requireRole}=await import('../src/security.js');const {proxmoxSnapshot}=await import('../src/connectors.js');
+ const password=randomBytes(24).toString('hex'),account={id:'owner',password_hash:await bcrypt.hash(password,4)};
+ const db={query:async(sql,params)=>{assert.equal(params[0],account.id);return {rowCount:1,rows:[account]}}};
  const audits=[];let invalidated=0;
- const server=createApp({authenticate:(req,res,next)=>{req.user={role:req.headers['x-role']||'owner'};next();},authorize:requireRole,audit:async(...args)=>audits.push(args.slice(1)),monitor:{invalidate:()=>invalidated++},db:{}}).listen(0,'127.0.0.1');
+ const server=createApp({authenticate:(req,res,next)=>{req.user={sub:account.id,role:req.headers['x-role']||'owner'};next();},authorize:requireRole,audit:async(...args)=>audits.push(args.slice(1)),monitor:{invalidate:()=>invalidated++},db}).listen(0,'127.0.0.1');
  await new Promise(resolve=>server.once('listening',resolve));
  const base=`http://127.0.0.1:${server.address().port}/api/connections/proxmox`;
  const call=async(method,body,suffix='',role='owner')=>{const response=await fetch(base+suffix,{method,headers:{'Content-Type':'application/json','x-role':role},...(body?{body:JSON.stringify(body)}:{})});return {status:response.status,body:await response.json()};};
@@ -53,7 +57,11 @@ await test('owner can test and save a live cluster, secrets stay hidden and fail
   denied='/';const rejected=await call('PUT',{...config,name:'Do not save',management:true});assert.equal(rejected.status,403);assert.match(rejected.body.error,/PVEAdmin/);assert.equal(clusterStore.read().name,'Lab');assert.equal(invalidated,1);
   denied='';const verified=await call('POST',{...config,management:true},'/test');assert.equal(verified.status,200);assert.equal(verified.body.management.verified,true);assert.equal(invalidated,1);
   const saved=await call('PUT',{...config,management:true});assert.equal(saved.status,200);assert.equal(saved.body.management.power,true);assert.equal(invalidated,2);assert.ok(!JSON.stringify(saved.body).includes(input.tokenSecret));
-  assert.ok(!JSON.stringify(audits).includes(input.tokenSecret));assert.equal((await call('DELETE')).status,200);assert.equal(clusterStore.read(),null);
+  assert.ok(!JSON.stringify(audits).includes(input.tokenSecret));assert.equal((await call('DELETE')).status,403);
+  assert.equal((await call('DELETE',{password:'incorrect'})).status,403);
+  assert.equal((await call('DELETE',{password},'','viewer')).status,403);
+  assert.equal(clusterStore.read().name,'Lab');
+  assert.equal((await call('DELETE',{password})).status,200);assert.equal(clusterStore.read(),null);
  }finally{await new Promise(resolve=>server.close(resolve));await new Promise(resolve=>upstream.close(resolve));}
 });
 
