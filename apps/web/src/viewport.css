@@ -19,3 +19,9 @@ textarea:not(.xterm-helper-textarea),
 button, input, select, textarea, a, [role=button] {
   touch-action: manipulation;
 }
+
+/* An external Quick Search helper can leave its unavailable page over the app.
+   Override the inline display only while that error document is present. */
+body > #dse-quicksearch:has(> #feature > #content > h1#unavailable) {
+  display: none !important;
+}

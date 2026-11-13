@@ -1,5 +1,6 @@
 // Exercise the built dashboard in the same tab across a failed and a repaired release.
 import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
 import path from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {preview} from 'vite';
@@ -44,6 +45,29 @@ try {
  await check('Connected.');
  await page.goto(origin);
  await page.getByRole('button',{name:'Sign in',exact:true}).waitFor();
+ // Recreate the external overlay seen on the live dashboard. The helper may
+ // attach its container first and replace its contents on a later click.
+ const quickSearch=page.locator('body > #dse-quicksearch');
+ await page.evaluate(()=>{
+  const host=document.createElement('div');
+  host.id='dse-quicksearch';
+  host.style.cssText='position:fixed;inset:0;display:block;z-index:10000';
+  host.textContent='Search results';
+  document.body.append(host);
+ });
+ assert.ok(await quickSearch.isVisible(),'Working Quick Search results remain visible');
+ await quickSearch.evaluate(host=>{
+  host.innerHTML='<div id="feature"><div id="content"><h1 id="unavailable">Error 403 - Forbidden</h1><p>The web app you have attempted to reach has blocked your access.</p></div></div>';
+ });
+ assert.ok(await quickSearch.isHidden(),'A failed Quick Search overlay must not cover the application');
+ // A real denial still belongs to the operation that returned it.
+ await page.route('**/api/auth/login',route=>route.fulfill({status:403,json:{error:'Access denied'}}));
+ await page.getByPlaceholder('Enter your username').fill('layout-review');
+ await page.locator('input[autocomplete="current-password"]').fill(randomUUID());
+ await page.getByRole('button',{name:'Sign in',exact:true}).click();
+ await page.getByRole('alert').filter({hasText:'Access denied'}).waitFor();
+ await quickSearch.evaluate(host=>{host.textContent='Search results'});
+ assert.ok(await quickSearch.isVisible(),'Quick Search recovers without a reload');
  console.log('Dashboard recovery from missing entry and route bundles passed in Chromium.');
 }finally{
  await browser.close();
