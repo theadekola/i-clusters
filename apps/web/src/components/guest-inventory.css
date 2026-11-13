@@ -20,9 +20,16 @@
  overflow-wrap: anywhere;
 }
 .guest-inventory .vm-detail-actions svg { flex: none; }
-.guest-inventory .vm-resource-cards small { flex-wrap: wrap; }
+.guest-inventory .vm-resource-cards small {
+ flex-wrap: wrap;
+ white-space: nowrap;
+}
 @container guest-details (max-width: 21rem) {
  .guest-inventory .vm-resource-cards { gap: 4px; }
+ .guest-inventory .vm-resource-cards small {
+  flex-direction: column;
+  align-items: flex-start;
+ }
  .guest-inventory .vm-resource-cards > div { padding-inline: 4px; }
  .content .guest-inventory .vm-resource-cards strong {
   font-size: 1rem;
