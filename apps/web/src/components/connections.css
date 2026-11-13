@@ -46,15 +46,24 @@
 
 .guest-connection-list.grid .connection-row-actions:empty{display:none}
 
-/* Keep the three primary actions together, even on narrow desktop cards. */
-.connection-primary-actions{display:flex;align-items:center;flex-wrap:nowrap;gap:6px;min-width:0;max-width:100%}
-.connections-page .connection-inventory .connection-primary-actions .btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:0;flex:1 0 auto;padding:8px 6px;font-size:11px;white-space:nowrap}
-.connections-page .connection-primary-actions .btn svg{flex:none;width:14px;height:14px}
-.connections-page .connection-inventory.grid .connection-row-actions{justify-content:flex-start;gap:6px}
-.connection-inventory.grid .connection-primary-actions{width:100%}
-.connection-inventory.grid .connection-row{container-type:inline-size}
-@container(max-width:200px){.connections-page .connection-primary-actions .btn svg{display:none}}
-
+/* Use the space inside each card for all of its actions, including Remove. */
+.connections-page .connection-inventory.grid { grid-template-columns:repeat(auto-fill,minmax(min(100%,18.5rem),1fr)); }
+.connections-page .guest-connection-list.grid {
+ grid-template-columns:repeat(auto-fill,minmax(min(100%,17rem),1fr));
+}
+.connections-page .connection-inventory .connection-row-actions {
+ display:flex;flex-flow:row wrap;justify-content:flex-start;gap:2px 4px;min-width:0;
+}
+.connections-page .connection-row-actions .btn.text-action {
+ flex:0 0 auto;padding:3px 4px;min-height:36px;gap:3px;
+}
+.connections-page .connection-row-actions .text-action svg {width:13px;height:13px;flex:none}
+.guest-identity{min-width:0}
+.guest-title-line{display:flex;align-items:center;gap:6px;min-width:0}
+.guest-title-line h4{min-width:0;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.guest-title-line + small{display:block;margin-top:4px}
+.guest-connection-list.list .guest-connection-row{grid-template-columns:auto minmax(0,1fr) auto}
+@media(max-width:600px){.connections-page .connection-row-actions .btn.text-action{min-height:44px}}
 @media(max-width:767px){.connection-catalog{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.connection-catalog>button{padding:10px;gap:7px;min-height:44px}.connection-catalog b{font-size:13px}.connection-catalog small{font-size:11px;line-height:1.4}}
 
 .connections-page>.settings-overview-heading{margin:0}.connections-page>.settings-overview-tabs,.connections-page>.connection-workspaces{margin:0;padding-bottom:7px}.connections-page .connection-heading-actions{margin-left:auto}
@@ -64,3 +73,7 @@
 .connection-setup-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:18px}
 
 .guest-agent-installer{border:0;padding:0;margin:0;min-width:0}
+
+.connection-row{container-type:inline-size}
+@container(max-width:16rem){.connections-page .connection-row-actions .text-action svg{display:none}}
+@media(max-width:1099px){.connections-page .connection-inventory.list .connection-row-actions{grid-column:1/-1}}

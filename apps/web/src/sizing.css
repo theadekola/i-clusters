@@ -56,15 +56,11 @@
 }
 .content.content .report-unified :is(.report-source-note, .report-pagination small, .report-pagination span) { font-size: 11px; }
 
-/* Summaries stay on one row. Narrow screens scroll within the summary,
-   keeping the page and its content at the viewport width. */
+/* Summary cards reflow with the available content width, including sidebar changes. */
 .content .metric-grid.metric-grid {
   --metric-icon: 32px; --metric-value: 20px;
   display: grid;
-  grid-template-columns: none;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(160px, 1fr);
-  overflow-x: auto;
+  grid-template-columns: repeat(auto-fit,minmax(min(100%,10.75rem),1fr));
   grid-auto-rows: minmax(var(--metric-height), 1fr);
   align-items: stretch;
   gap: var(--space-grid);
@@ -199,7 +195,6 @@
   :root { --space-panel: 12px; --space-grid: 12px; --metric-height: 112px; --metric-icon: 32px; --metric-glyph: 20px; --metric-value: 20px; }
   :root[data-density="compact"] { --metric-icon: 32px; --metric-glyph: 18px; --metric-value: 20px; }
   .content { padding: 16px; }
-  .content .metric-grid.metric-grid { grid-auto-columns: minmax(240px, 1fr); }
   .content .metric-grid.metric-grid > *,
   .content .metric-grid.metric-grid > .card > button:only-child {
     gap: 8px;

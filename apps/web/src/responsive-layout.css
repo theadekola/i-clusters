@@ -182,8 +182,6 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
 @media(max-width:767px){
  /* Paginated lists use the page scroll rather than a second vertical scroll area. */
  .content.content .table-wrap{max-height:none;max-block-size:none}
- .content.content .metric-grid.metric-grid{grid-auto-flow:row;grid-auto-columns:auto;grid-template-columns:repeat(auto-fit,minmax(min(100%,10.75rem),1fr));overflow:visible}
- .content.content .metric-grid.metric-grid>*{min-inline-size:0}
  .modal.modal .task-details>div{grid-template-columns:minmax(0,1fr);gap:4px}
  .modal.modal .task-details dd{text-align:start;margin:0}
 }
@@ -239,7 +237,7 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
   .action-row,.schedule-quick,.header-actions,.modal-actions,.vm-create-footer,.ssh-dialog-footer,.pve-heading-actions,
   .vm-detail-actions,.vm-power-actions,.task-log-actions,.image-popup-actions,
   .configuration-actions,.configuration-model-actions,.settings-card-actions,.settings-overview-actions,
-  .connection-heading-actions,.connection-primary-actions,.connection-row-actions,.connection-setup-actions,
+  .connection-heading-actions,.connection-setup-actions,
   .system-maintenance-actions,.storage-allocation-actions,.storage-edit-actions,.rule-form-actions,
   .restore-detail-actions,.retention-detail-actions,.destination-detail-actions,.users-detail-actions,
   .report-selected-actions,.dataset-quick-actions,.backup-node-actions,.pve-context-actions
@@ -344,3 +342,35 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
 .modal.modal .guest-permission-form fieldset {max-block-size:12rem;overflow:auto}
 .modal.modal .docker-update-review > p {margin-block:8px}
 .modal.modal .docker-update-review details > p {margin-block:6px}
+
+/* Text-only actions keep their focus ring and use an underline on hover. */
+.content.content .btn.text-action {
+  background:transparent!important;border-color:transparent!important;box-shadow:none;
+  color:var(--theme-link,var(--theme-text));
+}
+.content.content .btn.text-action:hover:not(:disabled) {text-decoration:underline!important}
+
+.restart-notices {
+ position:fixed;z-index:10010;inset-inline-end:max(16px,env(safe-area-inset-right));
+ bottom:max(16px,env(safe-area-inset-bottom));max-width:min(26rem,calc(100% - 32px));
+ display:grid;gap:6px;pointer-events:none;
+}
+.restart-toast {
+ padding:12px 16px;border:1px solid var(--theme-border);border-inline-start:3px solid var(--theme-positive,#44ba79);
+ border-radius:10px;background:var(--theme-surface);color:var(--theme-text);box-shadow:0 6px 20px #0004;
+ overflow-wrap:anywhere;
+}
+
+.pve-wide:has(.reflow-table){container-type:inline-size}
+.reflow-table .cell-label{display:none}
+.pve-grid .reflow-table .pve-text-button[title]{display:block;max-width:clamp(6rem,20cqi,15rem);text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+@container (max-width:48rem){
+ .pve-page .pve-grid .reflow-table{max-height:none;overflow:visible}
+ .pve-page .reflow-table table,.pve-page .reflow-table tbody{display:block;min-width:0;width:100%}
+ .pve-page .reflow-table thead{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}
+ .pve-page .reflow-table tbody tr{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,8rem),1fr));gap:8px;padding:10px 0;border-bottom:1px solid var(--theme-border)}
+ .pve-page .pve-grid .reflow-table td{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0;max-width:100%;padding:0!important;border:0;white-space:normal;overflow-wrap:anywhere}
+ .pve-page .reflow-table .cell-label{display:block;color:var(--theme-muted);font-weight:600}
+ .pve-page .reflow-table td > :is(button,span,div){max-width:100%;min-width:0}
+ .pve-page .reflow-table .pve-text-button[title]{margin:0;max-width:100%}
+}
