@@ -71,6 +71,10 @@ jobs:
           npm install --prefix /tmp/iclusters-browser-tools --no-save --ignore-scripts playwright-core@1.62.1 @sparticuz/chromium@153.0.0
           openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=localhost -keyout "$RUNNER_TEMP/pairing.key" -out "$RUNNER_TEMP/pairing.crt"
           ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_CONNECTION_CHOICES=1 LAYOUT_ROUTES=/settings LAYOUT_WIDTHS=1280,390,320 LAYOUT_HTTPS_KEY="$RUNNER_TEMP/pairing.key" LAYOUT_HTTPS_CERT="$RUNNER_TEMP/pairing.crt" node apps/web/scripts/audit-layout.mjs
+      - name: Check host cards, sidebar layouts and restart notifications
+        run: |
+          ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_HOST_CARDS=1 LAYOUT_ROUTES='/proxmox,/tools/shell,/tools/sftp,/settings?tab=Connections' LAYOUT_WIDTHS=1440,1024,390,320 node apps/web/scripts/audit-layout.mjs
+          ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_GUEST_RESTART=1 LAYOUT_ROUTES=/proxmox LAYOUT_WIDTHS=1280,390 LAYOUT_HTTPS_KEY="$RUNNER_TEMP/pairing.key" LAYOUT_HTTPS_CERT="$RUNNER_TEMP/pairing.crt" node apps/web/scripts/audit-layout.mjs
       - name: Verify popup layouts in Chromium
         run: |
           ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules node apps/web/scripts/check-dashboard-recovery.mjs

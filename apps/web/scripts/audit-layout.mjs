@@ -49,6 +49,8 @@ function fixture(path){
  }
 
  if(path==='/dashboard'&&process.env.LAYOUT_CHART_HISTORY)return {...sample,metrics:process.env.LAYOUT_CHART_HISTORY==='empty'?[]:sample.metrics.slice(-1)};
+ if(process.env.LAYOUT_HOST_CARDS&&path==='/connections/health')return {connections:[{id:'proxmox',kind:'proxmox',provider:'proxmox',name:'Fixture cluster',source:'saved',status:'online'},{id:'engine:node',agentId:'engine',kind:'docker',provider:'docker',name:'Fixture Docker',status:'online'}]};
+ if(process.env.LAYOUT_HOST_CARDS&&path==='/connections/proxmox/guests')return {guests:[{id:'100',node:'node01',name:'Fixture guest with a long name',status:'connected',detail:'Debian'}]};
  if(path==='/auth/setup')return {registrationOpen:false};
  if(aiFixture&&path==='/configuration/ai')return aiFixture;
  if(process.env.LAYOUT_PROXMOX_SAVE&&path==='/connections/proxmox')return {cluster:null};
@@ -230,6 +232,37 @@ try{
   for(const route of selectedRoutes){
    console.log('  '+width+'px '+route);
    errors=[];await page.goto(base.replace(/\/$/,'')+route);await page.locator('.content h1,.content h2').first().waitFor({timeout:15000}).catch(async()=>{throw Error(`Page did not render: ${route}; ${errors.join('; ')}; ${(await page.locator('body').innerText()).slice(0,300)}`)});await page.waitForTimeout(350);
+   if(process.env.LAYOUT_HOST_CARDS){
+    const checkCards=async()=>{
+     const issues=await page.evaluate(()=>{
+      const issues=[];
+      for(const el of document.querySelectorAll('.metric-grid,.reflow-table,.connection-row-actions,.shell-view-switch,.shell-host')){
+       if(el.clientWidth&&el.scrollWidth>el.clientWidth+1)issues.push(el.className+' '+el.scrollWidth+'/'+el.clientWidth);
+      }
+      for(const group of document.querySelectorAll('.guest-title-line,.host-identity,.shell-view-switch,.connection-inventory .connection-row-actions')){
+       if(!group.clientWidth)continue;
+       const children=[...group.children],rects=children.map(el=>el.getBoundingClientRect());
+       if(Math.max(...rects.map(r=>r.top))>=Math.min(...rects.map(r=>r.bottom)))issues.push('Misaligned '+group.className+' ('+group.clientWidth+'px): '+children.map(el=>el.textContent.trim()+' '+Math.round(el.getBoundingClientRect().width)+'px').join(', '));
+       if(group.matches('.host-identity')&&!children[1]?.title)issues.push('Missing full guest name');
+      }
+      for(const btn of document.querySelectorAll('.btn.text-action')){
+       if(btn.clientWidth&&getComputedStyle(btn).backgroundColor!=='rgba(0, 0, 0, 0)')issues.push('Painted '+btn.textContent);
+      }
+      return issues;
+     });
+     assert.deepEqual(issues,[],width+'px '+route);
+    };
+    if(route.startsWith('/tools/')){
+     const picker=page.locator('.shell-page:visible');
+     assert.equal(await picker.getByRole('button',{name:'Grid view'}).getAttribute('aria-pressed'),'true');
+     await picker.locator('.host-connect').first().waitFor();
+     assert.ok((await picker.locator('.host-identity b').allTextContents()).every(s=>! /^(VM|CT) \d+ ·/.test(s)));
+     await checkCards();await picker.getByRole('button',{name:'List view'}).click();await checkCards();
+    }
+    if(route.includes('Connections'))await page.locator('.guest-title-line').first().waitFor();
+    await checkCards();
+    if(width>800){await page.locator('.nav-toggle').click();await page.waitForTimeout(300);await checkCards();await page.locator('.nav-toggle').click();}
+   }
    if(process.env.LAYOUT_CHECK_IMAGES==='1'){
     const images=page.locator('.page-image-icon img,.brand-mark img');assert.ok(await images.count()>0,route+': original page or brand images are rendered');
     const failures=await images.evaluateAll(async elements=>{await Promise.all(elements.map(image=>image.decode().catch(()=>{})));return elements.filter(image=>!image.complete||!image.naturalWidth||!image.getAttribute('src').startsWith('data:image/png;base64,')).map(image=>image.closest('[data-page-icon],[data-brand]')?.outerHTML.slice(0,160))});
@@ -302,6 +335,9 @@ try{
    const problems=await page.evaluate(()=>{
     const issues=[];
     if(document.documentElement.scrollWidth>innerWidth+1)issues.push('Page has horizontal overflow');
+    for(const grid of document.querySelectorAll('.metric-grid,.reflow-table')){
+     if(grid.clientWidth&&grid.scrollWidth>grid.clientWidth+1)issues.push('Horizontal card overflow: '+grid.className);
+    }
     const scrollContainer=e=>{for(let p=e.parentElement;p&&p!==document.body;p=p.parentElement){const c=getComputedStyle(p);if(/auto|scroll|hidden|clip/.test(c.overflowX))return true;}return false;};
     for(const e of document.querySelectorAll('.content .btn,.content select,.content input,.modal .btn')){
      const r=e.getBoundingClientRect();
@@ -524,13 +560,23 @@ try{
     assert.deepEqual(restartWrites.slice(count),['start']);
     allowRestartCompletion=true;
     await dialog.getByText(/Restart complete. Proxmox confirms/).waitFor();
-    const logUrl=await dialog.getByRole('link',{name:'View task log'}).getAttribute('href');
-    await dialog.getByRole('button',{name:'Close',exact:true}).click();
+    await dialog.waitFor({state:'detached'});
+    const logUrl='/proxmox?tab=Tasks+%26+Logs&restart='+kind+'-resume-fixture&task=start-fixture-task';
+    assert.equal(await page.locator('.restart-toast').count(),0,'Foreground success is announced once');
     await page.goto(new URL(logUrl,base).toString());
     await page.getByText('fixture restart log',{exact:false}).waitFor();
     assert.deepEqual(restartWrites.slice(count),['start']);
    }
-   restartRecord={...restartRecord,id:'missing-receipt',task:null,phase:'unknown'};
+   for(const kind of ['vm','lxc']){
+    restartRecord={...restartRecord,id:kind+'-background-'+width,name:'Background '+kind,kind,reason:'update',phase:'complete',updated_at:new Date().toISOString()};
+    await page.goto(base);const toast=page.locator('.restart-toast');await toast.waitFor();
+    assert.match(await toast.innerText(),/Restart complete/);assert.equal(await page.locator('main .restart-toast').count(),0);
+    await toast.waitFor({state:'detached',timeout:8000});
+    await page.goto(base+'proxmox');await page.getByRole('heading',{name:'Proxmox Cluster',exact:true}).waitFor();
+    await page.waitForFunction(()=>document.querySelector('.pve-stat strong')?.textContent==='1');
+    assert.equal(await toast.count(),0);assert.equal(await page.getByRole('button',{name:/Background (vm|lxc)/}).count(),0);
+   }
+   restartRecord={...restartRecord,id:'missing-receipt',name:'Recovery lxc',task:null,phase:'unknown'};
    await page.goto(base);
    await page.getByRole('region',{name:'Guest restarts'}).getByRole('button',{name:/Recovery lxc/}).click();
    const uncertain=page.getByRole('dialog',{name:'Restart CT · Recovery lxc'});

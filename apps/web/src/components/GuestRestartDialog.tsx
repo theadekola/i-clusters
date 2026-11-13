@@ -3,6 +3,7 @@ import {createPortal} from 'react-dom';
 import {api} from '../api';
 import {isActionCancelled} from '../action-cancellation';
 import {finished,historyLink,restartId,restartMessage,restartsPath,submitRestart,type GuestKind,type RestartList,type RestartReason,type RestartRecord} from '../guest-power-cycle';
+import {watchRestartDialog,claimRestartNotice} from '../restart-notices';
 import {Modal} from './UI';
 import ReportLoading from './ReportLoading';
 
@@ -90,11 +91,17 @@ export default function GuestRestartDialog({node,id,kind='vm',reason='setup',nam
   }
   const completedElsewhere=record?.reason!==reason;
   const complete=record?.phase==='complete';
+  useEffect(()=>{
+    if(requestId&&reason==='update')return watchRestartDialog(requestId);
+  },[requestId,reason]);
+  useEffect(()=>{
+    if(record?.phase==='complete'&&record.reason==='update')claimRestartNotice(record.id);
+  },[record?.phase,record?.reason,record?.id]);
   const finish=complete && (initial||!completedElsewhere)?onComplete:onClose;
   const elapsed=record?Math.max(0,Math.floor(((finished(record.phase)?Date.parse(record.updated_at):now)-Date.parse(record.started_at))/1000)):0;
   const canRecover=record?.phase==='recoverable'&&!record.readError&&!error;
   return createPortal(<Modal open title={`Restart ${kind==='vm'?'VM':'CT'} · ${name}`} onClose={finish} closeDisabled={submitting}
-    success={complete&&!initial&&record.reason===reason?restartMessage(record):undefined}>
+    success={complete&&(!initial||reason==='update')&&record.reason===reason?restartMessage(record):undefined}>
     <p><b>{name}</b> ({node} / {id})</p>
     {!record&&<><p>{reason==='update'?'Restart this guest to finish the OS update.':'Restart this guest to finish setup.'}</p>
       <p>Proxmox will shut it down and start it automatically after one SSH approval. Services will be interrupted.</p>
