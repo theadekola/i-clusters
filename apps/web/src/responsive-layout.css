@@ -338,3 +338,9 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
 @media(max-height:480px){
   .modal.modal:has(.ssh-dialog-row,.pairing-picker,.confirmation-actions) {max-height:calc(100dvh - 24px)}
 }
+
+.modal.modal:has(.docker-update-review),
+.modal.modal:has(>p + .modal-actions) {width:min(34rem,100%);max-height:min(44rem,calc(100dvh - 32px))}
+.modal.modal .guest-permission-form fieldset {max-block-size:12rem;overflow:auto}
+.modal.modal .docker-update-review > p {margin-block:8px}
+.modal.modal .docker-update-review details > p {margin-block:6px}

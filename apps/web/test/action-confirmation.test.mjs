@@ -10,16 +10,30 @@ import {build} from 'esbuild';
 const directory=fs.mkdtempSync(fileURLToPath(new URL('../node_modules/confirmation-ui-',import.meta.url)));
 const built=await build({entryPoints:[fileURLToPath(new URL('../src/components/ActionConfirmation.tsx',import.meta.url))],bundle:true,format:'esm',platform:'node',packages:'external',jsx:'automatic',write:false});
 const output=path.join(directory,'component.mjs');fs.writeFileSync(output,built.outputFiles[0].text);const {default:Confirmation}=await import(pathToFileURL(output));
-async function mount(){
+const choiceBuild=await build({entryPoints:[fileURLToPath(new URL('../src/components/ConfirmChoiceDialog.tsx',import.meta.url))],bundle:true,format:'esm',platform:'node',packages:'external',jsx:'automatic',write:false});
+const choiceFile=path.join(directory,'choice.mjs');fs.writeFileSync(choiceFile,choiceBuild.outputFiles[0].text);
+const {default:Choice}=await import(pathToFileURL(choiceFile));
+async function mount(Component=Confirmation){
  const dom=new JSDOM('<button id="trigger">Install Monitoring Tools</button><div id="root"></div>',{url:'https://controller.test'}),originals={};
  for(const key of ['window','document','HTMLElement','Event','CustomEvent','IS_REACT_ACT_ENVIRONMENT']){originals[key]=globalThis[key];globalThis[key]=key==='IS_REACT_ACT_ENVIRONMENT'?true:dom.window[key]}
- const root=createRoot(document.querySelector('#root'));await act(async()=>root.render(React.createElement(Confirmation)));
+ const root=createRoot(document.querySelector('#root'));await act(async()=>root.render(React.createElement(Component)));
  return {close:async()=>{await act(async()=>root.unmount());dom.window.close();for(const [key,value] of Object.entries(originals))globalThis[key]=value}};
 }
 const request=(phrase,resolve,reject)=>window.dispatchEvent(new CustomEvent('iclusters-action-confirmation',{detail:{phrase,path:'/operations/host-one/tools',resolve,reject}}));
 const click=async button=>act(async()=>button.click());
 const enter=async value=>act(async()=>{const input=document.querySelector('input');Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set.call(input,value);input.dispatchEvent(new window.Event('input',{bubbles:true}));input.dispatchEvent(new window.Event('change',{bubbles:true}))});
 try{
+ await test('ordinary confirmations dismiss on Escape and only Confirm accepts the action',async()=>{
+  const page=await mount(Choice),decisions=[];
+  const ask=()=>window.dispatchEvent(new CustomEvent('iclusters-confirm-choice',{cancelable:true,detail:{message:'Remove this connection?',resolve:value=>decisions.push(value)}}));
+  try{
+   document.querySelector('#trigger').focus();
+   await act(async()=>assert.equal(ask(),false));assert.equal(document.querySelector('[role=dialog] p').textContent,'Remove this connection?');
+   await act(async()=>document.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape',bubbles:true})));assert.deepEqual(decisions,[false]);
+   assert.equal(document.activeElement.id,'trigger');await act(async()=>ask());
+   await click([...document.querySelectorAll('button')].find(b=>b.textContent==='Confirm'));assert.deepEqual(decisions,[false,true]);
+  }finally{await page.close()}
+ });
  await test('monitoring tools opens the shared dialog and only the exact phrase enables submission',async()=>{
   const page=await mount();let result;try{
    document.querySelector('#trigger').focus();await act(async()=>request('CONFIRM host-one',v=>result=v,()=>{}));
