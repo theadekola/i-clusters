@@ -123,18 +123,20 @@ jobs:
           (cd apps/api && npm sbom --omit=dev --workspaces=false --package-lock-only --sbom-format=cyclonedx > /tmp/iclusters-api-sbom.json)
           (cd apps/web && npm sbom --omit=dev --workspaces=false --package-lock-only --sbom-format=cyclonedx > /tmp/iclusters-web-sbom.json)
       - name: Collect component and image identities
-        id: images
         run: |
           mkdir -p artifacts/evidence
           cp /tmp/iclusters-*-sbom.json /tmp/iclusters-caddy-build-info.txt artifacts/evidence/
-          echo "api=$(docker compose images -q api | head -1)" >> "$GITHUB_OUTPUT"
+          for service in api web caddy postgres; do
+            image_id=$(docker compose images -q "$service" | head -1)
+            docker image tag "$image_id" "iclusters-ci/$service:scan"
+          done
           mapfile -t images < <(for service in api web caddy postgres; do docker compose images -q "$service"; done)
           docker image inspect --format '{{json .}}' "${images[@]}" | jq -s 'map({Id,RepoTags,RepoDigests,Architecture,Os,Created})' > artifacts/evidence/image-identities.json
       - name: Install scanner and record API image findings
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           version: v0.70.0
-          image-ref: ${{ steps.images.outputs.api }}
+          image-ref: iclusters-ci/api:scan
           scanners: vuln
           format: json
           output: artifacts/evidence/api-initial-scan.json
@@ -144,8 +146,7 @@ jobs:
         run: |
           result=0
           for service in api web caddy postgres; do
-            image=$(docker compose images -q "$service" | head -1)
-            test -n "$image" || exit 1
+            image="iclusters-ci/$service:scan"
             trivy image --scanners vuln --format json --output "artifacts/evidence/$service-vulnerabilities.json" --timeout 10m "$image" || result=1
             trivy image --scanners vuln --ignore-unfixed --severity HIGH,CRITICAL --exit-code 1 --timeout 10m "$image" || result=1
           done
