@@ -24,12 +24,8 @@
 .content :is(input:not([type=checkbox]):not([type=radio]),select,textarea):not(.xterm-helper-textarea){font-size:var(--type-body)!important}
 .modal :is(p,li,dt,dd,label,.btn){font-size:var(--type-body);line-height:1.5}
 .modal.modal .modal-head>h3{font-size:var(--type-section)!important;line-height:1.35}
-.content .monitoring-overview>.page-header>.monitoring-actions{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;min-width:0}
-.content .monitoring-actions>.btn{display:inline-flex;align-items:center;justify-content:center}
 @media(max-width:768px){.content :is(input:not([type=checkbox]):not([type=radio]),select,textarea):not(.xterm-helper-textarea){font-size:1rem!important}}
 @media(max-width:600px){
  :root{--type-page:1.5rem}
  .content :is(.tabs>button,.pve-tabbar [role=tab],[role=tablist]>[role=tab]){min-height:2.75rem}
- .content .monitoring-actions{width:100%}
- .content .monitoring-actions>.btn,.content .monitoring-actions>select{flex:none}
 }
