@@ -29,5 +29,5 @@ export default function GuestCreateFields({kind,node,role}:{kind:'vm'|'ct';node:
 export function CreationHa({created,onUpdate}:{created:any;onUpdate:(value:any)=>void}){
  const [busy,setBusy]=useState(false),[error,setError]=useState('');if(!created?.ha)return null;
  const complete=async()=>{setBusy(true);setError('');try{const response=await confirmedApi(`/proxmox/creation/${encodeURIComponent(created.ha.receipt)}/ha`,{method:'POST',body:'{}'});onUpdate({...created,ha:{...created.ha,...response.result}});}catch(e:any){if(isActionCancelled(e))return;setError(e.message)}finally{setBusy(false)}};
- return <div><p role="status">{created.ha.message}</p>{created.ha.state==='pending'&&<RefreshButton indicator className="btn secondary" aria-busy={busy} disabled={busy} onClick={complete}>{busy?'Checking creation…':'Recheck & Add to HA'}</RefreshButton>}{error&&<p role="alert" className="login-error">{error}</p>}</div>;
+ return <div><p role="status">{created.ha.message}</p>{created.ha.state==='pending'&&<RefreshButton local indicator className="btn secondary" aria-busy={busy} disabled={busy} onClick={complete}>{busy?'Checking creation…':'Recheck & Add to HA'}</RefreshButton>}{error&&<p role="alert" className="login-error">{error}</p>}</div>;
 }

@@ -1,3 +1,5 @@
+import {PageRefreshContext,usePageRefreshController} from './PageRefresh';
+import RefreshButton from './RefreshButton';
 import ClusterSwitcher from './ClusterSwitcher';
 import GuestRestartActivity from './GuestRestartActivity';
 import {ProductVisit} from './ProductFeedback';
@@ -19,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useState,useEffect,useRef } from 'react';
 import UpdateButton from './UpdateButton';
-import { useApi,configureRefresh } from '../hooks';
+import { useApi,configureRefresh,refreshResources } from '../hooks';
 import { api,clearTokens } from '../api';
 
 const sections = [
@@ -53,6 +55,7 @@ export default function Layout() {
   const [profileOpen,setProfileOpen]=useState(false);
   const profileRef=useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const pageRefresh=usePageRefreshController();
   const {data:session}=useApi<any>('/auth/me',null);
   const {data:configuration}=useApi<any>('/settings',null);
   useEffect(()=>{if(configuration?.settings)configureRefresh(configuration.settings.refresh);},[configuration?.settings?.refresh]);
@@ -96,9 +99,10 @@ export default function Layout() {
       <header className="topbar">
         <button ref={toggleRef} className="icon-btn nav-toggle" aria-label={navigationOpen?'Close navigation':'Open navigation'} aria-controls="primary-navigation" aria-expanded={navigationOpen} onClick={()=>mobile?setMenuOpen(v=>!v):toggleDesktop()}><NavIcon size={19} aria-hidden="true"/></button>
         <ClusterSwitcher owner={session?.user?.role==='owner'}/>
+        <RefreshButton local indicator className="icon-btn global-refresh" aria-label="Refresh" title="Refresh" onClick={()=>pageRefresh.refresh(()=>refreshResources(['']))}/>
         <div className="top-actions">{session?.user?.role==='owner' && <UpdateButton/>}<HeaderNotifications/><LanguageSelector compact/><div className="profile-menu" ref={profileRef} onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget as Node))setProfileOpen(false)}}><button type="button" className="profile-trigger" aria-label="User profile" aria-haspopup="menu" aria-controls={profileOpen?'header-profile-options':undefined} aria-expanded={profileOpen} onKeyDown={event=>{if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();setProfileOpen(true)}}} onClick={()=>setProfileOpen(v=>!v)}><CircleUserRound size={23} aria-hidden="true"/></button>{profileOpen&&<div id="header-profile-options" className="profile-dropdown" role="menu"><div className="profile-dropdown-identity"><b translate="no">{session?.user?.name||'Signed in'}</b><small>{session?.user?.role||''}</small></div><button role="menuitem" onClick={signOut}><LogOut size={15}/>Sign out</button></div>}</div></div>
       </header>
-      <main className="content"><PageBreadcrumbs/>{['operator','admin','owner'].includes(session?.user?.role)&&<GuestRestartActivity key={session.user.sub||session.user.id}/>}<ProductVisit path={location.pathname} search={location.search}/><PersistentShell authorized={['admin','owner'].includes(session?.user?.role)}/><div key={location.pathname}><Outlet/></div></main>
+      <PageRefreshContext.Provider value={pageRefresh}><main className="content"><PageBreadcrumbs/>{['operator','admin','owner'].includes(session?.user?.role)&&<GuestRestartActivity key={session.user.sub||session.user.id}/>}<ProductVisit path={location.pathname} search={location.search}/><PersistentShell authorized={['admin','owner'].includes(session?.user?.role)}/><div key={location.pathname}><Outlet/></div></main></PageRefreshContext.Provider>
     </div>
   </div>
 }

@@ -1,15 +1,19 @@
 import {useEffect,useRef,useState,type ButtonHTMLAttributes,type MouseEvent} from 'react';
+import {usePageRefreshAction} from './PageRefresh';
 import {RefreshCw} from 'lucide-react';
 
 type Props=Omit<ButtonHTMLAttributes<HTMLButtonElement>,'onClick'> & {
- onClick?:(event:MouseEvent<HTMLButtonElement>)=>unknown;
+ onClick?:(event?:MouseEvent<HTMLButtonElement>)=>unknown;
  indicator?:boolean;
+ local?:boolean;
 };
-/** Keep a refresh visibly busy for the whole request and prevent duplicate clicks. */
-export default function RefreshButton({onClick,disabled,children,className='',indicator=false,type='button',...props}:Props){
+/** Workspace reads move to the header. Explicit operations and dialog actions stay local. */
+export default function RefreshButton({onClick,disabled,children,className='',indicator=false,local=false,type='button',...props}:Props){
  const [waiting,setWaiting]=useState(false),[running,setRunning]=useState(false),sequence=useRef(0),[failure,setFailure]=useState(''),active=useRef(true),pending=useRef(false);
  useEffect(()=>{active.current=true;return()=>{active.current=false}},[]);
  const external=props['aria-busy']===true||props['aria-busy']==='true',busy=running||external;
+ const centralized=usePageRefreshAction(onClick,!!disabled||external,local);
+ if(centralized)return null;
  const refresh=async(event:MouseEvent<HTMLButtonElement>)=>{
   if(pending.current||disabled||external)return;
   pending.current=true;setRunning(true);setWaiting(true);setFailure('');const started=Date.now(),ticket=++sequence.current;

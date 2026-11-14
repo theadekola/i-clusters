@@ -4,14 +4,13 @@ Appearance → Interface Language switches pages, navigation, control labels, di
 
 | Language | Locale | Header | Direction |
 | --- | --- | --- | --- |
-| English (UK) | en-GB | EN | Left to right |
-| English (US) | en-US | EN | Left to right |
+| English | en-GB | EN | Left to right |
 | Français | fr-FR | FR | Left to right |
 | Español | es-ES | ES | Left to right |
 | Deutsch | de-DE | DE | Left to right |
 | Português | pt-PT | PT | Left to right |
 
-Both English choices show EN in the header. Open the menu to see the selected region. They share the English catalogue, and dates and numbers follow the selected locale.
+English appears once in both menus and uses UK formatting. Browsers with a saved US English preference switch to the same English option on startup.
 
 ## What changes
 
@@ -27,7 +26,7 @@ The application uses a React JSX rendering boundary and a Vite source transform 
 2. Run `npm run i18n:extract -w apps/web` to refresh the English catalogue and manifest.
 3. Update every target JSON pack in `apps/web/src/i18n/packs`, preserving each `{0}` substitution.
 4. Run `npm run i18n:check -w apps/web`, `npm run i18n:recovery -w apps/web`, web tests and the production build. The recovery generator embeds only its small copy subset in the service worker so it still works when every external asset is unreachable.
-5. Run `LAYOUT_LOCALE=de-DE` and `LAYOUT_LOCALE=fr-FR` with `scripts/audit-layout.mjs` for layout checks. `LAYOUT_CHECK_LANGUAGES=1` additionally exercises all six regional choices, persistence, text labels, keyboard navigation and the French login page.
+5. Run `LAYOUT_LOCALE=de-DE` and `LAYOUT_LOCALE=fr-FR` with `scripts/audit-layout.mjs` for layout checks. `LAYOUT_CHECK_LANGUAGES=1` additionally exercises all five languages, persistence, text labels, keyboard navigation and the French login page.
 
 The build rejects missing keys, empty translations and changed substitutions. The validator also supports the standalone web Docker build context, where API source files are absent. New technical data fields must be added to the protected field list or marked `translate="no"` at their containing element.
 
