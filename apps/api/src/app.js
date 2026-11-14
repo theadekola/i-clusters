@@ -82,6 +82,7 @@ import { clusterStore,clusterConfig,publicCluster,validateCluster } from './clus
 import {productRouter,countAction} from './product-usage.js';
 import { pool } from './db.js';
 import { auth,requireRole,verifyAccessToken,verifyPassword,issueTokens,rotateRefreshToken,roles } from './security.js';
+import {searchAudit} from './audit-search.js';
 import { writeAudit } from './audit.js';
 import { get,mutate } from './store.js';
 import { monitor as liveMonitor,providers } from './monitor.js';
@@ -212,11 +213,11 @@ export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:c
    try{const resources=await pve('/cluster/resources',{},config);
      if(!Array.isArray(resources))throw Object.assign(new Error(),{invalidResponse:true});
      if(!resources.some(r=>r.type==='node'))throw Object.assign(new Error(),{noNodes:true});
-     return {config,nodes:resources.filter(r=>r.type==='node').map(r=>({name:r.node,status:r.status})),...(input.management===true?{management:await verifyProxmoxManagement(config,resources)}:{})};
+     return {config,nodes:resources.filter(r=>r.type==='node').map(r=>({name:r.node,status:r.status})),...(input.management===true&&config.accessMode!=='monitoring'?{management:await verifyProxmoxManagement(config,resources)}:{})};
    }catch(error){if(error.managementAccess)throw error;throw Object.assign(new Error(proxmoxTestError(error)),{status:502});}
  };
  if(profiles){
-   app.get('/api/cluster-profiles',authorize('viewer'),async(req,res)=>res.set('Cache-Control','no-store').json({clusters:await profiles.list(pve)}));
+   app.get('/api/cluster-profiles',authorize('viewer'),async(req,res)=>res.set('Cache-Control','no-store').json({clusters:(await profiles.list(pve)).filter(row=>!req.user.clusterRoles||Object.hasOwn(req.user.clusterRoles,row.id))}));
    app.get('/api/cluster-profiles/:id/health',authorize('owner'),async(req,res)=>{
      res.set('Cache-Control','no-store').json(await profiles.health(req.params.id,pve));
    });
@@ -326,7 +327,7 @@ export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:c
  });
  read('/monitoring',async req=>{const s=await sampleView(req);return {...s,...discovered(s),services:s.services.filter(x=>x.status!=='not-configured'),proxmox:undefined,docker:undefined,truenas:undefined,operations:undefined};});
 
- read('/proxmox',async req=>{if(forceRead(req))void monitor.sample(true).catch(()=>{});const config=clusterConfig();return {...await snapshot('proxmox',forceRead(req)),cluster:config.url?{name:config.name,url:config.url}:null};});
+ read('/proxmox',async req=>{if(forceRead(req))void monitor.sample(true).catch(()=>{});const config=clusterConfig();return {...await snapshot('proxmox',forceRead(req)),cluster:config.url?{name:config.name,url:config.url,accessMode:config.accessMode||'management'}:null};});
 
  const readStorage=req=>readCache.run('storage-inventory:'+connectionScope(),()=>storageInventory(),{force:forceRead(req)});
  const readBackupJobs=req=>readCache.run('backup-jobs:'+connectionScope(),()=>backupJobs(),{force:forceRead(req)});
@@ -579,12 +580,25 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
  action('post','/ai/chat','viewer','assistant.query',async req=>{
    const message=required(req.body.message,'Message');const s=await monitor.sample();
    const context={sampledAt:s.sampledAt,services:s.services,alerts:s.alerts.filter(a=>a.status!=='resolved'),proxmox:s.proxmox,docker:s.docker,dockerFleet:s.dockerFleet,truenas:s.truenas?{pools:s.truenas.pools}:undefined};
-   const ai=configuration.resolve('ai');if(ai.OPENAI_API_KEY)return {answer:await queryAI(ai,JSON.stringify({context,message})),mode:ai.AI_PROVIDER||'openai'};
+   const ai=configuration.resolve('ai');if(ai.OPENAI_API_KEY)return {answer:await queryAI(ai,JSON.stringify({context,message,history:Array.isArray(req.body.history)?req.body.history.slice(-4).filter(row=>typeof row?.question==='string'&&typeof row?.answer==='string').map(row=>({question:row.question.slice(0,2000),answer:row.answer.slice(0,4000)})):[]})),mode:ai.AI_PROVIDER||'openai'};
 
    return {answer:`Sampled ${s.sampledAt}. ${s.services.map(x=>`${x.name}: ${x.status}${x.error?` (${x.error})`:''}`).join('; ')}. ${context.alerts.length} active or acknowledged alerts. Configure the AI Assistant in Settings → Integrations for conversational analysis.`,mode:'local'};
 
  });
- read('/users',async()=>({users:(await db.query(`SELECT id,name,email,username,role,status,two_factor_enabled AS "twoFactor",last_login AS "lastLogin",created_at AS "createdAt" FROM users ORDER BY created_at`)).rows}),'admin');
+ read('/users',async()=>({users:(await db.query(`SELECT id,name,email,username,role,cluster_roles AS "clusterRoles",status,two_factor_enabled AS "twoFactor",last_login AS "lastLogin",created_at AS "createdAt" FROM users ORDER BY created_at`)).rows}),'admin');
+ action('put','/users/:id/cluster-access','owner','user.cluster-access',async req=>{
+   const assignments=req.body.roles;
+   const account=(await db.query('SELECT role FROM users WHERE id=$1',[req.params.id])).rows[0];
+   if(!account||account.role==='owner')throw httpError('Select a non-owner account',400);
+   if(assignments!==null){
+    if(!assignments||typeof assignments!=='object'||Array.isArray(assignments))throw httpError('Invalid cluster assignments');
+    for(const [id,role] of Object.entries(assignments)){
+     if((id!=='default'&&!profiles?.exists(id))||!['viewer','auditor','operator','admin'].includes(role)||roles[role]>roles[account.role])throw httpError('Invalid cluster or role');
+    }
+   }
+   await db.query("UPDATE users SET cluster_roles=$2::jsonb,token_version=token_version+1 WHERE id=$1 AND role=$3",[req.params.id,assignments===null?null:JSON.stringify(assignments),account.role]).then(result=>{if(!result.rowCount)throw httpError('Account changed. Retry.',409)});
+   onSessionRevoked(req.params.id);return {updated:true};
+ },true);
  action('post','/users','admin','user.create',async req=>{
    const {email,name,password,role='viewer'}=req.body;if(!roles[role]||(role==='owner'&&req.user.role!=='owner')||roles[role]>roles[req.user.role])throw httpError('Role cannot be granted',403);
    const {email:normalizedEmail,username}=accountIdentity(req.body),normalizedName=required(name,'Name');if(normalizedName.length>200)throw httpError('Name must be at most 200 characters');if(typeof password!=='string'||password.length<12||Buffer.byteLength(password)>72)throw httpError('Password must have at least 12 characters and at most 72 bytes');
@@ -597,9 +611,10 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
    if(user.role==='owner'||roles[user.role]>=roles[req.user.role])throw httpError('Only lower-privilege non-owner accounts can be changed',403);
    return (await db.query(`UPDATE users SET status=CASE status WHEN 'active' THEN 'inactive' ELSE 'active' END WHERE id=$1 RETURNING id,name,status`,[req.params.id])).rows[0];
  },true);
- read('/audit',async()=>({logs:(await db.query(`SELECT id::text,created_at AS time,COALESCE(user_email,'system') AS "user",action,resource,details,status,COALESCE(ip,'-') ip FROM audit_logs WHERE cluster_id=$1 ORDER BY created_at DESC LIMIT 500`,[process.env.ICLUSTERS_CLUSTER_PROFILE||'default'])).rows}),'auditor');
+ read('/audit',async req=>req.query.size?searchAudit(db,process.env.ICLUSTERS_CLUSTER_PROFILE||'default',req.query):({logs:(await db.query(`SELECT id::text,created_at AS time,COALESCE(user_email,'system') AS "user",action,resource,details,status,COALESCE(ip,'-') ip FROM audit_logs WHERE cluster_id=$1 ORDER BY created_at DESC LIMIT 500`,[process.env.ICLUSTERS_CLUSTER_PROFILE||'default'])).rows}),'auditor');
  const recoveryTests=createRecoveryTests();
  read('/recovery-tests',()=>recoveryTests.list(),'admin');
+ read('/recovery-tests/last-verified',()=>({verifiedAt:recoveryTests.list().tests.filter(row=>row.dataVerified&&row.verifiedAt).map(row=>row.verifiedAt).sort().at(-1)||null}));
  read('/recovery-tests/:id',req=>recoveryTests.inspect(req.params.id),'admin');
  action('post','/recovery-tests','admin','backup.recovery-test.create',req=>recoveryTests.start(req.body,req.user.sub),true);
  action('post','/recovery-tests/:id/isolate','admin','backup.recovery-test.isolate',req=>recoveryTests.isolate(req.params.id),true);

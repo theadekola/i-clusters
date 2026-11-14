@@ -1,4 +1,4 @@
-import {clusterStorageKey,clusterApiPath,approvalDescription} from './cluster-context';
+import {clusterId,clusterStorageKey,clusterApiPath,approvalDescription} from './cluster-context';
 import {updateAwareError} from './software-update-state';
 import {requestWithDeadline,waitForRequest} from './request-deadline';
 export function setDockerHost(id:string){localStorage.setItem(clusterStorageKey('iclusters_docker_host'),id);window.dispatchEvent?.(new Event('iclusters-connection'));}
@@ -56,6 +56,7 @@ export async function api<T = any>(path: string, options: RequestInit & {cluster
   try{
   const {clusterProfile,...requestOptions}=options;
   const headers:any = { 'X-IClusters-Browser':'1', ...Object.fromEntries(new Headers(options.headers).entries()) };
+  if(path==='/auth/me')headers['X-IClusters-Profile']=clusterProfile||clusterId;
   if(!Object.hasOwn(headers,'content-type'))headers['Content-Type']='application/json';
   const host=localStorage.getItem(clusterStorageKey('iclusters_docker_host'));if(host&&!Object.hasOwn(headers,'x-iclusters-docker-host')&&(/^\/(?:docker|actions\/docker)(?:\/|\?|$)|^\/(?:storage|network)(?:\?|$)/.test(path)))headers['X-IClusters-Docker-Host']=host;
   const token=getAccessToken(); if(token) headers.Authorization=`Bearer ${token}`;

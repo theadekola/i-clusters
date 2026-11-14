@@ -24,7 +24,7 @@ test('StrictMode replay retains SFTP session and real unmount releases it exactl
 });
 test('SFTP permission errors appear inside the operation dialog and retry remains available',async()=>{
  const page=await mounted('components/SFTPBrowser.tsx',{sessionId:'fixture',name:'Fixture',active:true,onDisconnect(){}},async(p,init)=>{if(init?.method==='DELETE')return {};const b=JSON.parse(init.body);if(b.action==='list')return {path:'/',entries:[{name:'protected',directory:false,size:0,mode:0o100644,modified:1}]};throw Error('Permission denied');});
- try{await page.click(page.container.querySelector('button[aria-label="Delete protected"]'));await act(async()=>{page.container.querySelector('.modal form').dispatchEvent(new page.dom.window.Event('submit',{bubbles:true,cancelable:true}));await tick();});assert.equal(page.container.querySelector('.modal [role=alert]').textContent,'Permission denied');assert.equal(page.container.querySelector('.modal button.btn').disabled,false);}finally{await page.close();await tick();}
+ try{await page.click(page.container.querySelector('button[aria-label="Delete protected"]'));await act(async()=>{page.container.querySelector('.modal form').dispatchEvent(new page.dom.window.Event('submit',{bubbles:true,cancelable:true}));await tick();});assert.equal(page.container.querySelector('.modal [role=alert]').textContent,'protected · Permission denied');assert.equal(page.container.querySelector('.modal button.btn').disabled,false);}finally{await page.close();await tick();}
 });
 test('terminal preserves long paste order, reports unsupported controls and survives StrictMode',async()=>{
  const calls=[];const page=await mounted('components/SSHAccess.tsx',{target:'node:fixture',sessionId:'fixture',name:'Fixture'},async(p,init)=>{calls.push({p,init});return {output:'',closed:false}},true,true);
@@ -413,4 +413,25 @@ test('VM update offers a restart only when requested by the guest, without issui
    if(button){await page.click(button);assert.match(document.body.querySelector('[role=dialog]').textContent,/node01 \/ 103/);assert.ok(!calls.some(path=>path.startsWith('/actions/')))}
   }finally{await page.close()}
  }
+});
+
+test('SFTP retries only unfinished deletions and refreshes the directory after each attempt',async()=>{
+ const names=['first.txt','second.txt'],writes=[];let lists=0;
+ const page=await mounted('components/SFTPBrowser.tsx',{sessionId:'fixture',name:'Test',active:true,onDisconnect(){}},async(path,init)=>{
+  if(!init?.body)return {};
+  const b=JSON.parse(init.body);
+  if(b.action==='list'){lists++;return {path:'/',entries:names.map(name=>({name,size:5,directory:false,mode:33188,modified:1700000000}))}}
+  if(b.action==='delete'){writes.push(b.path);if(b.path==='/second.txt')throw Error('Fixture file is busy');if(!names.includes(b.path.slice(1)))throw Error('File no longer exists');names.splice(names.indexOf(b.path.slice(1)),1)}
+  return {};
+ });
+ try{
+  await page.click(page.container.querySelector('[aria-label="Select visible files"]'));
+  const bulk=page.container.querySelector('.sftp-toolbar button.btn.danger');
+  assert.equal(bulk.getAttribute('aria-label'),'Delete selected items');
+  await page.click(bulk);
+  const submit=async()=>act(async()=>{page.container.querySelector('.modal form').dispatchEvent(new page.dom.window.Event('submit',{bubbles:true,cancelable:true}));await tick()});
+  await submit();await submit();
+  assert.deepEqual(names,['second.txt']);assert.equal(lists,3);
+  assert.deepEqual(writes,['/first.txt','/second.txt','/second.txt']);
+ }finally{await page.close()}
 });

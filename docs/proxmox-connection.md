@@ -1,6 +1,8 @@
 # Connect Proxmox in one save
 
-Sign in to Proxmox as an administrator and create one user and one API token. Use the Proxmox VE authentication server (`pve`) realm. The user and its privilege-separated token each need their own PVEAdmin permission entry.
+For inventory and metrics, choose **Monitoring only** and grant PVEAuditor to the user and token. To enable management later, edit the connection, select **Management**, and verify the upgraded token.
+
+For management, sign in to Proxmox as an administrator and create one user and one API token. Use the Proxmox VE authentication server (`pve`) realm. The user and its privilege-separated token each need their own PVEAdmin permission entry.
 
 1. Open **Datacenter → Permissions → Users → Add**. Create an enabled user such as `iclusters` in **Proxmox VE authentication server (pve)**.
 2. Open **Datacenter → Permissions → Add → User Permission**. Set Path `/`, User `iclusters@pve`, Role **PVEAdmin**, and enable **Propagate**.
@@ -24,7 +26,7 @@ Reference: [Proxmox user management and API tokens](https://pve.proxmox.com/pve-
 
 Each browser tab keeps its own cluster in its address. You can bookmark a cluster or monitor two side by side. Switching opens the same main page and clears guest selections. A maintenance task already submitted to Proxmox stays with the cluster that accepted it. Switch back to follow its progress.
 
-Accounts and roles are shared across the installation. Each account has its existing role on every saved cluster. Monitoring history, audit views, connector pairings, Docker hosts, SSH approvals, and infrastructure operations belong to the selected cluster. Configure each cluster's integrations there. Pair one connector per node where needed, using the instructions generated in that cluster. Register each independent cluster once, using a stable hostname for its API. Removing an added cluster takes it out of the switcher. Adding the same endpoint again restores access to that cluster’s saved history and pairings.
+Accounts use their installation role by default. An owner can select a non-owner account under Users → Roles & Permissions and assign cluster-specific access up to its account role. Unassigned clusters are inaccessible in this mode. Saving access changes revokes existing sessions. Monitoring history, audit views, connector pairings, Docker hosts, SSH approvals, and infrastructure operations belong to the selected cluster. Configure each cluster's integrations there. Pair one connector per node where needed, using the instructions generated in that cluster. Register each independent cluster once, using a stable hostname for its API. Removing an added cluster takes it out of the switcher. Adding the same endpoint again restores access to that cluster’s saved history and pairings.
 
 The controller must be able to reach each Proxmox endpoint and any SSH targets used for management. Connectors must be able to reach the controller over HTTPS. Back up the entire controller runtime, PostgreSQL database and original encryption secrets together. Additional profiles live under the runtime's `clusters/` directory. The original connection keeps its existing files, URLs and connector addresses.
 

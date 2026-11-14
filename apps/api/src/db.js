@@ -36,6 +36,7 @@ export async function migrate(db = pool) {
     );
     ${usageSchema}
     ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS cluster_roles JSONB;
     ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
     CREATE UNIQUE INDEX IF NOT EXISTS users_username_ci ON users(lower(username));
     DO $$

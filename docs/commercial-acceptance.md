@@ -35,7 +35,7 @@ CI additionally kills a disposable Docker worker at five phases and verifies exc
 
 ## Read-only performance probe
 
-The probe issues GET requests only to nine fixed report routes, with bounded concurrency and timeouts. It refuses HTTP, credentials in URLs and redirects, and does not save tokens, host IDs or response bodies. It measures response headers rather than complete report-body validity, browser rendering or provider writes. HTTP errors, unexpected content types, timeouts and latency threshold violations fail. Provider inventories that report partial results in a 200 JSON body still require manual inspection.
+The probe issues GET requests only to nine fixed report routes, with bounded concurrency and timeouts. It refuses HTTP, credentials in URLs and redirects, and does not save tokens, host IDs or response bodies. It records time to headers and time to a usable JSON report. Reports are limited to 8 MiB and checked for required fields, provider errors, coverage and five-minute freshness when a sampling timestamp is available. HTTP errors, unexpected content types, timeouts and latency threshold violations fail. Provider inventories that report partial results in a 200 JSON body still require manual inspection.
 
 On a trusted machine with Node.js 24, enter the actual controller HTTPS origin and an existing short-lived access token privately:
 

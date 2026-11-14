@@ -41,7 +41,7 @@ export default function ClusterSwitcher({owner}:{owner:boolean}){
     <Modal portal open={open&&!!target} title="Confirm cluster switch" onClose={()=>setPendingId('')}>
       {target&&<><p>Switch to this cluster?</p><p className="cluster-switch-target" translate="no"><strong>{target.name}</strong>{target.endpoint&&<small>{target.endpoint}</small>}</p>
         <div className="modal-actions"><button type="button" className="btn secondary" onClick={()=>setPendingId('')}>No</button>
-        <button type="button" className="btn primary" onClick={()=>window.location.assign(clusterLocation(target.id,location.pathname))}>Yes</button></div></>}
+        <button type="button" className="btn primary" onClick={()=>{sessionStorage.removeItem('iclusters_ai_conversation');window.location.assign(clusterLocation(target.id,location.pathname))}}>Yes</button></div></>}
     </Modal>
   </>;
 }

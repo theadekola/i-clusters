@@ -35,9 +35,9 @@ export default function LxcContainers({navigation,data,role,clusterUrl,refresh,l
  const [modal,setModal]=useState<'create'|'snapshot'|'backup'|null>(null),[pending,setPending]=useState(''),[message,setMessage]=useState(''),[failure,setFailure]=useState(''),[created,setCreated]=useState<any>(null);
  useEffect(()=>{if(operator&&params.get('action')==='Create CT'){setModal('create');const next=new URLSearchParams(params);next.delete('action');next.set('tab','LXC Containers');setParams(next, {replace:true});}},[params.get('action'),operator]);
  const filtered=useMemo(()=>containers.filter((ct:any)=>(node==='all'||ct.node===node)&&(status==='all'||ct.status===status)&&`${ct.id} ${ct.name} ${ct.node}`.toLowerCase().includes(search.toLowerCase())).sort((a:any,b:any)=>Number(a.id)-Number(b.id)),[containers,node,status,search]);
- const pages=Math.max(1,Math.ceil(filtered.length/rowsPerPage)),activePage=Math.min(page,pages);
+ const pages=Math.max(1,Math.ceil(filtered.length/rowsPerPage)),activePage=selected&&!params.has('page')?Math.floor(Math.max(0,filtered.findIndex((guest:any)=>String(guest.id)===selected))/rowsPerPage)+1:Math.min(page,pages);
  const visible=filtered.slice((activePage-1)*rowsPerPage,activePage*rowsPerPage);
- const current=filtered.find((guest:any)=>String(guest.id)===selected)||visible[0];
+ const current=visible.find((guest:any)=>String(guest.id)===selected)||(selected&&!params.has('page')?undefined:visible[0]);
  const destination=createNode||nodes[0]?.name||'';
  useEffect(()=>{setTemplates(null);setTemplateError('');if(modal!=='create'||!destination||!operator)return;const controller=new AbortController();setTemplateLoading(true);api<any>(`/proxmox/ct-templates/${encodeURIComponent(destination)}`,{signal:controller.signal}).then(result=>{if(!controller.signal.aborted)setTemplates(result)}).catch(e=>{if(!controller.signal.aborted)setTemplateError(e.message)}).finally(()=>{if(!controller.signal.aborted)setTemplateLoading(false)});return()=>controller.abort();},[modal,destination,operator,templateRevision]);
  const eligibleStorage=storage.filter((s:any)=>s.node===(modal==='backup'?operationTarget?.node:destination)&&s.status==='online'&&String(s.content||'').split(',').includes(modal==='backup'?'backup':'rootdir'));

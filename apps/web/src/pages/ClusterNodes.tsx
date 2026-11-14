@@ -25,7 +25,7 @@ export default function ClusterNodes({navigation,data,metrics,tasks,network,hour
  const navigate=useNavigate(),[params,setParams]=useSearchParams();
  const [query,setQuery]=useState(''),[status,setStatus]=useState('all'),[sort,setSort]=useState('name'),[membership,setMembership]=useState('all'),[grid,setGrid]=useState(false),[selected,setSelected]=useState(params.get('node')||''),[tab,setTab]=useState(params.get('nodeTab')==='Services'?'Services':'Overview'),[joining,setJoining]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[taskResult,setTaskResult]=useState<any>(null);
  const detailsTarget=useRef<HTMLDivElement>(null),[openRequest,setOpenRequest]=useState(params.has('node')?1:0);
- const chooseNode=(name:string,section='Overview')=>{setSelected(name);setTab(section);setOpenRequest(v=>v+1);const next=new URLSearchParams(params);next.set('tab','Nodes');next.set('node',name);next.set('nodeTab',section);next.delete('action');setParams(next);};
+ const chooseNode=(name:string,section='Overview')=>{setSelected(name);setTab(section);setOpenRequest(v=>v+1);const next=new URLSearchParams(params);next.delete('service');next.set('tab','Nodes');next.set('node',name);next.set('nodeTab',section);next.delete('action');setParams(next);};
  const nodeSections=['Overview','Services','Storage','Network','Tasks','Logs','Configuration'];
  useEffect(()=>{setSelected(params.get('node')||'');setTab(nodeSections.includes(params.get('nodeTab')||'')?params.get('nodeTab')!:'Overview');},[params.get('node'),params.get('nodeTab')]);
  const clusterRows=Array.isArray(data?.clusterStatus)?data.clusterStatus:[];
@@ -34,7 +34,7 @@ export default function ClusterNodes({navigation,data,metrics,tasks,network,hour
  const localName=clusterRows.find((r:any)=>r?.type==='node'&&[true,1,'1'].includes(r.local))?.name;
  const filtered=nodes.filter((n:any)=>!params.get('inventoryNode')||n.name===params.get('inventoryNode')).filter((n:any)=>`${n.name} ${n.ip||''}`.toLowerCase().includes(query.toLowerCase())&&(status==='all'||n.status===status)&&(membership==='all'||(membership==='endpoint'?n.name===localName:n.name!==localName))).sort((a:any,b:any)=>sort==='name'?a.name.localeCompare(b.name):(b[sort]??-1)-(a[sort]??-1));
  useEffect(()=>{if(!filtered.some((n:any)=>n.name===selected))setSelected(filtered.find((n:any)=>n.name===params.get('node'))?.name||filtered[0]?.name||'');},[filtered.map((n:any)=>n.name).join(','),selected,params.get('node')]);
- const node=filtered.find((n:any)=>n.name===selected),nodeStorage=storage.filter((s:any)=>s.node===selected),nodeServices=services.filter((s:any)=>s.node===selected),nodeTasks=tasks.filter((t:any)=>t.node===selected);
+ const node=filtered.find((n:any)=>n.name===selected),nodeStorage=storage.filter((s:any)=>s.node===selected),nodeServices=services.filter((s:any)=>s.node===selected&&(!params.get('service')||s.name===params.get('service'))),nodeTasks=tasks.filter((t:any)=>t.node===selected);
  useEffect(()=>{if(!openRequest||!node)return;detailsTarget.current?.scrollIntoView?.({block:'start',behavior:'instant'});detailsTarget.current?.focus({preventScroll:true});},[openRequest,node?.name]);
  const detail=useApi<any>(selected?`/proxmox/node/${encodeURIComponent(selected)}/details`:'/auth/me',null);
  const details=detail.data?.node===selected?detail.data:null;

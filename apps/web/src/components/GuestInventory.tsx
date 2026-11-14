@@ -33,11 +33,11 @@ export function useGuestInventory(kind:Kind,ready:boolean){
  const size=Number(params.get('perPage'));
  const pageSize=[10,25,50].includes(size)?size:12;
  return {listRef,openShell,selected,setSelected:(id:string)=>update({guest:String(id)}),
-  search:params.get('search')||'',setSearch:(search:string)=>update({search,page:''}),
+  search:params.get('search')||'',setSearch:(search:string)=>update({guest:'',search,page:''}),
   node:params.get('inventoryNode')||'all',setNode:(node:string)=>update({inventoryNode:node==='all'?'':node,page:'',guest:''}),
-  status:params.get('status')||'all',setStatus:(status:string)=>update({status:status==='all'?'':status,page:''}),
+  status:params.get('status')||'all',setStatus:(status:string)=>update({guest:'',status:status==='all'?'':status,page:''}),
   layout:params.get('layout')==='grid'?'grid':'list',setLayout:(layout:string)=>update({layout}),
-  page,setPage:(page:number)=>update({page:String(page)}),rowsPerPage:pageSize,setRowsPerPage:(size:number)=>update({perPage:String(size),page:''})};
+  page,setPage:(page:number)=>update({guest:'',page:String(page)}),rowsPerPage:pageSize,setRowsPerPage:(size:number)=>update({guest:'',perPage:String(size),page:''})};
 }
 
 export function GuestStatus({status}:{status:string}){

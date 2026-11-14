@@ -15,7 +15,7 @@ export function validateCluster(input,saved) {
  if(typeof input.verifyTls!=='boolean')invalid('SSL verification must be true or false.');
  const sameEndpoint=saved?.url===`https://${host}:${port}`;
  const ca=String((input.ca===undefined&&sameEndpoint?saved.ca:input.ca)||'').trim();if(ca&&(ca.length>65536||!ca.includes('-----BEGIN CERTIFICATE-----')||ca.includes('PRIVATE KEY')))invalid('Enter a PEM CA certificate, not a private key.');
- return {name,host,port,tokenId,tokenSecret:input.tokenSecret,verifyTls:input.verifyTls,ca,url:`https://${host}:${port}`};
+ return {name,host,port,tokenId,tokenSecret:input.tokenSecret,verifyTls:input.verifyTls,...(input.accessMode==='monitoring'?{accessMode:'monitoring'}:{}),ca,url:`https://${host}:${port}`};
 }
 export function createClusterStore(file,secret=()=>process.env.JWT_SECRET,validate=validateCluster) {
  const key=()=>{const value=secret();if(!value||value.length<32)throw new Error('JWT_SECRET must be at least 32 characters to protect saved connections.');return crypto.createHash('sha256').update(value).digest();};
@@ -47,4 +47,4 @@ export function clusterConfig(){
  const previous=readDurableJson(disconnected);
  if(previous||process.env.ICLUSTERS_CLUSTER_PROFILE)return {name:previous?.name||'Default cluster',previousUrl:previous?.url};
  return {name:'Environment cluster',url:process.env.PROXMOX_URL?.replace(/\/$/,''),tokenId:process.env.PROXMOX_TOKEN_ID,tokenSecret:process.env.PROXMOX_TOKEN_SECRET,verifyTls:process.env.PROXMOX_VERIFY_TLS!=='false'};}
-export function publicCluster(config){if(!config?.url)return null;const url=new URL(config.url);return {name:config.name,host:url.hostname,port:Number(url.port||443),tokenId:config.tokenId,verifyTls:config.verifyTls,hasCa:!!config.ca,source:clusterStore.read()?'saved':'environment'};}
+export function publicCluster(config){if(!config?.url)return null;const url=new URL(config.url);return {name:config.name,host:url.hostname,port:Number(url.port||443),tokenId:config.tokenId,verifyTls:config.verifyTls,hasCa:!!config.ca,accessMode:config.accessMode||'management',source:clusterStore.read()?'saved':'environment'};}

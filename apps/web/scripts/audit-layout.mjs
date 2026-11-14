@@ -303,7 +303,7 @@ try{
    }
    if(process.env.LAYOUT_CHECK_IMAGES==='1'){
     const images=page.locator('.page-image-icon img,.brand-mark img');assert.ok(await images.count()>0,route+': original page or brand images are rendered');
-    const failures=await images.evaluateAll(async elements=>{await Promise.all(elements.map(image=>image.decode().catch(()=>{})));return elements.filter(image=>!image.complete||!image.naturalWidth||!image.getAttribute('src').startsWith('data:image/png;base64,')).map(image=>image.closest('[data-page-icon],[data-brand]')?.outerHTML.slice(0,160))});
+    const failures=await images.evaluateAll(async elements=>{await Promise.all(elements.map(image=>image.decode().catch(()=>{})));return elements.filter(image=>!image.complete||!image.naturalWidth||!(image.getAttribute('src').startsWith('data:image/png;base64,')||(new URL(image.src).origin===location.origin&&new URL(image.src).pathname.match(/^\/assets\/[\w-]+\.png$/)))).map(image=>image.closest('[data-page-icon],[data-brand]')?.outerHTML.slice(0,160))});
     assert.deepEqual(failures,[],route+': every original bundled image loads');
    }
    if(process.env.LAYOUT_CHECK_ICON_SURFACES==='1'){

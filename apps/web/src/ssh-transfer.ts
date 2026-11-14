@@ -25,7 +25,7 @@ export async function fullscreenTerminal(element:HTMLElement|null){
  if(element.requestFullscreen)try{await element.requestFullscreen();return true;}catch{/* Expand within the browser viewport instead. */}
  element.classList.add('terminal-expanded');return true;
 }
-export async function collectSFTPDownload(operation:Operation,path:string){
+export async function collectSFTPDownload(operation:Operation,path:string,progress?:(path:string,bytes:number,total:number)=>void){
  const stat=await operation({action:'stat',path});
  if(!stat.file||stat.link)throw Error('Only regular files can be downloaded.');
  if(!Number.isSafeInteger(stat.size)||stat.size<0||stat.size>SFTP_DOWNLOAD_LIMIT)throw Error('Browser downloads are limited to 32 MiB. Use an SFTP client for larger files.');
@@ -34,21 +34,22 @@ export async function collectSFTPDownload(operation:Operation,path:string){
   const r=await operation({action:'read',path,offset});
   const bytes=Uint8Array.from(atob(r.data),c=>c.charCodeAt(0));
   if(bytes.length>SFTP_DOWNLOAD_LIMIT-offset)throw Error('The file exceeded the 32 MiB browser download limit. Use an SFTP client.');
-  chunks.push(bytes);offset+=bytes.length;
+  chunks.push(bytes);offset+=bytes.length;progress?.(path,offset,stat.size);
   if(r.done)break;
   if(!bytes.length)throw Error('The download made no progress. Retry the download.');
  }
  return new Blob(chunks as BlobPart[]);
 }
-export async function uploadSFTPFiles(files:File[],directory:string,replace:boolean,operation:Operation){
+export async function uploadSFTPFiles(files:File[],directory:string,replace:boolean,operation:Operation,progress?:(path:string,bytes:number,total:number)=>void){
  for(let i=0;i<files.length;i++){
   const file=files[i];
   try{
-   let offset=0;
+   let offset=0;const transfer=crypto.randomUUID(),path=(directory==='/'?'':directory)+'/'+file.name;
+   progress?.(path,0,file.size);
    do{
     const bytes=new Uint8Array(await file.slice(offset,offset+262144).arrayBuffer());
     let binary='';for(const byte of bytes)binary+=String.fromCharCode(byte);
-    await operation({action:'write',path:(directory==='/'?'':directory)+'/'+file.name,offset,data:btoa(binary),replace});offset+=bytes.length;
+    await operation({action:'write',path,transfer,size:file.size,offset,data:btoa(binary),replace});offset+=bytes.length;progress?.(path,offset,file.size);
    }while(offset<file.size);
   }catch(error){throw Object.assign(new Error(error instanceof Error?error.message:'Upload failed'),{remainingFiles:files.slice(i)});}
  }
