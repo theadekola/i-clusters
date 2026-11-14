@@ -80,11 +80,68 @@ export function openShellOwner(id){
  return session?.mode==='shell'&&!session.closed&&!shellExpired(session)?session.user:undefined;
 }
 export function shellSession(id,user){const s=sessions.get(id);if(!s||s.user!==user||shellExpired(s))throw failure('Shell session unavailable',404);if(s.mode==='sftp')s.touched=Date.now();return s;}
-export function closeShell(id,user){const s=shellSession(id,user);s.releaseOutput?.();if(s.mode==='sftp')s.stream.end();else if(!s.updateChannel)s.stream.close();s.client.end();sessions.delete(id);}
-const timer=setInterval(()=>{for(const [id,s]of sessions)if(shellExpired(s)){s.releaseOutput?.();s.client.end();sessions.delete(id)}for(const [id,g]of grants)if(g.expires<Date.now())grants.delete(id)},15000);timer.unref();
+function endSession(session){
+ session.releaseOutput?.();
+ const finish=()=>{if(session.mode==='sftp')session.stream.end();else if(!session.updateChannel)session.stream.close();session.client.end()};
+ const uploads=[...(session.uploads?.values()||[])];
+ if(!uploads.length){finish();return}
+ session.uploads.clear();
+ // On a clean disconnect remove staged files while the SFTP channel is still open.
+ const deadline=setTimeout(()=>session.client.end(),1500);deadline.unref();
+ void Promise.allSettled(uploads.filter(row=>row.created).map(row=>call(session.stream,'unlink',row.temp))).finally(()=>{clearTimeout(deadline);finish()});
+}
+export function closeShell(id,user){const s=shellSession(id,user);sessions.delete(id);endSession(s)}
+const timer=setInterval(()=>{
+ for(const [id,s] of sessions){
+  if(shellExpired(s)){sessions.delete(id);endSession(s);continue}
+  for(const [key,row] of s.uploads||[])if(!row.busy&&Date.now()-row.touched>60000){s.uploads.delete(key);void call(s.stream,'unlink',row.temp).catch(()=>{})}
+ }
+ for(const [id,g] of grants)if(g.expires<Date.now())grants.delete(id);
+},15000);timer.unref();
 
 const remotePath=value=>{if(typeof value!=='string'||!value.startsWith('/')||value.includes('\0')||value.length>4096)throw failure('Enter an absolute remote path');return path.posix.normalize(value)};
-const call=(s,method,...args)=>new Promise((resolve,reject)=>s[method](...args,(e,result)=>e?reject(failure(e.message,422)):resolve(result)));
+const call=(s,method,...args)=>new Promise((resolve,reject)=>s[method](...args,(e,result)=>e?reject(Object.assign(failure(e.message,422),{sftpCode:e.code})):resolve(result)));
+// Each upload owns one exclusively created sibling until the final chunk is verified.
+async function stagedWrite(session,destination,input,buffer,offset){
+ const stream=session.stream;
+ const transfers=session.uploads??=new Map();
+ const {transfer,size,replace}=input;
+ if(typeof transfer!=='string'||!(/^[a-zA-Z0-9-]{16,80}$/).test(transfer)||!Number.isSafeInteger(size)||size<0||offset+buffer.length>size)
+  throw failure('Invalid upload size or identifier');
+ let row=transfers.get(transfer);
+ if(!row){
+  if(offset||transfers.size>=16)throw failure('Upload expired or too many unfinished uploads',409);
+  row={destination,size,replace:replace===true,temp:path.posix.join(path.posix.dirname(destination),'.iclusters-'+crypto.randomUUID()+'.part'),offset:0};
+  transfers.set(transfer,row);
+ }
+ if(row.busy||row.destination!==destination||row.size!==size||row.offset!==offset||row.replace!==(replace===true))throw failure('Upload state changed',409);
+ row.busy=true;
+ try{
+  const handle=await call(stream,'open',row.temp,row.created?'r+':'wx',0o600);
+  row.created=true;
+  try{if(buffer.length)await call(stream,'write',handle,buffer,0,buffer.length,offset)}finally{await call(stream,'close',handle)}
+  row.offset+=buffer.length;
+  if(row.offset===size){
+   const stat=await call(stream,'lstat',row.temp);
+   if(!stat.isFile()||stat.size!==size)throw failure('Uploaded file size could not be verified');
+   if(row.replace){
+    let original;
+    try{original=await call(stream,'lstat',destination)}catch(e){if(e.sftpCode!==2)throw e}
+    if(original){
+     if(!original.isFile()||original.isSymbolicLink())throw failure('Only regular files can be replaced');
+     await call(stream,'chmod',row.temp,original.mode&0o777);
+     await call(stream,'ext_openssh_rename',row.temp,destination);
+    }else await call(stream,'rename',row.temp,destination);
+   }else await call(stream,'rename',row.temp,destination);
+   transfers.delete(transfer);
+  }
+  return {ok:true,bytes:row.offset};
+ }catch(error){
+  transfers.delete(transfer);
+  if(row.created)await call(stream,'unlink',row.temp).catch(()=>{});
+  throw error;
+ }finally{row.busy=false;row.touched=Date.now()}
+}
 export async function sftpOperation(id,user,input){
  const session=shellSession(id,user);if(session.mode!=='sftp')throw failure('Not an SFTP session');if(input.action==='keepalive')return {ok:true};const s=session.stream,p=remotePath(input.path||'/');
  if(input.action==='list'){const entries=await call(s,'readdir',p);return {path:p,entries:entries.map(e=>({name:e.filename,directory:e.attrs.isDirectory(),link:e.attrs.isSymbolicLink(),size:e.attrs.size,modified:e.attrs.mtime,mode:e.attrs.mode})).sort((a,b)=>Number(b.directory)-Number(a.directory)||a.name.localeCompare(b.name))};}
@@ -93,7 +150,7 @@ export async function sftpOperation(id,user,input){
  if(input.action==='rename'){await call(s,'rename',p,remotePath(input.destination));return {ok:true};}
  if(input.action==='delete'){const stat=await call(s,'lstat',p);await call(s,stat.isDirectory()?'rmdir':'unlink',p);return {ok:true};}
  if(input.action==='read'){const offset=Number(input.offset||0);if(!Number.isSafeInteger(offset)||offset<0)throw failure('Invalid offset');const handle=await call(s,'open',p,'r');try{const buffer=Buffer.alloc(262144);const bytes=await new Promise((resolve,reject)=>s.read(handle,buffer,0,buffer.length,offset,(e,n)=>e?reject(e):resolve(n)));return {data:buffer.subarray(0,bytes).toString('base64'),done:bytes===0};}finally{await call(s,'close',handle);}}
- if(input.action==='write'){const offset=Number(input.offset||0);if(!Number.isSafeInteger(offset)||offset<0||typeof input.data!=='string'||input.data.length>350000)throw failure('Invalid upload chunk');const buffer=Buffer.from(input.data,'base64');const handle=await call(s,'open',p,offset===0?(input.replace===true?'w':'wx'):'r+');try{await call(s,'write',handle,buffer,0,buffer.length,offset);return {ok:true};}finally{await call(s,'close',handle);}}
+ if(input.action==='write'){const offset=Number(input.offset||0);if(!Number.isSafeInteger(offset)||offset<0||typeof input.data!=='string'||input.data.length>350000)throw failure('Invalid upload chunk');const buffer=Buffer.from(input.data,'base64');if(input.transfer)return stagedWrite(session,p,input,buffer,offset);if(input.replace===true)throw failure('Start a verified replacement upload');const handle=await call(s,'open',p,offset===0?'wx':'r+');try{await call(s,'write',handle,buffer,0,buffer.length,offset);return {ok:true};}finally{await call(s,'close',handle);}}
  throw failure('Unsupported file operation');
 }
 
@@ -103,4 +160,4 @@ export function writeShellInput(session,input){
  if(typeof input==='string')session.stream.write(input);
 }
 
-export function closeSessionAccess(user,sessionId){for(const [id,s] of sessions)if(s.user===user&&(!sessionId||s.sessionId===sessionId)){s.releaseOutput?.();s.client.end();sessions.delete(id)}for(const [id,g] of grants)if(g.user===user&&(!sessionId||g.sessionId===sessionId))grants.delete(id)}
+export function closeSessionAccess(user,sessionId){for(const [id,s] of sessions)if(s.user===user&&(!sessionId||s.sessionId===sessionId)){sessions.delete(id);endSession(s)}for(const [id,g] of grants)if(g.user===user&&(!sessionId||g.sessionId===sessionId))grants.delete(id)}

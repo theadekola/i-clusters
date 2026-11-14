@@ -6,7 +6,7 @@ const tokenStore=()=>sessionStorage.getItem(ACCESS)?sessionStorage:localStorage;
 export function getIdleMinutes(){const value=Number(localStorage.getItem(TIMEOUT));return idleOptions.includes(value)?value:30;}
 export function setIdleMinutes(value:number){if(!idleOptions.includes(value))throw Error('Choose a valid sign-out time.');localStorage.setItem(TIMEOUT,String(value));window.dispatchEvent(new Event('iclusters-session-policy'));}
 export function isSessionIdle(now=Date.now()){const store=tokenStore(),last=Number(store.getItem(ACTIVE));if(store.getItem(UNTIL))return now>=Number(store.getItem(UNTIL));return !!store.getItem(ACCESS)&&(!last||now-last>=getIdleMinutes()*60000);}
-export function clearTokens(){for(const store of stores())for(const key of [ACCESS,REFRESH,ACTIVE,UNTIL,COOKIE])store.removeItem(key);window.dispatchEvent(new Event('iclusters-session-expired'));}
+export function clearTokens(){sessionStorage.removeItem('iclusters_ai_conversation');for(const store of stores())for(const key of [ACCESS,REFRESH,ACTIVE,UNTIL,COOKIE])store.removeItem(key);window.dispatchEvent(new Event('iclusters-session-expired'));}
 function expireIdle(){const remembered=!!tokenStore().getItem(UNTIL);clearTokens();sessionStorage.setItem('iclusters_session_message',remembered?'Your 10-day remembered sign-in has expired. Sign in again to continue.':'You were signed out after inactivity. Sign in again to continue.');}
 export function getAccessToken(){if(isSessionIdle()){expireIdle();return '';}return tokenStore().getItem(ACCESS)||'';}
 export function getRefreshToken(){return getAccessToken()?tokenStore().getItem(REFRESH)||'':'';}

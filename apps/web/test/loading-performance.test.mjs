@@ -35,7 +35,7 @@ test('clearing the browser read cache revalidates mounted views without clearing
 });
 test('scheduled reports use ordinary reads while the Refresh button requests an explicit fresh read',async()=>{
  const requests=[];const page=await harness(async(p,o)=>{requests.push(o);return {value:'Ready'}});
- try{await page.render([['a','/storage',20]]);await act(async()=>{await new Promise(r=>setTimeout(r,60))});assert.ok(requests.length>1);assert.ok(requests.every(o=>!o.headers));await act(async()=>{page.container.querySelector('button').click();await tick()});assert.ok(requests.some(o=>o.headers?.['X-IClusters-Refresh']==='1'));}finally{await page.close()}
+ try{Object.defineProperty(document,'hidden',{configurable:true,value:false});await page.render([['a','/storage',20]]);await act(async()=>{await new Promise(r=>setTimeout(r,60))});assert.ok(requests.length>1);assert.ok(requests.every(o=>!o.headers));await act(async()=>{page.container.querySelector('button').click();await tick()});assert.ok(requests.some(o=>o.headers?.['X-IClusters-Refresh']==='1'));}finally{await page.close()}
 });
 test('timed-out report reads show a retryable error and keep the last available report',async()=>{
  let calls=0;const page=await harness(async(p,o)=>{if(++calls===1)return {value:'Last report'};return new Promise((resolve,reject)=>o.signal.addEventListener('abort',()=>reject(new Error('Aborted')),{once:true}))});
@@ -78,4 +78,15 @@ test('manual refresh waits for partial provider scans and polls without starting
   assert.equal(calls.length,3);assert.equal(calls[1].headers['X-IClusters-Refresh'],'1');assert.equal(calls[2].headers,undefined);assert.equal(finished,false);
   await act(async()=>{last.resolve({value:'Fresh'});await work});assert.equal(finished,true);assert.match(page.container.textContent,/Fresh/);
  }finally{last.resolve({value:'Fresh'});await page.close()}
+});
+
+test('hidden documents suspend ordinary polling and resume when visible',async()=>{
+ const calls=[];const page=await harness(async(p,o)=>{calls.push(o);return {value:'Ready'}});
+ try{
+  Object.defineProperty(document,'hidden',{configurable:true,value:true});
+  await page.render([['a','/storage',20]]);await act(async()=>{await new Promise(r=>setTimeout(r,65))});
+  assert.equal(calls.length,1);
+  Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new window.Event('visibilitychange'));
+  await act(async()=>{await new Promise(r=>setTimeout(r,50))});assert.ok(calls.length>1);
+ }finally{await page.close()}
 });

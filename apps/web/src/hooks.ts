@@ -8,7 +8,7 @@ export function configureRefresh(seconds:number){interval=Math.max(15,Math.min(3
 type Resource={path:string;scope:string;data:any;hasData:boolean;error:string;loading:boolean;updated:number;created:number;generation:number;listeners:Set<()=>void>;pending?:Promise<void>;manualPending?:Promise<void>;forced?:boolean;controller?:AbortController};
 const resources=new Map<string,Resource>();
 let eventWindow:Window|undefined;
-const identity=()=>{const token=window.sessionStorage.getItem('iclusters_access_token')||window.localStorage.getItem('iclusters_access_token')||'';try{const claim=JSON.parse(window.atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));if(typeof claim.sub==='string')return JSON.stringify([claim.sub,claim.role]);}catch{}return token};
+const identity=()=>{const token=window.sessionStorage.getItem('iclusters_access_token')||window.localStorage.getItem('iclusters_access_token')||'';try{const claim=JSON.parse(window.atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));if(typeof claim.sub==='string')return JSON.stringify([claim.sub,claim.role,claim.sid,claim.ver]);}catch{}return token};
 const scope=()=>JSON.stringify([identity(),window.localStorage.getItem(clusterStorageKey('iclusters_docker_host'))||'']);
 const emit=(entry:Resource)=>entry.listeners.forEach(notify=>notify());
 function invalidate(){for(const entry of resources.values()){entry.updated=0;entry.generation++;entry.controller?.abort();entry.pending=undefined;entry.loading=false;emit(entry);}queueMicrotask(()=>{for(const entry of resources.values())if(entry.listeners.size&&entry.scope===scope())void load(entry,true,true);});}
@@ -63,10 +63,11 @@ export function useApi<T>(path: string, initial: T, refreshMs?:number|((data:T)=
  const setData=useCallback((value:T|((previous:T)=>T))=>{entry.generation++;entry.controller?.abort();entry.pending=undefined;entry.loading=false;entry.data=typeof value==='function'?(value as (previous:T)=>T)(entry.hasData?entry.data:initialValue.current):value;entry.hasData=true;entry.updated=Date.now();entry.error='';emit(entry);},[entry]);
  useEffect(()=>{
   let timer:number|undefined,active=true;
-  const schedule=()=>{window.clearTimeout(timer);if(!active)return;const configured=typeof refreshMs==='function'?refreshMs(entry.data):refreshMs;const delay=entry.data?.refreshing?1000:configured===0?0:configured??interval;if(delay)timer=window.setTimeout(()=>{void load(entry,true,true).then(schedule)},delay);};
+  const schedule=()=>{window.clearTimeout(timer);if(!active)return;const configured=typeof refreshMs==='function'?refreshMs(entry.data):refreshMs;const delay=entry.data?.refreshing?1000:configured===0?0:configured??interval;if(delay)timer=window.setTimeout(()=>{if(document.hidden&&!entry.data?.refreshing&&typeof refreshMs!=='function'){schedule();return}void load(entry,true,true).then(schedule)},delay);};
   const notify=()=>{if(active){render(v=>v+1);schedule();}};entry.listeners.add(notify);void load(entry).then(schedule);schedule();
-  window.addEventListener('iclusters-refresh',schedule);
-  return()=>{active=false;entry.listeners.delete(notify);window.clearTimeout(timer);window.removeEventListener('iclusters-refresh',schedule);queueMicrotask(()=>{if(!entry.listeners.size&&entry.pending){entry.generation++;entry.controller?.abort();entry.pending=undefined;entry.loading=false;}});};
+  const resume=()=>{if(!document.hidden&&Date.now()-entry.updated>=10000)void load(entry).then(schedule)};
+  document.addEventListener('visibilitychange',resume);window.addEventListener('iclusters-refresh',schedule);
+  return()=>{active=false;entry.listeners.delete(notify);document.removeEventListener('visibilitychange',resume);window.clearTimeout(timer);window.removeEventListener('iclusters-refresh',schedule);queueMicrotask(()=>{if(!entry.listeners.size&&entry.pending){entry.generation++;entry.controller?.abort();entry.pending=undefined;entry.loading=false;}});};
  },[entry,refreshMs]);
  return {data:(entry.hasData?entry.data:initialValue.current) as T,setData,loading:entry.loading||!entry.error&&entry.data?.refreshing===true,error:entry.error,refresh};
 }

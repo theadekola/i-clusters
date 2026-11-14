@@ -57,6 +57,16 @@ await test('owner can test and save a live cluster, secrets stay hidden and fail
   denied='/';const rejected=await call('PUT',{...config,name:'Do not save',management:true});assert.equal(rejected.status,403);assert.match(rejected.body.error,/PVEAdmin/);assert.equal(clusterStore.read().name,'Lab');assert.equal(invalidated,1);
   denied='';const verified=await call('POST',{...config,management:true},'/test');assert.equal(verified.status,200);assert.equal(verified.body.management.verified,true);assert.equal(invalidated,1);
   const saved=await call('PUT',{...config,management:true});assert.equal(saved.status,200);assert.equal(saved.body.management.power,true);assert.equal(invalidated,2);assert.ok(!JSON.stringify(saved.body).includes(input.tokenSecret));
+  denied='/';
+  const monitoring=await call('PUT',{...config,accessMode:'monitoring'});
+  assert.equal(monitoring.status,200);assert.equal(monitoring.body.cluster.accessMode,'monitoring');
+  assert.equal((await call('PUT',config)).body.cluster.accessMode,'monitoring');
+  assert.equal((await call('PUT',{...config,accessMode:'unrecognised'})).status,400);
+  assert.equal((await call('PUT',{...config,accessMode:'management'})).status,403);
+  assert.equal(clusterStore.read().accessMode,'monitoring');
+  denied='';
+  const upgrade=await call('PUT',{...config,accessMode:'management'});
+  assert.equal(upgrade.body.management.verified,true);assert.equal(upgrade.body.cluster.accessMode,'management');
   assert.ok(!JSON.stringify(audits).includes(input.tokenSecret));assert.equal((await call('DELETE')).status,403);
   assert.equal((await call('DELETE',{password:'incorrect'})).status,403);
   assert.equal((await call('DELETE',{password},'','viewer')).status,403);

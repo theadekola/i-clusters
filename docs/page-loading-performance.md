@@ -88,3 +88,7 @@ Discovery retains known running guests while probing them, so incremental scans 
 ## Report availability
 
 Overview recognises paired Docker Engine inventories even when no direct Engine or guest-agent application report is present. A successfully reported empty Engine counts as zero; failed/stale discovery alone does not. Docker inventory loads display Loading rather than falsely advertising a disconnected host. Monitoring treats informational update notices separately from warning/critical health and labels pending collection as Refreshing. These changes improve report truthfulness; they do not eliminate provider/network latency or establish an end-to-end SLA.
+
+## Cold dashboard check
+
+The production Chromium check opens a fresh 390 px browser with caching disabled, a 4× CPU slowdown, 100 ms of simulated latency and a 4 Mbit/s download limit. It times the dashboard until both the sample timestamp and Docker Containers action appear. The CI budgets are 15 seconds for this fixture and 300 KiB gzipped for the scripts and styles preloaded by the entry HTML. Route-specific downloads also contribute to the measured time. Record physical-phone and provider latency separately on the installed system.

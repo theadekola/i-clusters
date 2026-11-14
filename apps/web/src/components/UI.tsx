@@ -69,8 +69,27 @@ export function ConnectionSuccess({message,onDone}:{message:string;onDone:()=>vo
  return <div ref={notice} tabIndex={-1} className="connection-success" role="status" aria-live="polite"><CheckCircle2 size={32} aria-hidden="true"/><strong>{message}</strong><small>Closing automatically…</small></div>;
 }
 
-export function Tabs({items,active,onChange}:{items:string[];active:string;onChange:(v:string)=>void}) {
-  return <div className="tabs">{items.map(i=><button key={i} className={active===i?'tab active':'tab'} onClick={()=>onChange(i)}>{i}</button>)}</div>
+export function tabKeys(event:React.KeyboardEvent<HTMLElement>){
+ const target=event.target as HTMLElement,group=event.currentTarget;
+ const tabs=Array.from(group.querySelectorAll<HTMLButtonElement>('[role="tab"]:not(:disabled)'));
+ const index=tabs.indexOf(target as HTMLButtonElement);
+ if(index<0||!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+ event.preventDefault();
+ const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
+ const tab=tabs[next],label=group.getAttribute('aria-label');
+ // Route changes may replace the entire tab strip after the key event completes.
+ const observer=new MutationObserver(()=>{
+  if(tab.isConnected)return;
+  const replacement=Array.from(document.querySelectorAll('[role="tablist"]')).find(row=>row.getAttribute('aria-label')===label);
+  const selected=replacement?.querySelector<HTMLElement>('[aria-selected="true"]');
+  if(selected){if(document.activeElement===document.body)selected.focus();observer.disconnect();clearTimeout(timer)}
+ });
+ observer.observe(document.body,{subtree:true,childList:true});
+ const timer=window.setTimeout(()=>observer.disconnect(),1000);
+ tab.focus();tab.click();
+}
+export function Tabs({items,active,onChange,label,controls}:{items:string[];active:string;onChange:(v:string)=>void;label?:string;controls?:string}) {
+  return <div className="tabs" role="tablist" aria-label={label||items[0]} onKeyDown={tabKeys}>{items.map(i=><button key={i} type="button" role="tab" tabIndex={active===i?0:-1} aria-selected={active===i} aria-controls={controls} className={active===i?'tab active':'tab'} onClick={()=>onChange(i)}>{i}</button>)}</div>
 }
 
 export function Toast({message,onDone}:{message:string;onDone:()=>void}) {

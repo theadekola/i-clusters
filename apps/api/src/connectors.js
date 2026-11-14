@@ -40,6 +40,7 @@ export function request(url, init={}, tls={}) {
 }
 
 export async function pve(path, init={}, config=clusterConfig()){
+  if(config.accessMode==='monitoring'&&!['GET','HEAD'].includes(String(init.method||'GET').toUpperCase()))throw Object.assign(Error('This Proxmox connection is monitoring-only. Edit the cluster connection to enable management.'),{status:403});
   const {url:pveUrl,tokenId:pveTokenId,tokenSecret:pveSecret}=config;
   if(!pveUrl||!pveTokenId||!pveSecret) throw Object.assign(new Error('Proxmox is not configured'),{status:503});
   const headers={Authorization:`PVEAPIToken=${pveTokenId}=${pveSecret}`,...(init.headers||{})};

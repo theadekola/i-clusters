@@ -40,9 +40,9 @@ export default function VirtualMachines({navigation,data,role,clusterUrl,refresh
  const [modal,setModal]=useState<'create'|'snapshot'|'backup'|null>(null),[pending,setPending]=useState(''),[message,setMessage]=useState(''),[failure,setFailure]=useState('');
  useEffect(()=>{if(operator&&params.get('action')==='Create VM'){setModal('create');const next=new URLSearchParams(params);next.delete('action');next.set('tab','Virtual Machines');setParams(next, {replace:true});}},[params.get('action'),operator]);
  const filtered=useMemo(()=>vms.filter((vm:any)=>(node==='all'||vm.node===node)&&(status==='all'||vm.status===status)&&`${vm.id} ${vm.name} ${vm.node}`.toLowerCase().includes(search.toLowerCase())).sort((a:any,b:any)=>Number(a.id)-Number(b.id)),[vms,node,status,search]);
- const pages=Math.max(1,Math.ceil(filtered.length/rowsPerPage)),activePage=Math.min(page,pages);
+ const pages=Math.max(1,Math.ceil(filtered.length/rowsPerPage)),activePage=selected&&!params.has('page')?Math.floor(Math.max(0,filtered.findIndex((guest:any)=>String(guest.id)===selected))/rowsPerPage)+1:Math.min(page,pages);
  const visible=filtered.slice((activePage-1)*rowsPerPage,activePage*rowsPerPage);
- const current=filtered.find((guest:any)=>String(guest.id)===selected)||visible[0];
+ const current=visible.find((guest:any)=>String(guest.id)===selected)||(selected&&!params.has('page')?undefined:visible[0]);
  const destination=createNode||nodes[0]?.name||'';
  useEffect(()=>{setIso('');setMedia(null);setMediaError('');if(modal!=='create'||!destination||!operator)return;const controller=new AbortController();setMediaLoading(true);api<any>(`/proxmox/installation-media/${encodeURIComponent(destination)}`,{signal:controller.signal}).then(result=>{if(!controller.signal.aborted)setMedia(result);}).catch(error=>{if(!controller.signal.aborted)setMediaError(error.message);}).finally(()=>{if(!controller.signal.aborted)setMediaLoading(false);});return()=>controller.abort();},[modal,destination,operator,mediaRevision]);
  const eligibleStorage=storage.filter((s:any)=>s.node===(modal==='backup'?operationTarget?.node:destination)&&s.status==='online'&&String(s.content||'').split(',').includes(modal==='backup'?'backup':'images')&&(modal==='backup'||!['iscsi','iscsidirect'].includes(s.type)));

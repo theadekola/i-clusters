@@ -113,7 +113,7 @@ export async function restoreArchive(id,body,{query=pve,archives=backupArchives,
   // Never overwrite an existing guest. The provider also checks for concurrent allocation.
   const resources=await query('/cluster/resources');
   if(resources.some(r=>Number(r.vmid)===vmid))throw httpError('That VM ID already exists; choose an unused ID',409);
-  if(point.type==='lxc')return {node,task:await write(`/nodes/${encode(node)}/lxc`,'POST',{vmid,ostemplate:point.volid,storage,restore:1,force:0})};
+  if(point.type==='lxc')return {node,task:await write(`/nodes/${encode(node)}/lxc`,'POST',{vmid,ostemplate:point.volid,storage,restore:1,force:0,...(body.unique===true?{start:0,unprivileged:1,onboot:0}:{})})};
   if(point.type!=='qemu')throw httpError('Unknown backup type');
   return {node,task:await write(`/nodes/${encode(node)}/qemu`,'POST',{vmid,archive:point.volid,storage,force:0,...(body.unique===true?{unique:1,start:0}:{})})};
 }

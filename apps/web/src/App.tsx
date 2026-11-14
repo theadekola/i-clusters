@@ -10,6 +10,7 @@ import {SSHApproval} from './components/SSHAccess';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { api, clearTokens, getAccessToken } from './api';
+import {clusterId,clusterLocation} from './cluster-context';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 const Dashboard=lazy(()=>import('./pages/Dashboard'));
@@ -37,7 +38,10 @@ export default function App(){
   const checkedAccess=getAccessToken();
   if(!checkedAccess){setConnectionError('');setAuthenticated(false);return}
   checking.current=true;
-  try{await api('/auth/me');setConnectionError('');setAuthenticated(!!getAccessToken())}
+  try{const session=await api('/auth/me');if(session?.user?.role==='none'){
+   const {clusters}=await api('/cluster-profiles');const first=clusters?.[0];
+   if(first&&first.id!==clusterId){sessionStorage.removeItem('iclusters_ai_conversation');window.location.replace(clusterLocation(first.id));return}
+  }setConnectionError('');setAuthenticated(!!getAccessToken())}
   catch(e:any){if(e.status===401){if(getAccessToken()===checkedAccess)clearTokens();setConnectionError('');setAuthenticated(!!getAccessToken())}else setConnectionError(e.message||'Cannot reach i-Clusters.')}
   finally{checking.current=false}
  },[]);
