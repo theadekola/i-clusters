@@ -35,8 +35,8 @@ export default function AI(){
   setDraft('');
   void request(exchange);
  }
- return <><PageHeader title="Assistant" subtitle="Read-only analysis of the latest live measurements."/>
-  {session.data?.user?.role==='owner'&&<Link className="btn secondary" to="/settings?tab=Integrations&setup=ai">Configure AI</Link>}
+ return <><PageHeader title="Assistant" subtitle="Read-only analysis of the latest live measurements."
+  actions={session.data?.user?.role==='owner'&&<Link className="btn secondary" to="/settings?tab=Integrations&setup=ai">Configure AI</Link>}/>
   <Card><p className="muted">This assistant cannot execute infrastructure actions or perform security scans. With no AI API key it returns a measured status summary.</p>
    <div className="chat">{exchanges.map(exchange=><Fragment key={exchange.id}>
     <div className="bubble user">{exchange.question}</div>

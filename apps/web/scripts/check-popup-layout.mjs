@@ -127,6 +127,16 @@ try{
   await page.evaluate(()=>window.renderTraffic());await page.getByLabel('Traffic node',{exact:true}).waitFor();
   const trafficToolbar=page.locator('.network-panel-head>.header-actions');assert.equal(await trafficToolbar.getByRole('button',{name:'Refresh',exact:true}).count(),1);assert.equal(await page.getByRole('button',{name:/Export CSV|Export JSON/}).count(),0);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`traffic toolbar overflows at ${width}`);
   if(width>=1280){const centers=await trafficToolbar.locator('select,button').evaluateAll(elements=>elements.map(el=>{const r=el.getBoundingClientRect();return r.y+r.height/2}));assert.ok(Math.max(...centers)-Math.min(...centers)<3,'traffic selectors and Refresh share a row')}
+  const headingLayout=await trafficToolbar.evaluate(row=>{
+   const header=row.parentElement;
+   const description=header.querySelector('p').getBoundingClientRect();
+   const first=row.firstElementChild.getBoundingClientRect();
+   const last=row.lastElementChild.getBoundingClientRect();
+   const right=header.getBoundingClientRect().right-parseFloat(getComputedStyle(header).paddingRight);
+   return {below:first.top>=description.bottom, fits:row.scrollWidth<=row.clientWidth+1, rightGap:right-last.right};
+  });
+  assert.ok(headingLayout.below,`traffic actions must sit below the page description at ${width}px`);
+  if(headingLayout.fits)assert.ok(Math.abs(headingLayout.rightGap)<3,`traffic actions must reach the right edge at ${width}px`);
   await page.screenshot({path:path.join(output,`traffic-toolbar-${width}.png`)});
   for(const archives of [false,true]){
    await page.evaluate(value=>window.renderBackups(value),archives);await page.getByLabel('Backup reporting period',{exact:true}).waitFor();const backupToolbar=page.locator('.backup-manager .page-header>.header-actions');assert.equal(await backupToolbar.getByLabel('Backup reporting period',{exact:true}).count(),1);assert.equal(await page.getByRole('button',{name:'Browse Archives',exact:true}).count(),0);assert.equal(await page.getByRole('button',{name:'Recovery Tests',exact:true}).count(),archives?1:0);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`backup toolbar overflows at ${width}`);

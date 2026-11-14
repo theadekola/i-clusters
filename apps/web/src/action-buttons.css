@@ -68,20 +68,53 @@
   }
 }
 
-/* Only page-heading actions share the Add Storage fill. Portalled Docker
-   and Proxmox commands are direct children of their own action rows. */
-.content :is(.page-header, .docker-command-bar, .vm-title, section > .network-panel-head) > .header-actions,
-.content .pve-heading > .pve-heading-actions,
-.content .settings-overview-heading > .settings-overview-actions {
-  margin-inline-start: auto;
-  margin-inline-end: 0;
+/* Page descriptions get the full first row, even when the actions would fit
+   beside them. Settings has a separate leading icon in the title row. */
+.content.content :is(.page-header, .pve-heading, .overview-toolbar, .vm-title,
+  section > .network-panel-head:has(> .header-actions)) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  justify-content: stretch;
+  row-gap: 12px;
+}
+
+.content.content .settings-overview-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  row-gap: 12px;
+}
+
+.content.content :is(.page-header, .vm-title, section > .network-panel-head) > .header-actions,
+.content.content .pve-heading > .pve-heading-actions,
+.content.content .settings-overview-heading > .settings-overview-actions,
+.content.content .overview-toolbar > .overview-controls {
+  grid-column: 1 / -1;
+  justify-self: stretch;
+  inline-size: 100%;
+  min-inline-size: 0;
+  margin-inline: 0;
   justify-content: safe flex-end;
 }
 
+.content .page-header > .header-actions:empty {
+  display: none;
+}
+
+.content.content .overview-toolbar > .overview-controls {
+  display: flex;
+  flex-flow: row nowrap;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+/* Use the page action colour for controls in the heading, including the
+   Overview refresh action. Selects retain their input styling. */
 :root[data-preset][data-theme][data-appearance] .content :is(
   .page-header > .header-actions, .docker-command-bar > .header-actions, .docker-tab-actions,
   .vm-title > .header-actions, section > .network-panel-head > .header-actions,
-  .pve-heading-actions, .pve-context-actions, .settings-overview-heading > .settings-overview-actions
+  .pve-heading-actions, .pve-context-actions, .settings-overview-heading > .settings-overview-actions,
+  .overview-controls > .action-row
 ) > :is(button, a.btn, label.btn):not(:where(.modal *)) {
   --filled-action: 1;
   background: var(--app-accent-fill) !important;
