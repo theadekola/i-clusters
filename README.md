@@ -17,6 +17,7 @@ i-Clusters is a self-hosted interface for managing Proxmox VE environments, virt
 - [Features and scope](#features-and-scope)
 - [Architecture](#architecture)
 - [Install on Ubuntu](#install-on-ubuntu)
+- [Install in a Debian LXC container](#install-in-a-debian-lxc-container)
 - [First sign-in](#first-sign-in)
 - [Connect your infrastructure](#connect-your-infrastructure)
 - [Monitoring and notifications](#monitoring-and-notifications)
@@ -88,10 +89,14 @@ The same setup is available on existing installations. See
 
 Direct access by LAN IP uses Caddy's local certificate authority. Install its public root certificate in your browsers and paired nodes' trust stores. Do not disable certificate verification. For public-domain HTTPS, port overrides, pinned refs and manual installation, follow [PRODUCTION.md](PRODUCTION.md).
 
+## Install in a Debian LXC container
+
+On Proxmox VE, create an unprivileged Debian 12 or 13 system container and enable **Nesting** and **keyctl**. Run the installer as root from the CT console. The [Debian CT installation guide](docs/debian-lxc-install.md) covers the template, storage, networking, installer commands and first sign-in.
+
 ## First sign-in
 
 When you use the controller’s LAN IP on an iPhone or iPad, you can set up HTTPS
-trust before opening the dashboard. From the VM console or a verified SSH
+trust before opening the dashboard. From the controller console or a verified SSH
 session, run `sudo iclusters certificate --apple-profile > i-clusters.mobileconfig`.
 Follow the [one-time device trust instructions](PRODUCTION.md#automatic-lan-https-on-port-6002).
 
@@ -141,7 +146,7 @@ Open **AI Assistant → Configure AI Assistant** to configure a provider. Choose
 
 ## Updates and build information
 
-Owners can check/install updates with the header Update control. An up-to-date check displays a temporary message. From the Ubuntu VM:
+Owners can check/install updates with the header Update control. An up-to-date check displays a temporary message. From the controller shell (omit `sudo` when signed in as root):
 
 ```sh
 sudo iclusters update
@@ -232,7 +237,7 @@ Use [GitHub Issues](https://github.com/theadekola/i-clusters/issues) for reprodu
 - [Customer acceptance checklist](docs/acceptance-checklist.md)
 - [Contributing](CONTRIBUTING.md) and [third-party notices](THIRD_PARTY_NOTICES.md)
 
-Developed by **The Adekola Labs**. The existing repository owner and Ubuntu service/path names remain compatibility identifiers.
+Developed by **The Adekola Labs**. The existing repository owner and systemd service and installation path names remain compatibility identifiers.
 
 Existing installations are migrated during the normal update. See [i-Clusters name migration](docs/brand-migration.md) for preserved data and compatibility aliases.
 

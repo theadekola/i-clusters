@@ -1,6 +1,10 @@
-# Ubuntu deployment and live configuration
+# Controller deployment and live configuration
 
 ## Start
+
+### Install in a Debian CT on Proxmox
+
+Follow the [Debian 12 and 13 LXC installation guide](docs/debian-lxc-install.md) to create the unprivileged CT, enable its Docker features and install i-Clusters from the CT console. When signed in as root, omit `sudo` in the commands below.
 
 ### Install from GitHub on Ubuntu
 
@@ -13,7 +17,7 @@ curl -fsSL https://raw.githubusercontent.com/theadekola/i-clusters/main/install.
 sudo bash /tmp/iclusters-install.sh
 ```
 
-The installer detects the VM's IPv4 source address from its default route and ends successful installation with a clearly labelled `Open i-Clusters: https://DETECTED-IP:6002` link. It uses the configured port and the final hostname when trusted HTTPS is selected. Run `sudo iclusters status` to display the configured dashboard address again. No IP or URL argument is required. If no default route is present, it selects a global address from a non-Docker interface; it stops if no usable address exists. `--url` remains available for a specific hostname or interface. Detection runs at installation time; a DHCP address change means you must use the VM's new address in your browser.
+The installer detects the controller's IPv4 source address from its default route and ends successful installation with a clearly labelled `Open i-Clusters: https://DETECTED-IP:6002` link. It uses the configured port and the final hostname when trusted HTTPS is selected. Run `sudo iclusters status` to display the configured dashboard address again. No IP or URL argument is required. If no default route is present, it selects a global address from a non-Docker interface; it stops if no usable address exists. `--url` remains available for a specific hostname or interface. Detection runs at installation time; a DHCP address change means you must use the controller's new address in your browser.
 
 The default web port is **6002**, mapped to Caddy's internal HTTPS port 443. The API runs on **6000 inside Docker**, with requests proxied through the web port. The API port is not published to the host. Chromium browsers block port 6000 as an X11 port, so the browser never connects to it directly. `--https-port` changes the dashboard port and `--port` changes the auxiliary HTTP port. HTTPS uses the main port 6002 by default; HTTP uses auxiliary port 6003. Public port settings are stored as `WEB_PORT` and `HTTPS_PORT` in `.env`.
 
@@ -157,7 +161,7 @@ Back up the PostgreSQL volume, host `runtime/`, Caddy data, `.env` and connector
 
 ### Updates from the dashboard
 
-For an existing Ubuntu installation, run `sudo iclusters update` once, then run the following to enable the new update service (the previous CLI version may not install it automatically):
+For an existing controller installation, run `sudo iclusters update` once, then run the following to enable the new update service (the previous CLI version may not install it automatically):
 
 ```bash
 cd /opt/i-clusters
@@ -226,7 +230,7 @@ proof that a remote device can reach it.
 
 Settings → Security → **Browser Certificate Setup** provides an explicit public-root check, SHA-256 fingerprint and download, with device installation instructions. Compare the fingerprint using the server command below before trusting it. This does not modify device trust or bypass a browser warning; the dashboard must first be reachable. The fixed `/local-ca.crt` endpoint serves only Caddy’s public root and returns unavailable when no local root exists. It never serves private keys.
 
-To export only the current public Caddy root on an updated Ubuntu installation:
+To export only the current public Caddy root on an updated controller:
 
 ```bash
 sudo iclusters certificate > iclusters-root.crt
@@ -268,7 +272,7 @@ to create and remove certificate-validation TXT records and renew the certificat
 Allow outbound HTTPS and DNS queries from Caddy to its public propagation resolvers
 (1.1.1.1 and 1.0.0.1).
 
-1. Add a LAN or VPN DNS record for the chosen hostname pointing to the VM's private
+1. Add a LAN or VPN DNS record for the chosen hostname pointing to the controller's private
    address. Keep inbound access restricted to the intended users. No public A record,
    Cloudflare proxy or inbound port forwarding is required for DNS validation.
 2. At the interactive installer prompt, enter the hostname. For a scripted installation:

@@ -32,9 +32,9 @@ json.dump(dict(current=current, latest=latest, available=available == 'true', st
 PYTHON
   mv /var/lib/iclusters-updater/update-status.json.tmp /var/lib/iclusters-updater/update-status.json
 }
-trap 'rm -f runtime/update-request.json; state=failed; progress_stage="Update failed; inspect updater logs"; message="Update failed. Run sudo journalctl -u iclusters-updater -n 100 on Ubuntu."; write_status' ERR
+trap 'rm -f runtime/update-request.json; state=failed; progress_stage="Update failed; inspect updater logs"; message="Update failed. Run sudo journalctl -u iclusters-updater -n 100 on the controller."; write_status' ERR
 if ! git symbolic-ref --quiet HEAD >/dev/null; then
-  message='Pinned release: update manually on Ubuntu.'
+  message='Pinned release: update manually on the controller.'
   rm -f runtime/update-request.json
   write_status
   exit 0

@@ -4,7 +4,7 @@ Settings → About shows the API package version, build number, UTC build date a
 
 The API build writes `apps/api/src/build-info.json`. This generated file is ignored by Git and copied/generated inside the API image. About links to the recorded GitHub checks for the installed source revision. When the build omits its revision, About links to the project’s verification history so operators can look up a known checkout. Its build values remain fixed across process restarts. Running source without a generated file reports development/unembedded metadata rather than inventing a build time.
 
-Standard Ubuntu install and `sudo iclusters update` source `deployment/build-env.sh` immediately before building. It supplies the checked-out Git revision and current UTC time automatically. The host updater invokes that same update command. No manual environment-file edits are needed.
+The standard Ubuntu and Debian CT installer and `sudo iclusters update` source `deployment/build-env.sh` immediately before building. It supplies the checked-out Git revision and current UTC time automatically. The host updater invokes that same update command. No manual environment-file edits are needed.
 
 The default build number is the UTC build timestamp in `YYYYMMDDHHmmss` format, followed by the first 12 revision characters when available. It is a build identifier, not a sequential release counter. The semantic application version is separate.
 

@@ -9,7 +9,7 @@ result, including when timestamps fall within the same second. Older workers
 can still complete checks through their changed checkedAt timestamp.
 
 Updating the repository/container alone does not replace a previously installed
-host updater script. On the i-Clusters Ubuntu controller, run the existing
+host updater script. On the i-Clusters controller, run the existing
 `deployment/setup-updater.sh` from the updated checkout using the installation’s
 normal privileged procedure. This installs the revised worker and its existing
 systemd units, reapplies the HTTPS configuration and may recreate the Caddy/API

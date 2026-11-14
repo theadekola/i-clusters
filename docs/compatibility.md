@@ -4,7 +4,7 @@ Applies to 1.0.0. Developed by The Adekola Labs.
 
 | Component | Supported workflows and release checks | What to check on your installation |
 | --- | --- | --- |
-| Controller runtime | Node.js 24; PostgreSQL 17; Linux Docker/Compose deployment; Caddy 2.11.7 HTTPS with patched x/net and go-jose dependencies; compiled React frontend | CI uses an isolated Ubuntu runner. Customer Ubuntu/kernel/Engine/Compose versions must be recorded and checked. |
+| Controller runtime | Node.js 24; PostgreSQL 17; Docker Engine and Compose on an Ubuntu VM or an [unprivileged Debian 12/13 CT](debian-lxc-install.md); Caddy 2.11.7 HTTPS with patched x/net and go-jose dependencies; compiled React frontend | The Debian LXC install check builds the stack, checks HTTPS and restarts the CT. For a deployment, record the controller OS, host kernel, Docker Engine and Compose versions. |
 | Proxmox VE | API-token inventory and supported VM/LXC, storage, backup, restore, task and network routes; paired Linux node connector | Record your VE and guest OS versions. Exercise the token permissions for the actions you enable on a disposable guest. |
 | Docker | Paired Linux hosts/eligible Linux Proxmox guests or authenticated direct Engine API; image updates for supported lifecycle/configuration | Shared namespaces/lifecycle dependencies, local-only images and digest-pinned tag checks have explicit restrictions. Compose file deployment and coordinated stack migration are not supplied. |
 | TrueNAS | HTTPS JSON-RPC integration for 25.04+ method families, with method-dependent compatibility | Check your SCALE version, credentials and certificate trust. Test each enabled write operation on a disposable dataset. |
