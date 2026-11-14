@@ -1,4 +1,5 @@
 import {mkdirSync,readFileSync} from 'node:fs';
+import {gzipSync} from 'node:zlib';
 import {createHash,X509Certificate} from 'node:crypto';
 /** Read-only browser audit using fixture APIs. Install Playwright + Chromium to run:
  * node scripts/audit-layout.mjs
@@ -228,6 +229,35 @@ try{
  });
  let errors=[];page.on('pageerror',e=>errors.push(e.stack||e.message));
  page.on('console',message=>{if(message.type()==='error')errors.push(message.text())});
+ // Run once on the cold production entry, before any other route warms this browser context.
+ if(process.env.LAYOUT_COLD_START==='1' || process.env.LAYOUT_PRODUCTION==='1' && process.env.LAYOUT_CHECK_TYPOGRAPHY==='1'){
+  assert.equal(process.env.LAYOUT_PRODUCTION, '1', 'Cold startup requires the production build');
+  const dist=path.join(root,'dist');
+  const shell=readFileSync(path.join(dist,'index.html'),'utf8');
+  const entryAssets=new Set([...shell.matchAll(/(?:src|href)="(\/assets\/[^"?]+\.(?:js|css))"/g)].map(match=>match[1]));
+  assert.ok([...entryAssets].some(asset=>asset.endsWith('.js')) && [...entryAssets].some(asset=>asset.endsWith('.css')), 'Missing production entry assets');
+  const entryBytes=[...entryAssets].reduce((total,asset)=>total+gzipSync(readFileSync(path.join(dist,asset))).length,0);
+  assert.ok(entryBytes<=300*1024, `Preloaded scripts and styles exceed the 300 KiB gzip budget (${entryBytes} bytes)`);
+  await page.setViewportSize({width:390,height:844});
+  const client=await context.newCDPSession(page);
+  await client.send('Network.enable');
+  await client.send('Network.setCacheDisabled',{cacheDisabled:true});
+  await client.send('Network.emulateNetworkConditions',{offline:false,latency:100,downloadThroughput:500000,uploadThroughput:125000});
+  await client.send('Emulation.setCPUThrottlingRate',{rate:4});
+  try{
+   await page.goto(base,{waitUntil:'commit'});
+   await page.locator('.overview-sample').waitFor({timeout:20000});
+   await page.getByRole('button',{name:copy('Docker Containers'),exact:true}).waitFor({timeout:5000});
+   const usableMs=Math.round(await page.evaluate(()=>performance.now()));
+   console.log(`Cold mobile dashboard: ${entryBytes} gzip entry bytes, ${usableMs} ms to data and actions.`);
+   assert.ok(usableMs<=15000, `Cold mobile dashboard exceeded the 15 second usable-screen budget (${usableMs} ms)`);
+  }finally{
+   await client.send('Emulation.setCPUThrottlingRate',{rate:1});
+   await client.send('Network.emulateNetworkConditions',{offline:false,latency:0,downloadThroughput:-1,uploadThroughput:-1});
+   await client.send('Network.setCacheDisabled',{cacheDisabled:false});
+   await client.detach();
+  }
+ }
  for(const width of widths){
   console.log('Checking '+auditLocale+' at '+width+'px.');
   await page.setViewportSize({width,height:1000});

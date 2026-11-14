@@ -42,10 +42,6 @@ if(location.pathname==='/connection-check.html'){
 
 import './components/distribution-summary.css';
 
-import './components/cluster-topology.css';
-
-import './components/VmCreateWizard.css';
-
 import './connection-notice.css';
 
 import './responsive-layout.css';
