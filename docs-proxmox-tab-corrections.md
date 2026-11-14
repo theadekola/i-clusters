@@ -10,4 +10,4 @@
 - Changing task-log pages clears old contents, shows loading, and disables download until the requested offset has arrived. Late responses from a previous selection/page are ignored.
 - Shared archive deduplication occurs after node scoping. All Nodes still counts an archive once, while either eligible node retains its own archive identity for restore navigation.
 
-Validation uses rendered React fixtures, simulated provider writes and full API/frontend regression suites. No live guests, storage configuration, network interfaces or backups were changed. TypeScript and the production build pass, with the existing bundle-size warning. Real provider and device verification remains necessary after deployment.
+Validation uses rendered React fixtures, simulated provider writes and full API/frontend regression suites. No live guests, storage configuration, network interfaces or backups were changed. TypeScript and the production build pass, with the existing bundle-size warning. Use the installation checklist to record how these tabs behave with your provider versions and devices.

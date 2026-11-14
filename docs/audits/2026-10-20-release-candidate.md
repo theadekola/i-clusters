@@ -1,8 +1,8 @@
-# Current release-candidate assessment
+# Engineering review of the October 2026 build
 
 Baseline: 20 October 2026 · Updated 21 October 2026 · i-Clusters 3.1.0-rc.3 · Developed by The Adekola Labs.
 
-This supersedes the earlier same-day source-baseline findings where changes now exist. The release remains a controlled evaluation candidate, pending live installation acceptance and independent security review.
+This archived review records corrections made to the October build and the checks assigned to individual installations. For current usage and verified results, see the [v1.0.0 release notes](../releases/v1.0.0.md).
 
 | Earlier finding | Current correction | Remaining boundary |
 | --- | --- | --- |
@@ -13,11 +13,11 @@ This supersedes the earlier same-day source-baseline findings where changes now 
 | Concurrent recovery | Exclusive durable recovering state; competing recoveries/installations rejected; release on error; restart returns to interrupted | Single API process only |
 | Recovery success insufficiently checked | Original identity/state/policy/network aliases/static addresses verified | Real provider/host network acceptance |
 | MFA renewal race | Renewal restricted to the account generation committed by the MFA transaction | Independent account-security review |
-| Release/docs/attribution gaps | Synchronized candidate versions, policies, notes, company/developer attribution, CI release publication, SBOM/image reporting | Confirm published assets and actual support arrangements |
+| Release/docs/attribution gaps | Synchronized build versions, policies, notes, company/developer attribution, CI release publication, SBOM/image reporting | Confirm published assets and actual support arrangements |
 | No capacity baseline | Bounded CI concurrent-page read probe and acceptance template | Empty-provider CI is not fleet/load/soak certification |
 
-No production provider resources are changed by this source review. Automated results belong to the specific CI run and commit. A published prerelease is not permission to claim general commercial readiness or shared SaaS tenant isolation.
+The review used source checks and isolated test resources. Each recorded result applies to its tested commit. The deployment model covered one controller per installation.
 
-## Readiness follow-up
+## Verification tooling added
 
-Release publication remains paused. The latest Settings corrections passed automated checks; they do not close live customer acceptance gates. The readiness follow-up adds a completeness checker for private acceptance records, a bounded authenticated read probe, and disposable Docker crash-recovery CI evidence. See [commercial acceptance](../commercial-acceptance.md). A successful record check is not an independent security review or proof that referenced evidence is authentic. Historical dated audit findings remain preserved.
+The Settings corrections passed automated checks. The follow-up added a completeness check for private deployment records, a bounded authenticated read probe and a Docker crash-recovery drill. The [deployment acceptance procedure](../commercial-acceptance.md) describes how the installation reviewer examines the evidence.

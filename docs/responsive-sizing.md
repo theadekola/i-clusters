@@ -55,7 +55,7 @@ checking these layouts. Visit each primary route and its tab query strings at
    comfortable and compact appearance, the desktop collapsed sidebar, and the
    mobile navigation toggle.
 5. Double metric text sizes to check that cards expand without clipping text.
-   Real Safari/iOS keyboard and browser zoom behavior still requires device QA.
+   On an iPhone, open a form in Safari and check the on-screen keyboard and browser zoom.
 
 Run `npm test` and `npm run build` after changing shared sizing or its consumers.
 

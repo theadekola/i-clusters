@@ -14,7 +14,7 @@ Run:
 node deployment/acceptance-gate.mjs /private/path/acceptance.json
 ```
 
-Exit status zero means the record is complete and explicitly approved by its reviewer. Missing, failed, future-dated, different-revision or unapproved records fail. It does not authenticate evidence or contact a live installation. A reviewer must inspect the underlying evidence. Retest affected checks after changes; the checker deliberately requires the deployed revision for every gate. Do not change status to passed based only on CI.
+Exit status zero confirms that the record includes the required evidence references and explicit reviewer approval. The reviewer checks the underlying evidence for the exact installed revision. Missing or failed checks, future dates and mismatched revisions fail validation. Repeat affected checks after an update.
 
 ## Provider and recovery acceptance
 

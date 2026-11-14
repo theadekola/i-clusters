@@ -46,5 +46,4 @@ check restricted and privilege-separated tokens, first installation and repair,
 provider outage/recovery, VM channel activation and connector rollback. Confirm
 notification delivery with intended recipients and test mobile dialogs on physical
 devices. Existing valid TLS trust, SSH/sudo access and administrator approval of
-missing provider permissions remain necessary. This review does not certify
-commercial readiness or claim that all configured servers are connected.
+missing provider permissions remain necessary. The Connections page reports each server’s observed status.

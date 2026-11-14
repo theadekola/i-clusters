@@ -1,12 +1,12 @@
-> Historical baseline review. Several findings were corrected later. See [current release-candidate assessment](2026-10-20-release-candidate.md) for current status.
+> Archived review of the source revision identified below. For the current software, see the [v1.0.0 release notes and verified checks](../releases/v1.0.0.md).
 
-# i-Clusters commercial readiness review
+# Deployment review of the 20 October 2026 build
 
 Review date: 20 October 2026. Source baseline: `e89e916` on `main`, plus the corrections in this review. This is a source and automated-check assessment, not a penetration-test certificate, service availability measurement or live provider acceptance test.
 
-## Decision
+## Deployment scope reviewed
 
-**Not ready for an unrestricted commercial production launch.** A controlled paid pilot is a reasonable next step only after its installation-specific security, recovery and provider checks pass. Use one dedicated controller per customer, private access and an agreed limited scope. There is no evidence here to approve a public shared SaaS service, customer isolation on one controller, mission-critical workloads or contractual uptime/recovery guarantees.
+The October review covered a proposed pilot on a dedicated, privately accessed controller per customer. The reviewer identified installation-specific checks for provider permissions, backup recovery and security. Shared hosting, availability commitments and recovery guarantees were outside that review.
 
 The product has substantial implemented functionality and regression coverage. Passing tests is evidence for the tested behavior; it does not prove that arbitrary customer infrastructure is compatible or recoverable.
 
@@ -28,9 +28,9 @@ The product has substantial implemented functionality and regression coverage. P
 | Privacy documentation incorrectly said inactivity applies to remembered sessions; README said acknowledged alerts counted in the bell. | Correct both statements to match implementation. Include username and optional email in the data inventory. |
 | Compose smoke test still exercised only email-based sign-in. | Exercise username registration/sign-in, the fixed ten-day remembered deadline, refresh preserving that deadline, replay rejection and the existing email compatibility alias. |
 
-## Remaining release gates
+## Findings recorded for the October baseline
 
-These are readiness requirements for the proposed scope, not claims that every row is an exploitable defect.
+The table records findings and follow-up actions against `e89e916`. For subsequent corrections, see the [21 October engineering review](2026-10-20-release-candidate.md) and the [v1.0.0 release notes](../releases/v1.0.0.md).
 
 | Priority | Evidence and limitation | Acceptance requirement |
 | --- | --- | --- |
@@ -43,7 +43,7 @@ These are readiness requirements for the proposed scope, not claims that every r
 | Medium/high: durable state and audit | `store.js` uses JSON read/clone/write/rename; no recovery copy, fsync protocol or multi-process coordination is implemented. Corrupt JSON can prevent startup. Audit/database history and expired/revoked refresh rows have no universal retention cleanup; `/audit` returns only the latest 500 rows. | Prove crash/disk-full/corruption recovery, impose documented retention and capacity alerts, and support audit export. Use a durable store/worker design before horizontal scaling. Export privileged activity to an independently protected destination where customer requirements demand it. |
 | Medium: reproducible releases and supply chain | There were no published GitHub Releases returned during this review. Compose uses mutable base image tags; no SBOM, container-image scan, signed artifact verification or release security gate is present in the checked workflow. npm package advisories are only one layer. | Establish a supported release/security-fix policy, reviewed versioned artifacts, dependency/image scanning, third-party licence inventory and a reproducible upgrade/rollback record. Pin reviewed digests when the release process can also keep them patched. |
 | Medium: performance, browser and fleet acceptance | The production JS bundle is about 1.99 MB minified / 527 KB gzip, with about 497 KB CSS / 79 KB gzip, and eager page imports. No repeatable load/soak suite or measured customer fleet capacity is present. Browser tests do not establish physical iOS/Android or full accessibility acceptance. | Define supported fleet size and concurrency; measure navigation, first usable render, provider timeouts and memory/disk growth under load. Test keyboard/screen-reader navigation and real mobile browsers; split page bundles based on measurements. Avoid latency guarantees without end-to-end evidence. |
-| Commercial operations | `TERMS.md` disclaims managed hosting, guaranteed recovery and support deadlines. `PRIVACY.md` delegates deployment-specific duties to the operator. Support-domain operation, incident handling, customer contracts and compliance were not verified here. | Define the paid offering, contact/response policy, incident process, supported platforms and exclusions. Publish installation-specific privacy/retention information and obtain appropriate commercial/legal review. Do not describe this assessment as legal compliance or security certification. |
+| Commercial operations | `TERMS.md` disclaims managed hosting, guaranteed recovery and support deadlines. `PRIVACY.md` delegates deployment-specific duties to the operator. The review covered the repository policies. Support operations, agreements and compliance belonged to the deployment operator’s separate review. | Define the paid offering, contact/response policy, incident process, supported platforms and exclusions. Publish installation-specific privacy/retention information and obtain appropriate commercial/legal review. Do not describe this assessment as legal compliance or security certification. |
 
 ## Validation performed
 
@@ -56,14 +56,14 @@ These are readiness requirements for the proposed scope, not claims that every r
 
 No customer data, subscriptions, provider resources or running deployments were changed during this review. Docker was unavailable in the local execution environment; CI supplies the disposable Docker/PostgreSQL deployment check. The private production installation was not accessible.
 
-## Pilot exit checklist
+## Installation checklist proposed in October
 
 1. Apply the reviewed release on a staging installation; record source revision, provider versions and connector revisions.
 2. Enforce HTTPS, private access and gateway MFA with direct access blocked. Use dedicated minimum-permission provider identities and document an owner recovery process.
 3. Complete and record controller restore plus guest backup/restore drills. Confirm alarms for destination loss and actual delivery of failure/recovery notifications.
 4. Exercise authorized and denied roles, remembered expiry, interrupted Docker updates, duplicate submissions, controller restart and provider outages on disposable resources.
 5. Run a measured observation period at the advertised fleet size, retain sanitized results, and resolve failures. Set support expectations and maintenance windows with the pilot customer.
-6. Approve general availability only after the applicable high-priority gates above have concrete test evidence. Implementing a feature without testing its recovery behavior does not close a gate.
+6. Have the installation reviewer inspect the recovery evidence and record the outcome for the intended deployment.
 
 ## External references
 

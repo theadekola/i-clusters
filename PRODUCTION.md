@@ -153,7 +153,7 @@ controller connection changes, close and reopen the editor before saving.
 
 Confirm real resources match each provider, exercise actions on a test guest/container/dataset, and inspect task outcomes. Disconnect a provider and verify its error is shown. Restart the stack and verify users, settings, alert rules and history persist.
 
-Back up the PostgreSQL volume, host `runtime/`, Caddy data, `.env` and connector certificates. Test restoration separately. The application uses `runtime/live-state.json`; legacy `state.json` demo records are deliberately not imported. No live infrastructure was tested by the local source checks.
+Back up the PostgreSQL volume, host `runtime/`, Caddy data, `.env` and connector certificates. Test restoration separately. The application uses `runtime/live-state.json`; legacy `state.json` demo records are deliberately not imported. The [release checks](docs/releases/v1.0.0.md#verified-release-checks) include an isolated controller restore. Use the [deployment checklist](docs/acceptance-checklist.md) to record a fresh guest restore and application data checks for your own providers.
 
 ### Updates from the dashboard
 

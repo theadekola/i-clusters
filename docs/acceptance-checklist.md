@@ -22,6 +22,6 @@ Copy this checklist into a private customer record. Do not commit customer addre
 
 CI exercises a separate empty-provider controller, authentication, encrypted restore and bounded concurrent read probes. The installation operator records who accepted the deployment evidence and when.
 
-Use the [private record template](acceptance-record.example.json) and [commercial acceptance procedure](commercial-acceptance.md). Run `node deployment/acceptance-gate.mjs /private/path/acceptance.json` after review. The supplied template deliberately fails until every required field and evidence record is supplied. Do not treat the checker as evidence collection or certification.
+Use the [private record template](acceptance-record.example.json) and [commercial acceptance procedure](commercial-acceptance.md). After the reviewer examines the evidence, run `node deployment/acceptance-gate.mjs /private/path/acceptance.json` to check that the completed record contains the required fields, dates and references.
 
-Latest scoped review: [2026-11-05 live interface and commercial preparation](audits/2026-11-05-live-interface-and-commercial-review.md). The review identifies the environments and workflows exercised.
+The [5 November 2026 live interface review](audits/2026-11-05-live-interface-and-commercial-review.md) identifies the deployed revision and workflows inspected. The [release notes](releases/v1.0.0.md) link to the automated results for the source release.

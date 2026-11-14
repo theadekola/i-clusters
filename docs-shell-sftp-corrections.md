@@ -10,4 +10,4 @@ SFTP upload retries contain only the failed file and files not yet attempted. Su
 
 Browser downloads are limited to 32 MiB. A remote stat checks size and regular-file status before reading. The cumulative limit is checked during transfer too, in case the file grows. Empty reads without EOF stop with an error. Use a dedicated SFTP client for larger transfers. The browser still buffers allowed downloads; this change bounds memory rather than adding streaming.
 
-Validation uses a local SSH/SFTP fixture server, rendered React components, simulated unsupported browser APIs and transfer fixtures. No real infrastructure or remote files are changed. Device-specific clipboard/fullscreen behavior still needs checking on the deployed app.
+Validation uses a local SSH/SFTP fixture server, rendered React components, simulated unsupported browser APIs and transfer fixtures. No real infrastructure or remote files are changed. Check clipboard permissions and fullscreen controls in each browser used to access the deployed app.
