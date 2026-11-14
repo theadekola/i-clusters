@@ -150,7 +150,7 @@ export async function auditClusterReports({base,owner,profile,tls}){
        await inspect(pathname+'/'+tab+'/'+label,'',{region,bar,label});
       }
      }
-     const refresh=page.locator('main').getByRole('button',{name:/^refresh(?:\s|$)/i}).first();
+     const refresh=page.locator('header.topbar .global-refresh');
      if(await refresh.isVisible()){
       try{await refresh.click({timeout:1000});refreshes++}
       catch(error){skippedRefresh.push({scopeName,pathname,tab,message:error.name})}

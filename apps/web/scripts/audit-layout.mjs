@@ -12,8 +12,7 @@ const languageChoices=[
  ['es-ES','ES','Español','Resumen'],
  ['de-DE','DE','Deutsch','Übersicht'],
  ['pt-PT','PT','Português','Visão geral'],
- ['en-US','EN','English (US)','Overview'],
- ['en-GB','EN','English (UK)','Overview'],
+ ['en-GB','EN','English','Overview'],
 ];
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import path from 'node:path';
@@ -428,17 +427,15 @@ try{
    if(process.env.LAYOUT_SCREENSHOTS){mkdirSync(process.env.LAYOUT_SCREENSHOTS,{recursive:true});await page.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-${route.replace(/[^a-z0-9]/gi,'_')}.png`,fullPage:true});}
 
    if(checkRefresh){
-    const buttons=page.locator('button.refresh-button:visible');
-    for(let index=0;index<await buttons.count();index++){
-     const button=buttons.nth(index),label=(await button.getAttribute('aria-label'))||await button.innerText();
-     if(!/Refresh|Scan Disks|Recheck Connections|Check for Updates/i.test(label)||!await button.isEnabled())continue;
-     const before=readCount;await button.click();
-     assert.equal(await button.getAttribute('data-refreshing'),'true',`${route}: ${label} should show progress`);
-     const glyph=button.locator('.lucide-refresh-cw,.lucide-refresh-ccw').first();
-     assert.notEqual(await glyph.evaluate(e=>getComputedStyle(e).animationName),'none',`${route}: ${label} should spin`);
-     await page.waitForFunction(()=>!document.querySelector('button.refresh-button[aria-busy="true"]'),{},{timeout:10000});
-     assert.ok(readCount>before,`${route}: ${label} should request fresh data`);refreshControls++;
-    }
+    const button=page.locator('.cluster-switch-button + .global-refresh');
+    assert.equal(await button.count(),1,route+' has one header refresh');
+    assert.equal(await page.locator('main').getByRole('button',{name:/^Refresh(?:\s|$)/i}).count(),0,route+' has no duplicate refresh action');
+    const before=readCount;
+    await button.click();
+    assert.equal(await button.getAttribute('data-refreshing'),'true',route+' shows refresh progress');
+    await page.waitForFunction(()=>document.querySelector('.global-refresh')?.getAttribute('aria-busy')==='false');
+    assert.ok(readCount>before,route+' requests fresh data');
+    refreshControls++;
    }
 
   }
@@ -754,7 +751,7 @@ try{
    for(const control of [trigger,profile]){await page.mouse.move(0,0);await control.evaluate(e=>e.blur());assert.equal(await control.evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)');assert.ok((await control.boundingBox()).width>=40)}
    await trigger.click();await page.keyboard.press('End');assert.equal(await page.locator('#header-language-options [data-locale="pt-PT"]').evaluate(e=>e===document.activeElement),true);await page.keyboard.press('Escape');assert.equal(await trigger.evaluate(e=>e===document.activeElement),true);
    for(const [locale,code,,title] of languageChoices){
-    await trigger.click();const menu=page.locator('#header-language-options');assert.equal(await menu.locator('[role=option]').count(),6);assert.equal(await menu.locator('img').count(),0);const box=await menu.boundingBox();assert.ok(box.x>=0&&box.x+box.width<=width,'Language dropdown stays in the viewport: '+JSON.stringify({width,box,style:await menu.evaluate(e=>({width:getComputedStyle(e).width,minWidth:getComputedStyle(e).minWidth,position:getComputedStyle(e).position,right:getComputedStyle(e).right,padding:getComputedStyle(e).padding}))}));
+    await trigger.click();const menu=page.locator('#header-language-options');assert.equal(await menu.locator('[role=option]').count(),5);assert.equal(await menu.locator('img').count(),0);const box=await menu.boundingBox();assert.ok(box.x>=0&&box.x+box.width<=width,'Language dropdown stays in the viewport: '+JSON.stringify({width,box,style:await menu.evaluate(e=>({width:getComputedStyle(e).width,minWidth:getComputedStyle(e).minWidth,position:getComputedStyle(e).position,right:getComputedStyle(e).right,padding:getComputedStyle(e).padding}))}));
     if(process.env.LAYOUT_SCREENSHOTS&&locale==='fr-FR')await page.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-header-language-menu.png`});
     await menu.locator(`[data-locale="${locale}"]`).click();await page.getByRole('heading',{name:title,exact:true}).waitFor();assert.equal(await trigger.innerText(),code);assert.equal(await page.evaluate(()=>localStorage.getItem('iclusters_language')),locale);assert.equal(await page.evaluate(()=>localStorage.getItem('iclusters_access_token')),'layout-fixture');assert.equal(await trigger.evaluate(e=>e===document.activeElement),true);
     await page.reload();await page.getByRole('heading',{name:title,exact:true}).waitFor();assert.equal(await trigger.innerText(),code);
@@ -767,7 +764,7 @@ try{
   }
   if(process.env.LAYOUT_CHECK_LANGUAGES==='1'){
    for(const [locale,code,name,title] of languageChoices){
-    await page.goto(base+'settings?tab=Appearance');await page.locator('#interface-language').waitFor();const search=page.locator('.settings-page input[type=search],.settings-search input').first();await search.fill('language');const saved=await search.elementHandle();await page.locator('#interface-language').click();const options=page.locator('.language-options [role=option]');assert.equal(await options.count(),6);assert.equal(await options.locator('img').count(),0);await page.locator(`[data-locale="${locale}"]`).click();await page.waitForFunction(locale=>document.documentElement.lang===locale,locale);assert.equal(await saved.evaluate(element=>element===document.querySelector('.settings-page input[type=search],.settings-search input')) ,true,'Language switching retains the form element');assert.equal(await search.inputValue(),'language');assert.equal(await page.locator('#interface-language').innerText(),name);assert.equal(await page.evaluate(()=>localStorage.getItem('iclusters_access_token')),'layout-fixture');assert.equal(await page.evaluate(()=>document.documentElement.dir),'ltr');
+    await page.goto(base+'settings?tab=Appearance');await page.locator('#interface-language').waitFor();const search=page.locator('.settings-page input[type=search],.settings-search input').first();await search.fill('language');const saved=await search.elementHandle();await page.locator('#interface-language').click();const options=page.locator('.language-options [role=option]');assert.equal(await options.count(),5);assert.equal(await options.locator('img').count(),0);await page.locator(`[data-locale="${locale}"]`).click();await page.waitForFunction(locale=>document.documentElement.lang===locale,locale);assert.equal(await saved.evaluate(element=>element===document.querySelector('.settings-page input[type=search],.settings-search input')) ,true,'Language switching retains the form element');assert.equal(await search.inputValue(),'language');assert.equal(await page.locator('#interface-language').innerText(),name);assert.equal(await page.evaluate(()=>localStorage.getItem('iclusters_access_token')),'layout-fixture');assert.equal(await page.evaluate(()=>document.documentElement.dir),'ltr');
     await page.goto(base);await page.getByRole('heading',{name:title,exact:true}).waitFor();assert.equal(await page.evaluate(()=>localStorage.getItem('iclusters_language')),locale);
     if(locale==='fr-FR'){
      assert.deepEqual(await page.locator('.overview-controls select').nth(1).locator('option').allTextContents(),['Dernière heure','6 dernières heures','24 dernières heures']);

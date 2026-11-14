@@ -1,6 +1,7 @@
 import './brand-storage';
 export const themePresets=[
  {id:'ocean',name:'Ocean',detail:'Deep blue and cool cyan',accent:'#2563eb',surface:'#0b2035',background:'radial-gradient(ellipse at 80% 0%,#123e62 0,transparent 55%),linear-gradient(145deg,#081522,#06101d)'},
+ {id:'warm',name:'Warm Light',detail:'Ivory surfaces and warm copper accents',accent:'#985127',surface:'#302821',background:'linear-gradient(145deg,#352b23,#1a1613)'},
  {id:'aurora',name:'Aurora',detail:'Northern lights in teal and violet',accent:'#0d9488',surface:'#0b282b',background:'radial-gradient(ellipse at 10% 0%,#174d49 0,transparent 50%),radial-gradient(ellipse at 90% 20%,#382c59 0,transparent 55%),#07181d'},
  {id:'forest',name:'Forest',detail:'Rich evergreen and soft emerald',accent:'#15803d',surface:'#112b21',background:'radial-gradient(ellipse at 80% 0%,#26533a 0,transparent 60%),linear-gradient(150deg,#0e211b,#07130f)'},
  {id:'sunset',name:'Sunset',detail:'Warm amber over a plum horizon',accent:'#c2410c',surface:'#302029',background:'radial-gradient(ellipse at 90% 0%,#633a2c 0,transparent 55%),linear-gradient(140deg,#291a30,#170f20)'},

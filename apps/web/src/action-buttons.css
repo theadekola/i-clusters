@@ -132,3 +132,41 @@
 .monitoring-overview > .monitoring-actions {
   min-inline-size: 0;
 }
+
+/* Confirmations share a centred, scrollable action row across dialog forms. */
+:root[data-preset] .modal.modal :is(.modal-actions,.confirmation-actions,.header-actions,
+  .ssh-dialog-footer,.vm-create-footer,.storage-edit-actions,.storage-allocation-actions,
+  .configuration-actions,.rule-form-actions,.image-popup-actions,.action-row,.cluster-switch-actions) {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  justify-content: safe center;
+  grid-column: 1 / -1;
+  width: 100%;
+  gap: 8px;
+  overflow-x: auto;
+}
+:root[data-preset][data-theme][data-appearance] :is(
+  .modal-head > .icon-btn, .header-notification-title > .icon-btn, .nav-close,
+  .modal :is(.modal-actions,.confirmation-actions,.header-actions,.ssh-dialog-footer,
+    .vm-create-footer,.storage-edit-actions,.storage-allocation-actions,.configuration-actions,
+    .rule-form-actions,.image-popup-actions,.action-row,.cluster-switch-actions) > :is(button,a.btn)
+) {
+  --filled-action: 1;
+  flex: none;
+  width: auto;
+  min-height: 44px;
+  background: #2563eb !important;
+  color: white !important;
+  border-color: transparent !important;
+  border-radius: var(--app-radius,10px);
+  margin-inline: 0;
+}
+:root[data-preset][data-theme][data-appearance] .modal button.btn.danger {
+  background: #aa2637 !important;
+  color: white !important;
+}
+:root[data-preset][data-theme][data-appearance] :is(.modal-head,.header-notification-title) > .icon-btn {
+  min-width:44px;
+  margin-inline-start:auto;
+}

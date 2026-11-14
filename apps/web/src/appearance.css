@@ -36,9 +36,6 @@
 :root[data-preset] th{background:var(--theme-raised);color:var(--theme-muted)}
 :root[data-preset] :is(input,textarea)::placeholder{color:var(--theme-muted);opacity:1}
 .theme-selector{display:flex;flex-direction:column;gap:10px}.theme-selector select{width:100%;min-height:44px}.theme-selector small{color:var(--theme-muted);line-height:1.5}
-.appearance-workspace:has(.theme-selector){grid-template-columns:repeat(2,minmax(0,1fr))}
-.appearance-workspace:has(.theme-selector)>.appearance-column:last-child{display:flex;grid-column:auto}
-@media(max-width:900px){.appearance-workspace:has(.theme-selector){grid-template-columns:minmax(0,1fr)}}
 :root[data-preset] .pve-page .pve-quick button svg{background:var(--theme-highlight)}
 :root[data-preset] :is(.pve-stat,.metric-card,.storage-stat,.overview-stat){background:var(--theme-raised)!important;border-color:var(--theme-border)!important;color:var(--theme-text)}
 
@@ -77,3 +74,34 @@
   border-color: var(--theme-border) !important;
   color: var(--theme-text) !important;
 }
+
+/* Warm Light uses cream surfaces and dark copper accents throughout the workspace. */
+:root[data-preset="warm"][data-theme="light"] {
+  --theme-surface: #fffaf2;
+  --theme-input: #fffdf9;
+  --theme-raised: #f4e8da;
+  --theme-highlight: #f5dfc8;
+  --theme-border: #d5c2ab;
+  --theme-text: #38291f;
+  --theme-muted: #6e5948;
+}
+:root[data-preset="warm"][data-theme="light"] body {
+  background: radial-gradient(ellipse at 84% 3%,#f7e5d1,transparent 65%),#f8f2e9;
+}
+:root[data-preset="warm"][data-theme="light"] :is(.card,.settings-overview-card,.sidebar,.topbar,.modal,.profile-dropdown) {
+  background: var(--theme-surface) !important;
+  color: var(--theme-text);
+}
+:root[data-preset][data-theme] .content :is(.card,.settings-overview-card,.shell-host,.cluster-host-card,.backup-grid-card) {
+  box-shadow: var(--card-shadow);
+}
+.appearance-workspace .appearance-choice.selected {
+  box-shadow: inset 0 0 0 1px var(--app-accent), 0 3px 12px color-mix(in srgb,var(--app-accent) 18%,transparent);
+}
+@media (prefers-reduced-motion:no-preference) {
+  :root[data-animations="on"][data-transitions="on"] .theme-selector select:focus-visible,
+  :root[data-animations="on"][data-transitions="on"] .appearance-choice.selected {
+    transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  }
+}
+.appearance-workspace .card:has(.theme-selector) {outline: 2px solid transparent; outline-offset: -2px}

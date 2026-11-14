@@ -34,3 +34,20 @@
 .cluster-removal-form .confirmation-actions{margin-top:.5rem}
 @media(max-width:1100px){.cluster-host-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.cluster-host-grid{grid-template-columns:minmax(0,1fr)}}
+
+:root .modal.modal:has(> .cluster-switch-list) {
+  width: min(25rem, 100%);
+  min-width: 0;
+  padding: 14px;
+}
+.modal:has(> .cluster-switch-list) .modal-head {margin-bottom: 6px}
+.modal .cluster-switch-list {gap:0; max-height:min(46dvh,18rem); overflow:auto}
+:root[data-preset] .modal .cluster-switch-list > button.btn {
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--theme-border) !important;
+  border-radius: 0;
+}
+.topbar .global-refresh {flex:none; min-width:40px; min-height:40px}

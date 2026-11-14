@@ -11,7 +11,7 @@ async function fixture(failFrench=false){
  await act(async()=>{await module.initializeLocale();root.render(React.createElement(module.Fixture))});
  return {module,dom,choose:async locale=>{await act(async()=>module.setLocale(locale))},click:async el=>{assert.ok(el);await act(async()=>{el.dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true}));await new Promise(r=>setTimeout(r,0))})},close:async()=>{await act(async()=>root.unmount());dom.window.close();for(const [key,value] of Object.entries(old)){if(value===undefined)delete globalThis[key];else globalThis[key]=value}fs.rmSync(dir,{recursive:true,force:true})}};
 }
-test('five complete bundled language packs and six regional locale choices preserve every substitution',()=>{execFileSync(process.execPath,[path.join(web,'scripts/check-language-packs.mjs')],{stdio:'pipe'})});
+test('five complete bundled language packs and five language choices preserve every substitution',()=>{execFileSync(process.execPath,[path.join(web,'scripts/check-language-packs.mjs')],{stdio:'pipe'})});
 test('switching languages translates live controls, links and dialogs while retaining drafts and resource identities',async()=>{
  const page=await fixture();try{const input=document.querySelector('input'),checkbox=document.querySelector('[type=checkbox]');input.value='unsaved edit';await page.choose('fr-FR');assert.equal(document.querySelector('h1').textContent,'Vue d’ensemble');assert.equal(document.querySelector('.login-logo').textContent,'i-Clusters');assert.equal(document.querySelector('#interface-language').textContent,'Français');assert.equal(document.querySelector('a').textContent,'Tout afficher');assert.equal(localStorage.getItem('iclusters_language'),'fr-FR');assert.equal(document.querySelector('input'),input);assert.equal(input.value,'unsaved edit');assert.equal(document.querySelector('textarea').placeholder,page.module.translate('Password'));assert.equal(document.querySelector('textarea').value,'draft text');assert.equal(checkbox.checked,true);assert.equal(document.querySelector('select').value,'Running');assert.equal(document.querySelector('option').textContent,'En cours d’exécution');assert.equal(document.querySelector('.row-content-name').textContent,'Storage');assert.equal(document.querySelector('.row-content-name').title,'Storage');assert.ok(document.body.textContent.includes('/data/Settings'));assert.ok([...document.querySelectorAll('p')].some(p=>p.textContent==='Network'));assert.equal(document.querySelector('pre').textContent,'Delete Settings');
  await page.click(document.querySelector('.row-content-name'));assert.equal(document.querySelector('[role=dialog]'),null);assert.equal(document.querySelector('tr').getAttribute('aria-selected'),'true');await page.click(document.querySelector('.table-action'));assert.equal(document.querySelector('[role=dialog] h3').textContent,'Détails');const modalInput=document.querySelector('[role=dialog] input');modalInput.value='still editing';await page.choose('de-DE');assert.equal(document.querySelector('h1').textContent,'Übersicht');assert.equal(document.documentElement.dir,'ltr');assert.equal(document.querySelector('#interface-language').textContent,'Deutsch');assert.equal(document.querySelector('input'),input);assert.equal(input.value,'unsaved edit');assert.equal(document.querySelector('[role=dialog] input'),modalInput);assert.equal(modalInput.value,'still editing');assert.equal(document.querySelector('select').value,'Running');assert.equal(document.querySelector('.row-content-name').textContent,'Storage');
@@ -34,13 +34,16 @@ test('the header language code switches the live interface and stays synchronize
   await page.click(trigger);assert.equal(document.activeElement.dataset.locale,'en-GB');
   await act(async()=>document.activeElement.dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:'End',bubbles:true})));assert.equal(document.activeElement.dataset.locale,'pt-PT');
   await act(async()=>document.activeElement.dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true})));assert.ok(document.activeElement===trigger,'Language button regains focus');assert.equal(trigger.getAttribute('aria-expanded'),'false');
+  localStorage.setItem('iclusters_language','en-US');
+  await act(async()=>page.module.initializeLocale());
+  assert.equal(localStorage.getItem('iclusters_language'),'en-GB');
+  assert.equal(trigger.title,'English');
   const choices=[
     ['fr-FR','FR','Français','Vue d’ensemble'],
     ['es-ES','ES','Español','Resumen'],
     ['de-DE','DE','Deutsch','Übersicht'],
     ['pt-PT','PT','Português','Visão geral'],
-    ['en-US','EN','English (US)','Overview'],
-    ['en-GB','EN','English (UK)','Overview'],
+    ['en-GB','EN','English','Overview'],
    ];
   for(const [id,code,name,heading] of choices){
    await page.click(trigger);

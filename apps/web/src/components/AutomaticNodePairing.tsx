@@ -31,7 +31,7 @@ export default function AutomaticNodePairing({node,onComplete,onBusy,kind='proxm
       onReady={result=>{if(result.agentVerified&&!result.requiresPowerCycle)recheck()}}/></fieldset>}
    <div className="connection-setup-actions">
    {!agentSetupOpen&&<button type="button" className="btn primary" disabled={!secure||reading} onClick={()=>setAgentSetupOpen(true)}>Install QEMU Guest Agent</button>}
-   <RefreshButton indicator className="btn secondary" aria-busy={reading} disabled={agentBusy||reading} onClick={recheck}>Recheck Guest Agent</RefreshButton>
+   <RefreshButton local indicator className="btn secondary" aria-busy={reading} disabled={agentBusy||reading} onClick={recheck}>Recheck Guest Agent</RefreshButton>
    </div>
    {!agentBusy&&<p className="muted">Automatic agent installation supports Debian and Ubuntu. For ZimaOS or another appliance with a configured Docker HTTPS endpoint, use <Link to="/settings?tab=Connections&amp;setup=direct">Direct Docker API</Link>.</p>}
   </section>;
@@ -48,7 +48,7 @@ export default function AutomaticNodePairing({node,onComplete,onBusy,kind='proxm
  {kind==='docker'&&<label className="cluster-wide"><span><input type="checkbox" checked={installDocker} onChange={e=>setInstallDocker(e.target.checked)}/> Install Docker if missing on Debian or Ubuntu and start its service if needed.</span></label>}
  <label className="cluster-wide"><span><input aria-label="Approve automatic node pairing" type="checkbox" required checked={consent} disabled={busy||!!job} onChange={e=>setConsent(e.target.checked)}/> Install the connector and start its service on {node}.</span></label></>}</>}
  {job&&<p role={job.state==='failed'?'alert':'status'} className={job.state==='failed'?'cluster-wide error':'cluster-wide'}>{!['completed','failed','unverified','interrupted'].includes(job.state)&&<ReportLoading inline/>}{job.message}</p>}{error&&<p role="alert" className="cluster-wide error">{error}</p>}
- <div className="action-row">{!job&&<><button type="submit" className="btn primary" aria-busy={!!(busy||checking)} disabled={!secure||busy||checking||!target?.host||!fingerprint||!consent||!password||!username}>{busy?'Starting setup…':'Install, Pair & Verify Automatically'}</button><RefreshButton indicator type="button" className="btn secondary" aria-busy={reading||checking} disabled={busy} onClick={()=>{setRetry(r=>r+1);setPassword('')}}>Recheck Node</RefreshButton></>}
+ <div className="action-row">{!job&&<><button type="submit" className="btn primary" aria-busy={!!(busy||checking)} disabled={!secure||busy||checking||!target?.host||!fingerprint||!consent||!password||!username}>{busy?'Starting setup…':'Install, Pair & Verify Automatically'}</button><RefreshButton local indicator type="button" className="btn secondary" aria-busy={reading||checking} disabled={busy} onClick={()=>{setRetry(r=>r+1);setPassword('')}}>Recheck Node</RefreshButton></>}
  {(job?.state==='failed'||job?.state==='interrupted')&&<button type="button" className="btn secondary" onClick={()=>{
   setResumeJob(job.state==='interrupted'?job.id:'');
   if(job.action==='docker-missing'||job.action==='docker-start')setInstallDocker(true);

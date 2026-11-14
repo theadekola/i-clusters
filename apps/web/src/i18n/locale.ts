@@ -1,8 +1,7 @@
 import {useSyncExternalStore} from 'react';
 import manifest from './manifest.json';
 export const languages=[
- {id:'en-GB',nativeName:'English (UK)',dir:'ltr'},
- {id:'en-US',nativeName:'English (US)',dir:'ltr'},
+ {id:'en-GB',nativeName:'English',dir:'ltr'},
  {id:'fr-FR',nativeName:'Français',dir:'ltr'},
  {id:'es-ES',nativeName:'Español',dir:'ltr'},
  {id:'de-DE',nativeName:'Deutsch',dir:'ltr'},
@@ -11,19 +10,24 @@ export const languages=[
 export type Locale=typeof languages[number]['id'];
 type Pack=Record<string,string>;
 const storageKey='iclusters_language',listeners=new Set<()=>void>(),packs=new Map<Locale,Pack>();
-const loaders:Record<Exclude<Locale,'en-GB'|'en-US'>,()=>Promise<{default:Pack}>>={
+const loaders:Record<Exclude<Locale,'en-GB'>,()=>Promise<{default:Pack}>>={
  'fr-FR':()=>import('./packs/fr.json'),'es-ES':()=>import('./packs/es.json'),'de-DE':()=>import('./packs/de.json'),'pt-PT':()=>import('./packs/pt.json'),
 };
 let active:Locale='en-GB',requestVersion=0;
 export function getLocale(){return active}
-export function readSavedLocale():Locale{try{return languages.find(x=>x.id===localStorage.getItem(storageKey))?.id||'en-GB'}catch{return 'en-GB'}}
+export function readSavedLocale():Locale{
+ try{
+  const saved=localStorage.getItem(storageKey);
+  return languages.find(language=>language.id===saved)?.id||'en-GB';
+ }catch{return 'en-GB'}
+}
 const subscribe=(callback:()=>void)=>{listeners.add(callback);return()=>{listeners.delete(callback)}};
 export function useLocale(){return useSyncExternalStore(subscribe,getLocale,()=> 'en-GB' as Locale)}
 function apply(locale:Locale){active=locale;if(typeof document!=='undefined'){document.documentElement.lang=locale;document.documentElement.dir=languages.find(x=>x.id===locale)!.dir}listeners.forEach(callback=>callback())}
 export async function setLocale(locale:Locale){
  if(!languages.some(x=>x.id===locale))throw Error('Unsupported interface language.');
  const ticket=++requestVersion;
- if(locale!=='en-GB'&&locale!=='en-US'&&!packs.has(locale)){
+ if(locale!=='en-GB'&&!packs.has(locale)){
   const module=await loaders[locale]();
   if(Object.keys(module.default).length!==manifest.keyCount||Object.values(module.default).some(value=>typeof value!=='string'||!value.trim()))throw Error('The language pack could not be loaded.');
   packs.set(locale,module.default);
@@ -42,7 +46,7 @@ const caches=new Map<Locale,Map<string,string>>(),patterns=new Map<Locale,Patter
 const escape=(value:string)=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 const numeric=/^\{0\} [A-Za-z]{3,}$/;
 export function translate(text:string,locale:Locale=active):string{
- if(locale==='en-GB'||locale==='en-US'||!text||text.length>4096||!/[A-Za-z]/.test(text))return text;
+ if(locale==='en-GB'||!text||text.length>4096||!/[A-Za-z]/.test(text))return text;
  const pack=packs.get(locale);if(!pack)return text;
  let cache=caches.get(locale);if(!cache){cache=new Map();caches.set(locale,cache)}
  const previous=cache.get(text);if(previous!==undefined)return previous;
@@ -60,4 +64,4 @@ export function translate(text:string,locale:Locale=active):string{
  const output=result===undefined?text:prefix+result+suffix;
  if(cache.size>=5000)cache.clear();cache.set(text,output);return output;
 }
-export function template(key:string,locale:Locale=active){const pack=packs.get(locale);return locale==='en-GB'||locale==='en-US'||!pack||!Object.hasOwn(pack,key)?undefined:pack[key]}
+export function template(key:string,locale:Locale=active){const pack=packs.get(locale);return locale==='en-GB'||!pack||!Object.hasOwn(pack,key)?undefined:pack[key]}

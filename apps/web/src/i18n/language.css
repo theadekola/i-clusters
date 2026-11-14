@@ -14,3 +14,21 @@
 .profile-dropdown-identity{display:flex;flex-direction:column;gap:5px;padding:10px;overflow-wrap:anywhere;border-bottom:1px solid var(--theme-border);margin-bottom:4px}
 .profile-dropdown-identity small{color:var(--theme-muted)}
 @media(max-width:600px){.header-language-picker>.language-options,.header-language-picker>.language-error{position:fixed;top:66px;inset-inline-end:12px;max-width:calc(100% - 24px)}.topbar .top-actions{gap:6px;flex:none}}
+
+.language-settings .language-picker {width: min(100%, 18rem)}
+.language-picker .language-options {
+  width: min(13.5rem, calc(100vw - 24px));
+  max-height: min(15.5rem, 55dvh);
+  padding: 4px;
+  background: linear-gradient(145deg,color-mix(in srgb,var(--theme-highlight) 35%,var(--theme-raised)),var(--theme-raised));
+  box-shadow: 0 8px 20px rgb(0 0 0 / .2);
+}
+.language-picker .language-options > button {
+  min-height: 44px;
+  padding: 6px 10px;
+  gap: 8px;
+  border-radius: 7px;
+  font-size: .9rem;
+}
+.language-settings .language-trigger {min-height: 44px; padding: 8px 12px}
+.language-settings:has(.language-options) {overflow:visible;position:relative;z-index:31}

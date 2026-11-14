@@ -1,3 +1,4 @@
+import {PageRefreshContext} from './PageRefresh';
 import {createPortal} from 'react-dom';
 import BrandIcon from './BrandIcon';
 import {lockPageScroll} from '../scroll-lock';
@@ -51,7 +52,8 @@ export function Modal({open,onClose,title,children,success,closeDisabled=false,p
   const backdrop=<div className="modal-backdrop" onMouseDown={()=>close.current()}><div ref={dialog} className="modal" role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} onMouseDown={e=>e.stopPropagation()}>
     <div className="modal-head"><h3 id={titleId}>{title}</h3><button type="button" className="icon-btn" aria-label="Close dialog" disabled={closeDisabled} onClick={()=>close.current()}><X size={18}/></button></div>{success?<ConnectionSuccess message={success} onDone={()=>close.current()}/>:children}
   </div></div>;
-  return portal?createPortal(backdrop,document.body):backdrop;
+  const content=<PageRefreshContext.Provider value={null}>{backdrop}</PageRefreshContext.Provider>;
+  return portal?createPortal(content,document.body):content;
 }
 
 export function usePopupSuccess(open:boolean){
