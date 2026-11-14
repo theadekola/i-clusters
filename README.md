@@ -2,7 +2,7 @@
 
 <img src="apps/web/public/assets/iclusters-192.png" alt="i-Clusters logo" width="96"/>
 
-[Website](https://www.i-clusters.com) | [Support](https://www.i-clusters.com/support.html)
+[Website](https://www.i-clusters.com) | [Support](https://www.i-clusters.com/support.html) | [Donate](https://www.i-clusters.com/donate.html)
 
 **Self-hosted infrastructure management**
 
@@ -91,9 +91,31 @@ Direct access by LAN IP uses Caddy's local certificate authority. Install its pu
 
 ## Install in a Debian LXC container
 
-On Proxmox VE, create an unprivileged Debian 12 or 13 system container and enable **Nesting** and **keyctl**. Run the installer as root from the CT console. The [Debian CT installation guide](docs/debian-lxc-install.md) covers the template, storage, networking, installer commands and first sign-in.
+In Proxmox VE, create a dedicated **unprivileged** CT from a Debian 12 or 13 **standard** template. Give it a stable LAN address, a gateway and working DNS. With the CT stopped, open **Options → Features** and enable **Nesting** and **keyctl**. Enable **Start at boot** if you want the CT to start with its Proxmox host.
+
+Start the CT, open its **Console**, and sign in as **root**. Run these commands inside the Debian CT.
+
+```sh
+apt-get update
+apt-get install -y curl ca-certificates
+curl -fsSL https://raw.githubusercontent.com/theadekola/i-clusters/main/install.sh -o /tmp/iclusters-install.sh
+bash /tmp/iclusters-install.sh
+```
+
+At the hostname prompt, press **Enter** to use the CT’s LAN IP. For a publicly trusted certificate, enter a hostname in your Cloudflare-managed domain and follow the [trusted HTTPS setup](PRODUCTION.md#trusted-https-for-lan-or-vpn-users).
+
+On a fresh CT, the installer installs Docker Engine and Compose. If Docker is already installed, it needs the Compose plugin. The installer checks that Docker can start a container inside the CT, creates `/opt/i-clusters`, generates the deployment secrets and enables the service at boot. Check both services and the dashboard address from the CT console.
+
+```sh
+systemctl is-active docker i-clusters
+iclusters status
+```
+
+Look for two `active` results and four running services (`api`, `web`, `postgres` and `caddy`). The **Open i-Clusters** address is normally `https://CT-IP:6002`. For LAN IP access, [trust the controller’s certificate](PRODUCTION.md#automatic-lan-https-on-port-6002) on your device. Then open the installer’s private setup link and follow [First sign-in](#first-sign-in) to create the owner account. The [full Debian CT guide](docs/debian-lxc-install.md) includes sizing, an HTTPS health check and troubleshooting.
 
 ## First sign-in
+
+When signed in as root in the Debian CT, omit `sudo` from the commands below.
 
 When you use the controller’s LAN IP on an iPhone or iPad, you can set up HTTPS
 trust before opening the dashboard. From the controller console or a verified SSH
