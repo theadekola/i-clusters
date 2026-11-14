@@ -59,3 +59,9 @@
 .settings-card-heading>div{min-width:0;flex:1}.settings-card-heading h2,.settings-card-heading p{overflow-wrap:anywhere}
 
 .settings-overview-tabs.tabs{gap:8px;flex-wrap:wrap;margin:0 0 16px;padding-bottom:0}.settings-overview-tabs .tab{gap:8px;display:inline-flex;align-items:center}.settings-overview-tabs .tab>svg{flex:none}
+
+.notification-settings-options { display: grid; gap: 14px; min-width: 0; align-content: start; }
+.notification-settings-preferences form > label { display: grid; gap: 6px; margin-block: 12px; }
+.notification-settings-preferences form > .settings-toggle { display: flex; }
+.notification-quiet-times { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.notification-quiet-times input { width: 100%; min-width: 0; }

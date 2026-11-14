@@ -1,6 +1,6 @@
 # Notification channels and alert preferences
 
-Owners manage delivery in **Settings → Connections → Notifications**. Every channel has Setup, Enable and Test controls. Setup saves encrypted credentials on the i-Clusters server, without environment-file edits or a restart. Tests can use unsaved details after explicit confirmation; they do not save settings or enable automatic delivery.
+Owners manage delivery in **Settings → Integrations**. Every channel has Setup, Enable and Test controls. Setup saves encrypted credentials on the i-Clusters server, without environment-file edits or a restart. Tests can use unsaved details after explicit confirmation; they do not save settings or enable automatic delivery.
 
 | Channel | Setup fields | Provider setup |
 | --- | --- | --- |
@@ -35,9 +35,15 @@ These are exact categories, not minimum thresholds. The global master switch, ch
 
 The selection saves with the channel configuration when you press **Save Configuration**. Choosing it alone does not alter live settings. Existing single-category selections are preserved. Old saved configurations without a selection use All severities and recoveries. The API stores a canonical comma-separated string, for example `critical,warning,resolved`, in the channel’s `*_NOTIFICATION_FILTER` field; legacy `all` and single-category strings remain valid. Empty, repeated and invalid categories are rejected. Filters apply both when creating queue entries and before retrying pending entries. Changing a filter pauses ineligible retries; it does not resend messages already delivered.
 
-## Separate and readable alerts
+## Delivery timing and history
 
-i-Clusters sends each alert/recovery separately, with its title, source, details and timestamp. Discord uses one embed per condition, with red critical, amber warning, blue information, grey unknown and green recovery cards. Slack wraps structured blocks in a single attachment with a matching colour bar. Teams uses an Adaptive Card with a red, amber, blue or green title (unknown uses the host’s default colour). SMTP includes an escaped HTML card with a matching border plus plain text. Telegram, Pushover, Gotify and IFTTT do not offer arbitrary coloured card borders through these APIs, so every message has a matching coloured status marker and status text instead. Recoveries always use green regardless of the previous severity. Display and exact colours depend on the receiving app and theme.
+In **Notification Preferences**, select the pencil to edit and the save icon to apply changes. The default sends individual alerts on the next queue run. Quiet hours use UTC and can cross midnight. Digests group up to five eligible entries per channel after each selected interval, counted from midnight UTC. A quiet period holds eligible deliveries until it ends. Explicit channel tests send immediately.
+
+Repeat intervals send reminders for active alerts after a successful delivery. Acknowledging or resolving an alert stops reminders. **Delivery History** opens retained delivery attempts, including test results and reminders. Search or filter by severity, channel, delivery status and date range.
+
+## Individual alert messages
+
+With individual delivery, i-Clusters sends each alert or recovery separately, with its title, source, details and timestamp. Discord uses one embed per condition, with red critical, amber warning, blue information, grey unknown and green recovery cards. Slack wraps structured blocks in a single attachment with a matching colour bar. Teams uses an Adaptive Card with a red, amber, blue or green title (unknown uses the host’s default colour). SMTP includes an escaped HTML card with a matching border plus plain text. Telegram, Pushover, Gotify and IFTTT do not offer arbitrary coloured card borders through these APIs, so every message has a matching coloured status marker and status text instead. Recoveries always use green regardless of the previous severity. Display and exact colours depend on the receiving app and theme.
 
 Recovery cards identify the previous condition as historical, rather than presenting its old error as a current failure. Existing already delivered messages are not rewritten. Long titles/details are bounded to provider payload limits. Discord mentions are disabled, Slack fields use plain-text blocks, and email HTML escapes alert content.
 

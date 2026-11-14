@@ -123,10 +123,10 @@ function OwnerConnections({navigation}:{navigation?:ReactNode}){
  {setup==='proxmox-node'&&<PairConnector kind="proxmox" onPaired={refresh} onComplete={gotoSetup}/>}
  {setup==='docker'&&<><PairConnector kind="docker" onPaired={refresh} onComplete={()=>choose('')}/><details><summary>Advanced connection methods</summary><p>Use an existing Docker HTTPS API with client certificates.</p><button type="button" className="btn secondary" onClick={()=>choose('direct')}>Direct Docker API</button></details></>}
  {setup==='direct'&&<><p>Use an existing trusted Docker HTTPS endpoint and client certificates. One direct endpoint is supported.</p><DockerConnection owner autoOpen onBack={()=>choose('docker')} label="Enter Direct Docker API" onConnected={()=>choose('')} refresh={refresh}/></>}
- {setup==='other'&&<><button className="btn secondary" onClick={()=>{choose('');setConfiguration('truenas')}}>Configure TrueNAS</button><button className="btn secondary" onClick={()=>{choose('');setConfiguration('ai')}}>Configure AI Assistant</button></>}
+ {setup==='other'&&<><button className="btn secondary" onClick={()=>{choose('');setConfiguration('truenas')}}>Configure TrueNAS</button><button className="btn secondary" onClick={()=>{navigate('/ai?setup=ai')}}>Configure AI Assistant</button></>}
  </div></Modal>
  {updateNode&&<ConnectorUpdateDialog key={updateNode.id} node={updateNode} onClose={()=>setUpdateNode(null)} onUpdated={()=>{void refresh()}}/>}
  <ConfigurationDialog service={configuration} onClose={()=>setConfiguration('')} onSaved={()=>{void refresh()}}/>
- <ConnectionHealthGuide row={row} busy={busy} error={error} message={message} onClose={()=>setSelected('')} onRecheck={checkSetup} onSetup={gotoSetup} onUpdate={row?.connector?.update?.available?()=>{setUpdateNode(row.connector);setSelected('')}:undefined} onEdit={row&&edit(row)?()=>{const target=edit(row);setSelected('');if(['truenas','ai'].includes(target))setConfiguration(target);else choose(target)}:undefined} onRemove={row&&removal(row)?()=>remove(row):undefined}/>
+ <ConnectionHealthGuide row={row} busy={busy} error={error} message={message} onClose={()=>setSelected('')} onRecheck={checkSetup} onSetup={gotoSetup} onUpdate={row?.connector?.update?.available?()=>{setUpdateNode(row.connector);setSelected('')}:undefined} onEdit={row&&edit(row)?()=>{const target=edit(row);setSelected('');if(target==='ai')navigate('/ai?setup=ai');else if(target==='truenas')setConfiguration(target);else choose(target)}:undefined} onRemove={row&&removal(row)?()=>remove(row):undefined}/>
  </section>;
 }

@@ -19,9 +19,9 @@ const button=(container,label)=>[...container.querySelectorAll('button')].find(b
 test('snapshot dialogs pin the original VM and CT and block a migrated target',async()=>{
  for(const [file,key] of [['VirtualMachines','vms'],['LxcContainers','lxc']]){const guest={id:'101',name:'guest-a',node:'node-a',status:'running'},data={errors:[],[key]:[guest],nodes:[{name:'node-a'},{name:'node-b'}],storage:[]},writes=[];const page=await mounted('pages/'+file+'.tsx',{data,role:'operator',refresh:async()=>{}},async(p,options)=>{if(options?.method)writes.push(p);return {config:{},history:[],errors:[]}});try{await page.click(button(page.container,'Snapshot'));assert.match(page.container.querySelector('[role=dialog]').textContent,/guest-a.*node-a/);await page.render({data:{...data,[key]:[{...guest,node:'node-b'}]},role:'operator',refresh:async()=>{}});const form=page.container.querySelector('[role=dialog] form');await act(async()=>form.dispatchEvent(new page.dom.window.Event('submit',{bubbles:true,cancelable:true})));assert.equal(writes.length,0);assert.match(page.container.textContent,/no longer available on this node/)}finally{await page.close()}}
 });
-test('AI setup links to the central Connections configuration flow',async()=>{
+test('AI setup links to the Assistant configuration dialog',async()=>{
  const calls=[],page=await mounted('components/IntegrationsSettings.tsx',{owner:true,search:''},async p=>{calls.push(p);return {rules:[]}});
- try{assert.ok(page.container.querySelector('a[href="/settings?tab=Connections&setup=ai"]'));assert.equal(page.container.querySelector('[role=dialog]'),null);assert.ok(!calls.includes('/configuration/ai'))}finally{await page.close()}
+ try{assert.ok(page.container.querySelector('a[href="/ai?setup=ai"]'));assert.equal(page.container.querySelector('[role=dialog]'),null);assert.ok(!calls.includes('/configuration/ai'))}finally{await page.close()}
 });
 
 test('provider jobs show failed permissions outcomes rather than completed requests',async()=>{

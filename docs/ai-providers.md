@@ -1,6 +1,6 @@
 # AI providers and models
 
-Open **Settings → Connections → Add Connection → AI Assistant**. Select a provider to update the API format and suggested model choices, then enter an API key issued by that provider.
+Open **AI Assistant → Configure AI Assistant**. Select a provider to update the API format and suggested model choices, then enter an API key issued by that provider.
 
 | Provider | API format |
 | --- | --- |

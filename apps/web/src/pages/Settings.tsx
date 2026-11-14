@@ -14,7 +14,6 @@ import {appearanceDefaults,loadAppearance,loadSidebarDisplay,saveAppearanceWithS
 import {loadDashboardWidgets,saveDashboardWidgets} from '../dashboard-preferences';
 import {Card} from '../components/UI';
 import ConnectionManager from '../components/ConnectionManager';
-import ConfigurationDialog from '../components/ConfigurationDialog';
 import NotificationSettings from '../components/NotificationSettings';
 import IntegrationChecks from '../components/IntegrationChecks';
 import './settings-overview.css';
@@ -37,17 +36,18 @@ export default function Settings(){const [query,setQuery]=useSearchParams();cons
   return <Navigate replace to={{pathname:'/settings',search:next.toString(),hash:hash||(raw==='Backup & Restore'?'#backup-restore':'')}}/>;
  }
  const setup=query.get('setup');
- if(category==='Connections'&&(setup==='ai'||setup==='notifications'||query.get('section')==='notifications')){
+ if(setup==='ai')return <Navigate replace to="/ai?setup=ai"/>;
+ if(category==='Connections'&&(setup==='notifications'||query.get('section')==='notifications')){
   const next=new URLSearchParams(query);
   next.set('tab','Integrations');
   next.delete('section');
-  if(setup!=='ai')next.delete('setup');
+  next.delete('setup');
   return <Navigate replace to={'/settings?'+next.toString()}/>;
  }
  return <div className="settings-overview-page">{category==='Connections'?<ConnectionManager navigation={<nav className="settings-overview-tabs tabs" aria-label="Settings sections">{categories.map(([name,Icon])=><button type="button" key={name} className={`tab ${category===name?'active':''}`} aria-current={category===name?'page':undefined} onClick={()=>change(name)}><Icon size={16}/>{name}</button>)}</nav>}/>:<SettingsOverview category={category} change={change}/>}</div>;
 }
 function SettingsOverview({category,change}:{category:string;change:(tab:string)=>void}){
- const [params,setParams]=useSearchParams();
+ const [params]=useSearchParams();
  const {hash,key}=useLocation();
  const locale=useLocale();
  const live=useApi<any>('/settings',null),session=useApi<any>('/auth/me',null);
@@ -67,14 +67,13 @@ function SettingsOverview({category,change}:{category:string;change:(tab:string)
  const persistAppearance=(next:typeof appearance)=>{const current=loadAppearance(),patch=Object.fromEntries(Object.entries(next).filter(([key,value])=>value!==(appearance as any)[key]));saveAppearanceWithSidebar({...current,...patch},loadSidebarDisplay());setAppearance(loadAppearance())};
  const persistSidebar=(next:string)=>{saveAppearanceWithSidebar(loadAppearance(),next);setSidebar(next)};
  const show=(section:string,title:string,keywords='')=>category===section&&`${title} ${translate(title)} ${keywords} ${translate(keywords)}`.toLowerCase().includes(search.trim().toLowerCase());
- const aiVisible=show('Integrations','AI Assistant','provider model API key');
  const info=(label:string,value:any)=><div className="settings-fact" key={label}><span>{label}</span><b>{value??'Not reported'}</b></div>;
  const nav=<nav className="settings-overview-tabs tabs" aria-label="Settings sections">{categories.map(([name,Icon])=><button type="button" key={name} className={`tab ${category===name?'active':''}`} aria-current={category===name?'page':undefined} aria-busy={busy} disabled={busy} onClick={()=>section(name)}><Icon size={16}/>{name}</button>)}</nav>;
- return <><div className="settings-overview-heading"><PageIcon name="settings" size={31}/><div><h1>{settingsTitle(category)}</h1><p>Configure and customize your i-Clusters.</p></div><div className="settings-overview-actions"><label className="settings-search"><Search size={17}/><input aria-label="Search settings" aria-description={`Current category: ${category}`} placeholder={`Search ${category} settings…`} value={search} onChange={e=>setSearch(e.target.value)}/></label>{category==='General'&&<ProductFeedback/>}</div></div>{nav}
+ return <><div className="settings-overview-heading"><PageIcon name="settings" size={31}/><div><h1>{settingsTitle(category)}</h1><p>Configure and customize your i-Clusters.</p></div><div className="settings-overview-actions">{category==='Integrations'?(owner&&<Link className="btn primary" to="/settings/delivery-history">Delivery History</Link>):<label className="settings-search"><Search size={17}/><input aria-label="Search settings" aria-description={`Current category: ${category}`} placeholder={`Search ${category} settings…`} value={search} onChange={e=>setSearch(e.target.value)}/></label>}{category==='General'&&<ProductFeedback/>}</div></div>{nav}
  {(error||live.error||session.error)&&<p className="error" role="alert">{error||live.error||session.error}</p>}{message&&<p role="status" className="settings-save-message"><CheckCircle size={17}/>{message}</p>}
  {live.loading&&!data&&<Card><p><ReportLoading/></p></Card>}{live.error&&!data&&<button type="button" className="btn secondary" onClick={()=>live.refresh()}>Retry settings</button>}
  {data&&<><div className={`settings-overview-grid ${category==='General'?'general-settings-grid':category==='Security'?'security-settings-grid':category==='Appearance'?'appearance-settings-grid':category==='About'?'about-settings-grid':category==='Integrations'?'notification-settings-grid':''}`}>
- {category==='Integrations'&&(owner?<>{aiVisible&&<Card><h2>AI Assistant</h2><button className="btn secondary" onClick={()=>setParams({tab:'Integrations',setup:'ai'})}>Configure AI Assistant</button></Card>}<NotificationSettings aiVisible={aiVisible} owner editing busy={busy} search={search}/><ConfigurationDialog service={params.get('setup')==='ai'?'ai':''} onClose={()=>setParams({tab:'Integrations'})} onSaved={()=>live.refresh()}/></>:<p>Ask an i-Clusters owner to add or change connections.</p>)}
+ {category==='Integrations'&&(owner?<NotificationSettings owner editing busy={busy}/>:<p>Ask an i-Clusters owner to add or change connections.</p>)}
  {category==='Security'&&<SecuritySettings user={session.data?.user} search={search}/>}
 
  {show('General','Site Information','site name description homepage')&&<SettingsCard title="Site Information" detail="Basic information about your i-Clusters." icon={Server}><label>Site Name<input name="siteName" readOnly value={data.settings.siteName}/></label><label>Site Description<textarea name="description" rows={2} readOnly value={data.settings.description||''}/></label><label>Homepage URL<div className="settings-linked-value"><input aria-label="Homepage URL" value={window.location.origin+clusterBase} readOnly/><a href={window.location.origin+clusterBase} target="_blank" rel="noopener noreferrer" aria-label="Open i-Clusters homepage"><ExternalLink size={16}/></a></div></label><small className="settings-note">Site information is read only and shared across the installation.</small></SettingsCard>}

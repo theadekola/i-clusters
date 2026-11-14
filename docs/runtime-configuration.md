@@ -1,6 +1,6 @@
 # Runtime integration configuration
 
-Owners configure Discord, Telegram, SMTP, Slack, Microsoft Teams, Pushover, Gotify, custom webhooks and IFTTT under Settings → Connections → Notifications; TrueNAS under Settings → Connections; and the AI Assistant under Settings → Connections.
+Owners configure Discord, Telegram, SMTP, Slack, Microsoft Teams, Pushover, Gotify, custom webhooks and IFTTT under Settings → Integrations; TrueNAS under Settings → Connections; and AI providers on the AI Assistant page.
 
 1. Open Configure and enter the endpoint and required credentials.
 2. Click Save Configuration. Changes apply without restarting i-Clusters.
