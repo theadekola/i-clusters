@@ -50,9 +50,9 @@ export function ClusterConnection({compact=false,createNew=false,label='Cluster 
  <li>Open <strong>Datacenter → Permissions → Add → User Permission</strong>. Set Path to <code>/</code>, User to <code>iclusters@pve</code>, Role to <strong>{accessMode==='monitoring'?'PVEAuditor':'PVEAdmin'}</strong>, and enable <strong>Propagate</strong>.</li>
  <li>Open <strong>Datacenter → Permissions → API Tokens → Add</strong>. Select that user, enter a Token ID such as <code>hub</code>, and leave <strong>Privilege Separation</strong> enabled. Use an unexpired token. Copy the full Token ID and secret immediately. The secret is shown only once.</li>
  <li>Open <strong>Datacenter → Permissions → Add → API Token Permission</strong>. Set Path to <code>/</code>, API Token to <code>iclusters@pve!hub</code>, Role to <strong>{accessMode==='monitoring'?'PVEAuditor':'PVEAdmin'}</strong>, and enable <strong>Propagate</strong>.</li>
- <li>Enter your Proxmox host, API port (normally <code>8006</code>), full Token ID and secret above. Click <strong>Save</strong>. i-Clusters verifies management access and loads the cluster, nodes, VMs and CTs in one step.</li>
+ {accessMode==='management'&&<li>Enter your Proxmox host, API port (normally <code>8006</code>), full Token ID and secret above. Click <strong>Save</strong>. i-Clusters verifies management access and loads the cluster, nodes, VMs and CTs in one step.</li>}
  </ol>
- <p>These are two PVEAdmin permission entries for one user and one token. They enable VM / CT power and configuration. PVEAdmin does not grant Proxmox permission administration or node shutdown.</p>
+ {accessMode==='management'?<p>These are two PVEAdmin permission entries for one user and one token. They enable VM / CT power and configuration. PVEAdmin does not grant Proxmox permission administration or node shutdown.</p>:<p>Use a PVEAuditor token for inventory and monitoring.</p>}
  <p>Guest OS details require the QEMU Guest Agent. Connect Docker hosts separately for Docker management. Your @pve account is not a Linux SSH account.</p>
  <a href="https://pve.proxmox.com/pve-docs/pveum.1.html" target="_blank" rel="noopener noreferrer">Proxmox user and API token documentation</a>
  </details>

@@ -14,8 +14,10 @@ export function validateCluster(input,saved) {
  if(typeof input.tokenSecret!=='string'||!input.tokenSecret||input.tokenSecret.length>4096||/[\r\n]/.test(input.tokenSecret))invalid('A valid API token secret is required.');
  if(typeof input.verifyTls!=='boolean')invalid('SSL verification must be true or false.');
  const sameEndpoint=saved?.url===`https://${host}:${port}`;
+ const mode=input.accessMode===undefined?(sameEndpoint?saved.accessMode:undefined):input.accessMode;
+ if(mode!==undefined&&!['monitoring','management'].includes(mode))invalid('Invalid connection type');
  const ca=String((input.ca===undefined&&sameEndpoint?saved.ca:input.ca)||'').trim();if(ca&&(ca.length>65536||!ca.includes('-----BEGIN CERTIFICATE-----')||ca.includes('PRIVATE KEY')))invalid('Enter a PEM CA certificate, not a private key.');
- return {name,host,port,tokenId,tokenSecret:input.tokenSecret,verifyTls:input.verifyTls,...(input.accessMode==='monitoring'?{accessMode:'monitoring'}:{}),ca,url:`https://${host}:${port}`};
+ return {name,host,port,tokenId,tokenSecret:input.tokenSecret,verifyTls:input.verifyTls,...(mode==='monitoring'?{accessMode:'monitoring'}:{}),ca,url:`https://${host}:${port}`};
 }
 export function createClusterStore(file,secret=()=>process.env.JWT_SECRET,validate=validateCluster) {
  const key=()=>{const value=secret();if(!value||value.length<32)throw new Error('JWT_SECRET must be at least 32 characters to protect saved connections.');return crypto.createHash('sha256').update(value).digest();};

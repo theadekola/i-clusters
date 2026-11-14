@@ -213,7 +213,7 @@ export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:c
    try{const resources=await pve('/cluster/resources',{},config);
      if(!Array.isArray(resources))throw Object.assign(new Error(),{invalidResponse:true});
      if(!resources.some(r=>r.type==='node'))throw Object.assign(new Error(),{noNodes:true});
-     return {config,nodes:resources.filter(r=>r.type==='node').map(r=>({name:r.node,status:r.status})),...(input.management===true&&config.accessMode!=='monitoring'?{management:await verifyProxmoxManagement(config,resources)}:{})};
+     return {config,nodes:resources.filter(r=>r.type==='node').map(r=>({name:r.node,status:r.status})),...(config.accessMode!=='monitoring'&&(input.management===true||input.accessMode==='management')?{management:await verifyProxmoxManagement(config,resources)}:{})};
    }catch(error){if(error.managementAccess)throw error;throw Object.assign(new Error(proxmoxTestError(error)),{status:502});}
  };
  if(profiles){
