@@ -847,6 +847,9 @@ test('About identifies the source release and links its verification to the reco
   assert.match(evidence.textContent,/Installed revision checks/);
   assert.match(evidence.textContent,/abcdef123456/);
   assert.ok(page.container.textContent.includes('Not embedded in this build'));
+  await page.render({data:{system:{version:'1.0.0'}},owner:false,search:''});
+  assert.ok(page.container.querySelector('a[href="https://github.com/theadekola/i-clusters/actions/workflows/checks.yml"]')?.textContent.includes('Release verification history'));
+  assert.equal(page.container.querySelector('a[href*="/commit/"]'),null);
  }finally{await page.close();}
 });
 

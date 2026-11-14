@@ -15,4 +15,4 @@ The API rechecks active/enabled storage, content compatibility, available disk s
 
 Media discovery and creation require i-Clusters operator access or higher. Existing Proxmox API-token authentication and per-connection TLS verification apply. Proxmox enforces the token's own storage, allocation and VM configuration permissions. No credentials are included in console links, and console access requires its own Proxmox session.
 
-Regression tests use injected connectors and local HTTP fixtures. They do not connect to a live Proxmox installation, create live VMs or modify existing guests. Actual OS installation and distribution compatibility still need testing on a new disposable VM after deploying this update.
+Regression tests use injected connectors and local HTTP fixtures. They do not connect to a live Proxmox installation, create live VMs or modify existing guests. For a new distribution, boot its installer on a disposable VM and record the guest OS and Proxmox versions.

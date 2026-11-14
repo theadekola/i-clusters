@@ -4,13 +4,13 @@
 
 [Website](https://www.i-clusters.com) | [Support](https://www.i-clusters.com/support.html)
 
-**Your infrastructure, in one interface.**
+**Self-hosted infrastructure management**
 
 i-Clusters is a self-hosted interface for managing Proxmox VE environments, virtual machines, LXC containers, Docker and TrueNAS. Keep the server names you use in Proxmox VE. It brings inventory, monitoring, supported infrastructure actions, backups, SSH terminals and SFTP into one responsive interface.
 
-**i-Clusters 1.0.0 is available as a source release** under the [Apache License 2.0](LICENSE). Developed by **The Adekola Labs**.
+**i-Clusters 1.0.0 is available for self-hosted use** under the [Apache License 2.0](LICENSE). The project maintainer reports that operators are already using it and have shared positive feedback. A [documented live installation](docs/audits/2026-11-05-live-interface-and-commercial-review.md#live-coverage) shows the dashboard, VM and container inventory, storage, backup reports and monitoring in use.
 
-**Release verification.** Automated checks verified the API, desktop and mobile browser layouts, installation, and controller recovery. See the [verification results](https://github.com/theadekola/i-clusters/actions/runs/42959774625) and [v1.0.0 release notes](docs/releases/v1.0.0.md).
+**Verified release checks.** On 14 November 2026, revision `5f83343` passed the API and web tests, desktop and mobile browser checks, HTTPS deployment startup, Docker worker recovery, encrypted controller recovery and runtime image scans. See the [recorded results](https://github.com/theadekola/i-clusters/actions/runs/43582273325) and [v1.0.0 release notes](docs/releases/v1.0.0.md).
 
 ## Contents
 

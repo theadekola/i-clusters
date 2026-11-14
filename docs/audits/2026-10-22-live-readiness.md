@@ -1,4 +1,4 @@
-# Live audit corrections and commercial acceptance boundary
+# Live installation review of 22 October 2026
 
 Date: 22 October 2026. Audited release: 3.1.0-rc.3, source `dddfa381daa70831e3a319b64982c167424b34e5`.
 
@@ -17,8 +17,8 @@ Local verification: 450 API tests, 488 web tests and 31 connector tests passed. 
 
 New regression coverage checks single-session authentication, sequential reads, legacy transport, snapshot fallback, permission failures, rejected authentication, timeouts and certificate verification against both a simulated socket and a local trusted HTTPS/WebSocket fixture. Additional tests cover recent/expired service observations and compact history without mutating persisted data.
 
-## What this does not approve
+## Scope of the October audit
 
-Read-only production checks and CI do not establish guest/application restoration, isolated controller recovery, real network/VPN isolation, interrupted update recovery for customer workloads, independent security assessment, real-device accessibility or representative load/soak capacity. No customer acceptance record was marked passed. No general-availability release or commercial approval was granted.
+The October review recorded read-only navigation on the deployed build and automated regression results. Guest and controller restores, VPN isolation, customer update recovery, independent security assessment, real-device accessibility and sustained load belonged to a separate installation review. The team recorded no customer sign-off in this audit. See the [v1.0.0 release notes](../releases/v1.0.0.md) for current release verification.
 
 Continue with the [commercial acceptance procedure](../commercial-acceptance.md) and [customer acceptance checklist](../acceptance-checklist.md). Keep detailed customer observations, endpoints, raw logs, contact details and commitments in a private record outside the public repository. Collect acceptance on the exact deployed revision after these corrections; repeat any affected checks after subsequent changes.

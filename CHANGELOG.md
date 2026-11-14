@@ -48,4 +48,4 @@ Version 1.0.0 is distributed from source. Automated checks cover installation, b
 
 ## Pre-v1 development history
 
-Earlier 3.x version labels were used during development. Their dated notes are retained for traceability: [3.1.0-rc.1](docs/releases/v3.1.0-rc.1.md), [3.1.0-rc.2](docs/releases/v3.1.0-rc.2.md) and [3.1.0-rc.3](docs/releases/v3.1.0-rc.3.md). Historical audits and Git history remain unchanged. Existing GitHub tags and assets are not renamed, moved or deleted.
+Earlier 3.x version labels were used during development. Their dated notes are retained for traceability: [3.1.0-rc.1](docs/releases/v3.1.0-rc.1.md), [3.1.0-rc.2](docs/releases/v3.1.0-rc.2.md) and [3.1.0-rc.3](docs/releases/v3.1.0-rc.3.md). Dated audits describe the revisions reviewed. The original tags, assets and commit history remain available.

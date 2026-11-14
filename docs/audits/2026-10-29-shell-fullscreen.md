@@ -14,4 +14,4 @@ Fullscreen toggles both directions. Where the Fullscreen API is unavailable or d
 
 ## Validation limits
 
-UI tests cover icon actions, native fullscreen entry/exit, rejected or missing Fullscreen API, Escape, hiding a tab, mobile viewport changes and retaining the terminal DOM. The browser environment is simulated. Actual iOS/Android browser layout, remote VM latency, throughput under load and Cloudflare/proxy behavior have not been measured in this review. No claim of best-in-class performance or complete security certification is made.
+UI tests cover icon actions, native fullscreen entry/exit, rejected or missing Fullscreen API, Escape, hiding a tab, mobile viewport changes and retaining the terminal DOM. The review used a simulated browser. For deployment-specific measurements, exercise the physical devices and remote VM through the installation’s proxy at the intended load.

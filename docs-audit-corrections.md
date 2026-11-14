@@ -25,6 +25,6 @@ Related corrections retain the selected archive in Restore navigation, refresh b
 - Production TypeScript/Vite build, Python node-agent tests, updater tests and HTTPS configuration tests are run separately.
 - No root password is returned in CT creation results or recorded in successful action audit details. Guest SSH access still depends on the guest SSH server and its login policy; provisioning a console password does not override that policy.
 
-## Deployment checks still needed
+## Checking a deployment
 
 The node SSH server must be reachable and permit the chosen root authentication policy. VM first boot, OS installation, CT SSH policy, real provider writes and backup restore outcomes require checks on new disposable resources after deployment. Test external notifications only when explicitly requested. Intentional limitations such as Compose-file deployment, authoritative DNS and application two-factor login remain outside these corrections.
