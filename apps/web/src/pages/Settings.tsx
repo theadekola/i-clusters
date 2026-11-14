@@ -6,8 +6,8 @@ import {settingsCategory,settingsTitle} from '../page-navigation';
 import ReportLoading from '../components/ReportLoading';
 import PageIcon from '../components/PageIcon';
 import {useEffect,useRef,useState} from 'react';
-import {Link,Navigate,useSearchParams} from 'react-router-dom';
-import {Settings as SettingsIcon,Server,Shield,Link2,Palette,Archive,SlidersHorizontal,Globe,LayoutGrid,Gauge,Info,Search,Upload,ExternalLink,CheckCircle} from 'lucide-react';
+import {Link,Navigate,useLocation,useSearchParams} from 'react-router-dom';
+import {Settings as SettingsIcon,Server,Shield,Link2,Palette,Archive,SlidersHorizontal,Globe,LayoutGrid,Info,Search,Upload,ExternalLink,CheckCircle} from 'lucide-react';
 import {useApi,clearApiCache} from '../hooks';
 import {api} from '../api';
 import {appearanceDefaults,loadAppearance,loadSidebarDisplay,saveAppearanceWithSidebar} from '../appearance';
@@ -24,11 +24,18 @@ import EditableSettingsSection from '../components/EditableSettingsSection';
 import AppearanceSettings from '../components/AppearanceSettings';
 import AboutSettings from '../components/AboutSettings';
 import {safeLocale} from '../regional';
-const categories=[['General',SettingsIcon],['System',Server],['Security',Shield],['Connections',Link2],['Integrations',SlidersHorizontal],['Appearance',Palette],['About',Info]] as const;
+const categories=[['General',SettingsIcon],['Security',Shield],['Connections',Link2],['Integrations',SlidersHorizontal],['Appearance',Palette],['About',Info]] as const;
 function Switch({label,detail,checked,onChange}:{label:string;detail?:string;checked:boolean;onChange:(v:boolean)=>void}){return <label className="settings-toggle"><span><b>{label}</b>{detail&&<small>{detail}</small>}</span><input type="checkbox" role="switch" checked={checked} onChange={e=>onChange(e.target.checked)}/><span className="settings-switch-track" aria-hidden="true"/></label>}
 function SettingsCard({title,detail,icon:Icon,children}:{title:string;detail:string;icon:any;children:any}){return <Card className="settings-overview-card"><div className="settings-card-heading"><span><Icon size={23}/></span><div><h2>{title}</h2><p>{detail}</p></div></div>{children}</Card>}
 export default function Settings(){const [query,setQuery]=useSearchParams();const raw=query.get('tab')||'General',category=settingsCategory(raw);const change=(tab:string)=>{const next=new URLSearchParams(query);next.set('tab',tab);next.delete('setup');next.delete('section');setQuery(next)};
- useEffect(()=>{if(['Notifications','Advanced','Backup & Restore'].includes(raw)){const next=new URLSearchParams(query);next.set('tab',category);if(raw==='Notifications')next.set('section','notifications');else if(raw==='Backup & Restore')next.set('section','backup-restore');else next.delete('section');setQuery(next,{replace:true})}},[raw]);
+ const {hash}=useLocation();
+ if(['System','Advanced','Backup & Restore','Notifications'].includes(raw)){
+  const next=new URLSearchParams(query);
+  next.set('tab',category);
+  if(raw==='Backup & Restore')next.set('section','backup-restore');
+  if(raw==='Notifications')next.delete('section');
+  return <Navigate replace to={{pathname:'/settings',search:next.toString(),hash:hash||(raw==='Backup & Restore'?'#backup-restore':'')}}/>;
+ }
  const setup=query.get('setup');
  if(category==='Connections'&&(setup==='ai'||setup==='notifications'||query.get('section')==='notifications')){
   const next=new URLSearchParams(query);
@@ -41,11 +48,19 @@ export default function Settings(){const [query,setQuery]=useSearchParams();cons
 }
 function SettingsOverview({category,change}:{category:string;change:(tab:string)=>void}){
  const [params,setParams]=useSearchParams();
+ const {hash,key}=useLocation();
  const locale=useLocale();
  const live=useApi<any>('/settings',null),session=useApi<any>('/auth/me',null);
  const [appearance,setAppearance]=useState(loadAppearance),[sidebar,setSidebar]=useState<string>(loadSidebarDisplay),[widgets,setWidgets]=useState<string[]>(loadDashboardWidgets),[search,setSearch]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
  const settingsSave=useRef<Promise<void>>(Promise.resolve());
  const data=live.data,admin=['admin','owner'].includes(session.data?.user?.role),owner=session.data?.user?.role==='owner',system=data?.system;
+ const sectionTarget=hash.slice(1)||params.get('section');
+ const ready=!!data;
+ useEffect(()=>{
+  if(ready&&category==='General'&&(sectionTarget==='backup-restore'||sectionTarget==='provider-compatibility')){
+   document.getElementById(sectionTarget)?.scrollIntoView?.({block:'start'});
+  }
+ },[ready,category,sectionTarget,key,owner]);
  const section=(name:string)=>{setSearch('');setMessage('');setError('');change(name)};
  const toggleWidget=(name:string,value:boolean)=>{setMessage('');try{const current=loadDashboardWidgets(),next=value?[...new Set([...current,name])]:current.filter(w=>w!==name);saveDashboardWidgets(next);setWidgets(next);setError('');setMessage('Dashboard preferences saved.')}catch(e:any){setError(e.message||'Dashboard preferences could not be saved.')}};
  const saveShared=(patch:Partial<{siteName:string;description:string;refresh:number}>)=>{if(!admin)return Promise.reject(Error('Administrator access is required.'));const task=settingsSave.current.catch(()=>{}).then(async()=>{setBusy(true);try{const latest=await api('/settings');const settings={siteName:latest.settings.siteName,description:latest.settings.description||'',refresh:latest.settings.refresh,...patch};await api('/settings',{method:'PUT',body:JSON.stringify(settings)});live.setData({...latest,settings});window.dispatchEvent(new Event('iclusters-settings'))}finally{setBusy(false)}});settingsSave.current=task;return task};
@@ -58,24 +73,24 @@ function SettingsOverview({category,change}:{category:string;change:(tab:string)
  return <><div className="settings-overview-heading"><PageIcon name="settings" size={31}/><div><h1>{settingsTitle(category)}</h1><p>Configure and customize your i-Clusters.</p></div><div className="settings-overview-actions"><label className="settings-search"><Search size={17}/><input aria-label="Search settings" aria-description={`Current category: ${category}`} placeholder={`Search ${category} settings…`} value={search} onChange={e=>setSearch(e.target.value)}/></label>{category==='General'&&<ProductFeedback/>}</div></div>{nav}
  {(error||live.error||session.error)&&<p className="error" role="alert">{error||live.error||session.error}</p>}{message&&<p role="status" className="settings-save-message"><CheckCircle size={17}/>{message}</p>}
  {live.loading&&!data&&<Card><p><ReportLoading/></p></Card>}{live.error&&!data&&<button type="button" className="btn secondary" onClick={()=>live.refresh()}>Retry settings</button>}
- {data&&<><div className={`settings-overview-grid ${category==='System'?'system-settings-grid':category==='Security'?'security-settings-grid':category==='Appearance'?'appearance-settings-grid':category==='About'?'about-settings-grid':category==='Integrations'?'notification-settings-grid':''}`}>
+ {data&&<><div className={`settings-overview-grid ${category==='General'?'general-settings-grid':category==='Security'?'security-settings-grid':category==='Appearance'?'appearance-settings-grid':category==='About'?'about-settings-grid':category==='Integrations'?'notification-settings-grid':''}`}>
  {category==='Integrations'&&(owner?<>{aiVisible&&<Card><h2>AI Assistant</h2><button className="btn secondary" onClick={()=>setParams({tab:'Integrations',setup:'ai'})}>Configure AI Assistant</button></Card>}<NotificationSettings aiVisible={aiVisible} owner editing busy={busy} search={search}/><ConfigurationDialog service={params.get('setup')==='ai'?'ai':''} onClose={()=>setParams({tab:'Integrations'})} onSaved={()=>live.refresh()}/></>:<p>Ask an i-Clusters owner to add or change connections.</p>)}
  {category==='Security'&&<SecuritySettings user={session.data?.user} search={search}/>}
- {category==='System'&&<SystemSettings data={data} busy={busy} search={search} onRefresh={()=>live.refresh()} onClear={()=>{clearApiCache();setMessage('In-memory API cache cleared. Credentials and preferences were preserved.')}} onReload={async()=>{if(await confirmChoice('Reload the interface? Open terminal sessions may disconnect.'))window.location.reload()}}/>}
 
  {show('General','Site Information','site name description homepage')&&<SettingsCard title="Site Information" detail="Basic information about your i-Clusters." icon={Server}><label>Site Name<input name="siteName" readOnly value={data.settings.siteName}/></label><label>Site Description<textarea name="description" rows={2} readOnly value={data.settings.description||''}/></label><label>Homepage URL<div className="settings-linked-value"><input aria-label="Homepage URL" value={window.location.origin+clusterBase} readOnly/><a href={window.location.origin+clusterBase} target="_blank" rel="noopener noreferrer" aria-label="Open i-Clusters homepage"><ExternalLink size={16}/></a></div></label><small className="settings-note">Site information is read only and shared across the installation.</small></SettingsCard>}
  {show('General','Regional Settings','timezone language date time')&&<SettingsCard title="Regional Settings" detail="Regional information from this device and server." icon={Globe}>{info('Device timezone',Intl.DateTimeFormat().resolvedOptions().timeZone)}{info('Server timezone',system?.timezone)}{info('Language',languages.find(language=>language.id===locale)?.nativeName)}{info('Date format',new Intl.DateTimeFormat(safeLocale(getLocale())).format(new Date()))}{info('Time format',new Intl.DateTimeFormat(safeLocale(getLocale()),{hour:'2-digit',minute:'2-digit'}).format(new Date()))}<small className="settings-note">Choose the interface language in Appearance. Dates and times use the selected language and this device’s timezone.</small></SettingsCard>}
  {show('General','Refresh Preferences','polling interval refresh')&&<EditableSettingsSection autoSave title="Refresh Preferences" detail="Set the shared page polling interval." icon={SlidersHorizontal} allowed={admin} value={{refresh:data.settings.refresh}} onSave={(draft,changed)=>saveShared(changed||draft)}>{(draft,change,editing)=><><label className="settings-inline-field"><span>Auto Refresh<small>Shared page polling interval</small></span><input aria-label="Page refresh interval (seconds)" name="refresh" type="number" min={15} max={300} required disabled={!editing} value={draft.refresh} onChange={e=>change({refresh:Number(e.target.value)})}/></label><small className="settings-note">15–300 seconds. Provider scan timing and partial-load polling can differ.</small></>}</EditableSettingsSection>}
 
  {show('General','Dashboard Layout','widgets hosts resources backups network')&&<SettingsCard title="Dashboard Layout" detail="Choose the widgets shown on Overview." icon={LayoutGrid}>{info('Default dashboard','Overview')}<Switch label="Show Quick Actions" detail="Display supported infrastructure actions" checked={widgets.includes('actions')} onChange={v=>toggleWidget('actions',v)}/><Switch label="Show Infrastructure Health" detail="Display measured connection health" checked={widgets.includes('health')} onChange={v=>toggleWidget('health',v)}/><Switch label="Show AI Assistant" detail="Display the read-only health assistant" checked={widgets.includes('assistant')} onChange={v=>toggleWidget('assistant',v)}/><Switch label="Show System Resources" checked={widgets.includes('resources')} onChange={v=>toggleWidget('resources',v)}/><Switch label="Show Hosts & Guests" checked={widgets.includes('guests')} onChange={v=>toggleWidget('guests',v)}/><Switch label="Show Backup Status" checked={widgets.includes('backups')} onChange={v=>toggleWidget('backups',v)}/><Switch label="Show Infrastructure Map" checked={widgets.includes('map')} onChange={v=>toggleWidget('map',v)}/><Link className="settings-card-link" to="/?customize=1"><LayoutGrid size={16}/>Customize Dashboard Widgets<ExternalLink size={14}/></Link><small className="settings-note">Switches apply immediately in this browser.</small></SettingsCard>}
- {show('General','Units & Measurement','storage network memory CPU')&&<SettingsCard title="Units & Measurement" detail="Measurement conventions used by the current views." icon={Gauge}>{info('Storage & memory','Automatic capacity units')}{info('Network','Rates reported by each view')}{info('CPU usage','Percentage (%)')}<small className="settings-note">Global unit overrides are not currently available. Views keep their existing units and mark unavailable measurements as unknown.</small></SettingsCard>}
+ {category==='General'&&<SystemSettings data={data} busy={busy} show={(title,keywords)=>show('General',title,keywords)} owner={owner} onShowChecks={()=>setSearch('')} onRefresh={()=>live.refresh()} onClear={()=>{clearApiCache();setMessage('In-memory API cache cleared. Credentials and preferences were preserved.')}} onReload={async()=>{if(await confirmChoice('Reload the interface? Open terminal sessions may disconnect.'))window.location.reload()}}/>}
 
 
 
  {category==='About'&&<AboutSettings data={data} owner={owner} search={search}/>}
  {category==='Appearance'&&<AppearanceSettings value={appearance} sidebar={sidebar} busy={busy} search={search} onChange={persistAppearance} onSidebar={persistSidebar} onReset={()=>{saveAppearanceWithSidebar({...appearanceDefaults},'collapsed');setAppearance(loadAppearance());setSidebar('collapsed')}}/>}
- {category==='System'&&'backup restore import settings'.includes(search.toLowerCase())&&<SettingsBackup admin={admin} onSave={saveShared}/>}
- </div>{category==='System'&&owner&&<IntegrationChecks search={search}/>}<footer className="settings-overview-footer"><span><i/>Settings loaded from the server</span><span>i-Clusters {system?.version||''}</span><span>{admin?'Shared settings: administrator access':'Shared settings: read only'} · Preferences: this browser</span></footer></>}
+ {show('General','Backup & Restore','backup restore import settings')&&<SettingsBackup admin={admin} onSave={saveShared}/>}
+ {category==='General'&&owner&&<IntegrationChecks search={search}/>}
+ </div><footer className="settings-overview-footer"><span><i/>Settings loaded from the server</span><span>i-Clusters {system?.version||''}</span><span>{admin?'Shared settings: administrator access':'Shared settings: read only'} · Preferences: this browser</span></footer></>}
  </>;
 }
 

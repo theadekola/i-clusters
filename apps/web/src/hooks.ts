@@ -59,12 +59,16 @@ function load(entry:Resource,force=false,background=false):Promise<void>{
 
 export function useApi<T>(path: string, initial: T, refreshMs?:number|((data:T)=>number)) {
  const entry=resource(path),initialValue=useRef(initial),[,render]=useState(0);
+ const {data:renderedData,loading:renderedLoading,error:renderedError}=entry;
  const refresh=useCallback(()=>load(entry,true),[entry]);
  const setData=useCallback((value:T|((previous:T)=>T))=>{entry.generation++;entry.controller?.abort();entry.pending=undefined;entry.loading=false;entry.data=typeof value==='function'?(value as (previous:T)=>T)(entry.hasData?entry.data:initialValue.current):value;entry.hasData=true;entry.updated=Date.now();entry.error='';emit(entry);},[entry]);
  useEffect(()=>{
   let timer:number|undefined,active=true;
   const schedule=()=>{window.clearTimeout(timer);if(!active)return;const configured=typeof refreshMs==='function'?refreshMs(entry.data):refreshMs;const delay=entry.data?.refreshing?1000:configured===0?0:configured??interval;if(delay)timer=window.setTimeout(()=>{if(document.hidden&&!entry.data?.refreshing&&typeof refreshMs!=='function'){schedule();return}void load(entry,true,true).then(schedule)},delay);};
-  const notify=()=>{if(active){render(v=>v+1);schedule();}};entry.listeners.add(notify);void load(entry).then(schedule);schedule();
+  const notify=()=>{if(active){render(v=>v+1);schedule();}};entry.listeners.add(notify);
+  // Another consumer can finish the shared read between render and subscription.
+  if(entry.data!==renderedData||entry.loading!==renderedLoading||entry.error!==renderedError)render(v=>v+1);
+  void load(entry).then(schedule);schedule();
   const resume=()=>{if(!document.hidden&&Date.now()-entry.updated>=10000)void load(entry).then(schedule)};
   document.addEventListener('visibilitychange',resume);window.addEventListener('iclusters-refresh',schedule);
   return()=>{active=false;entry.listeners.delete(notify);document.removeEventListener('visibilitychange',resume);window.clearTimeout(timer);window.removeEventListener('iclusters-refresh',schedule);queueMicrotask(()=>{if(!entry.listeners.size&&entry.pending){entry.generation++;entry.controller?.abort();entry.pending=undefined;entry.loading=false;}});};

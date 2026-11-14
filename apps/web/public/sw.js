@@ -4,6 +4,7 @@ const unavailablePage = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="dark light"><meta name="theme-color" content="#0b2035"><title>i-Clusters</title>
 <link rel="apple-touch-icon" sizes="180x180" type="image/png" href="/apple-touch-icon.png?v=6bc27189a4d4"><link rel="manifest" href="/manifest.webmanifest?v=6bc27189a4d4"><meta name="apple-mobile-web-app-title" content="i-Clusters">
 <style>
+*{scrollbar-width:none}::-webkit-scrollbar{display:none}
 :root{font:16px system-ui,sans-serif;color:#edf2f8;background:#071522;color-scheme:dark light}
 body{margin:0;min-height:100vh;min-height:100dvh;display:grid;place-items:center}
 main{box-sizing:border-box;max-width:40rem;text-align:center;padding:max(24px,env(safe-area-inset-top)) 20px}

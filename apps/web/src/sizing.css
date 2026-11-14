@@ -292,14 +292,12 @@
   min-height: clamp(280px, 50vh, 530px);
   max-height: none;
   overflow: auto;
-  scrollbar-gutter: stable;
 }
 .content .task-log-card .task-log {
   flex: 0 0 auto;
   height: 240px;
   min-height: 240px;
   max-height: 240px;
-  scrollbar-gutter: stable;
   overscroll-behavior: contain;
 }
 @media (max-width: 700px) {
