@@ -13,7 +13,7 @@
 .cluster-topology i.online,.cluster-topology i.running{background:#20dc93}
 .cluster-topology i.stopped,.cluster-topology i.offline{background:#ec647a}
 .cluster-topology i.paused,.cluster-topology i.suspended{background:#ffb443}
-.cluster-topology-viewport{position:relative;overflow:auto;height:min(720px,72vh);min-height:360px;max-width:100%;border:0;border-radius:12px;background:radial-gradient(ellipse at 50% 0,color-mix(in srgb,var(--app-accent,#3283ff) 7%,transparent),transparent 60%),var(--theme-surface,#061323);overscroll-behavior:contain;scrollbar-width:thin}
+.cluster-topology-viewport{position:relative;overflow:auto;height:min(720px,72vh);min-height:360px;max-width:100%;border:0;border-radius:12px;background:radial-gradient(ellipse at 50% 0,color-mix(in srgb,var(--app-accent,#3283ff) 7%,transparent),transparent 60%),var(--theme-surface,#061323);overscroll-behavior:contain}
 .cluster-topology-canvas{position:relative;padding:28px 28px 32px;width:max-content;min-width:100%;box-sizing:border-box;text-align:center;margin-inline:auto;isolation:isolate}
 .cluster-topology-links{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:visible}
 .cluster-topology-links path{fill:none;stroke:#57cbd8;stroke-width:1.8;stroke-dasharray:5 7;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 2px #28bce84d)}

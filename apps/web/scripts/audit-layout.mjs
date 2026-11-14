@@ -129,8 +129,9 @@ for(const [page,tabs] of Object.entries({
  backups:['Backup Archives','Restore Points','Schedules','Retention Policies','Destinations','Reports'],
  monitoring:['Provider Jobs','Hardware & Diagnostics'],
  alerts:['Alert History','Alert Rules'],users:['Audit Logs'],
- settings:['General','System','Security','Connections','Appearance','About']
+ settings:['General','Security','Connections','Integrations','Appearance','About']
 }))for(const tab of tabs)routes.push(`/${page}?tab=${encodeURIComponent(tab)}`);
+routes.push('/settings?tab=System#provider-compatibility');
 for(const section of ['connected','setup','notifications','remote'])routes.push(`/settings?tab=Connections&section=${section}`);
 const selectedRoutes=process.env.LAYOUT_ROUTES?.split(',')||routes;
 const widths=(process.env.LAYOUT_WIDTHS||'1280,768,390').split(',').map(Number);
@@ -264,6 +265,18 @@ try{
   for(const route of selectedRoutes){
    console.log('  '+width+'px '+route);
    errors=[];await page.goto(base.replace(/\/$/,'')+route);await page.locator('.content h1,.content h2').first().waitFor({timeout:15000}).catch(async()=>{throw Error(`Page did not render: ${route}; ${errors.join('; ')}; ${(await page.locator('body').innerText()).slice(0,300)}`)});await page.waitForTimeout(350);
+   if(route==='/settings' || /^\/settings\?tab=(General|System)(?:&|#|$)/.test(route)){
+    const grid=page.locator('.general-settings-grid');
+    await grid.locator('#backup-restore').waitFor();
+    const columns=await grid.evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length);
+    assert.equal(columns,width>=1024?3:width>700?2:1,route+' settings columns at '+width);
+    assert.equal(await page.locator('.settings-overview-tabs').getByRole('button',{name:'System',exact:true}).count(),0);
+    if(route.includes('tab=System')){
+     assert.equal(new URL(page.url()).searchParams.get('tab'),'General');
+     const anchor=new URL(route,base).hash;
+     if(anchor)assert.equal(new URL(page.url()).hash,anchor);
+    }
+   }
    if(/^\/proxmox\?tab=(Virtual%20Machines|LXC%20Containers)$/.test(route)){
     const actions=page.locator('.vm-detail-actions'), resources=page.locator('.vm-resource-cards');
     await actions.waitFor();
@@ -431,9 +444,10 @@ try{
      const current=path.locator('[aria-current=page]');assert.equal(await current.count(),1,`${route}: one current section`);
      const requested=new URL(route,base).searchParams.get('tab');
      if(requested&&route.startsWith('/settings')){
-      assert.ok((await path.innerText()).includes(requested),`${route}: selected Settings tab in path`);
-      const titles={General:'General Settings',System:'System Settings',Security:'Security Settings',Connections:'Connections',Appearance:'Appearance Settings',About:'About i-Clusters'};
-      assert.equal(await page.locator('.content h1').first().innerText(),titles[requested],`${route}: Settings title matches tab`);
+      const active=new URL(page.url()).searchParams.get('tab')||'General';
+      assert.ok((await path.innerText()).includes(active),`${route}: selected Settings tab in path`);
+      const titles={General:'General Settings',Integrations:'Integrations',Security:'Security Settings',Connections:'Connections',Appearance:'Appearance Settings',About:'About i-Clusters'};
+      assert.equal(await page.locator('.content h1').first().innerText(),titles[active],`${route}: Settings title matches tab`);
      }
     }
    }
@@ -528,6 +542,10 @@ try{
     await header.click();
     const dialog=page.getByRole('dialog',{name:'Switch cluster',exact:true});
     await assertCentered(dialog);
+    for(const scroller of [dialog,dialog.locator('.cluster-switch-list'),dialog.locator('.cluster-switch-actions')]){
+     const hidden=await scroller.evaluate(el=>getComputedStyle(el).scrollbarWidth==='none'||getComputedStyle(el,'::-webkit-scrollbar').width==='0px');
+     assert.ok(hidden,'Switch cluster has no visible vertical scrollbar');
+    }
     assert.ok(await dialog.getByRole('button',{name:'Add cluster',exact:true}).isVisible());
     const officeRow=dialog.getByRole('button',{name:/Office Cluster/});
     for(const [row,name,status] of [[officeRow,'Office Cluster','Offline'],[dialog.getByRole('button',{name:/Homelab/}),'Homelab','Online']]){

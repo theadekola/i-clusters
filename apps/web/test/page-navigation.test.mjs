@@ -6,14 +6,15 @@ const {pageTrail,settingsTitle,settingsTabs}=await import(`data:text/javascript;
 const labels=(path,search='',host,role)=>pageTrail(path,search,host,role).map(i=>i.label);
 test('Overview has no path and unknown routes do not invent a page',()=>{assert.deepEqual(labels('/'),[]);assert.deepEqual(labels('/missing'),[])});
 test('every Settings title identifies the selected tab',()=>{
- const titles=['General Settings','System Settings','Security Settings','Connections','Integrations','Appearance Settings','About i-Clusters'];
+ const titles=['General Settings','Security Settings','Connections','Integrations','Appearance Settings','About i-Clusters'];
  settingsTabs.forEach((tab,index)=>{assert.equal(settingsTitle(tab),titles[index]);assert.equal(labels('/settings',`?tab=${tab}`)[1],tab)});
 });
 test('nested connection sections and legacy Settings links resolve to the real page',()=>{
  for(const [section,label] of Object.entries({connected:'Connected',setup:'Needs Setup',notifications:'Notifications',remote:'Remote Access'}))assert.deepEqual(labels('/settings',`?tab=Connections&section=${section}`),['Settings','Connections',label]);
  assert.deepEqual(labels('/settings','?tab=Notifications'),['Settings','Integrations']);
- assert.deepEqual(labels('/settings','?tab=Advanced'),['Settings','System']);
- assert.deepEqual(labels('/settings','?tab=Backup%20%26%20Restore'),['Settings','System']);
+ assert.deepEqual(labels('/settings','?tab=System'),['Settings','General']);
+ assert.deepEqual(labels('/settings','?tab=Advanced'),['Settings','General']);
+ assert.deepEqual(labels('/settings','?tab=Backup%20%26%20Restore'),['Settings','General']);
 });
 test('Docker paths retain host context across every resource tab',()=>{
  for(const tab of ['Containers','Images','Volumes','Compose Stacks','Events','Updates'])assert.deepEqual(labels('/docker',`?tab=${encodeURIComponent(tab)}`,'control-vm'),['Docker','control-vm',tab]);

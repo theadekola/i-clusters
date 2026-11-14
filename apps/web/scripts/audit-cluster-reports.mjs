@@ -19,7 +19,7 @@ const sections={
  '/monitoring':['','Provider Jobs','Hardware & Diagnostics'],
  '/alerts':['Active Alerts','Alert History','Alert Rules'],
  '/ai':[''],'/tools/shell':[''],'/tools/sftp':[''],'/users':['','Audit Logs'],
- '/settings':['General','System','Security','Connections','Integrations','Appearance','About']
+ '/settings':['General','Security','Connections','Integrations','Appearance','About']
 };
 const markers=['VM','CT','pool','engine','container','job','volume','tank','disk','drive','share','membership','rule','controller'];
 const controllerPaths=new Set(['auth','account','users','product','updates','cluster-profiles','health']);

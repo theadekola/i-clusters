@@ -1,5 +1,12 @@
 /* Shared constraints apply to page content and dialogs, including lazy pages. */
-html{scrollbar-gutter:stable}
+/* Hide native vertical scroll controls while keeping overflow scrollable. */
+* { scrollbar-width: none; }
+@supports selector(::-webkit-scrollbar) {
+ * { scrollbar-width: auto; }
+ ::-webkit-scrollbar { width: 0; height: 8px; }
+ ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+ ::-webkit-scrollbar-thumb:horizontal { background: var(--theme-muted, #8193a6); border-radius: 8px; }
+}
 body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
 .content.content{min-inline-size:0;max-inline-size:100%;overflow-wrap:anywhere}
 .content.content>:where(*),.content.content :where(.card,form,fieldset,[role=tabpanel]){min-inline-size:0;max-inline-size:100%}
@@ -16,7 +23,7 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
 :where(.content,.modal) :is(.ssh-fingerprint code,.ssh-fingerprint b,.permission-help code,.connection-endpoint code){white-space:normal;overflow-wrap:anywhere;word-break:normal}
 /* An intrinsic-width child must not stretch the backdrop's centering track. */
 .modal-backdrop.modal-backdrop{display:flex;align-items:center;justify-content:center;min-inline-size:0;max-inline-size:100%;padding:12px;padding: max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));overscroll-behavior:contain}
-.modal.modal{box-sizing:border-box;min-inline-size:0;max-inline-size:100%;max-block-size:calc(100vh - 24px);max-block-size:calc(100dvh - max(12px,env(safe-area-inset-top)) - max(12px,env(safe-area-inset-bottom)));overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;overflow-wrap:anywhere}
+.modal.modal{box-sizing:border-box;min-inline-size:0;max-inline-size:100%;max-block-size:calc(100vh - 24px);max-block-size:calc(100dvh - max(12px,env(safe-area-inset-top)) - max(12px,env(safe-area-inset-bottom)));overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;overflow-wrap:anywhere}
 .modal.modal>*{min-inline-size:0;max-inline-size:100%}
 .modal.modal .modal-head{min-inline-size:0;flex-wrap:wrap;gap:12px;align-items:flex-start;margin-block-end:16px}
 .modal.modal .modal-head>h3{flex:1 1 min-content;min-inline-size:0;max-inline-size:100%;margin:0;white-space:normal;overflow-wrap:break-word;line-height:1.35;font-size:clamp(16px,2.2vw,20px)}
