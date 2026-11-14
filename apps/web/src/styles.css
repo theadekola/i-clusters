@@ -1907,3 +1907,6 @@ html.shell-scroll-locked,html.shell-scroll-locked body{height:100%;overflow:hidd
 :root :is(button,.btn,[role="button"]):is(:link,:visited,:hover,:focus,:focus-visible,:active,[aria-pressed="true"],[aria-selected="true"]){
  text-decoration:none!important;
 }
+
+.notification-channel-image { display: inline-block; object-fit: contain; flex: none; vertical-align: middle; }
+.notification-channel-image.ifttt { background: #fff; border-radius: 3px; padding: 2px; box-sizing: border-box; }

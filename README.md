@@ -127,7 +127,7 @@ Connector **version 9** batches container statistics. After updating i-Clusters,
 
 ## Docker image update notifications
 
-Open **Docker → Updates** to check the registry tags used by containers, review new digests and explicitly **Pull & Install Update**. Automatic checks notify enabled channels but never install updates. Notification delivery is controlled under **Settings → Connections → Notifications**. Update paired connectors for registry-check support. See [Docker image updates](docs/docker-image-updates.md) for configuration preservation, supported containers and restoration limits.
+Open **Docker → Updates** to check the registry tags used by containers, review new digests and explicitly **Pull & Install Update**. Automatic checks notify enabled channels but never install updates. Notification delivery is controlled under **Settings → Integrations**. Update paired connectors for registry-check support. See [Docker image updates](docs/docker-image-updates.md) for configuration preservation, supported containers and restoration limits.
 
 ## Monitoring and notifications
 
@@ -135,9 +135,9 @@ Provider monitoring normally samples every 30 seconds; read caches and UI pollin
 
 The header bell counts **active, unacknowledged alerts only**. Acknowledged conditions stay listed until monitoring confirms recovery, but do not increase the badge. Recent activity stays in the popup without increasing the badge. Marking activity read does not resolve alerts.
 
-Configure your channel in **Settings → Connections → Notifications**, choose its severity/recovery preference, save, enable it and send an explicitly confirmed test. Supported channels include Discord, Telegram, SMTP, Slack, Teams, Pushover, Gotify, custom webhooks and IFTTT. Each automatic alert is sent separately; Discord displays a colour-coded card. See the [channel setup guide](docs/notification-channels.md). Saved credentials do not prove delivery. Failed deliveries retry with backoff; delivery is not guaranteed exactly once.
+Configure your channel in **Settings → Integrations**, choose its severity/recovery preference, save, enable it and send an explicitly confirmed test. Supported channels include Discord, Telegram, SMTP, Slack, Teams, Pushover, Gotify, custom webhooks and IFTTT. Automatic alerts are sent individually by default. Notification Preferences can group them into digests, set quiet hours and repeat active alerts. See the [channel setup guide](docs/notification-channels.md). Saved credentials do not prove delivery. Failed deliveries retry with backoff; delivery is not guaranteed exactly once.
 
-AI configuration is under **Settings → Connections → Add Connection → AI Assistant**. The Assistant page links to the same setup flow. Choose a provider to update its API type and model choices. You can load models and test an unsaved provider/API-key/model draft before saving. Changing provider requires its own key. AI tests and use can incur provider charges. Assistant requests send user text and selected infrastructure measurements to the selected AI provider; the assistant cannot execute infrastructure actions.
+Open **AI Assistant → Configure AI Assistant** to configure a provider. Choose a provider to update its API type and model choices. You can load models and test an unsaved provider/API-key/model draft before saving. Changing provider requires its own key. AI tests and use can incur provider charges. Assistant requests send user text and selected infrastructure measurements to the selected AI provider; the assistant cannot execute infrastructure actions.
 
 ## Updates and build information
 

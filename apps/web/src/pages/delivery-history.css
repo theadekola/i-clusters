@@ -1,0 +1,14 @@
+.delivery-history-page .notification-workspace { display: block; }
+.delivery-history-page .notification-toolbar {
+ display: grid;
+ grid-template-columns: minmax(12rem, 2fr) repeat(4, minmax(0, 1fr));
+ align-items: stretch;
+}
+.delivery-history-page .notification-toolbar > select { width: 100%; min-width: 0; max-width: none; }
+@media (max-width: 900px) {
+ .delivery-history-page .notification-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+ .delivery-history-page .notification-toolbar > label { grid-column: 1 / -1; }
+}
+@media (max-width: 480px) {
+ .delivery-history-page .notification-toolbar { grid-template-columns: minmax(0, 1fr); }
+}

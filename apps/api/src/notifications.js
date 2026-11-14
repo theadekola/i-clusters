@@ -1,3 +1,4 @@
+import {scheduleDefaults, validateSchedule, quietNow, digestDue} from './notification-schedule.js';
 import {alertVerification} from './alert-verification.js';
 import {notificationIds,channelNames,channelAccepts} from './notification-channels.js';
 import {notificationMessage,messageText,emailCard} from './notification-message.js';
@@ -54,12 +55,12 @@ export function notificationTestError(channel,error){
  if(['ETIMEDOUT','ESOCKET','ECONNECTION','ECONNREFUSED','ENOTFOUND'].includes(code)||error?.name==='TimeoutError')return `${name} connection failed. Check the host, port, network, DNS and TLS settings.`;
  return `${name} test failed. Check the entered connection details and service availability.`;
 }
-export const defaultNotificationPreferences=()=>({enabled:true,channels:Object.fromEntries(notificationIds.map(id=>[id,['discord','telegram','email'].includes(id)])),minimumSeverity:'info',notifyResolved:true,notifyDockerUpdates:true});
+export const defaultNotificationPreferences=()=>({...scheduleDefaults,enabled:true,channels:Object.fromEntries(notificationIds.map(id=>[id,['discord','telegram','email'].includes(id)])),minimumSeverity:'info',notifyResolved:true,notifyDockerUpdates:true});
 export function notificationPreferences(state){const d=defaultNotificationPreferences(),p=state.notificationPreferences||{};return {...d,...p,channels:{...d.channels,...p.channels}};}
-export function validateNotificationPreferences(input){
+export function validateNotificationPreferences(input,existing={}){
  if(input?.notifyDockerUpdates!==undefined&&typeof input.notifyDockerUpdates!=='boolean')throw Object.assign(Error('Choose a valid Docker update notification preference'),{status:400});
- if(!input||typeof input.enabled!=='boolean'||typeof input.notifyResolved!=='boolean'||!['info','warning','critical'].includes(input.minimumSeverity)||!input.channels||['discord','telegram','email'].some(c=>typeof input.channels[c]!=='boolean')||Object.keys(input).some(k=>!['enabled','notifyResolved','notifyDockerUpdates','minimumSeverity','channels'].includes(k))||Object.keys(input.channels).some(k=>!notificationIds.includes(k)||typeof input.channels[k]!=='boolean'))throw Object.assign(Error('Choose valid notification delivery preferences'),{status:400});
- return {enabled:input.enabled,channels:{...input.channels},minimumSeverity:input.minimumSeverity,notifyResolved:input.notifyResolved,...(input.notifyDockerUpdates===undefined?{}:{notifyDockerUpdates:input.notifyDockerUpdates})};
+ if(!input||typeof input.enabled!=='boolean'||typeof input.notifyResolved!=='boolean'||!['info','warning','critical'].includes(input.minimumSeverity)||!input.channels||['discord','telegram','email'].some(c=>typeof input.channels[c]!=='boolean')||Object.keys(input).some(k=>!['enabled','notifyResolved','notifyDockerUpdates','minimumSeverity','channels',...Object.keys(scheduleDefaults)].includes(k))||Object.keys(input.channels).some(k=>!notificationIds.includes(k)||typeof input.channels[k]!=='boolean'))throw Object.assign(Error('Choose valid notification delivery preferences'),{status:400});
+ return {...validateSchedule(input,existing),enabled:input.enabled,channels:{...input.channels},minimumSeverity:input.minimumSeverity,notifyResolved:input.notifyResolved,...(input.notifyDockerUpdates===undefined?{}:{notifyDockerUpdates:input.notifyDockerUpdates})};
 }
 const connectionRecovery=(alert,event)=>event==='resolved'&&typeof alert?.key==='string'&&alert.key.startsWith('connection:');
 export function createNotifier({persistence={get,mutate},env=runtimeEnvironment,send=sendNotification,now=()=>Date.now()}={}){
@@ -68,7 +69,7 @@ export function createNotifier({persistence={get,mutate},env=runtimeEnvironment,
  const configured=()=>notificationChannels(environment());
  const status=()=>{const env=environment(),queue=persistence.get().notificationQueue||[];return {channels:configured(),preferences:notificationPreferences(persistence.get()),incomplete:[...(env.TELEGRAM_BOT_TOKEN&&!env.TELEGRAM_CHAT_ID||!env.TELEGRAM_BOT_TOKEN&&env.TELEGRAM_CHAT_ID?['Telegram requires both bot token and chat ID.']:[]),...([env.SMTP_HOST,env.NOTIFICATION_EMAIL_FROM,env.NOTIFICATION_EMAIL_TO].some(Boolean)&&![env.SMTP_HOST,env.NOTIFICATION_EMAIL_FROM,env.NOTIFICATION_EMAIL_TO].every(Boolean)?['Email requires SMTP host, sender and recipient.']:[])],pending:queue.filter(r=>r.event!=='test'&&!r.sentAt).length,
   failures:queue.filter(r=>!r.sentAt&&r.error).map(r=>({channel:r.channel,error:r.error,nextAttempt:r.nextAttempt})).slice(-20),
-  history:queue.slice(-200).map(r=>{const current=(persistence.get().alerts||[]).find(a=>a.id===r.alertId),alert=r.alert||current;return {id:r.id,channel:r.channel,event:r.event,alertId:r.alertId||null,createdAt:r.createdAt||null,sentAt:r.sentAt||null,error:r.error||null,nextAttempt:r.nextAttempt||null,alert:alert?{title:alert.title||null,severity:alert.severity||null,source:alert.source||null,details:alert.details||null}:null,metadataSource:r.alert?'delivery-snapshot':current?'current-alert':null}}),
+  history:queue.slice(-200).map(r=>{const current=(persistence.get().alerts||[]).find(a=>a.id===r.alertId),alert=r.alert||current;return {id:r.id,channel:r.channel,event:r.reminderFor?'reminder':r.event,alertId:r.alertId||null,createdAt:r.createdAt||null,sentAt:r.sentAt||null,error:r.error||null,nextAttempt:r.nextAttempt||null,alert:alert?{title:alert.title||null,severity:alert.severity||null,source:alert.source||null,details:alert.details||null}:null,metadataSource:r.alert?'delivery-snapshot':current?'current-alert':null}}),
   lastSent:queue.reduce((latest,row)=>Number.isFinite(Date.parse(row.sentAt))&&(!latest||Date.parse(row.sentAt)>Date.parse(latest))?row.sentAt:latest,null)};};
  async function deliver(alerts){
   if(inFlight)return inFlight;
@@ -84,20 +85,80 @@ export function createNotifier({persistence={get,mutate},env=runtimeEnvironment,
    persistence.mutate(s=>{s.connectionRecoveryNotificationsSince??=policySince;s.notificationQueue??=[];
     for(const alert of alerts){if(!['active','acknowledged','resolved'].includes(alert.status)||!eligible(alert))continue;
      const event=alert.status==='resolved'?'resolved':'active',date=event==='resolved'?alert.resolvedAt:alert.triggered;
-     if(!Number.isFinite(Date.parse(date))||Date.parse(date)>now()+60000||now()-Date.parse(date)>7*86400000)continue;
+     if(!Number.isFinite(Date.parse(date))||Date.parse(date)>now()+60000)continue;
      for(const channel of channels){if(!accepts(channel,alert,event))continue;const key=`${alert.id}:${event}:${channel}`;
-      if(!s.notificationQueue.some(r=>r.key===key)&&s.notificationQueue.filter(r=>!r.sentAt).length<1000)
-       s.notificationQueue.push({id:crypto.randomUUID(),key,channel,alertId:alert.id,event,createdAt:new Date(now()).toISOString(),alert:{key:alert.key,title:alert.title,severity:alert.severity,source:alert.source,details:alert.details,triggered:alert.triggered,resolvedAt:alert.resolvedAt},text:textFor(alert,event),attempts:0,nextAttempt:now()});
+      const original=s.notificationQueue.find(r=>r.key===key);
+      if(!original&&now()-Date.parse(date)>7*86400000)continue;
+      let reminder=false;
+      if(original){
+       if(event!=='active'||alert.status!=='active'||!preferences.repeatMinutes||!original.sentAt)continue;
+       const last=Date.parse(original.lastReminderAt||original.sentAt);
+       if(now()-last<preferences.repeatMinutes*60000||s.notificationQueue.some(r=>r.reminderFor===key&&!r.sentAt))continue;
+       reminder=true;
+      }
+      if(s.notificationQueue.filter(r=>!r.sentAt).length<1000)
+       s.notificationQueue.push({id:crypto.randomUUID(),key:reminder?key+':reminder:'+now():key,...(reminder?{reminderFor:key}:{}),channel,alertId:alert.id,event,createdAt:new Date(now()).toISOString(),alert:{key:alert.key,title:alert.title,severity:alert.severity,source:alert.source,details:alert.details,triggered:alert.triggered,resolvedAt:alert.resolvedAt},text:textFor(alert,event),attempts:0,nextAttempt:now()});
      }
     }
     // Keep successful delivery keys for deduplication while the corresponding alert is retained.
-    const ids=new Set(alerts.map(a=>a.id)),tests=new Set(s.notificationQueue.filter(r=>r.event==='test').slice(-100).map(r=>r.id));s.notificationQueue=s.notificationQueue.filter(r=>r.event==='test'?tests.has(r.id):ids.has(r.alertId)&&(r.sentAt||alerts.some(a=>a.id===r.alertId&&!a.resolution&&(r.event==='resolved'?a.status==='resolved':['active','acknowledged'].includes(a.status)))));
+    const ids=new Set(alerts.map(a=>a.id)),tests=new Set(s.notificationQueue.filter(r=>r.event==='test').slice(-100).map(r=>r.id));
+    const recentReminders=new Set(s.notificationQueue.filter(r=>r.reminderFor&&r.sentAt).slice(-200).map(r=>r.id));
+    s.notificationQueue=s.notificationQueue.filter(r=>{
+     if(r.event==='test')return tests.has(r.id);
+     if(!ids.has(r.alertId))return false;
+     if(r.sentAt)return !r.reminderFor||recentReminders.has(r.id);
+     const alert=alerts.find(a=>a.id===r.alertId);
+     if(r.reminderFor)return !alert.resolution&&alert.status==='active'&&preferences.repeatMinutes>0;
+     return !alert.resolution&&(r.event==='resolved'?alert.status==='resolved':['active','acknowledged'].includes(alert.status));
+    });
    });
-   const pending=(persistence.get().notificationQueue||[]).filter(r=>r.event!=='test'&&channels.includes(r.channel)&&eligible(queuedAlert(r),r.event)&&accepts(r.channel,queuedAlert(r),r.event)&&!r.sentAt&&r.nextAttempt<=now()).slice(0,20);
-   for(const item of pending){let error=null;const deliveredAlert=queuedAlert(item);try{const n=notificationMessage({...deliveredAlert,occurredAt:item.event==='resolved'?item.alert?.resolvedAt:item.alert?.triggered},item.event);if(!n.time){const date=item.text?.split('\n').at(-1);if(Number.isFinite(Date.parse(date)))n.time=new Date(date).toISOString();}await send(item.channel,messageText(n),{env:environment(),notification:n});}catch{error=`${item.channel} delivery failed. Check its saved configuration and service availability.`;}
-    persistence.mutate(s=>{const row=s.notificationQueue.find(r=>r.id===item.id);if(!row)return;row.alert=Object.fromEntries(['key','title','severity','source','details','triggered','resolvedAt'].map(key=>[key,deliveredAlert[key]]));row.attempts++;
-     if(error){row.error=error;row.nextAttempt=now()+Math.min(3600000,30000*2**Math.min(row.attempts-1,7));}
-     else{row.sentAt=new Date(now()).toISOString();delete row.error;delete row.text;}
+   if(quietNow(preferences,now()))return;
+   const queue=persistence.get().notificationQueue||[];
+   const due=row=>{
+    if(row.sentAt||row.event==='test'||!channels.includes(row.channel)||row.nextAttempt>now()||!digestDue(row,preferences,now()))return false;
+    if(row.reminderFor){
+     const original=queue.find(r=>r.key===row.reminderFor);
+     if(!original||now()-Date.parse(original.lastReminderAt||original.sentAt)<preferences.repeatMinutes*60000)return false;
+    }
+    const alert=queuedAlert(row);
+    return eligible(alert,row.event)&&accepts(row.channel,alert,row.event);
+   };
+   const pending=queue.filter(due).slice(0,20);
+   // Limit digest size for providers such as Pushover, which accepts 1,024 characters.
+   const batches=[];
+   for(const row of pending){
+    const batch=preferences.deliveryMode==='digest'&&batches.find(b=>b[0].channel===row.channel&&b.length<5);
+    if(batch)batch.push(row);else batches.push([row]);
+   }
+   for(const batch of batches){
+    const messages=batch.map(item=>{
+     const alert=queuedAlert(item);
+     const n=notificationMessage({...alert,occurredAt:item.event==='resolved'?item.alert?.resolvedAt:item.alert?.triggered},item.event);
+     if(!n.time){const date=item.text?.split('\n').at(-1);if(Number.isFinite(Date.parse(date)))n.time=new Date(date).toISOString();}
+     if(item.reminderFor)n.title='Reminder: '+n.title;
+     return n;
+    });
+    const message=messages.length===1?messages[0]:notificationMessage({
+     title:'Notification digest',source:'i-Clusters',triggered:new Date(now()).toISOString(),
+     severity:['critical','warning','info'].find(level=>messages.some(n=>n.severity===level)),
+     details:messages.map(n=>n.title.slice(0,100)+' · '+n.source.slice(0,60)).join('\n')
+    });
+    const channel=batch[0].channel;
+    let error=null;
+    try{await send(channel,messageText(message),{env:environment(),notification:message});}
+    catch{error=`${channel} delivery failed. Check its saved configuration and service availability.`;}
+    persistence.mutate(s=>{
+     for(const item of batch){
+      const row=s.notificationQueue.find(r=>r.id===item.id);
+      if(!row)continue;
+      const alert=queuedAlert(item);
+      row.alert=Object.fromEntries(['key','title','severity','source','details','triggered','resolvedAt'].map(key=>[key,alert[key]]));row.attempts++;
+      if(error){row.error=error;row.nextAttempt=now()+Math.min(3600000,30000*2**Math.min(row.attempts-1,7));}
+      else{
+       row.sentAt=new Date(now()).toISOString();delete row.error;delete row.text;
+       if(row.reminderFor){const original=s.notificationQueue.find(r=>r.key===row.reminderFor);if(original)original.lastReminderAt=row.sentAt;}
+      }
+     }
     });
    }
   })().finally(()=>{inFlight=null});return inFlight;

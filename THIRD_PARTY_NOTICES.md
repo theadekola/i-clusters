@@ -17,3 +17,7 @@ Caddy retains its upstream 2.11.7 source licence and base-image notices; the loc
 ## Country flag images
 
 Earlier versions of the language picker used regional flag SVGs from [flag-icons](https://github.com/lipis/flag-icons), copyright Panayiotis Lipiridis, under the MIT licence. The original licence is retained in `apps/web/public/flags/LICENSE.txt`.
+
+## Notification channel marks
+
+Slack, Microsoft Teams and IFTTT artwork is sourced from [SVG Logos](https://github.com/gilbarbara/logos) via Iconify Logos 1.2.20. Gotify and Pushover artwork is sourced from [Dashboard Icons](https://github.com/homarr-labs/dashboard-icons). The marks identify their respective services. Discord and Telegram reuse the brand assets listed above. SMTP email and custom webhooks use project-owned protocol symbols.

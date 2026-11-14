@@ -2,7 +2,7 @@
 
 i-Clusters checks registry image digests for the tags used by containers on connected Docker Engines. Checks run in the background, across the direct Engine and paired hosts. The default interval is six hours; owners can choose 1, 6, 12 or 24 hours or disable automatic checks under **Docker → Updates**. New or changed container inventory can trigger a fresh check. **Check for Updates** starts an explicit check. Checks never pull images, restart containers or install software.
 
-A changed digest creates an informational alert and one notification per configured, enabled channel and container/digest. Configure channels under **Settings → Connections → Notifications** and use **Send Docker image update notifications** to control these messages. This switch is independent of severity and recovery filters; global notification and channel switches still apply. Failed delivery uses the existing bounded retry queue. An installed or superseded image update does not send a misleading recovery notification. The header alert opens Updates on the corresponding host after verifying that Engine.
+A changed digest creates an informational alert and one notification per configured, enabled channel and container/digest. Configure channels under **Settings → Integrations** and use **Send Docker image update notifications** to control these messages. This switch is independent of severity and recovery filters; global notification and channel switches still apply. Failed delivery uses the existing bounded retry queue. An installed or superseded image update does not send a misleading recovery notification. The header alert opens Updates on the corresponding host after verifying that Engine.
 
 ## Review and install
 

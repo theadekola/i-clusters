@@ -145,6 +145,7 @@ const failures=[],server=await (process.env.LAYOUT_PRODUCTION==='1'?preview({roo
 let restartPower='running',restartVerified=false,restartRecord=null,allowRestartCompletion=false,restartWrites=[];
 const officeId='aaaa0000-0000-4000-8000-000000000001';
 let updateWrites=0;
+let deliveryPrefs={enabled:true,minimumSeverity:'info',channels:{discord:true,telegram:true,email:true},notifyResolved:true};
 let browser,clusterSaves=0,clusterTests=0,aiModelReads=0,aiTests=0,aiSaves=0;
 try{
  if(server.listen)await server.listen();const base=server.resolvedUrls.local[0];
@@ -199,6 +200,11 @@ try{
   }
   if(process.env.LAYOUT_UPDATE_NOTICE&&path==='/updates'&&route.request().method()==='POST'){updateWrites++;return route.fulfill({json:{ok:true,state:'queued'}})}
   if(process.env.LAYOUT_CONNECTION_CHOICES){
+   if(path==='/notifications')return route.fulfill({json:{channels:['discord'],history:[{id:'sample',channel:'discord',event:'test',sentAt:now,createdAt:now}],preferences:deliveryPrefs}});
+   if(path==='/notifications/preferences'&&route.request().method()==='PUT'){
+    deliveryPrefs=route.request().postDataJSON();
+    return route.fulfill({json:{result:deliveryPrefs}});
+   }
    if(path==='/node-agents/pairing-targets'){const kind=new URL(route.request().url()).searchParams.get('kind');return route.fulfill({json:{targets:kind==='docker'?[{id:'node01:qemu/100',name:'Control-VM',label:'Control-VM · VM 100 · node01'},{id:'node01:lxc/131',name:'Fixture',label:'Fixture · CT 131 · node01',paired:true}]:[{id:'node:node01',name:'node01',label:'node01 · Proxmox node'}]}});}
    if(path.endsWith('/automatic-pairing/target')||path.endsWith('/automatic-docker-pairing/target'))return route.fulfill({json:{host:'192.0.2.100',connectionId:'fixture-only',controller:'https://controller.test'}});
    if(['/configuration/ai/models','/configuration/ai/test','/configuration/ai'].includes(path)&&route.request().method()!=='GET'){
@@ -699,6 +705,30 @@ try{
    await page.goto(base+'settings?tab=Integrations');
    await page.getByRole('heading',{name:copy('Notification Channels'),exact:true}).waitFor();
    assert.equal(await page.locator('.notification-settings-channel').count(),9);
+   assert.equal(await page.getByLabel('Search settings',{exact:true}).count(),0);
+   assert.equal(await page.locator('.notification-settings-channel img').evaluateAll(images=>images.every(i=>i.complete&&i.naturalWidth>0)),true);
+   await page.getByRole('button',{name:'Edit Notification Preferences',exact:true}).click();
+   const severity=page.getByLabel('Minimum notification severity',{exact:true});
+   await severity.selectOption('critical');
+   await page.getByLabel('Delivery timing',{exact:true}).selectOption('digest');
+   await page.getByLabel('Digest interval',{exact:true}).selectOption('30');
+   await page.getByLabel('Repeat active alerts',{exact:true}).selectOption('240');
+   const quiet=page.getByRole('switch',{name:'Quiet hours (UTC)'});
+   await quiet.check();await page.getByLabel('Start (UTC)',{exact:true}).fill('23:15');
+   await page.getByRole('button',{name:'Save Notification Preferences',exact:true}).click();
+   await page.getByRole('button',{name:'Edit Notification Preferences',exact:true}).waitFor();
+   assert.equal(deliveryPrefs.minimumSeverity,'critical');assert.equal(deliveryPrefs.quietStart,'23:15');
+   assert.equal(deliveryPrefs.repeatMinutes,240);assert.equal(deliveryPrefs.digestMinutes,30);
+   await page.getByRole('link',{name:'Delivery History',exact:true}).click();
+   const toolbar=page.locator('.delivery-history-page .notification-toolbar');await toolbar.waitFor();
+   const tops=await toolbar.locator(':scope > label,:scope > select').evaluateAll(fields=>fields.map(f=>Math.round(f.getBoundingClientRect().top)));
+   assert.equal(tops.length,5);if(width>900)assert.equal(new Set(tops).size,1);
+   await page.getByLabel('Notification details sample').click();
+   await page.getByRole('dialog').getByRole('heading',{name:'Notification Delivery Details'}).waitFor();
+   await page.keyboard.press('Escape');await page.getByRole('link',{name:'Back to Integrations'}).click();
+   await page.getByRole('button',{name:'Edit Notification Preferences',exact:true}).click();
+   assert.equal(await severity.inputValue(),'critical');assert.equal(await page.getByLabel('Start (UTC)',{exact:true}).inputValue(),'23:15');
+
    await chooseCard('Proxmox');
    await page.getByRole('button',{name:copy('Edit cluster connection'),exact:true}).click();
    const guide=page.locator('.cluster-setup-guide');await guide.waitFor();assert.equal(await guide.getAttribute('open'),null);assert.equal(await guide.locator('summary svg').count(),1);assert.equal(await guide.evaluate(e=>getComputedStyle(e).paddingLeft),'16px');assert.equal(await guide.locator('summary').evaluate(e=>getComputedStyle(e).color),'rgb(245, 180, 75)');await guide.locator('summary').click();assert.notEqual(await guide.getAttribute('open'),null);await guide.locator('summary').click();assert.equal(await guide.getAttribute('open'),null);if(process.env.LAYOUT_SCREENSHOTS)await page.locator('.modal').last().screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-proxmox-guide.png`});
@@ -719,7 +749,7 @@ try{
     assert.ok(await install.isEnabled(),'A verified target, credentials and consent enable installation');
     await page.keyboard.press('Escape');await ssh.waitFor({state:'detached'});assert.ok(await parent.isVisible());assert.equal(await page.getByLabel(label,{exact:true}).inputValue(),host);await page.waitForFunction(()=>document.activeElement?.textContent==='Connect Automatically with SSH');assert.equal(await page.getByRole('button',{name:'Connect Automatically with SSH',exact:true}).evaluate(e=>e===document.activeElement),true);await page.getByRole('button',{name:'Connect Automatically with SSH',exact:true}).click();await ssh.waitFor();await ssh.getByLabel(copy('SSH / sudo password'),{exact:true}).waitFor();assert.equal(await ssh.getByLabel(copy('SSH / sudo password'),{exact:true}).inputValue(),'');await identity.waitFor();assert.equal(await consent.isChecked(),false);assert.ok(await install.isDisabled());if(process.env.LAYOUT_SCREENSHOTS)await ssh.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-${setup}-ssh-popup.png`});await ssh.getByRole('button',{name:copy('Close dialog'),exact:true}).click();await ssh.waitFor({state:'detached'});
    }
-   await page.goto(base+'settings?tab=Integrations');await page.getByRole('button',{name:'Configure AI Assistant',exact:true}).click();await page.getByLabel('AI provider',{exact:true}).waitFor();const beforeModels=aiModelReads,beforeTests=aiTests,beforeSaves=aiSaves;
+   await page.goto(base+'ai');await page.getByRole('button',{name:'Configure AI Assistant',exact:true}).click();await page.getByLabel('AI provider',{exact:true}).waitFor();const beforeModels=aiModelReads,beforeTests=aiTests,beforeSaves=aiSaves;
    for(const id of Object.keys(aiMetadata)){
     await page.getByLabel('AI provider',{exact:true}).selectOption(id);assert.equal(await page.getByLabel('API key',{exact:true}).inputValue(),'');assert.equal(await page.getByLabel('API type',{exact:true}).inputValue(),aiMetadata[id].types[0]);assert.equal(await page.getByLabel('Model',{exact:true}).inputValue(),aiMetadata[id].defaultModel);assert.ok(await page.getByLabel('Model',{exact:true}).locator('option').count()>=3,'Provider has multiple model choices and a custom option');if(process.env.LAYOUT_SCREENSHOTS&&id==='anthropic')await page.locator('.modal').last().screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-ai-claude.png`});await page.getByLabel('API key',{exact:true}).fill('fixture-'+id);await page.getByRole('button',{name:'Load Models',exact:true}).click();await page.getByRole('option',{name:id+'-fixture-model',exact:true}).waitFor({state:'attached'});await page.getByLabel('Model',{exact:true}).selectOption(id+'-fixture-model');await page.getByRole('button',{name:'Test Connection',exact:true}).click();await page.getByRole('dialog',{name:'Confirm Action',exact:true}).getByRole('button',{name:'Confirm',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.configuration-feedback')?.textContent.includes('Connection test successful')).catch(async()=>{throw Error(id+': '+await page.locator('.configuration-dialog').innerText())});
    }

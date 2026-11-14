@@ -20,6 +20,7 @@ const sections:Record<string,{name:string;tabs?:string[]}>= {
 };
 export type PageCrumb={label:string;to?:string};
 export function pageTrail(pathname:string,search:string,host?:string,role?:string):PageCrumb[]{
+ if(pathname==='/settings/delivery-history')return [{label:'Settings',to:'/settings'},{label:'Integrations',to:'/settings?tab=Integrations'},{label:'Delivery History'}];
  const section=sections[pathname];if(!section)return [];
  const params=new URLSearchParams(search),requested=params.get('tab')||'';
  let tab=section.tabs?(section.tabs.includes(requested)?requested:section.tabs[0]):'';
