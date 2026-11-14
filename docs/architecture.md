@@ -70,7 +70,7 @@ Notifications use only configured Discord, Telegram and SMTP channels. Delivery 
 | `apps/api/src/store.js` | Persisted monitoring/application state under DATA_DIR |
 | `apps/api/src/build-info.js`, `scripts/write-build-info.mjs` | Validated immutable build metadata |
 | `apps/api/test/`, `apps/web/test/` | API, provider protocol, connector and UI regression checks |
-| `deployment/` | Ubuntu service, updater, HTTPS, build environment and deployment checks |
+| `deployment/` | Controller systemd service, updater, HTTPS, build environment and deployment checks |
 | `docker-compose.yml` | Caddy, web, API and PostgreSQL deployment |
 | `.github/workflows/checks.yml` | Automated tests, build and deployment smoke checks |
 | `docs/` | Configuration, architecture, recovery and feature guides |

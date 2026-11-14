@@ -5,7 +5,7 @@ Developed by **The Adekola Labs** · Current source release: **1.0.0**.
 | Need | Guide |
 | --- | --- |
 | Verified release and usage | [v1.0.0 usage and verification](releases/v1.0.0.md), [observed live usage](audits/2026-11-05-live-interface-and-commercial-review.md#live-coverage) |
-| Features and installation | [README](../README.md), [production deployment](../PRODUCTION.md) |
+| Features and installation | [Ubuntu](../README.md#install-on-ubuntu), [Debian CT on Proxmox](debian-lxc-install.md), [production deployment](../PRODUCTION.md) |
 | Current changes | [Changelog](../CHANGELOG.md), [release notes](releases/v1.0.0.md) |
 | Version and update policy | [Release policy](release-policy.md), [build identity](build-information.md) |
 | Supported scope | [Compatibility](compatibility.md), [architecture](architecture.md) |

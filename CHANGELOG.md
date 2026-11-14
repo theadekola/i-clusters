@@ -4,6 +4,8 @@ Developed by **The Adekola Labs**.
 
 ## Changes on main
 
+- Install the controller in a dedicated, unprivileged Debian 12 or 13 LXC container on Proxmox VE. See the [CT preparation and installation guide](docs/debian-lxc-install.md).
+
 - Adopt Apache License 2.0 for first-party software and link the verified source release and public website policies from Settings → About.
 
 - Keep Docker connection status beside its host title, add Storage Configuration summary cards with explicit data coverage, remove duplicate Shell/SFTP/Users paths, and remove legacy Docker/Network tab font overrides.

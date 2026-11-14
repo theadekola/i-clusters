@@ -3,6 +3,7 @@ set -Eeuo pipefail
 umask 077
 fail() { echo "Error: $*" >&2; exit 1; }
 usage() {
+  echo 'Install i-Clusters on an Ubuntu server/VM or a Debian 12/13 Proxmox LXC container.'
   echo 'Usage: sudo bash install.sh [--repo https://github.com/OWNER/REPO.git] [--ref BRANCH_OR_TAG] [--url https://SERVER-IP] [--port 6003] [--https-port 6002] [--trusted-hostname HOST [--cloudflare-token-file FILE]]'
 }
 repo='https://github.com/theadekola/i-clusters.git' ref='' url='' web_port=6003 https_port=6002 trusted_host='' cloudflare_token_file=''
@@ -23,10 +24,31 @@ for selected_port in "$web_port" "$https_port"; do
 done
 [[ $web_port != "$https_port" ]] || fail 'HTTP and HTTPS ports must differ.'
 [[ -z $ref || $ref != -* ]] || fail 'Invalid Git ref.'
-[[ $EUID == 0 ]] || fail 'Run with sudo bash install.sh ...'
+[[ $EUID == 0 ]] || fail 'Run the installer as root in the controller guest, or use sudo.'
+if command -v pveversion >/dev/null || [[ -e /etc/pve/local ]]; then
+  fail 'This is a Proxmox VE host. Run install.sh inside the dedicated controller VM or CT.'
+fi
 source /etc/os-release
-[[ $ID == ubuntu ]] || fail 'This installer supports Ubuntu.'
-command -v systemctl >/dev/null || fail 'Ubuntu with systemd is required.'
+case "${ID:-}" in
+  ubuntu) docker_suite=${UBUNTU_CODENAME:-${VERSION_CODENAME:-}} ;;
+  debian)
+    case "${VERSION_ID:-}:${VERSION_CODENAME:-}" in
+      12:bookworm|13:trixie) docker_suite=$VERSION_CODENAME ;;
+      *) fail 'Use a Debian 12 (bookworm) or Debian 13 (trixie) standard system container.' ;;
+    esac ;;
+  *) fail 'This installer supports Ubuntu and Debian 12/13.' ;;
+esac
+[[ $docker_suite =~ ^[a-z][a-z0-9-]*$ ]] || fail 'Cannot identify the Docker APT distribution suite.'
+docker_repo="https://download.docker.com/linux/$ID"
+[[ -d /run/systemd/system ]] && command -v systemctl >/dev/null || fail 'Boot the controller guest with systemd before installing.'
+guest_type=$(systemd-detect-virt --container 2>/dev/null || true)
+docker_error() {
+  if [[ $guest_type == lxc ]]; then
+    echo 'In Proxmox, check that this unprivileged CT has Nesting and keyctl enabled, then fully stop and start the CT after changing features.' >&2
+    echo 'Check journalctl -u docker -u containerd inside the CT and the host LXC packages and storage if Docker still cannot start.' >&2
+  fi
+  fail "$1"
+}
 [[ ! -e /opt/homecloud-hub ]] || fail 'An existing installation must be upgraded, not reinstalled.'
 [[ ! -e /opt/i-clusters ]] || fail '/opt/i-clusters already exists. Use sudo iclusters update for an existing installation.'
 [[ ! -e /usr/local/bin/iclusters && ! -e /etc/systemd/system/i-clusters.service ]] || fail 'i-Clusters command or service already exists.'
@@ -48,27 +70,33 @@ apt-get install -y ca-certificates curl git openssl nano iproute2 python3
 if ! command -v docker >/dev/null; then
   for pkg in docker.io docker-compose docker-compose-v2 docker-doc docker-buildx podman-docker containerd runc; do
     if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q 'install ok installed'; then
-      fail "Existing package $pkg conflicts with Docker Engine. Configure Docker and Compose first using Docker's Ubuntu documentation."
+      fail "Existing package $pkg conflicts with Docker Engine. Configure Docker and Compose first using Docker's $ID installation guide."
     fi
   done
   install -m 0755 -d /etc/apt/keyrings
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  curl -fsSL "$docker_repo/gpg" -o /etc/apt/keyrings/docker.asc
   chmod a+r /etc/apt/keyrings/docker.asc
   cat > /etc/apt/sources.list.d/docker.sources <<EOF
 Types: deb
-URIs: https://download.docker.com/linux/ubuntu
-Suites: ${UBUNTU_CODENAME:-$VERSION_CODENAME}
+URIs: $docker_repo
+Suites: $docker_suite
 Components: stable
 Architectures: $(dpkg --print-architecture)
 Signed-By: /etc/apt/keyrings/docker.asc
 EOF
+  chmod 0644 /etc/apt/sources.list.d/docker.sources
   apt-get update
   apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 fi
 docker compose version >/dev/null || fail 'Install the Docker Compose plugin before continuing.'
 [[ -x /usr/bin/docker ]] || fail 'The systemd service requires Docker at /usr/bin/docker.'
-systemctl start docker
-docker info >/dev/null || fail 'Docker Engine is unavailable.'
+systemctl start docker || docker_error 'Docker service failed to start.'
+docker info >/dev/null || docker_error 'Docker Engine is unavailable.'
+if [[ $guest_type == lxc ]]; then
+  # A running daemon alone does not verify nested mounts and container startup.
+  docker run --rm --pull=missing --security-opt no-new-privileges busybox:1.37 true ||
+    docker_error 'The nested Docker container check failed. Review the Docker error above before retrying the installer.'
+fi
 install -d -m 0755 /opt
 stage=$(mktemp -d /opt/iclusters-install.XXXXXXXX)
 trap 'rm -rf -- "$stage"' EXIT
@@ -82,9 +110,9 @@ fi
 sh deployment/generate-secrets.sh
 if [[ -z $url ]]; then
   source deployment/network.sh
-  vm_ip=$(detect_vm_ip) || fail 'Cannot detect the VM IPv4 address. Check its network connection or supply --url.'
+  vm_ip=$(detect_vm_ip) || fail 'Cannot detect the controller IPv4 address. Check its network connection or supply --url.'
   url="https://$vm_ip"
-  echo "Detected VM IP: $vm_ip"
+  echo "Detected controller IP: $vm_ip"
 fi
 domain=':80'
 if [[ $url == https://* ]]; then
@@ -114,14 +142,14 @@ elif grep -qx 'CADDY_TLS=tls internal' .env; then
     echo 'Your iPhone/iPad trust profile is ready: /opt/i-clusters/secrets/ca/i-clusters.mobileconfig'
     echo 'Transfer this public profile through a trusted channel.'
   else
-    echo 'Export the public LAN root from the VM and transfer it through a trusted channel.'
+    echo 'Export the public LAN root from the controller and transfer it through a trusted channel.'
   fi
   echo 'Install the profile in Settings, then enable the matching root in General > About > Certificate Trust Settings.'
 fi
 # Read the final URL after optional trusted HTTPS updates the configuration.
 installed_url=$(sed -n 's/^WEB_ORIGIN=//p' .env)
 echo "Open guided connection setup after signing in: ${installed_url%/}/settings?tab=Connections&setup=choose"
-echo 'Configure AI and notification channels under Settings > Integrations.'
+echo 'Configure notification channels under Settings > Integrations, and AI providers on the AI Assistant page.'
 printf '\n%s\n\n  Open i-Clusters: %s\n\n' 'i-Clusters installation completed successfully.' "$installed_url"
 
 if [[ -f apps/api/scripts/owner-setup-link.mjs ]]; then
