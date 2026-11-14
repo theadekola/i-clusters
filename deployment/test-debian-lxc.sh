@@ -38,7 +38,8 @@ guest awk 'NR == 1 { exit !($1 == 0 && $2 > 0) }' /proc/self/uid_map
 sudo lxc file push install.sh "$ct/root/install.sh"
 sudo lxc file push "$work/source.bundle" "$ct/root/source.bundle"
 guest git --version >/dev/null 2>&1 || guest sh -ec 'apt-get update && apt-get install -y git ca-certificates'
-guest git config --system url.file:///root/source.bundle.insteadOf https://github.com/theadekola/i-clusters.git
+guest git clone --bare /root/source.bundle /root/source.git
+guest git config --system url.file:///root/source.git.insteadOf https://github.com/theadekola/i-clusters.git
 guest env DEBIAN_FRONTEND=noninteractive bash /root/install.sh </dev/null
 guest git -C /opt/i-clusters rev-parse HEAD | grep -Fx "$(git rev-parse HEAD)"
 guest grep -Fx 'URIs: https://download.docker.com/linux/debian' /etc/apt/sources.list.d/docker.sources
