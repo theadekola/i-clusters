@@ -870,6 +870,25 @@ try{
    if(process.env.LAYOUT_SCREENSHOTS){await page.goto(base);await trigger.waitFor();await page.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-header-controls.png`})}
   }
   if(process.env.LAYOUT_CHECK_LANGUAGES==='1'){
+   await page.goto(base);
+   const themeButton=page.locator('.header-theme button').first();
+   assert.ok((await themeButton.boundingBox()).x>(await page.locator('#header-language').boundingBox()).x);
+   const savedAppearance=await page.evaluate(()=>localStorage.getItem('iclusters_appearance'));
+   for(const [name,mode] of [['Light','light'],['Dark','dark'],['System','system']]){
+    await themeButton.click();
+    const item=page.getByRole('menuitemradio',{name:copy(name),exact:true});
+    assert.equal(await item.innerText(),'');
+    await item.click();
+    assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('iclusters_appearance')).theme),mode);
+   }
+   await page.evaluate(saved=>saved===null?localStorage.removeItem('iclusters_appearance'):localStorage.setItem('iclusters_appearance',saved),savedAppearance);
+   await page.reload();
+   if(width<=800)await page.locator('.nav-toggle').click();
+   await page.locator('.sidebar-account .profile-trigger').click();
+   await page.getByRole('menuitem',{name:copy('View account'),exact:true}).click();
+   const account=page.getByRole('dialog',{name:copy('View account'),exact:true});
+   await account.getByRole('tab',{name:copy('Profile'),exact:true}).waitFor();
+   await account.getByRole('button',{name:copy('Close dialog'),exact:true}).click();
    for(const [locale,code,name,title] of languageChoices){
     await page.goto(base+'settings?tab=Appearance');await page.locator('#interface-language').waitFor();const search=page.locator('.settings-page input[type=search],.settings-search input').first();await search.fill('language');const saved=await search.elementHandle();await page.locator('#interface-language').click();const options=page.locator('.language-options [role=option]');assert.equal(await options.count(),5);assert.equal(await options.locator('img').count(),0);await page.locator(`[data-locale="${locale}"]`).click();await page.waitForFunction(locale=>document.documentElement.lang===locale,locale);assert.equal(await saved.evaluate(element=>element===document.querySelector('.settings-page input[type=search],.settings-search input')) ,true,'Language switching retains the form element');assert.equal(await search.inputValue(),'language');assert.equal(await page.locator('#interface-language').innerText(),name);assert.equal(await page.evaluate(()=>localStorage.getItem('iclusters_access_token')),'layout-fixture');assert.equal(await page.evaluate(()=>document.documentElement.dir),'ltr');
     await page.goto(base);await page.getByRole('heading',{name:title,exact:true}).waitFor();assert.equal(await page.evaluate(()=>localStorage.getItem('iclusters_language')),locale);
