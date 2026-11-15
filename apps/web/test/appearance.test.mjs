@@ -20,3 +20,18 @@ test('complete theme presets persist and apply backgrounds while preserving ligh
  assert.equal(appearance.normalizeAppearance({preset:'url(evil)'}).preset,'ocean');
  }finally{for(const k of ['window','document','localStorage','Event'])delete globalThis[k];dom.window.close()}
 });
+
+test('custom button fills and their gradient endpoints keep readable text at every intensity',()=>{
+ const luminance=hex=>{
+  const [r,g,b]=hex.slice(1).match(/../g).map(pair=>parseInt(pair,16)/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)**2.4);
+  return .2126*r+.7152*g+.0722*b;
+ };
+ const contrast=(a,b)=>(Math.max(luminance(a),luminance(b))+.05)/(Math.min(luminance(a),luminance(b))+.05);
+ const accents=[...appearance.themePresets.map(p=>p.accent),'#ffffff','#000000','#ffff00','#777777','#eeeeee'];
+ for(const accent of accents)for(const intensity of [25,50,75,100]){
+  const vars=appearance.appearanceVariables({...appearance.appearanceDefaults,accent,accentIntensity:intensity});
+  for(const fill of ['--app-accent-fill','--app-accent-gradient-end'])
+   assert.ok(contrast(vars[fill],vars['--app-accent-text'])>=4.5,accent+' '+intensity+' '+fill);
+  assert.ok(contrast(vars['--app-light-accent'],'#d9d9d9')>=4.5,accent+' on a light highlighted surface');
+ }
+});

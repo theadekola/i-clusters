@@ -5,7 +5,7 @@
 }
 :root :is(button,a[href],[role="button"],[role="tab"],[role="switch"],[role="checkbox"],summary,select,input[type="button"],input[type="submit"],input[type="reset"],input[type="checkbox"],input[type="radio"],input[type="range"],input[type="file"],input[type="color"],.inspectable-row[tabindex]):not(:disabled):not([aria-disabled="true"]):not([aria-disabled="true"] *):not([inert]):not([inert] *):focus-visible,
 :root :is(input:not([type="hidden"]),textarea):not(:disabled):not([aria-disabled="true"]):not([aria-disabled="true"] *):not([inert]):not([inert] *):focus-visible{
- outline:2px solid var(--app-accent,#38bdf8);outline-offset:3px;
+ outline:2px solid var(--theme-icon,#38bdf8);outline-offset:3px;
 }
 /* Mouse hover is separate from touch/keyboard pressed feedback. */
 @media(hover:hover) and (pointer:fine){
@@ -42,7 +42,7 @@
 .resource-name-action{appearance:none;background:transparent;border:1px solid transparent;border-radius:8px;color:inherit;font:inherit;text-align:left;padding:6px;max-width:100%;min-height:44px}
 .resource-name-action.pve-node-name{display:flex;align-items:center;gap:10px}
 .node-details-target{scroll-margin-top:100px;margin-bottom:12px;min-width:0}
-.node-details-target:focus-visible{outline:2px solid var(--app-accent,#38bdf8);outline-offset:3px;border-radius:12px}
+.node-details-target:focus-visible{outline:2px solid var(--theme-icon,#38bdf8);outline-offset:3px;border-radius:12px}
 
 /* Individual table-row feedback; whole sections and summary panels stay unchanged. */
 @media(hover:hover) and (pointer:fine){

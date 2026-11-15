@@ -14,8 +14,43 @@ export type AppearanceSettings=typeof appearanceDefaults;
 const color=/^#[0-9a-f]{6}$/i;
 export function normalizeAppearance(value:any):AppearanceSettings{const v=value&&typeof value==='object'?value:{};return {preset:themePresets.some(p=>p.id===v.preset)?v.preset:appearanceDefaults.preset,theme:['light','dark','system'].includes(v.theme)?v.theme:'dark',accent:typeof v.accent==='string'&&color.test(v.accent)?v.accent:appearanceDefaults.accent,density:['compact','comfortable','spacious'].includes(v.density)?v.density:appearanceDefaults.density,animations:typeof v.animations==='boolean'?v.animations:true,accentStyle:v.accentStyle==='gradient'?'gradient':'solid',accentIntensity:typeof v.accentIntensity==='number'&&Number.isFinite(v.accentIntensity)?Math.max(25,Math.min(100,Math.round(v.accentIntensity))):100,fontFamily:['system','arial','monospace'].includes(v.fontFamily)?v.fontFamily:'system',borderRadius:typeof v.borderRadius==='number'&&Number.isFinite(v.borderRadius)?Math.max(0,Math.min(24,Math.round(v.borderRadius))):12,background:v.background==='solid'?'solid':'gradient',reduceMotion:v.reduceMotion===true,smoothTransitions:v.smoothTransitions!==false,sectionLabels:v.sectionLabels!==false};}
 export function loadAppearance(){try{return normalizeAppearance(JSON.parse(localStorage.getItem('iclusters_appearance')||'{}'))}catch{return {...appearanceDefaults}}}
-export function accentText(accent:string){if(!color.test(accent))return '#ffffff';const rgb=[1,3,5].map(start=>parseInt(accent.slice(start,start+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722>.179?'#07111e':'#ffffff';}
-export function appearanceVariables(value:AppearanceSettings){const a=normalizeAppearance(value),fill='#'+[1,3,5].map((start,index)=>Math.round(parseInt(a.accent.slice(start,start+2),16)*a.accentIntensity/100+[23,37,54][index]*(1-a.accentIntensity/100)).toString(16).padStart(2,'0')).join('');return {'--app-accent':a.accent,'--app-accent-fill':fill,'--app-accent-text':accentText(fill),'--app-accent-intensity':`${a.accentIntensity}%`,'--app-radius':`${a.borderRadius}px`,'--app-font-family':a.fontFamily==='arial'?'Arial, sans-serif':a.fontFamily==='monospace'?'ui-monospace, SFMono-Regular, Consolas, monospace':'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'};}
+function channels(hex:string){
+ return [1,3,5].map(start=>parseInt(hex.slice(start,start+2),16));
+}
+function luminance(hex:string){
+ const [r,g,b]=channels(hex).map(value=>value/255).map(value=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4);
+ return .2126*r+.7152*g+.0722*b;
+}
+function mixColour(start:string,end:string,amount:number){
+ const target=channels(end);
+ return '#'+channels(start).map((value,i)=>Math.round(value+(target[i]-value)*amount).toString(16).padStart(2,'0')).join('');
+}
+export function accentText(accent:string){
+ if(!color.test(accent))return '#ffffff';
+ const value=luminance(accent);
+ if(1.05/(value+.05)>=4.5)return '#ffffff';
+ return (value+.05)/(luminance('#07111e')+.05)>=4.5?'#07111e':'#000000';
+}
+// Keep the selected hue for links and icons, darkening it only when a light surface needs more contrast.
+function lightAccent(accent:string){
+ let ink=accent;
+ while(luminance(ink)>.105)ink=mixColour(ink,'#000000',.07);
+ return ink;
+}
+export function appearanceVariables(value:AppearanceSettings){
+ const a=normalizeAppearance(value);
+ const fill=mixColour('#172536',a.accent,a.accentIntensity/100);
+ const text=accentText(fill);
+ const midnight=a.preset==='midnight-cyan'&&a.accent==='#075bd8';
+ return {
+  '--app-accent':a.accent,'--app-accent-fill':fill,'--app-accent-text':text,
+  '--app-accent-gradient-end':mixColour(fill,text==='#ffffff'?'#000000':'#ffffff',.13),
+  '--app-light-accent':midnight?'#00677d':lightAccent(a.accent),
+  '--app-dark-accent':midnight?'#39d8f3':mixColour(a.accent,'#ffffff',.52),
+  '--app-accent-intensity':`${a.accentIntensity}%`,'--app-radius':`${a.borderRadius}px`,
+  '--app-font-family':a.fontFamily==='arial'?'Arial, sans-serif':a.fontFamily==='monospace'?'ui-monospace, SFMono-Regular, Consolas, monospace':'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+ };
+}
 export function resolvedTheme(theme:AppearanceSettings['theme']){return theme==='system'?(window.matchMedia?.('(prefers-color-scheme: dark)').matches?'dark':'light'):theme;}
 export function watchSystemTheme(){const media=window.matchMedia?.('(prefers-color-scheme: dark)'),changed=()=>{if(loadAppearance().theme==='system')applyAppearance();};media?.addEventListener?.('change',changed);return ()=>media?.removeEventListener?.('change',changed);}
 export function applyAppearance(){const a=loadAppearance(),root=document.documentElement;for(const [key,value] of Object.entries(appearanceVariables(a)))root.style.setProperty(key,value);const preset=themePresets.find(p=>p.id===a.preset)!;root.dataset.preset=a.preset;root.style.setProperty('--app-theme-background',preset.background);root.style.setProperty('--app-theme-surface',preset.surface);root.dataset.theme=resolvedTheme(a.theme);root.style.colorScheme=root.dataset.theme;root.dataset.density=a.density;root.dataset.animations=a.animations&&!a.reduceMotion?'on':'off';root.dataset.transitions=a.smoothTransitions?'on':'off';root.dataset.accentStyle=a.accentStyle;root.dataset.background=a.background;root.dataset.sectionLabels=a.sectionLabels?'on':'off';root.dataset.appearance='custom';}

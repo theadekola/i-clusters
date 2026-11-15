@@ -4,7 +4,7 @@
 :root[data-appearance="custom"] .content .card{border-radius:var(--app-radius)!important}
 :root[data-appearance="custom"] :is(.btn,input:not([type="checkbox"]):not([type="range"]),select,textarea){border-radius:var(--app-radius)}
 :root[data-appearance="custom"] .btn.primary{background:var(--app-accent-fill);color:var(--app-accent-text)}
-:root[data-accent-style="gradient"] .btn.primary{background:linear-gradient(120deg,var(--app-accent-fill),color-mix(in srgb,var(--app-accent-fill) 85%,#07111e))}
+:root[data-accent-style="gradient"] .btn.primary{background:linear-gradient(120deg,var(--app-accent-fill),var(--app-accent-gradient-end))}
 :root[data-section-labels="off"] .sidebar .nav-title{display:none}
 :root[data-density="spacious"]{--space-panel:16px;--space-grid:12px;--metric-icon:40px;--metric-glyph:22px;--metric-value:24px}
 :root[data-density="spacious"] .content .card{padding:16px!important}
@@ -18,10 +18,10 @@
 /* Complete palettes share the same readable foreground and semantic status colours. */
 :root[data-preset][data-theme="dark"] body{background:var(--app-theme-background);background-attachment:fixed}
 :root[data-preset][data-theme="dark"] :is(.sidebar,.topbar,.card,.settings-overview-card,.modal,.profile-dropdown){background:var(--app-theme-surface)!important}
-:root[data-preset][data-theme="light"] body{background:radial-gradient(ellipse at 80% 0%,color-mix(in srgb,var(--app-accent) 16%,#fff),transparent 65%),#f3f6fb;background-attachment:fixed}
+:root[data-preset][data-theme="light"] body{background:radial-gradient(ellipse at 80% 0%,color-mix(in srgb,var(--app-accent) 16%,#fff),transparent 65%),var(--theme-raised);background-attachment:fixed}
 /* Shared surface tokens keep nested controls in the selected palette. */
-:root[data-preset]{--theme-text:#edf2f8;--theme-muted:#b0bac9;--theme-border:color-mix(in srgb,var(--app-theme-surface) 70%,#b8c4d6);--theme-raised:color-mix(in srgb,var(--app-theme-surface) 84%,#fff);--theme-input:color-mix(in srgb,var(--app-theme-surface) 75%,#000);--theme-highlight:color-mix(in srgb,var(--app-accent) 20%,var(--app-theme-surface));--theme-icon:color-mix(in srgb,var(--app-accent) 48%,#fff)}
-:root[data-preset][data-theme="light"]{--theme-text:#182b43;--theme-muted:#50647f;--theme-border:color-mix(in srgb,var(--app-accent) 16%,#ced6e2);--theme-raised:color-mix(in srgb,var(--app-accent) 4%,#fff);--theme-input:#fff;--theme-highlight:color-mix(in srgb,var(--app-accent) 12%,#fff);--theme-icon:var(--app-accent)}
+:root[data-preset]{--theme-text:#edf2f8;--theme-muted:#b0bac9;--theme-border:color-mix(in srgb,var(--app-theme-surface) 70%,#b8c4d6);--theme-raised:color-mix(in srgb,var(--app-theme-surface) 84%,#fff);--theme-input:color-mix(in srgb,var(--app-theme-surface) 75%,#000);--theme-highlight:color-mix(in srgb,var(--app-accent) 20%,var(--app-theme-surface));--theme-icon:var(--app-dark-accent)}
+:root[data-preset][data-theme="light"]{--theme-text:#152334;--theme-muted:#435367;--theme-border:color-mix(in srgb,var(--app-accent) 12%,#b0bdca);--theme-control-border:color-mix(in srgb,var(--app-light-accent) 15%,#778491);--theme-raised:color-mix(in srgb,var(--app-accent) 5%,#f3f5f7);--theme-input:#fff;--theme-highlight:color-mix(in srgb,var(--app-accent) 15%,#fff);--theme-icon:var(--app-light-accent)}
 :root[data-preset] :is(.sidebar,.topbar,.card,.settings-overview-card,.modal,.profile-dropdown){border-color:var(--theme-border)!important;color:var(--theme-text)}
 :root[data-preset] :is(.profile-trigger,.search,.settings-search,.appearance-choice,.resource-tile,.overview-stat){background:var(--theme-raised)!important;border-color:var(--theme-border)!important;color:var(--theme-text)!important}
 :root[data-preset] :is(.btn.secondary,.btn.ghost,.icon-btn,.storage-action-tile,.pve-quick button,.pve-quick a,.quick-grid button,.quick-grid a,.storage-quick button,.storage-quick a){background:transparent!important;border-color:transparent!important;color:var(--theme-text)!important}
@@ -42,13 +42,17 @@
 /* One palette contract for overlays, legacy components and lazy-loaded views. */
 :root[data-preset]{
  --theme-surface:var(--app-theme-surface);
+ --theme-link:var(--theme-icon);
+ --panel:var(--theme-surface);--card:var(--theme-surface);--hover:var(--theme-highlight);
  --surface:var(--theme-surface);--text:var(--theme-text);--muted:var(--theme-muted);--border:var(--theme-border);--input-bg:var(--theme-input);
  accent-color:var(--app-accent);color:var(--theme-text);background:var(--theme-input);
 }
 :root[data-preset][data-theme="light"]{--theme-surface:color-mix(in srgb,var(--app-accent) 2%,#fff)}
 :root[data-preset] body{color:var(--theme-text)}
-:root[data-preset] :is(button,a,input,select,textarea,[tabindex]):focus-visible{outline-color:var(--app-accent)}
+:root[data-preset] :is(button,a,input,select,textarea,[tabindex]):focus-visible{outline-color:var(--theme-icon)}
 :root[data-preset] :is(input[type=checkbox],input[type=radio],input[type=range]){accent-color:var(--app-accent)}
+/* Unstyled links use the readable form of the selected accent. */
+:where(a:any-link){color:var(--theme-icon)}
 /* Neutral chart chrome follows the palette; data series retain distinct colours. */
 :root[data-preset] .recharts-default-tooltip{background:var(--theme-surface)!important;border-color:var(--theme-border)!important;color:var(--theme-text)!important}
 :root[data-preset] .recharts-tooltip-label{color:var(--theme-text)!important}
@@ -114,7 +118,7 @@
   --theme-border: #31546f;
   --theme-text: #edf6ff;
   --theme-muted: #adc3d8;
-  --theme-icon: #39d8f3;
+  --theme-icon: var(--app-dark-accent);
 }
 :root[data-preset="midnight-cyan"] :is(button,a,input,select,textarea,[tabindex]):focus-visible {
   outline-color: var(--theme-icon);

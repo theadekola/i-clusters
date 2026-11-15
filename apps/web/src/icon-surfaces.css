@@ -67,7 +67,7 @@
   .users-icon,.settings-section-action,.table-action,.nav-item,.profile-trigger,
   .vm-layout button,.restore-layout button,.retention-layout button
 ):focus-visible {
-  outline:2px solid var(--app-accent);
+  outline:2px solid var(--theme-icon);
   outline-offset:2px;
 }
 
