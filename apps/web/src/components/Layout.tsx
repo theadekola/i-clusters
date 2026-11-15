@@ -1,3 +1,5 @@
+import {MyAccountDialog} from './AccountDialog';
+import SidebarAccount from './SidebarAccount';
 import {PageRefreshContext,usePageRefreshController} from './PageRefresh';
 import RefreshButton from './RefreshButton';
 import ClusterSwitcher from './ClusterSwitcher';
@@ -17,7 +19,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Boxes, Container, Database, Network, HardDriveDownload,
   CalendarClock, History, RotateCcw, Activity, Bell, Sparkles, Users, Settings,
-  Terminal, FolderOpen, PanelLeftOpen, PanelLeftClose, X, Cloud, LogOut, CircleUserRound
+  Terminal, FolderOpen, PanelLeftOpen, PanelLeftClose, X, Cloud
 } from 'lucide-react';
 import { useState,useEffect,useRef } from 'react';
 import UpdateButton from './UpdateButton';
@@ -52,16 +54,13 @@ export default function Layout() {
     query.addEventListener('change',change);
     return ()=>query.removeEventListener('change',change);
   },[]);
-  const [profileOpen,setProfileOpen]=useState(false);
-  const profileRef=useRef<HTMLDivElement>(null);
+  const [accountOpen,setAccountOpen]=useState(false);
   const location = useLocation();
   const pageRefresh=usePageRefreshController();
   const {data:session}=useApi<any>('/auth/me',null);
   const {data:configuration}=useApi<any>('/settings',null);
   useEffect(()=>{if(configuration?.settings)configureRefresh(configuration.settings.refresh);},[configuration?.settings?.refresh]);
-  useEffect(()=>{const close=(event:MouseEvent)=>{if(!profileRef.current?.contains(event.target as Node))setProfileOpen(false)};const key=(event:KeyboardEvent)=>{if(event.key==='Escape'&&profileOpen){setProfileOpen(false);profileRef.current?.querySelector('button')?.focus({preventScroll:true})}};document.addEventListener('mousedown',close);document.addEventListener('keydown',key);return()=>{document.removeEventListener('mousedown',close);document.removeEventListener('keydown',key)}},[profileOpen]);
-  useEffect(()=>{if(profileOpen)profileRef.current?.querySelector<HTMLElement>('[role=menuitem]')?.focus({preventScroll:true})},[profileOpen]);
-  useEffect(()=>{if(menuOpen)toggleRef.current?.focus({preventScroll:true});setMenuOpen(false);setProfileOpen(false);},[location.pathname]);
+  useEffect(()=>{if(menuOpen)toggleRef.current?.focus({preventScroll:true});setMenuOpen(false);setAccountOpen(false);},[location.pathname,location.search]);
   useEffect(()=>{
     if(!mobile||!menuOpen)return;
     const unlock=lockPageScroll();
@@ -94,13 +93,15 @@ export default function Layout() {
           </NavLink>)}
         </div>)}
       </nav>
+      <SidebarAccount key={String(mobile&&menuOpen)} labels={showLabels} signOut={signOut} openAccount={()=>{if(mobile)closeMenu();setAccountOpen(true)}}/>
     </aside>
+    {accountOpen&&<MyAccountDialog onClose={()=>{setAccountOpen(false);window.requestAnimationFrame(()=>{(mobile?toggleRef.current:menuRef.current?.querySelector<HTMLButtonElement>('.profile-trigger'))?.focus({preventScroll:true})})}}/>}
     <div className="main-shell" inert={mobile&&menuOpen}>
       <header className="topbar">
         <button ref={toggleRef} className="icon-btn nav-toggle" aria-label={navigationOpen?'Close navigation':'Open navigation'} aria-controls="primary-navigation" aria-expanded={navigationOpen} onClick={()=>mobile?setMenuOpen(v=>!v):toggleDesktop()}><NavIcon size={19} aria-hidden="true"/></button>
         <ClusterSwitcher owner={session?.user?.role==='owner'}/>
         <RefreshButton local indicator className="icon-btn global-refresh" aria-label="Refresh" title="Refresh" onClick={()=>pageRefresh.refresh(()=>refreshResources(['']))}/>
-        <div className="top-actions">{session?.user?.role==='owner' && <UpdateButton/>}<HeaderNotifications/><LanguageSelector compact/><div className="profile-menu" ref={profileRef} onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget as Node))setProfileOpen(false)}}><button type="button" className="profile-trigger" aria-label="User profile" aria-haspopup="menu" aria-controls={profileOpen?'header-profile-options':undefined} aria-expanded={profileOpen} onKeyDown={event=>{if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();setProfileOpen(true)}}} onClick={()=>setProfileOpen(v=>!v)}><CircleUserRound size={23} aria-hidden="true"/></button>{profileOpen&&<div id="header-profile-options" className="profile-dropdown" role="menu"><div className="profile-dropdown-identity"><b translate="no">{session?.user?.name||'Signed in'}</b><small>{session?.user?.role||''}</small></div><button role="menuitem" onClick={signOut}><LogOut size={15}/>Sign out</button></div>}</div></div>
+        <div className="top-actions">{session?.user?.role==='owner' && <UpdateButton/>}<HeaderNotifications/><LanguageSelector compact/></div>
       </header>
       <PageRefreshContext.Provider value={pageRefresh}><main className="content"><PageBreadcrumbs/>{['operator','admin','owner'].includes(session?.user?.role)&&<GuestRestartActivity key={session.user.sub||session.user.id}/>}<ProductVisit path={location.pathname} search={location.search}/><PersistentShell authorized={['admin','owner'].includes(session?.user?.role)}/><div key={location.pathname}><Outlet/></div></main></PageRefreshContext.Provider>
     </div>

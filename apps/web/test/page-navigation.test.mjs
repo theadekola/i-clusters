@@ -6,7 +6,7 @@ const {pageTrail,settingsTitle,settingsTabs}=await import(`data:text/javascript;
 const labels=(path,search='',host,role)=>pageTrail(path,search,host,role).map(i=>i.label);
 test('Overview has no path and unknown routes do not invent a page',()=>{assert.deepEqual(labels('/'),[]);assert.deepEqual(labels('/missing'),[])});
 test('every Settings title identifies the selected tab',()=>{
- const titles=['General Settings','Security Settings','Connections','Integrations','Appearance Settings','About i-Clusters'];
+ const titles=['General Settings','Connections','Integrations','Appearance Settings','About i-Clusters'];
  settingsTabs.forEach((tab,index)=>{assert.equal(settingsTitle(tab),titles[index]);assert.equal(labels('/settings',`?tab=${tab}`)[1],tab)});
 });
 test('nested connection sections and legacy Settings links resolve to the real page',()=>{

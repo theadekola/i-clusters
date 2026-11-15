@@ -129,7 +129,7 @@ for(const [page,tabs] of Object.entries({
  backups:['Backup Archives','Restore Points','Schedules','Retention Policies','Destinations','Reports'],
  monitoring:['Provider Jobs','Hardware & Diagnostics'],
  alerts:['Alert History','Alert Rules'],users:['Audit Logs'],
- settings:['General','Security','Connections','Integrations','Appearance','About']
+ settings:['General','Connections','Integrations','Appearance','About']
 }))for(const tab of tabs)routes.push(`/${page}?tab=${encodeURIComponent(tab)}`);
 routes.push('/settings?tab=System#provider-compatibility');
 for(const section of ['connected','setup','notifications','remote'])routes.push(`/settings?tab=Connections&section=${section}`);
@@ -153,7 +153,7 @@ try{
  const context=await browser.newContext({ignoreHTTPSErrors:!!process.env.LAYOUT_HTTPS_CERT});
  const page=await context.newPage();
  await page.addInitScript(locale=>{if(!localStorage.getItem('iclusters_language'))localStorage.setItem('iclusters_language',locale);if(!sessionStorage.getItem('language-login-audit'))localStorage.setItem('iclusters_access_token','layout-fixture');localStorage.setItem('iclusters_last_activity',String(Date.now()));},auditLocale);
- await page.addInitScript(theme=>{if(theme)localStorage.setItem('iclusters_appearance',JSON.stringify({theme,preset:'ocean'}))},process.env.LAYOUT_THEME||'');
+ await page.addInitScript(theme=>{if(theme)localStorage.setItem('iclusters_appearance',JSON.stringify({theme,preset:'midnight-cyan'}))},process.env.LAYOUT_THEME||'');
  await page.context().route('**/api/**',async route=>{
   readCount++;if(checkRefresh)await new Promise(resolve=>setTimeout(resolve,150));
   const path=new URL(route.request().url()).pathname.replace('/api','');
@@ -851,9 +851,9 @@ try{
   }
   if(process.env.LAYOUT_CHECK_HEADER_LANGUAGE==='1'){
    await page.goto(base);await page.locator('#header-language').waitFor();
-   const trigger=page.locator('#header-language'),profile=page.locator('.profile-trigger'),bell=page.locator('.notification-bell');
-   const controls=await Promise.all([bell,trigger,profile].map(control=>control.boundingBox()));assert.ok(controls[0].x<controls[1].x&&controls[1].x<controls[2].x,'Header order is alerts, language code, profile');
-   for(const control of [trigger,profile]){await page.mouse.move(0,0);await control.evaluate(e=>e.blur());assert.equal(await control.evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)');assert.ok((await control.boundingBox()).width>=40)}
+   const trigger=page.locator('#header-language'),profile=page.locator('.sidebar-account .profile-trigger').first(),bell=page.locator('.notification-bell');
+   assert.equal(await page.locator('.topbar .profile-trigger').count(),0);
+   assert.ok((await bell.boundingBox()).x<(await trigger.boundingBox()).x);
    await trigger.click();await page.keyboard.press('End');assert.equal(await page.locator('#header-language-options [data-locale="pt-PT"]').evaluate(e=>e===document.activeElement),true);await page.keyboard.press('Escape');assert.equal(await trigger.evaluate(e=>e===document.activeElement),true);
    for(const [locale,code,,title] of languageChoices){
     await trigger.click();const menu=page.locator('#header-language-options');assert.equal(await menu.locator('[role=option]').count(),5);assert.equal(await menu.locator('img').count(),0);const box=await menu.boundingBox();assert.ok(box.x>=0&&box.x+box.width<=width,'Language dropdown stays in the viewport: '+JSON.stringify({width,box,style:await menu.evaluate(e=>({width:getComputedStyle(e).width,minWidth:getComputedStyle(e).minWidth,position:getComputedStyle(e).position,right:getComputedStyle(e).right,padding:getComputedStyle(e).padding}))}));
@@ -862,7 +862,9 @@ try{
     await page.reload();await page.getByRole('heading',{name:title,exact:true}).waitFor();assert.equal(await trigger.innerText(),code);
    }
    await trigger.click();await bell.click();assert.equal(await page.locator('#header-language-options').count(),0);const notifications=page.locator('#header-notification-panel');await notifications.waitFor();const notificationBox=await notifications.boundingBox();assert.ok(notificationBox.x>=0&&notificationBox.x+notificationBox.width<=width,'Alerts remain within the viewport');await page.keyboard.press('Escape');
-   await profile.click();assert.equal(await page.locator('.profile-dropdown-identity b').innerText(),'Layout Review');assert.equal(await page.locator('.profile-dropdown-identity small').innerText(),process.env.LAYOUT_ROLE||'owner');assert.ok(await page.locator('.profile-dropdown [role=menuitem]').isVisible());await page.keyboard.press('Escape');assert.equal(await profile.evaluate(e=>e===document.activeElement),true);
+   if(width<=800)await page.locator('.nav-toggle').click();
+   await profile.click();await page.locator('.sidebar-popover [role=menuitem]').first().waitFor();await page.keyboard.press('Escape');assert.equal(await profile.evaluate(e=>e===document.activeElement),true);
+   if(width<=800)await page.keyboard.press('Escape');
    await page.goto(base+'settings?tab=Appearance');await page.locator('#interface-language').waitFor();const search=page.locator('.settings-page input[type=search],.settings-search input').first();await search.fill('language');const saved=await search.elementHandle();await trigger.click();await page.locator('#header-language-options [data-locale="fr-FR"]').click();await page.waitForFunction(()=>document.documentElement.lang==='fr-FR');assert.equal(await page.locator('#interface-language').innerText(),'Français');assert.equal(await search.inputValue(),'language');assert.equal(await saved.evaluate(e=>e===document.querySelector('.settings-page input[type=search],.settings-search input')),true);
    await page.locator('#interface-language').click();await page.locator('#interface-language-options [data-locale="de-DE"]').click();await page.waitForFunction(()=>document.documentElement.lang==='de-DE');assert.equal(await trigger.innerText(),'DE');await trigger.click();await page.locator(`#header-language-options [data-locale="${auditLocale}"]`).click();await page.waitForFunction(locale=>document.documentElement.lang===locale,auditLocale);
    if(process.env.LAYOUT_SCREENSHOTS){await page.goto(base);await trigger.waitFor();await page.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-header-controls.png`})}
@@ -873,7 +875,8 @@ try{
     await page.goto(base);await page.getByRole('heading',{name:title,exact:true}).waitFor();assert.equal(await page.evaluate(()=>localStorage.getItem('iclusters_language')),locale);
     if(locale==='fr-FR'){
      assert.deepEqual(await page.locator('.overview-controls select').nth(1).locator('option').allTextContents(),['Dernière heure','6 dernières heures','24 dernières heures']);
-     await page.locator('.profile-menu > button').click();
+     if(width<=800)await page.locator('.nav-toggle').click();
+     await page.locator('.sidebar-account .profile-trigger').first().click();
      await page.getByRole('menuitem',{name:'Se déconnecter',exact:true}).waitFor();
      await page.keyboard.press('Escape');
     }
