@@ -18,12 +18,13 @@ import NotificationSettings from '../components/NotificationSettings';
 import IntegrationChecks from '../components/IntegrationChecks';
 import './settings-overview.css';
 import SystemSettings from '../components/SystemSettings';
-import SecuritySettings from '../components/SecuritySettings';
+import {TransportSettings} from '../components/SecuritySettings';
+import {MyAccountDialog} from '../components/AccountDialog';
 import EditableSettingsSection from '../components/EditableSettingsSection';
 import AppearanceSettings from '../components/AppearanceSettings';
 import AboutSettings from '../components/AboutSettings';
 import {safeLocale} from '../regional';
-const categories=[['General',SettingsIcon],['Security',Shield],['Connections',Link2],['Integrations',SlidersHorizontal],['Appearance',Palette],['About',Info]] as const;
+const categories=[['General',SettingsIcon],['Connections',Link2],['Integrations',SlidersHorizontal],['Appearance',Palette],['About',Info]] as const;
 function Switch({label,detail,checked,onChange}:{label:string;detail?:string;checked:boolean;onChange:(v:boolean)=>void}){return <label className="settings-toggle"><span><b>{label}</b>{detail&&<small>{detail}</small>}</span><input type="checkbox" role="switch" checked={checked} onChange={e=>onChange(e.target.checked)}/><span className="settings-switch-track" aria-hidden="true"/></label>}
 function SettingsCard({title,detail,icon:Icon,children}:{title:string;detail:string;icon:any;children:any}){return <Card className="settings-overview-card"><div className="settings-card-heading"><span><Icon size={23}/></span><div><h2>{title}</h2><p>{detail}</p></div></div>{children}</Card>}
 export default function Settings(){const [query,setQuery]=useSearchParams();const raw=query.get('tab')||'General',category=settingsCategory(raw);const change=(tab:string)=>{const next=new URLSearchParams(query);next.set('tab',tab);next.delete('setup');next.delete('section');setQuery(next)};
@@ -35,6 +36,7 @@ export default function Settings(){const [query,setQuery]=useSearchParams();cons
   if(raw==='Notifications')next.delete('section');
   return <Navigate replace to={{pathname:'/settings',search:next.toString(),hash:hash||(raw==='Backup & Restore'?'#backup-restore':'')}}/>;
  }
+ if(raw==='Security')return <Navigate replace to='/settings?tab=General&account=security'/>;
  const setup=query.get('setup');
  if(setup==='ai')return <Navigate replace to="/ai?setup=ai"/>;
  if(category==='Connections'&&(setup==='notifications'||query.get('section')==='notifications')){
@@ -44,7 +46,7 @@ export default function Settings(){const [query,setQuery]=useSearchParams();cons
   next.delete('setup');
   return <Navigate replace to={'/settings?'+next.toString()}/>;
  }
- return <div className="settings-overview-page">{category==='Connections'?<ConnectionManager navigation={<nav className="settings-overview-tabs tabs" aria-label="Settings sections">{categories.map(([name,Icon])=><button type="button" key={name} className={`tab ${category===name?'active':''}`} aria-current={category===name?'page':undefined} onClick={()=>change(name)}><Icon size={16}/>{name}</button>)}</nav>}/>:<SettingsOverview category={category} change={change}/>}</div>;
+ return <div className="settings-overview-page">{query.get('account')==='security'&&<MyAccountDialog initialTab="Security" onClose={()=>{const next=new URLSearchParams(query);next.delete('account');setQuery(next,{replace:true})}}/>}{category==='Connections'?<ConnectionManager navigation={<nav className="settings-overview-tabs tabs" aria-label="Settings sections">{categories.map(([name,Icon])=><button type="button" key={name} className={`tab ${category===name?'active':''}`} aria-current={category===name?'page':undefined} onClick={()=>change(name)}><Icon size={16}/>{name}</button>)}</nav>}/>:<SettingsOverview category={category} change={change}/>}</div>;
 }
 function SettingsOverview({category,change}:{category:string;change:(tab:string)=>void}){
  const [params]=useSearchParams();
@@ -64,6 +66,7 @@ function SettingsOverview({category,change}:{category:string;change:(tab:string)
  const section=(name:string)=>{setSearch('');setMessage('');setError('');change(name)};
  const toggleWidget=(name:string,value:boolean)=>{setMessage('');try{const current=loadDashboardWidgets(),next=value?[...new Set([...current,name])]:current.filter(w=>w!==name);saveDashboardWidgets(next);setWidgets(next);setError('');setMessage('Dashboard preferences saved.')}catch(e:any){setError(e.message||'Dashboard preferences could not be saved.')}};
  const saveShared=(patch:Partial<{siteName:string;description:string;refresh:number}>)=>{if(!admin)return Promise.reject(Error('Administrator access is required.'));const task=settingsSave.current.catch(()=>{}).then(async()=>{setBusy(true);try{const latest=await api('/settings');const settings={siteName:latest.settings.siteName,description:latest.settings.description||'',refresh:latest.settings.refresh,...patch};await api('/settings',{method:'PUT',body:JSON.stringify(settings)});live.setData({...latest,settings});window.dispatchEvent(new Event('iclusters-settings'))}finally{setBusy(false)}});settingsSave.current=task;return task};
+ useEffect(()=>{const sync=()=>setAppearance(loadAppearance());window.addEventListener('iclusters-appearance',sync);return ()=>window.removeEventListener('iclusters-appearance',sync)},[]);
  const persistAppearance=(next:typeof appearance)=>{const current=loadAppearance(),patch=Object.fromEntries(Object.entries(next).filter(([key,value])=>value!==(appearance as any)[key]));saveAppearanceWithSidebar({...current,...patch},loadSidebarDisplay());setAppearance(loadAppearance())};
  const persistSidebar=(next:string)=>{saveAppearanceWithSidebar(loadAppearance(),next);setSidebar(next)};
  const show=(section:string,title:string,keywords='')=>category===section&&`${title} ${translate(title)} ${keywords} ${translate(keywords)}`.toLowerCase().includes(search.trim().toLowerCase());
@@ -72,9 +75,9 @@ function SettingsOverview({category,change}:{category:string;change:(tab:string)
  return <><div className="settings-overview-heading"><PageIcon name="settings" size={31}/><div><h1>{settingsTitle(category)}</h1><p>Configure and customize your i-Clusters.</p></div><div className="settings-overview-actions">{category==='Integrations'?(owner&&<Link className="btn primary" to="/settings/delivery-history">Delivery History</Link>):<label className="settings-search"><Search size={17}/><input aria-label="Search settings" aria-description={`Current category: ${category}`} placeholder={`Search ${category} settings…`} value={search} onChange={e=>setSearch(e.target.value)}/></label>}{category==='General'&&<ProductFeedback/>}</div></div>{nav}
  {(error||live.error||session.error)&&<p className="error" role="alert">{error||live.error||session.error}</p>}{message&&<p role="status" className="settings-save-message"><CheckCircle size={17}/>{message}</p>}
  {live.loading&&!data&&<Card><p><ReportLoading/></p></Card>}{live.error&&!data&&<button type="button" className="btn secondary" onClick={()=>live.refresh()}>Retry settings</button>}
- {data&&<><div className={`settings-overview-grid ${category==='General'?'general-settings-grid':category==='Security'?'security-settings-grid':category==='Appearance'?'appearance-settings-grid':category==='About'?'about-settings-grid':category==='Integrations'?'notification-settings-grid':''}`}>
+ {data&&<><div className={`settings-overview-grid ${category==='General'?'general-settings-grid':category==='Appearance'?'appearance-settings-grid':category==='About'?'about-settings-grid':category==='Integrations'?'notification-settings-grid':''}`}>
  {category==='Integrations'&&(owner?<NotificationSettings owner editing busy={busy}/>:<p>Ask an i-Clusters owner to add or change connections.</p>)}
- {category==='Security'&&<SecuritySettings user={session.data?.user} search={search}/>}
+ {category==='General'&&<TransportSettings search={search}/>}
 
  {show('General','Site Information','site name description homepage')&&<SettingsCard title="Site Information" detail="Basic information about your i-Clusters." icon={Server}><label>Site Name<input name="siteName" readOnly value={data.settings.siteName}/></label><label>Site Description<textarea name="description" rows={2} readOnly value={data.settings.description||''}/></label><label>Homepage URL<div className="settings-linked-value"><input aria-label="Homepage URL" value={window.location.origin+clusterBase} readOnly/><a href={window.location.origin+clusterBase} target="_blank" rel="noopener noreferrer" aria-label="Open i-Clusters homepage"><ExternalLink size={16}/></a></div></label><small className="settings-note">Site information is read only and shared across the installation.</small></SettingsCard>}
  {show('General','Regional Settings','timezone language date time')&&<SettingsCard title="Regional Settings" detail="Regional information from this device and server." icon={Globe}>{info('Device timezone',Intl.DateTimeFormat().resolvedOptions().timeZone)}{info('Server timezone',system?.timezone)}{info('Language',languages.find(language=>language.id===locale)?.nativeName)}{info('Date format',new Intl.DateTimeFormat(safeLocale(getLocale())).format(new Date()))}{info('Time format',new Intl.DateTimeFormat(safeLocale(getLocale()),{hour:'2-digit',minute:'2-digit'}).format(new Date()))}<small className="settings-note">Choose the interface language in Appearance. Dates and times use the selected language and this device’s timezone.</small></SettingsCard>}

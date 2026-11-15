@@ -17,7 +17,7 @@ test('theme defaults migrate safely and System follows device changes only while
 test('complete theme presets persist and apply backgrounds while preserving light mode',()=>{
  const dom=new JSDOM('',{url:'https://iclusters.test'});for(const k of ['window','document','localStorage','Event'])globalThis[k]=dom.window[k];try{
  for(const preset of appearance.themePresets){appearance.saveAppearance({...appearance.appearanceDefaults,preset:preset.id,accent:preset.accent,theme:'light'});assert.equal(appearance.loadAppearance().preset,preset.id);assert.equal(document.documentElement.dataset.preset,preset.id);assert.equal(document.documentElement.dataset.theme,'light');assert.equal(document.documentElement.style.getPropertyValue('--app-theme-background'),preset.background);assert.equal(document.documentElement.style.getPropertyValue('--app-theme-surface'),preset.surface)}
- assert.equal(appearance.normalizeAppearance({preset:'url(evil)'}).preset,'ocean');
+ assert.equal(appearance.normalizeAppearance({preset:'url(evil)'}).preset,'midnight-cyan');
  }finally{for(const k of ['window','document','localStorage','Event'])delete globalThis[k];dom.window.close()}
 });
 
@@ -34,4 +34,10 @@ test('custom button fills and their gradient endpoints keep readable text at eve
    assert.ok(contrast(vars[fill],vars['--app-accent-text'])>=4.5,accent+' '+intensity+' '+fill);
   assert.ok(contrast(vars['--app-light-accent'],'#d9d9d9')>=4.5,accent+' on a light highlighted surface');
  }
+});
+
+test('retired Ocean defaults migrate while custom accents and other presets survive',()=>{
+ assert.equal(appearance.normalizeAppearance({preset:'ocean',accent:'#2563eb'}).accent,'#075bd8');
+ assert.equal(appearance.normalizeAppearance({preset:'ocean',accent:'#008811'}).accent,'#008811');
+ assert.equal(appearance.normalizeAppearance({preset:'forest'}).preset,'forest');
 });

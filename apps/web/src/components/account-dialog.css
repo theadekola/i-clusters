@@ -1,0 +1,16 @@
+.modal:has(.account-layout){width:min(68rem,100%);background:var(--theme-surface)}
+.account-layout{display:grid;grid-template-columns:minmax(12rem, .75fr) minmax(0,2fr);align-items:start;gap:1rem}
+.account-identity,.account-panel{border:1px solid var(--theme-border);border-radius:var(--app-radius);background:var(--theme-surface);min-width:0;padding:1rem}
+.account-identity{position:relative;overflow:hidden;text-align:center}
+.account-cover{height:5rem;margin:-1rem -1rem -2rem;background:radial-gradient(ellipse at 75% 0,var(--app-accent),transparent 70%),var(--theme-highlight)}
+.account-identity .users-avatar{position:relative;margin:auto;width:4rem;height:4rem;background:var(--app-accent-fill);color:var(--app-accent-text);border:3px solid var(--theme-surface);display:grid;place-items:center;border-radius:50%;font-size:1.3rem}
+.account-identity dl{text-align:start}.account-identity dt{display:flex;gap:.5rem;align-items:center;color:var(--theme-muted);margin-top:.8rem}.account-identity dd{margin:.25rem 0;overflow-wrap:anywhere}
+.account-panels{min-width:0}.account-panels .tabs{display:flex;overflow-x:auto;margin-bottom:.75rem}.account-panels .tabs button{flex:none}
+.account-panel .users-facts{display:grid;grid-template-columns:minmax(6rem,1fr) minmax(0,1.5fr);gap:.7rem}.account-panel dd{margin:0;overflow-wrap:anywhere}
+.account-panel .security-settings-card{margin-bottom:.75rem}
+@media(max-width:700px){.account-layout{grid-template-columns:minmax(0,1fr)}.account-identity dl{display:none}.account-identity h2{margin:.5rem}.account-identity .btn{margin:.4rem}}
+.sidebar .nav-scroll{flex:1;min-height:0}
+.sidebar-account{position:relative;flex:none;display:flex;flex-wrap:wrap;justify-content:space-around;gap:.25rem;padding:.5rem .25rem max(.5rem,env(safe-area-inset-bottom));border-top:1px solid var(--theme-border)}
+.sidebar-account .profile-trigger,.sidebar-popover button{display:flex;align-items:center;justify-content:center;gap:.4rem;min-height:44px;min-width:44px;background:transparent;color:var(--theme-text);border:0;border-radius:.5rem;cursor:pointer}
+.sidebar-account .sidebar-popover{position:absolute;z-index:12;bottom:100%;left:.25rem;width:max-content;min-width:9rem;padding:.4rem;border:1px solid var(--theme-border);border-radius:.75rem;background:var(--theme-surface);box-shadow:var(--card-shadow)}
+.sidebar-popover button{justify-content:flex-start;width:100%;padding:.4rem .75rem}.sidebar-popover button[aria-checked=true]{background:var(--theme-highlight);color:var(--theme-icon)}
