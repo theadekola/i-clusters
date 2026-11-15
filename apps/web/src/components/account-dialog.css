@@ -46,4 +46,4 @@
 .account-panel .security-settings-card{margin:0}
 @media(max-width:760px){.account-layout{grid-template-columns:minmax(0,1fr)}.account-cover{height:3.3rem}.account-quick{display:flex;flex-wrap:wrap;gap:.25rem}.account-quick h3{display:none}.account-quick button{width:auto;flex:1;justify-content:center;font-size:.8rem}.account-quick button svg:last-child{display:none}.profile-tabs .tab{flex:0 0 auto}.profile-fields{grid-template-columns:minmax(0,1fr)}}
 @media(max-height:530px) and (min-width:761px){.account-layout{grid-template-columns:minmax(10rem,.6fr) minmax(0,2.6fr)}.account-cover{height:3.5rem}}
-.account-protection{display:grid;gap:.65rem}.account-protection .profile-section{border-inline-start:3px solid var(--theme-icon)}.account-protection h3{margin-block-start:0}.account-protection label{display:grid;gap:.35rem;max-width:30rem;margin:.6rem 0}.account-protection button{margin:.2rem .4rem .2rem 0}.account-panel .security-settings-card h2{font-size:1.05rem}.account-panel .security-settings-card .settings-fact{gap:1rem}
+.account-panel .security-settings-card h2{font-size:1.05rem}.account-panel .security-settings-card .settings-fact{gap:1rem}

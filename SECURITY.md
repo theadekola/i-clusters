@@ -15,6 +15,8 @@ There is no formal long-term-support or backport commitment. Use the latest revi
 ## Implemented controls
 
 - Optional authenticator MFA with encrypted setup keys, replay-resistant TOTP counters, one-time hashed recovery codes and password-verified self-service controls.
+- MFA checks every sign-in by default. Enrolled users can select **Require 2FA for new devices** to allow a verified, remembered browser to sign in with a password for up to 10 days. An unknown browser still requires a code. Changing this policy clears prior browser trusts.
+- From **Profile → Security → Manage Tokens**, users can issue revocable bearer tokens for the read-only `GET /api/proxmox` and `GET /api/monitoring` reports. Tokens expire after 7, 30 or 90 days. The interface shows the secret once and the database stores its digest. Token use checks current account status, cluster access and credential version.
 - Device sessions can be revoked on the server, including associated SSH access. Password changes and console recovery invalidate earlier sessions.
 - Browser refresh credentials use Secure, HttpOnly, SameSite=Strict cookies, a same-origin custom-header/origin check, and refresh replay rejection. Short-lived access tokens remain JavaScript-readable; CSP does not remove all XSS risk.
 - bcrypt password hashes; short-lived signed JWT access tokens; unique refresh tokens with rotation and replay rejection.

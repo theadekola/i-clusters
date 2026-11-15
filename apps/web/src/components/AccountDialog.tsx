@@ -1,4 +1,4 @@
-import {useState,useEffect,useRef} from 'react';
+import {useState} from 'react';
 import {Clock,CheckCircle,ShieldCheck,UserRound,Mail,Calendar,LockKeyhole,Layers,SlidersHorizontal,Bell,Activity as Pulse,KeyRound,ChevronRight} from 'lucide-react';
 import {Badge,Modal,tabKeys} from './UI';
 import {useApi} from '../hooks';
@@ -6,7 +6,7 @@ import {confirmedApi} from '../api';
 import {isActionCancelled} from '../action-cancellation';
 import {ProfileForm,ProfilePreferences,ProfileNotifications,ProfileActivity} from './ProfilePanels';
 import ReportLoading from './ReportLoading';
-import SecuritySettings from './SecuritySettings';
+import AccountSecurity, {type SecurityPanel} from './AccountSecurity';
 import '../pages/settings-overview.css';
 import './account-dialog.css';
 export const roleNames:any={owner:'Owner',admin:'Administrator',operator:'Operator',auditor:'Auditor',viewer:'Viewer'};
@@ -28,16 +28,9 @@ export function AccountDialog({selected:account,actor,self,onClose,initialTab='P
  const [patch,setPatch]=useState<any>(null);
  const contact=patch?.profile?.contactEmail??account.profile?.contactEmail??(account.email?.includes('@')?account.email:'');
  const selected=patch?{...account,...patch}:account;
- const [target,setTarget]=useState('');
- const panel=useRef<HTMLElement>(null);
- useEffect(()=>{
-  if(!target||tab!=='Security'||!panel.current)return;
-  const focus=()=>{const field=panel.current?.querySelector<HTMLElement>(target);if(!field)return false;field.scrollIntoView?.({block:'center'});field.focus();setTarget('');return true};
-  if(focus())return;
-  const watch=new MutationObserver(focus);watch.observe(panel.current,{subtree:true,childList:true});return()=>watch.disconnect();
- },[tab,target]);
- const select=(name:string)=>{setTarget('');setTab(name)};
- const jump=(selector:string)=>{setTab('Security');setTarget(selector)};
+ const [securityPanel,setSecurityPanel]=useState<SecurityPanel>(null);
+ const select=(name:string)=>{setSecurityPanel(null);setTab(name)};
+ const jump=(action:SecurityPanel)=>{setTab('Security');setSecurityPanel(action)};
  const activity=['owner','admin','operator','auditor'].includes(actor?.role);
  const tabs=[['Profile',UserRound],['Security',ShieldCheck],...(self?[['Preferences',SlidersHorizontal]]:[]),['Roles & Permissions',Layers],...(self?[['Notifications',Bell]]:[]),...(activity?[['Activity',Pulse]]:[])];
  return <Modal open title="View account" onClose={onClose}><div className="account-layout">
@@ -47,8 +40,8 @@ export function AccountDialog({selected:account,actor,self,onClose,initialTab='P
  {contact&&<><dt><Mail size={16}/>Contact email</dt><dd>{contact}</dd></>}
  {selected.createdAt&&<><dt><Calendar size={16}/>Created</dt><dd>{date(selected.createdAt)}</dd></>}
  <dt><Clock size={16}/>Last login</dt><dd>{date(selected.lastLogin)}</dd></dl>
- <div className="account-quick"><h3>Quick Actions</h3>{self&&<><button onClick={()=>jump('input[autocomplete="new-password"]')}><KeyRound/>Change password<ChevronRight/></button><button onClick={()=>jump('input[autocomplete="current-password"]')}><ShieldCheck/>Multi-factor authentication<ChevronRight/></button></>}<button onClick={()=>select(self?'Preferences':'Security')}><SlidersHorizontal/>{self?'Preferences':'Account Security'}<ChevronRight/></button></div></aside>
- <section className="account-panels" ref={panel}><div className="tabs profile-tabs" role="tablist" aria-label="View account" onKeyDown={tabKeys}>{tabs.map(([name,Icon]:any)=><button key={name} type="button" role="tab" aria-selected={tab===name} tabIndex={tab===name?0:-1} className={tab===name?'tab active':'tab'} onClick={()=>select(name)}><Icon size={17}/>{name}</button>)}</div>
+ <div className="account-quick"><h3>Quick Actions</h3>{self&&<><button onClick={()=>jump('password')}><KeyRound/>Change password<ChevronRight/></button><button onClick={()=>jump('mfa')}><ShieldCheck/>Multi-factor authentication<ChevronRight/></button></>}<button onClick={()=>select(self?'Preferences':'Security')}><SlidersHorizontal/>{self?'Preferences':'Account Security'}<ChevronRight/></button></div></aside>
+ <section className="account-panels"><div className="tabs profile-tabs" role="tablist" aria-label="View account" onKeyDown={tabKeys}>{tabs.map(([name,Icon]:any)=><button key={name} type="button" role="tab" aria-selected={tab===name} tabIndex={tab===name?0:-1} className={tab===name?'tab active':'tab'} onClick={()=>select(name)}><Icon size={17}/>{name}</button>)}</div>
  <div className="account-panel" onClick={event=>{
   const link=(event.target as Element).closest<HTMLAnchorElement>('a[href]');
   if(link && link.target!=='_blank' && link.origin===window.location.origin)onClose();
@@ -59,8 +52,8 @@ export function AccountDialog({selected:account,actor,self,onClose,initialTab='P
  {tab==='Roles & Permissions'&&<div className="profile-section"><h3><Layers/>Permissions Summary</h3><div className="profile-role"><ShieldCheck/><div><small>Assigned Role</small><strong>{roleNames[selected.role]}</strong></div></div>{onSaved&&actor?.role==='owner'&&selected.role!=='owner'&&<ClusterAccess key={selected.id+JSON.stringify(selected.clusterRoles)} account={selected} onSaved={onSaved}/>}<h4>Role scope</h4>{selected.clusterRoles==null?<p>Account role applies across the installation.</p>:<dl className="users-facts">{Object.entries(selected.clusterRoles).map(([id,role])=><div key={id}><dt>{id}</dt><dd>{roleNames[String(role)]}</dd></div>)}{!Object.keys(selected.clusterRoles).length&&<dt>No access</dt>}</dl>}<h4>Permission groups</h4>{[['View dashboards and inventory',10],['View audit logs',20],['Run infrastructure actions',30],['Manage lower-privilege users',40],['View notification diagnostics',50]].map(([label,rank]:any)=><div className="users-permission" key={label}><CheckCircle size={15} className={(ranks[selected.role]||0)>=rank?'positive':'muted'}/><span>{label}</span><small>{(ranks[selected.role]||0)>=rank?'Allowed':'Restricted'}</small></div>)}<p className="muted small">Role-level access summary. Individual actions may require additional confirmation.</p></div>}
  {tab==='Activity'&&<ProfileActivity key={selected.id} user={selected} self={self} date={date}/>}
 
- {tab==='Security'&&(self?<><div className="profile-banner"><ShieldCheck/><h3>Account Security</h3></div><SecuritySettings user={actor} search=""/></>:<section><h3>Account Security</h3><dl className="users-facts"><dt>Status</dt><dd>{selected.status}</dd><dt>Two-factor flag</dt><dd>{factor(selected)}</dd><dt>Last login</dt><dd>{date(selected.lastLogin)}</dd></dl></section>)}
- {children}</div></section></div></Modal>
+ {tab==='Security'&&(self?<AccountSecurity panel={securityPanel} onPanel={setSecurityPanel}/>:<section><h3>Account Security</h3><dl className="users-facts"><dt>Status</dt><dd>{selected.status}</dd><dt>Two-factor flag</dt><dd>{factor(selected)}</dd><dt>Last login</dt><dd>{date(selected.lastLogin)}</dd></dl></section>)}
+ {tab==='Profile'&&children}</div></section></div></Modal>
 }
 export function MyAccountDialog({onClose,initialTab}:{onClose:()=>void;initialTab?:string}){
  const session=useApi<any>('/auth/me',null);

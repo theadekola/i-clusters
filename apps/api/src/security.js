@@ -1,3 +1,4 @@
+import {inventoryIdentity} from './account-access.js';
 import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
@@ -39,7 +40,13 @@ export async function auth(req, res, next) {
   const header = req.headers.authorization || '';
   if (!header.startsWith('Bearer ')) return res.status(401).json({ error: 'Authentication required' });
   try {
-    const claims = verifyAccessToken(header.slice(7));
+    const raw=header.slice(7);
+    if(raw.startsWith('icl_')){
+      const identity=await inventoryIdentity(accountQuery,raw,req.method,req.originalUrl||req.url);
+      if(!identity)return res.status(401).json({error:'Invalid token or unsupported API route.'});
+      req.user=identity;return next();
+    }
+    const claims = verifyAccessToken(raw);
     const ownProfile=(req.originalUrl||req.url||'').split('?')[0].replace(/\/+$/,'')==='/api/auth/me';
     const profileFields=ownProfile?',two_factor_enabled,last_login,created_at,profile':'';
     let result;try{result=await accountQuery(`SELECT id,email,username,name,role,status,token_version,cluster_roles${profileFields} FROM users WHERE id=$1`,[claims.sub]);}catch{return res.status(503).json({error:'Account verification is temporarily unavailable. Try again shortly.'});}
@@ -68,18 +75,18 @@ export function requireRole(minRole) {
   };
 }
 
-export async function issueTokens(user,{remember=false,sessionExp,sid,device='Browser'}={}) {
+export async function issueTokens(user,{remember=false,sessionExp,sid,device='Browser'}={},query=accountQuery) {
   const now=Math.floor(Date.now()/1000);
   if(remember&&!sessionExp)sessionExp=now+10*24*60*60;
   if(sessionExp&&sessionExp<=now)throw Error('Session expired');
-  if(!sid){sid=crypto.randomUUID();const expiry=jwt.decode(jwt.sign({},REFRESH_SECRET,{expiresIn:sessionExp?sessionExp-now:process.env.JWT_REFRESH_EXPIRES_IN||'7d'})).exp;await accountQuery('INSERT INTO auth_sessions(id,user_id,expires_at,device) VALUES($1,$2,to_timestamp($3),$4)',[sid,user.id,expiry,String(device).slice(0,200)]);}
+  if(!sid){sid=crypto.randomUUID();const expiry=jwt.decode(jwt.sign({},REFRESH_SECRET,{expiresIn:sessionExp?sessionExp-now:process.env.JWT_REFRESH_EXPIRES_IN||'7d'})).exp;await query('INSERT INTO auth_sessions(id,user_id,expires_at,device) VALUES($1,$2,to_timestamp($3),$4)',[sid,user.id,expiry,String(device).slice(0,200)]);}
   const claims={sid,ver:user.token_version||0,...(sessionExp?{sessionExp,remember}:{})};
   const payload = { sub:user.id,email:user.email,username:user.username,role:user.role,name:user.name,...claims };
   const configured=jwt.decode(jwt.sign({},ACCESS_SECRET,{expiresIn:process.env.JWT_EXPIRES_IN||'15m'}));
   const accessToken=jwt.sign(payload,ACCESS_SECRET,{expiresIn:sessionExp?Math.min(configured.exp-now,sessionExp-now):process.env.JWT_EXPIRES_IN||'15m',algorithm:'HS256'});
   const refreshToken=jwt.sign({sub:user.id,typ:'refresh',jti:crypto.randomUUID(),...claims},REFRESH_SECRET,{expiresIn:sessionExp?sessionExp-now:process.env.JWT_REFRESH_EXPIRES_IN||'7d',algorithm:'HS256'});
   const tokenHash=crypto.createHash('sha256').update(refreshToken).digest('hex'),decoded=jwt.decode(refreshToken);
-  await accountQuery('INSERT INTO refresh_tokens(user_id,token_hash,expires_at) VALUES($1,$2,to_timestamp($3))',[user.id,tokenHash,decoded.exp]);
+  await query('INSERT INTO refresh_tokens(user_id,token_hash,expires_at) VALUES($1,$2,to_timestamp($3))',[user.id,tokenHash,decoded.exp]);
   return {accessToken,refreshToken,...(sessionExp?{rememberUntil:sessionExp*1000}:{})};
 }
 
