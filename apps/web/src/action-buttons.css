@@ -63,7 +63,7 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--app-accent);
+    outline: 2px solid var(--theme-icon);
     outline-offset: -3px;
   }
 }
@@ -156,13 +156,13 @@
   flex: none;
   width: auto;
   min-height: 44px;
-  background: #2563eb !important;
-  color: white !important;
-  border-color: transparent !important;
+  background: var(--app-accent-fill) !important;
+  color: var(--app-accent-text) !important;
+  border-color: var(--app-accent-fill) !important;
   border-radius: var(--app-radius,10px);
   margin-inline: 0;
 }
-:root[data-preset][data-theme][data-appearance] .modal button.btn.danger {
+:root[data-preset][data-theme][data-appearance] :is(.modal button.btn.danger, .content .header-actions > .btn.danger) {
   background: #aa2637 !important;
   color: white !important;
 }

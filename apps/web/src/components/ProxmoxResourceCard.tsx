@@ -17,8 +17,8 @@ type Resource = {
 
 export function LayoutSwitch({grid, onChange}: {grid: boolean; onChange: (grid: boolean) => void}) {
  return <div className="pve-layout-switch" role="group" aria-label="Inventory layout">
-  <button type="button" aria-label="Grid view" aria-pressed={grid} onClick={() => onChange(true)} data-icon-control><LayoutGrid size={16}/></button>
-  <button type="button" aria-label="List view" aria-pressed={!grid} onClick={() => onChange(false)} data-icon-control><List size={17}/></button>
+  <button type="button" aria-label="Grid view" aria-pressed={grid} onClick={() => onChange(true)}><LayoutGrid size={16}/></button>
+  <button type="button" aria-label="List view" aria-pressed={!grid} onClick={() => onChange(false)}><List size={17}/></button>
  </div>;
 }
 

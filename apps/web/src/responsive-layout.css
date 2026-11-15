@@ -147,7 +147,7 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
 
 /* Update availability stays visible when a short header toast is missed. */
 .software-update-notice{display:flex;align-items:center;gap:14px;padding:16px;margin-bottom:20px;border:1px solid var(--app-accent,#2563eb);border-radius:12px;background:var(--theme-surface,#102337);color:var(--theme-text,#e7edf7);min-inline-size:0}
-.software-update-notice>svg{flex-shrink:0;color:var(--app-accent,#60a5fa)}
+.software-update-notice>svg{flex-shrink:0;color:var(--theme-icon,#60a5fa)}
 .software-update-notice>div{flex:1;min-inline-size:0}
 .software-update-notice p{margin:5px 0 0;color:var(--theme-muted,#a6b5cc);overflow-wrap:anywhere;line-height:1.5}
 .software-update-notice.warning{border-color:#b8862e}

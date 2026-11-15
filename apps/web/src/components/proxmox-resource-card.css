@@ -42,13 +42,14 @@
  display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;
  background:transparent;color:inherit;font:inherit;cursor:pointer;min-height:40px;
 }
+.pve-resource-card > footer button {color:var(--theme-icon)}
 .pve-resource-card > footer button + button {border-inline-start:1px solid var(--theme-border)}
 .pve-resource-card > footer button:hover:enabled,.pve-layout-switch button:hover {background:var(--theme-raised)}
 .pve-resource-card button:focus-visible,.pve-layout-switch button:focus-visible {outline:2px solid var(--theme-icon);outline-offset:-3px}
 .pve-resource-card button:disabled {cursor:default;opacity:.55}
 .pve-layout-switch {display:inline-flex;flex:none;overflow:hidden;border:1px solid var(--theme-border);border-radius:8px}
 .pve-layout-switch button {min-height:34px;width:38px}
-.pve-layout-switch button[aria-pressed=true] {background:var(--app-accent,#365bc5);color:var(--accent-contrast,#fff)}
+.pve-layout-switch button[aria-pressed=true] {--filled-action:1;background:var(--app-accent-fill);color:var(--app-accent-text)}
 .modal.modal:has(.node-details,.vm-detail-stack) {width:min(62rem,100%);background:var(--theme-surface,#132439);}
 .guest-inventory .modal .vm-detail-stack {display:grid;grid-template-columns:minmax(0,1fr)}
 .guest-inventory .vm-workspace {display:block}

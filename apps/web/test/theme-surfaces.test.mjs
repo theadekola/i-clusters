@@ -39,3 +39,14 @@ test('login controls use the saved palette without forcing a dark colour scheme'
  assert.equal(lastValue(tree,'.login-page .login-card>.btn.primary','background'),'var(--app-accent-fill)');
  assert.equal(lastValue(tree,'.login-page .login-card>.btn.primary','color'),'var(--app-accent-text)');
 });
+
+test('dialog buttons and the selected Proxmox view use the saved fill and matching ink',()=>{
+ const actions=rules('action-buttons.css');
+ const dialogRule=actions.nodes.find(rule=>rule.selector?.includes('.ssh-dialog-footer')&&rule.selector.includes('.modal-head > .icon-btn'));
+ assert.ok(dialogRule);
+ for(const [property,token] of [['background','--app-accent-fill'],['color','--app-accent-text']])
+  assert.equal(dialogRule.nodes.find(decl=>decl.prop===property)?.value,'var('+token+')');
+ const view=rules('components/proxmox-resource-card.css');
+ for(const [property,token] of [['background','--app-accent-fill'],['color','--app-accent-text']])
+  assert.equal(lastValue(view,'.pve-layout-switch button[aria-pressed=true]',property),'var('+token+')');
+});
