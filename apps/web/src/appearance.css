@@ -105,3 +105,17 @@
   }
 }
 .appearance-workspace .card:has(.theme-selector) {outline: 2px solid transparent; outline-offset: -2px}
+
+/* Midnight Cyan shares its navy surfaces, blue controls and cyan highlights with the website. */
+:root[data-preset="midnight-cyan"][data-theme="dark"] {
+  --theme-input: #031426;
+  --theme-raised: #103149;
+  --theme-highlight: #123858;
+  --theme-border: #31546f;
+  --theme-text: #edf6ff;
+  --theme-muted: #adc3d8;
+  --theme-icon: #39d8f3;
+}
+:root[data-preset="midnight-cyan"] :is(button,a,input,select,textarea,[tabindex]):focus-visible {
+  outline-color: var(--theme-icon);
+}

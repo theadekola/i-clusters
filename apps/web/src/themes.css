@@ -38,6 +38,9 @@
   --theme-icon: color-mix(in srgb, var(--app-accent) 72%, #182b43);
   --theme-success: #137344;
 }
+:root[data-preset="midnight-cyan"][data-theme="light"] {
+  --theme-icon: #00677d;
+}
 :root[data-theme="light"] :is(.overview-stat small,.vm-stat span,.docker-manager .docker-counts,.node-services-grid small) {
   color: var(--theme-success, #137344) !important;
 }
