@@ -585,7 +585,7 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
    return {answer:`Sampled ${s.sampledAt}. ${s.services.map(x=>`${x.name}: ${x.status}${x.error?` (${x.error})`:''}`).join('; ')}. ${context.alerts.length} active or acknowledged alerts. Configure the provider on the AI Assistant page for conversational analysis.`,mode:'local'};
 
  });
- read('/users',async()=>({users:(await db.query(`SELECT id,name,email,username,role,cluster_roles AS "clusterRoles",status,two_factor_enabled AS "twoFactor",last_login AS "lastLogin",created_at AS "createdAt" FROM users ORDER BY created_at`)).rows}),'admin');
+ read('/users',async()=>({users:(await db.query(`SELECT id,name,email,username,profile,role,cluster_roles AS "clusterRoles",status,two_factor_enabled AS "twoFactor",last_login AS "lastLogin",created_at AS "createdAt" FROM users ORDER BY created_at`)).rows}),'admin');
  action('put','/users/:id/cluster-access','owner','user.cluster-access',async req=>{
    const assignments=req.body.roles;
    const account=(await db.query('SELECT role FROM users WHERE id=$1',[req.params.id])).rows[0];

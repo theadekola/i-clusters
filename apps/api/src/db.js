@@ -35,6 +35,7 @@ export async function migrate(db = pool) {
       expires_at TIMESTAMPTZ NOT NULL
     );
     ${usageSchema}
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS profile JSONB NOT NULL DEFAULT '{}';
     ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS cluster_roles JSONB;
     ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
