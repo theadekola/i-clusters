@@ -1,3 +1,4 @@
+import {accountAccessSchema} from './account-access.js';
 import {usageSchema} from './product-usage.js';
 import pg from 'pg';
 const { Pool } = pg;
@@ -35,6 +36,7 @@ export async function migrate(db = pool) {
       expires_at TIMESTAMPTZ NOT NULL
     );
     ${usageSchema}
+    ${accountAccessSchema}
     ALTER TABLE users ADD COLUMN IF NOT EXISTS profile JSONB NOT NULL DEFAULT '{}';
     ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS cluster_roles JSONB;

@@ -24,6 +24,7 @@ import {operationalNodes,operationalAction} from './node-agents.js';
 import {changeAlertStatus} from './alert-status.js';
 import {sessionResponse,refreshCredential,browserSession} from './browser-sessions.js';
 import {accountSecurityRouter} from './account-security.js';
+import {knownDevice,rememberVerifiedDevice} from './account-access.js';
 import {beginMfaLogin,completeMfaLogin,requirePassword} from './mfa.js';
 import {truenasTestError} from './truenas-test-error.js';
 import {connectionActions} from './connection-actions.js';
@@ -142,13 +143,13 @@ export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:c
    if(typeof password!=='string'||!password.length)throw httpError('Password is required');
    const user=await verifyPassword(email,password);if(user)req.activityUser={sub:user.id,role:user.role};if(!user)return res.status(401).json({error:'Invalid credentials'});
 
-   if(user.two_factor_enabled)return res.json(await beginMfaLogin(db,user,req.body.remember===true));
+   if(user.two_factor_enabled&&!(req.body.remember===true&&await knownDevice(db,req,user)))return res.json(await beginMfaLogin(db,user,req.body.remember===true));
    await db.query('UPDATE users SET last_login=NOW() WHERE id=$1',[user.id]);
    sessionResponse(req,res,{user:{id:user.id,email:user.email,username:user.username,name:user.name,role:user.role},...await issueTokens(user,{remember:req.body.remember===true,device:req.get('User-Agent')})});
  });
  app.post('/api/auth/refresh',loginLimiter,async(req,res)=>{try{sessionResponse(req,res,await rotateRefreshToken(refreshCredential(req)));}catch(e){res.status(e.status===503?503:401).json({error:e.status===503?e.message:'Refresh token rejected'});}});
 
- app.post('/api/auth/mfa',loginLimiter,async(req,res)=>{try{browserSession(req);const {user,remember}=await completeMfaLogin(db,req.body.challengeToken,req.body.code);req.activityUser={sub:user.id,role:user.role};await db.query('UPDATE users SET last_login=NOW() WHERE id=$1',[user.id]);sessionResponse(req,res,{user:{id:user.id,username:user.username,name:user.name,role:user.role},...await issueTokens(user,{remember,device:req.get('User-Agent')})});}catch(e){res.status(e.status||503).json({error:e.status?e.message:'Account verification is temporarily unavailable.'});}});
+ app.post('/api/auth/mfa',loginLimiter,async(req,res)=>{try{browserSession(req);const {user,remember}=await completeMfaLogin(db,req.body.challengeToken,req.body.code);if(remember)await rememberVerifiedDevice(db,req,res,user);req.activityUser={sub:user.id,role:user.role};await db.query('UPDATE users SET last_login=NOW() WHERE id=$1',[user.id]);sessionResponse(req,res,{user:{id:user.id,username:user.username,name:user.name,role:user.role},...await issueTokens(user,{remember,device:req.get('User-Agent')})});}catch(e){res.status(e.status||503).json({error:e.status?e.message:'Account verification is temporarily unavailable.'});}});
  app.get('/api/auth/me',authenticate,(req,res)=>res.json({user:req.user}));
  app.use('/api',authenticate);
  app.use('/api',(req,res,next)=>{if(!['GET','HEAD'].includes(req.method)&&(process.env.ICLUSTERS_CONTROLLER_DATA||process.env.DATA_DIR)&&existsSync((process.env.ICLUSTERS_CONTROLLER_DATA||process.env.DATA_DIR)+'/maintenance.json'))return res.status(503).json({error:'Controller maintenance is in progress. Retry after it completes.'});next();});
@@ -634,7 +635,7 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
  read('/notifications',()=>notificationService.status(),'owner');
  action('put','/notifications/preferences','owner','notification.preferences',req=>{const previous=get().notificationPreferences||{};const preferences={...previous,...validateNotificationPreferences(req.body,previous)};mutate(s=>s.notificationPreferences=preferences);return preferences;});
  action('post','/notifications/test','owner','notification.test',req=>notificationService.test(required(req.body.channel,'Channel')));
- read('/security',()=>({authenticationRequired:true,roles:Object.keys(roles),twoFactor:true,accessTokenLifetime:process.env.JWT_EXPIRES_IN||'15m',refreshTokenLifetime:process.env.JWT_REFRESH_EXPIRES_IN||'7d',rememberedSessionLifetime:'10d',loginRequests:apiPolicy.loginRequests,loginWindowMs:apiPolicy.loginWindowMs,password:{minimumCharacters:12,maximumBytes:72,complexityRequired:false},sessionManagement:true,apiKeys:false,networkManagement:false}));
+ read('/security',()=>({authenticationRequired:true,roles:Object.keys(roles),twoFactor:true,accessTokenLifetime:process.env.JWT_EXPIRES_IN||'15m',refreshTokenLifetime:process.env.JWT_REFRESH_EXPIRES_IN||'7d',rememberedSessionLifetime:'10d',loginRequests:apiPolicy.loginRequests,loginWindowMs:apiPolicy.loginWindowMs,password:{minimumCharacters:12,maximumBytes:72,complexityRequired:false},sessionManagement:true,apiKeys:true,networkManagement:false}));
  read('/settings',async req=>{const snapshot=await sampleView(req);return {refreshing:!!snapshot.refreshing,system:{hostname:os.hostname(),platform:os.platform(),release:os.release(),runtime:process.version,architecture:os.arch(),operatingSystem:os.type(),serverTime:new Date().toISOString(),uptime:Math.floor(process.uptime()),timezone:Intl.DateTimeFormat().resolvedOptions().timeZone,...buildInfo},settings:get().settings,policy:apiPolicy,integrations:snapshot.services,capabilities:{twoFactor:true,notifications:'in-app and nine configurable notification delivery channels',monitoring:'API polling',truenas:'JSON-RPC API 25.04+; method compatibility depends on version'}};});
 
  action('put','/settings','admin','settings.update',async req=>{
