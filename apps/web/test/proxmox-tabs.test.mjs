@@ -25,10 +25,10 @@ async function mounted(file,props,api,mobile=true,strict=false,entry='/proxmox',
 const select=async(page,label,value)=>{const el=page.container.querySelector(`[aria-label="${label}"]`);await act(async()=>{el.value=value;el.dispatchEvent(new page.dom.window.Event('change',{bubbles:true}));});};
 const button=(page,label)=>[...(page.container.querySelector('.vm-create-wizard')||page.container).querySelectorAll('button')].find(b=>b.textContent.trim()===label);
 const guests={nodes:[{name:'n1'},{name:'n2'}],vms:[{id:'101',node:'n1',name:'guest-one',status:'stopped'},{id:'102',node:'n2',name:'guest-two',status:'stopped'}],lxc:[{id:'201',node:'n1',name:'ct-one',status:'stopped'},{id:'202',node:'n2',name:'ct-two',status:'stopped'}],storage:[]};
-test('VM and CT filters move selection to visible guest and controls act on that guest',async()=>{
+test('VM and CT filters limit the cards and Details actions use the displayed guest',async()=>{
  for(const [file,label,expected] of [['VirtualMachines','Filter VMs by node','102'],['LxcContainers','Filter containers by node','202']]){
   const writes=[];const page=await mounted(`pages/${file}.tsx`,{data:guests,role:'operator',refresh:async()=>{}},async(p,init)=>{if(init?.method==='POST')writes.push({p,body:JSON.parse(init.body)});return {config:{},history:[],interfaces:[],snapshots:[],errors:[]};});
-  try{await select(page,label,'n2');await page.click(button(page,'Start'));assert.ok(writes[0].p.includes('/'+expected+'/start'));assert.equal(writes[0].body.node,'n2');}finally{await page.close();}
+  try{await select(page,label,'n2');assert.equal(page.container.querySelector('[role=dialog]'),null);await page.click(button(page,'Details'));await page.click(button(page,'Start'));assert.ok(writes[0].p.includes('/'+expected+'/start'));assert.equal(writes[0].body.node,'n2');}finally{await page.close();}
  }
 });
 test('page-wide Refresh reloads mounted Storage and period selection requests matching history',async()=>{
@@ -56,9 +56,9 @@ test('network edit explicitly clears existing fields while retaining populated o
  const writes=[];const page=await mounted('pages/ProxmoxNetworks.tsx',{role:'admin'},async(p,init)=>{if(init?.method==='PUT'){writes.push({p,body:JSON.parse(init.body)});return {}}return p==='/proxmox/network'?{nodes:[{node:'n1'}],interfaces:[{id:'n1/vmbr0',node:'n1',name:'vmbr0',type:'bridge',cidr:'192.0.2.1/24',gateway:'192.0.2.254',bridge_ports:'eno1',comments:'Old',status:'up'}]}:{history:[]};});
  try{await page.click(page.container.querySelector('[aria-label="Edit vmbr0 on n1"]'));const form=page.container.querySelector('.modal form');for(const field of ['cidr','gateway','bridge_ports','comments'])form.querySelector(`[name="${field}"]`).value='';await act(async()=>{form.dispatchEvent(new page.dom.window.Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,0));});assert.deepEqual(writes[0].body.clear,['cidr','gateway','bridge_ports','comments']);assert.equal(writes[0].p,'/proxmox/network/n1/vmbr0');}finally{await page.close();}
 });
-test('Nodes filter replaces hidden node selection',async()=>{
+test('Nodes filter limits cards and Details opens the chosen node',async()=>{
  const data={...guests,nodes:[{name:'n1',status:'offline'},{name:'n2',status:'online'}],nodeServices:[],clusterStatus:[]};const page=await mounted('pages/ClusterNodes.tsx',{data,metrics:[],tasks:[],network:{},hours:'24',role:'admin',refresh:async()=>{}},async p=>({node:p.includes('n2')?'n2':'n1',config:{},errors:[]}));
- try{await select(page,'Filter node status','online');assert.ok(page.container.querySelector('.node-details').textContent.includes('n2'));assert.ok(!page.container.querySelector('.node-details').textContent.includes('n1'));}finally{await page.close();}
+ try{await select(page,'Filter node status','online');assert.equal(page.container.querySelectorAll('.pve-resource-card').length,1);await page.click(button(page,'Details'));assert.ok(page.container.querySelector('.node-details').textContent.includes('n2'));assert.ok(!page.container.querySelector('.node-details').textContent.includes('n1'));}finally{await page.close();}
 });
 test('unavailable VM and partial network/storage inventories show Unknown counts',async()=>{
  const vm=await mounted('pages/VirtualMachines.tsx',{data:null,role:'viewer',refresh:async()=>{}},async()=>({}));try{assert.ok([...vm.container.querySelectorAll('.vm-stat')].find(e=>e.textContent.includes('Total VMs')).textContent.includes('Unknown'));}finally{await vm.close();}
@@ -75,7 +75,7 @@ test('Proxmox tabs preserve URL context, reload selection and browser history',a
  page=await mounted('pages/Proxmox.tsx',{management:()=>null},reviewApi,true,false,saved);try{assert.equal(page.container.querySelector('[role=tab][aria-selected=true]').textContent,'Storage');}finally{await page.close();}
 });
 test('Overview Services opens the clicked node Services section',async()=>{
- const page=await mounted('pages/Proxmox.tsx',{management:()=>null},reviewApi);try{const buttons=[...page.container.querySelectorAll('button')].filter(b=>b.textContent.trim()==='Services');await page.click(buttons[1]);assert.ok(route(page).includes('node=n2'));assert.ok(route(page).includes('nodeTab=Services'));assert.ok(page.container.querySelector('.nodes-detail-head').textContent.startsWith('n2'));assert.equal(page.container.querySelector('.nodes-detail-tabs .active').textContent,'Services');assert.ok(page.container.querySelector('.node-details').textContent.includes('pvedaemon'));}finally{await page.close();}
+ const page=await mounted('pages/Proxmox.tsx',{management:()=>null},reviewApi);try{await page.click(page.container.querySelector('[aria-label="List view"]'));const buttons=[...page.container.querySelectorAll('button')].filter(b=>b.textContent.trim()==='Services');await page.click(buttons[1]);assert.ok(route(page).includes('node=n2'));assert.ok(route(page).includes('nodeTab=Services'));assert.ok(page.container.querySelector('.nodes-detail-head').textContent.startsWith('n2'));assert.equal(page.container.querySelector('.nodes-detail-tabs .active').textContent,'Services');assert.ok(page.container.querySelector('.node-details').textContent.includes('pvedaemon'));}finally{await page.close();}
 });
 test('cluster health becomes Unknown after failed refresh and recovers on successful retry',async()=>{
  let fail=false;const page=await mounted('pages/Proxmox.tsx',{management:()=>null},async p=>{if(p==='/proxmox?refresh=1')fail=true;if((p==='/proxmox'||p==='/proxmox?refresh=1')&&fail)throw Error('Provider unreachable');return reviewApi(p)});
@@ -85,14 +85,14 @@ test('node membership requires a reported cluster and node entry',async()=>{
  for(const [clusterStatus,member] of [[[],false],[[{type:'node',name:'n1'}],false],[[{type:'cluster',name:'reported-name'},{type:'node',name:'n1',local:1}],true]]){
   const data={...reviewFixture,nodes:[{name:'n1',status:'online'}],clusterStatus};
   const page=await mounted('pages/ClusterNodes.tsx',{data,metrics:[],tasks:[],network:{interfaces:[]},hours:'24',role:'viewer',refresh:async()=>{}},async()=>({}));
-  try{assert.equal(page.container.querySelector('tbody').textContent.includes('Cluster member'),member);assert.equal(page.container.querySelector('.node-information').textContent.includes('reported-name'),member)}finally{await page.close()}
+  try{await page.click(page.container.querySelector('[aria-label="List view"]'));assert.equal(page.container.querySelector('tbody').textContent.includes('Cluster member'),member);await page.click(button(page,'Details'));assert.equal(page.container.querySelector('.node-information').textContent.includes('reported-name'),member)}finally{await page.close()}
  }
 });
 test('node detail failures remain visible across detail sections',async()=>{
- const page=await mounted('pages/ClusterNodes.tsx',{data:reviewFixture,metrics:[],tasks:[],network:{interfaces:[]},hours:'24',role:'viewer',refresh:async()=>{}},async()=>{throw Error('Node details unavailable')});try{assert.ok(page.container.querySelector('[role=alert]').textContent.includes('Node details unavailable'));await page.click(button(page,'Services'));assert.ok(page.container.querySelector('[role=alert]').textContent.includes('Node details unavailable'));}finally{await page.close();}
+ const page=await mounted('pages/ClusterNodes.tsx',{data:reviewFixture,metrics:[],tasks:[],network:{interfaces:[]},hours:'24',role:'viewer',refresh:async()=>{}},async()=>{throw Error('Node details unavailable')});try{await page.click(button(page,'Details'));assert.ok(page.container.querySelector('[role=alert]').textContent.includes('Node details unavailable'));await page.click(button(page,'Services'));assert.ok(page.container.querySelector('[role=alert]').textContent.includes('Node details unavailable'));}finally{await page.close();}
 });
 test('VM agent options report named, numeric, disabled and unavailable readings accurately',async()=>{
- for(const [agent,expected] of [['1','Enabled'],['enabled=1,freeze-fs-on-backup=0','Enabled'],['type=virtio,enabled=1','Enabled'],['0','Disabled'],['enabled=0','Disabled'],[undefined,'Unknown']]){const page=await mounted('pages/VirtualMachines.tsx',{data:{...reviewFixture,vms:[{id:'101',node:'n1',name:'Fixture VM',status:'running'}]},role:'viewer',refresh:async()=>{}},async()=>({config:agent===undefined?{}:{agent},status:{status:'running'},history:[],interfaces:{result:[]},errors:[]}));try{const row=[...page.container.querySelectorAll('.vm-summary-facts div')].find(d=>d.querySelector('dt')?.textContent==='QEMU Agent');assert.equal(row.querySelector('dd').textContent,expected);assert.ok(!page.container.textContent.includes('\ufffd'));await page.click(button(page,'Hardware'));const hardware=[...page.container.querySelectorAll('.vm-hardware dl div')].find(d=>d.querySelector('dt')?.textContent==='QEMU agent');assert.equal(hardware.querySelector('dd').textContent,expected);}finally{await page.close();}}
+ for(const [agent,expected] of [['1','Enabled'],['enabled=1,freeze-fs-on-backup=0','Enabled'],['type=virtio,enabled=1','Enabled'],['0','Disabled'],['enabled=0','Disabled'],[undefined,'Unknown']]){const page=await mounted('pages/VirtualMachines.tsx',{data:{...reviewFixture,vms:[{id:'101',node:'n1',name:'Fixture VM',status:'running'}]},role:'viewer',refresh:async()=>{}},async()=>({config:agent===undefined?{}:{agent},status:{status:'running'},history:[],interfaces:{result:[]},errors:[]}));try{await page.click(button(page,'Details'));const row=[...page.container.querySelectorAll('.vm-summary-facts div')].find(d=>d.querySelector('dt')?.textContent==='QEMU Agent');assert.equal(row.querySelector('dd').textContent,expected);assert.ok(!page.container.textContent.includes('\ufffd'));await page.click(button(page,'Hardware'));const hardware=[...page.container.querySelectorAll('.vm-hardware dl div')].find(d=>d.querySelector('dt')?.textContent==='QEMU agent');assert.equal(hardware.querySelector('dd').textContent,expected);}finally{await page.close();}}
 });
 test('network details and subsequent edits use the latest refreshed configuration',async()=>{
  let cidr='192.0.2.1/24';const inventory=()=>({nodes:[{node:'n1',status:'online'}],errors:[],interfaces:[{id:'n1/vmbr0',node:'n1',name:'vmbr0',iface:'vmbr0',type:'bridge',cidr,address:cidr,status:'up'}]});const page=await mounted('pages/ProxmoxNetworks.tsx',{role:'owner'},async p=>p==='/proxmox/network'?inventory():{node:'n1',history:[],errors:[]});
@@ -252,7 +252,7 @@ test('cluster header owns refresh and the active section action without duplicat
 
 test('both overview and Nodes table open the correct node through content, keyboard and actions',async()=>{
  const page=await mounted('pages/Proxmox.tsx',{},reviewApi);
- try{const row=page.container.querySelector('[aria-label="Inspect node n2"]');assert.equal(row.tabIndex,0);await page.click(row.querySelector('td'));assert.ok(!route(page).includes('node=n2'));assert.equal(row.getAttribute('aria-selected'),'true');await page.click(row.querySelector('button.table-action'));assert.ok(route(page).includes('node=n2'));assert.equal(page.container.querySelector('.nodes-detail-head b').textContent.startsWith('n2'),true);const first=page.container.querySelector('[aria-label="Inspect node n1"]');await act(async()=>first.dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true})));assert.ok(route(page).includes('node=n2'));assert.equal(first.getAttribute('aria-selected'),'true');await page.click(first.querySelector('button'));assert.ok(route(page).includes('node=n1'));assert.ok(page.container.querySelector('.nodes-detail-head').textContent.startsWith('n1'));}finally{await page.close()}
+ try{await page.click(page.container.querySelector('[aria-label="List view"]'));const row=page.container.querySelector('[aria-label="Inspect node n2"]');assert.equal(row.tabIndex,0);await page.click(row.querySelector('td'));assert.ok(!route(page).includes('node=n2'));assert.equal(row.getAttribute('aria-selected'),'true');await page.click(row.querySelector('button.table-action'));assert.ok(route(page).includes('node=n2'));assert.equal(page.container.querySelector('.nodes-detail-head b').textContent.startsWith('n2'),true);await page.click(page.container.querySelector('[aria-label="Close dialog"]'));await page.click(page.container.querySelectorAll('[role=tab]')[1]);await page.click(page.container.querySelector('[aria-label="List view"]'));const first=page.container.querySelector('[aria-label="Inspect node n1"]');await act(async()=>first.dispatchEvent(new page.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true})));assert.ok(!route(page).includes('node=n1'));assert.equal(first.getAttribute('aria-selected'),'true');await page.click(first.querySelector('[aria-label="Details for n1"]'));assert.ok(route(page).includes('node=n1'));assert.ok(page.container.querySelector('.nodes-detail-head').textContent.startsWith('n1'));}finally{await page.close()}
 });
 
 test('closing a pending task read keeps refresh available and ignores its late response',async()=>{
@@ -287,26 +287,53 @@ test('restore selectors exclude occupied IDs and incompatible storage and clear 
  }finally{await page.close()}
 });
 
-test('Back from a guest Shell restores the filtered inventory, guest and scroll position',async()=>{
+test('Back from a card Shell restores the filtered inventory and scroll position',async()=>{
  for(const [file,kind,id] of [['VirtualMachines','vm','102'],['LxcContainers','lxc','202']]){
   const page=await mounted('pages/'+file+'.tsx',{data:guests,role:'owner',refresh:async()=>{}},async()=>({}),true,false,'/proxmox?inventoryNode=n2&search=two&status=stopped','default',true);
   try{
-   const list=()=>page.container.querySelector('.mobile-guest-list');
-   assert.equal(list().querySelectorAll('.mobile-guest-row').length,1);
+   const list=()=>page.container.querySelector('.pve-resource-grid');
+   assert.equal(list().querySelectorAll('.pve-resource-card').length,1);
    let restored;
    page.dom.window.scrollY=320;
    page.dom.window.scrollTo=(_x,y)=>{restored=y};
-   assert.equal(page.container.querySelector('.vm-list-card [aria-label=Shell]'),null);
+   assert.equal(page.container.querySelector('[role=dialog]'),null);await page.click(button(page,'Details'));
    const power=page.container.querySelector('.vm-power-actions');
    assert.deepEqual([...power.querySelectorAll('button')].map(button=>button.textContent.trim()),['Start','Shutdown','Reboot']);
    assert.equal(page.container.querySelector('.vm-detail-actions details'),null);
-   await page.click(button(page,'Shell'));
+   await page.click(page.container.querySelector('[aria-label="Close dialog"]'));await page.click(button(page,'Shell'));
    assert.equal(list(),null);
    assert.equal(page.container.querySelector('[data-location]').dataset.location,'/tools/shell?target='+encodeURIComponent(kind+':n2:'+id));
    await page.click(button(page,'Audit Back'));
-   assert.equal(list().querySelector('.guest-identity').getAttribute('aria-pressed'),'true');
+   assert.equal(page.container.querySelector('[role=dialog]'),null);
    assert.match(list().textContent,/two/);
    assert.equal(restored,320);
+  }finally{await page.close()}
+ }
+});
+
+test('Proxmox cards distinguish zero and unavailable telemetry and open the matching shell',async()=>{
+ const data={...reviewFixture,nodes:[{name:'n1',ip:'192.0.2.1',status:'online',cpu:0,memoryPercent:62}],
+  vms:[{id:'101',name:'Workload',node:'n1',status:'running',cpu:0,memoryPercent:62,diskPercent:null}],
+  lxc:[{id:'131',name:'Cache',node:'n1',status:'running',cpu:0,memoryPercent:62,diskPercent:28}],storage:[]};
+ for(const [tab,target,disk] of [['Overview','node:n1',null],['Nodes','node:n1',null],['Virtual Machines','vm:n1:101',null],['LXC Containers','lxc:n1:131',28]]){
+  const detailReads=[],page=await mounted('pages/Proxmox.tsx',{},async path=>{
+   if(path.includes('/details'))detailReads.push(path);
+   if(path==='/proxmox')return data;
+   if(path==='/auth/me')return {user:{role:'owner'}};
+   return reviewApi(path);
+  },true,false,'/proxmox?'+new URLSearchParams({tab}));
+  try{
+   const card=page.container.querySelector('.pve-resource-card');
+   assert.ok(card,tab);
+   assert.equal(page.container.querySelector('[role=dialog]'),null);
+   assert.deepEqual(detailReads,[]);
+   const reading=key=>card.querySelector('[data-metric="'+key+'"]');
+   assert.equal(reading('cpu').querySelector('i').style.width,'0%');
+   assert.equal(reading('memory').querySelector('i').style.width,'62%');
+   assert.equal(reading('disk').lastElementChild.textContent,disk==null?'Unknown':disk+'%');
+   assert.equal(reading('disk').querySelector('i')?.style.width,disk==null?undefined:disk+'%');
+   await page.click(button(page,'Shell'));
+   assert.equal(route(page),'/tools/shell?target='+encodeURIComponent(target));
   }finally{await page.close()}
  }
 });

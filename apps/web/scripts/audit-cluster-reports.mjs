@@ -133,7 +133,7 @@ export async function auditClusterReports({base,owner,profile,tls}){
      await inspect(pathname+'/'+tab,expected?scopeName+expected:'');
      if(pathname==='/proxmox'&&tab==='Virtual Machines'){
       await page.locator('.vm-stats .vm-stat').filter({hasText:'Disk Usage'}).getByText('Unavailable',{exact:true}).waitFor();
-      assert.doesNotMatch(await page.locator('.vm-table').innerText(),/GiB attached|TiB attached/);
+      assert.doesNotMatch(await page.locator('.pve-resource-grid').innerText(),/GiB attached|TiB attached/);
      }
      if(pathname==='/storage'&&tab==='Datasets / Volumes'){
       const device=page.getByRole('row',{name:'Select /dev/disk/by-id/'+scopeName+'-drive',exact:true});
@@ -141,6 +141,8 @@ export async function auditClusterReports({base,owner,profile,tls}){
       assert.equal(await device.getByRole('button').isDisabled(),true);
      }
      const details=({'/proxmoxVirtual Machines':['.vm-detail','.vm-detail-tabs'],'/proxmoxLXC Containers':['.vm-detail','.vm-detail-tabs'],'/networkDevices':['.device-details-card','.tabs'],'/users':['.users-details','.tabs']})[pathname+tab];
+     const guestInventory=pathname==='/proxmox'&&['Virtual Machines','LXC Containers'].includes(tab);
+     if(guestInventory)await page.locator('.pve-resource-card').first().getByRole('button',{name:'Details',exact:true}).click();
      if(details){
       const [region,bar]=details,buttons=page.locator(region).locator(bar).getByRole('button');
       for(const label of await buttons.allTextContents()){
@@ -150,6 +152,7 @@ export async function auditClusterReports({base,owner,profile,tls}){
        await inspect(pathname+'/'+tab+'/'+label,'',{region,bar,label});
       }
      }
+     if(guestInventory)await page.getByRole('dialog').getByRole('button',{name:'Close dialog'}).click();
      const refresh=page.locator('header.topbar .global-refresh');
      if(await refresh.isVisible()){
       try{await refresh.click({timeout:1000});refreshes++}

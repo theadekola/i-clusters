@@ -25,7 +25,7 @@ const aiMetadata=process.env.LAYOUT_CONNECTION_CHOICES?(await import('../../api/
 const aiSchema=process.env.LAYOUT_CONNECTION_CHOICES?(await import('../../api/src/runtime-configuration.js')).configurationSchemas.ai:null;
 let aiFixture=aiSchema?{id:'ai',name:'AI Assistant',disabled:true,providers:aiMetadata,fields:aiSchema.fields.map(f=>({...f,value:f.defaultValue||'',hasValue:false}))}:null;
 const now=new Date().toISOString();
-const guests=Array.from({length:8},(_,i)=>({id:100+i,vmid:100+i,name:['Control-VM','HomeCloud','Mssql-Server','my-app-App'][i%4],node:'node01',type:i===7?'lxc':'qemu',status:'running',cpu:i+1,memory:1024**3,memoryMax:4*1024**3,disk:10*1024**3,diskMax:32*1024**3,uptime:50000}));
+const guests=Array.from({length:8},(_,i)=>({id:100+i,vmid:100+i,name:['Control-VM','HomeCloud','Mssql-Server','my-app-App'][i%4],node:'node01',type:i===7?'lxc':'qemu',status:'running',cpu:i+1,memory:1024**3,memoryMax:4*1024**3,disk:10*1024**3,diskMax:32*1024**3,memoryPercent:25,diskPercent:i===0?null:31,uptime:50000}));
 const nodes=[{id:'node01',name:'node01',node:'node01',status:'online',cpu:5,memoryPercent:71,uptime:100000,ip:'192.0.2.10'}];
 const sample={
  sampledAt:now,nodes,hosts:nodes,guests,vms:guests.filter(g=>g.type==='qemu'),lxc:guests.filter(g=>g.type==='lxc'),
@@ -283,7 +283,26 @@ try{
      if(anchor)assert.equal(new URL(page.url()).hash,anchor);
     }
    }
-   if(/^\/proxmox\?tab=(Virtual%20Machines|LXC%20Containers)$/.test(route)){
+   const guestInventoryRoute=/^\/proxmox\?tab=(Virtual%20Machines|LXC%20Containers)$/.test(route);
+   const nodeInventoryRoute=['/proxmox','/proxmox?tab=Overview','/proxmox?tab=Nodes'].includes(route);
+   if(guestInventoryRoute||nodeInventoryRoute){
+    const card=page.locator('.pve-resource-card').first();
+    await card.waitFor();
+    assert.equal(await page.getByRole('dialog').count(),0);
+    assert.equal(await card.locator('.pve-resource-reading').count(),3);
+    const trigger=card.getByRole('button',{name:copy('Details'),exact:true});
+    assert.ok(await card.getByRole('button',{name:copy('Shell'),exact:true}).isVisible());
+    await trigger.click();
+    const dialog=page.getByRole('dialog');
+    await dialog.locator(guestInventoryRoute?'.vm-detail-head':'.nodes-detail-head').waitFor();
+    assert.ok(await dialog.evaluate(el=>el.contains(document.activeElement)&&el.scrollWidth<=el.clientWidth+1));
+    if(process.env.LAYOUT_SCREENSHOTS){
+     mkdirSync(process.env.LAYOUT_SCREENSHOTS,{recursive:true});
+     await dialog.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-${route.replace(/[^a-z0-9]/gi,'_')}-details.png`});
+    }
+    if(nodeInventoryRoute){await page.keyboard.press('Escape');await dialog.waitFor({state:'detached'});assert.ok(await trigger.evaluate(el=>el===document.activeElement));}
+   }
+   if(guestInventoryRoute){
     const actions=page.locator('.vm-detail-actions'), resources=page.locator('.vm-resource-cards');
     await actions.waitFor();
     const rowPositions=elements=>elements.map(el=>Math.round(el.getBoundingClientRect().top));
@@ -298,6 +317,14 @@ try{
     for(const group of [actions,resources]){
      assert.ok(await group.evaluate(el=>el.scrollWidth<=el.clientWidth+1),route+' overflows at '+width);
     }
+    await page.keyboard.press('Escape');
+    await page.getByRole('dialog').waitFor({state:'detached'});
+    await page.getByRole('button',{name:copy('List view'),exact:true}).click();
+    const listDetails=page.locator(width<=700?'.mobile-guest-row':'.vm-table tbody tr').first().getByRole('button',{name:copy('Details'),exact:true});
+    await listDetails.click();
+    await page.getByRole('dialog').locator('.vm-detail-head').waitFor();
+    await page.keyboard.press('Escape');
+    await page.getByRole('button',{name:copy('Grid view'),exact:true}).click();
    }
    if(process.env.LAYOUT_HOST_CARDS){
     const checkCards=async()=>{
