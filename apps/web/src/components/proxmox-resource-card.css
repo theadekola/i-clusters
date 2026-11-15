@@ -1,0 +1,63 @@
+.pve-resource-grid {
+ display:grid;
+ grid-template-columns:repeat(auto-fill,minmax(min(100%,max(17rem,calc((100% - 24px)/3))),1fr));
+ gap:12px;
+}
+.pve-resource-card {
+ display:flex; flex-direction:column; min-width:0; overflow:hidden;
+ border:1px solid var(--theme-border); border-radius:13px; color:var(--theme-text);
+ background:linear-gradient(135deg,var(--theme-surface) 30%,var(--theme-input));
+}
+.pve-resource-card:is(:hover,:focus-within) {
+ border-color:var(--theme-icon);
+ box-shadow:0 0 0 1px color-mix(in srgb,var(--theme-icon) 25%,transparent);
+}
+.pve-resource-card > header {display:flex;align-items:flex-start;gap:10px;padding:14px 14px 8px}
+.pve-resource-icon {
+ display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:11px;
+ color:var(--theme-icon);background:color-mix(in srgb,var(--theme-icon) 16%,var(--theme-surface));
+}
+.pve-resource-card[data-kind=lxc] .pve-resource-icon {color:light-dark(#087798,#43cce9);background:color-mix(in srgb,#06b6d4 15%,var(--theme-surface))}
+.pve-resource-identity {min-width:0;flex:1}
+.pve-resource-identity strong,.pve-resource-identity small {display:block;overflow-wrap:anywhere;line-height:1.4}
+.pve-resource-identity small {color:var(--theme-muted);margin-top:2px}
+.pve-resource-status {
+ display:inline-flex;align-items:center;gap:5px;max-width:45%;overflow-wrap:anywhere;
+ padding:3px 7px;border:1px solid currentColor;border-radius:99px;color:var(--theme-muted);
+ font-size:.75rem;line-height:1.25;text-transform:capitalize;
+}
+.pve-resource-status::before {content:'';width:6px;height:6px;flex:none;border-radius:50%;background:currentColor}
+.pve-resource-status:is([data-status=running],[data-status=online]) {color:light-dark(#167047,#63e8a7);background:color-mix(in srgb,#16a36a 12%,var(--theme-surface))}
+.pve-resource-status:is([data-status=offline],[data-status=stopped]) {color:light-dark(#9f3e37,#f6a29c)}
+.pve-resource-readings {display:grid;gap:7px;padding:6px 14px 14px;margin-top:auto}
+.pve-resource-reading {display:grid;grid-template-columns:5.1rem minmax(16px,1fr) minmax(3.8rem,max-content);align-items:center;gap:8px;font-size:.8rem}
+.pve-resource-reading > :first-child {display:inline-flex;align-items:center;gap:6px}
+.pve-resource-reading > :last-child {text-align:end;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pve-resource-track {height:7px;border-radius:9px;overflow:hidden;background:color-mix(in srgb,var(--theme-muted) 22%,var(--theme-surface))}
+.pve-resource-track i {height:100%;display:block;border-radius:inherit;background:#24c781}
+.pve-resource-reading[data-metric=memory] i {background:#06b6d4}
+.pve-resource-reading[data-metric=disk] i {background:#b378ed}
+.pve-resource-card > footer {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid var(--theme-border)}
+.pve-resource-card > footer button,.pve-layout-switch button {
+ display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;
+ background:transparent;color:inherit;font:inherit;cursor:pointer;min-height:40px;
+}
+.pve-resource-card > footer button + button {border-inline-start:1px solid var(--theme-border)}
+.pve-resource-card > footer button:hover:enabled,.pve-layout-switch button:hover {background:var(--theme-raised)}
+.pve-resource-card button:focus-visible,.pve-layout-switch button:focus-visible {outline:2px solid var(--theme-icon);outline-offset:-3px}
+.pve-resource-card button:disabled {cursor:default;opacity:.55}
+.pve-layout-switch {display:inline-flex;flex:none;overflow:hidden;border:1px solid var(--theme-border);border-radius:8px}
+.pve-layout-switch button {min-height:34px;width:38px}
+.pve-layout-switch button[aria-pressed=true] {background:var(--app-accent,#365bc5);color:var(--accent-contrast,#fff)}
+.modal.modal:has(.node-details,.vm-detail-stack) {width:min(62rem,100%);background:var(--theme-surface,#132439);}
+.guest-inventory .modal .vm-detail-stack {display:grid;grid-template-columns:minmax(0,1fr)}
+.guest-inventory .vm-workspace {display:block}
+@media (max-width:700px) {
+ .guest-inventory .vm-filters {display:grid;grid-template-columns:1fr auto;align-items:stretch}
+ .guest-inventory .vm-filters select,.guest-inventory .vm-search,.guest-inventory .vm-search input {min-width:0;width:100%}
+ .guest-inventory .vm-search {margin:0}
+ .guest-inventory .pve-layout-switch {justify-self:end}
+ .pve-resource-card > footer button,.pve-layout-switch button {min-height:44px}
+ .pve-layout-switch button {width:44px}
+ .pve-resource-reading {grid-template-columns:4.5rem minmax(12px,1fr) minmax(3.8rem,max-content);gap:5px}
+}

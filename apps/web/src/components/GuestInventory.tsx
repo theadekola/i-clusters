@@ -5,7 +5,7 @@ import './guest-inventory.css';
 
 type Guest={id:string|number;name:string;node:string;status:string};
 type Kind='vm'|'lxc';
-let lastInventory:{entry:string;kind:Kind;top:number;tableTop:number;guest:string}|undefined;
+let lastInventory:{entry:string;kind:Kind;top:number;tableTop:number}|undefined;
 
 export function useGuestInventory(kind:Kind,ready:boolean){
  const [params,setParams]=useSearchParams(),navigate=useNavigate(),location=useLocation();
@@ -18,14 +18,14 @@ export function useGuestInventory(kind:Kind,ready:boolean){
   setParams(next,{replace:true,preventScrollReset:true});
  };
  const restored=lastInventory?.entry===location.key&&lastInventory.kind===kind?lastInventory:undefined;
- const selected=restored?.guest||params.get('guest')||'';
+ const selected=params.get('guest')||'';
  useLayoutEffect(()=>{
   if(!ready||!restored)return;
   if(listRef.current)listRef.current.scrollTop=restored.tableTop;
   window.scrollTo(0,restored.top);
  },[ready,restored]);
  const openShell=(guest:Guest)=>{
-  lastInventory={entry:location.key,kind,top:window.scrollY,tableTop:listRef.current?.scrollTop||0,guest:String(guest.id)};
+  lastInventory={entry:location.key,kind,top:window.scrollY,tableTop:listRef.current?.scrollTop||0};
   navigate('/tools/shell?target='+encodeURIComponent(kind+':'+guest.node+':'+guest.id));
  };
  const requestedPage=Number(params.get('page'));
@@ -36,7 +36,7 @@ export function useGuestInventory(kind:Kind,ready:boolean){
   search:params.get('search')||'',setSearch:(search:string)=>update({guest:'',search,page:''}),
   node:params.get('inventoryNode')||'all',setNode:(node:string)=>update({inventoryNode:node==='all'?'':node,page:'',guest:''}),
   status:params.get('status')||'all',setStatus:(status:string)=>update({guest:'',status:status==='all'?'':status,page:''}),
-  layout:params.get('layout')==='grid'?'grid':'list',setLayout:(layout:string)=>update({layout}),
+  layout:params.get('layout')==='list'?'list':'grid',setLayout:(layout:string)=>update({layout}),
   page,setPage:(page:number)=>update({guest:'',page:String(page)}),rowsPerPage:pageSize,setRowsPerPage:(size:number)=>update({guest:'',perPage:String(size),page:''})};
 }
 
@@ -53,10 +53,9 @@ export function GuestStatus({status}:{status:string}){
  return <span className="guest-status" ref={ref}><Badge tone={status==='running'?'green':status==='stopped'?'red':'gray'}>{status||'Unknown'}</Badge></span>;
 }
 
-export function MobileGuestList({guests,kind,selected,select}:{guests:Guest[];kind:Kind;selected:string;select:(id:string)=>void}){
+export function MobileGuestList({guests,kind,select}:{guests:Guest[];kind:Kind;select:(id:string)=>void}){
  return <div className="mobile-guest-list">{guests.map(guest=><div className="mobile-guest-row" key={guest.id}>
-  <button className="guest-identity" aria-pressed={selected===String(guest.id)} onClick={()=>select(String(guest.id))}>
-   <span><b>{guest.name}</b><small>{kind==='vm'?'VM':'CT'} {guest.id} · {guest.node}</small></span><GuestStatus status={guest.status}/>
-  </button>
+  <div className="guest-identity"><span translate="no"><b>{guest.name}</b><small>{kind==='vm'?'VM':'CT'} {guest.id} · {guest.node}</small></span><GuestStatus status={guest.status}/></div>
+  <button type="button" className="btn secondary" onClick={()=>select(String(guest.id))}>Details</button>
  </div>)}</div>;
 }
