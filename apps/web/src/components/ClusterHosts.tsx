@@ -1,12 +1,14 @@
 import {useRef,useState,type FormEvent} from 'react';
-import {Activity,Layers,Trash2} from 'lucide-react';
+import {Activity,Trash2} from 'lucide-react';
 import {api} from '../api';
 import {useLocale} from '../i18n/locale';
 import hostLabels from '../i18n/cluster-hosts.json';
 import {clusterId,clusterLocation} from '../cluster-context';
 import {hostSettingsPath,useClusterProfiles,type ClusterProfile} from '../cluster-profiles';
 import {Modal} from './UI';
-import ClusterStatus from './ClusterStatus';
+import {useApi} from '../hooks';
+import {proxmoxAvailability} from '../proxmox-availability';
+import {ResourceHeader,ResourceReadings,storagePercent} from './ProxmoxResourceCard';
 
 function useHostLabels(){
   const language=useLocale().split('-')[0] as keyof typeof hostLabels;
@@ -47,6 +49,14 @@ export function RemoveClusterDialog({profile,onClose,onRemoved}:{profile:Removal
   </Modal>;
 }
 
+function HostReadings({id}:{id:string}){
+  const live=useApi<any>('/proxmox',null,30000,id);
+  const report=live.error?null:live.data;
+  const {cpuUsed,cores,usedMemory,totalMemory,storage}=proxmoxAvailability(report);
+  const ratio=(used:number|null,total:number|null)=>used!=null&&total?100*used/total:null;
+  return <ResourceReadings cpu={ratio(cpuUsed,cores)} memory={ratio(usedMemory,totalMemory)} disk={storagePercent(storage)}/>;
+}
+
 function HostCard({profile,stale,refresh,onRemove}:{profile:ClusterProfile;stale:boolean;refresh:()=>Promise<void>;onRemove:()=>void}){
   const [checking,setChecking]=useState(false),[error,setError]=useState(''),[checked,setChecked]=useState('');
   const labels=useHostLabels();
@@ -59,16 +69,16 @@ function HostCard({profile,stale,refresh,onRemove}:{profile:ClusterProfile;stale
     }catch(e:any){setError(e.message)}
     finally{setChecking(false)}
   }
-  return <article className="card cluster-host-card">
-    <div className="cluster-host-heading"><Layers aria-hidden="true" size={19}/><h3 translate="no" title={profile.name}>{profile.name}</h3>
-      <ClusterStatus profile={profile} error={stale?'unknown':''}/></div>
-    <p translate="no">{profile.endpoint}</p>
-    <div className="cluster-host-actions">
-      <button type="button" className="btn text-action" onClick={check} disabled={checking} aria-busy={checking}><Activity size={15}/>{labels.check}</button>
-      <button type="button" className="btn text-action" onClick={onRemove}><Trash2 size={15}/>Remove</button>
-    </div>
+  const status=stale?'unknown':profile.status;
+  return <article className="pve-resource-card cluster-host-card" data-status={status} aria-label={profile.name}>
+    <ResourceHeader name={profile.name} subtitle={profile.endpoint} status={status==='online'?'Online':status==='offline'?'Offline':'Unknown'} kind="cluster"/>
+    {status==='online'?<HostReadings id={profile.id}/>:<ResourceReadings/>}
     {checked&&<small role="status"><span>Cluster Health</span> · <span>{checked}</span></small>}
     {error&&<small role="alert" className="error">{error}</small>}
+    <footer>
+      <button type="button" onClick={check} disabled={checking} aria-busy={checking}><Activity size={15}/>{labels.check}</button>
+      <button type="button" onClick={onRemove}><Trash2 size={15}/>Remove</button>
+    </footer>
   </article>;
 }
 
@@ -80,7 +90,7 @@ export default function ClusterHosts(){
   return <section aria-label="Clusters">
     <h2>Clusters</h2>
     {error&&<p role="alert" className="error">{error}</p>}
-    {hosts.length?<div className="cluster-host-grid">{hosts.map(profile=><HostCard key={profile.id} profile={profile} stale={!!error} refresh={refresh} onRemove={()=>setTarget(profile)}/>)}</div>
+    {hosts.length?<div className="pve-resource-grid">{hosts.map(profile=><HostCard key={profile.id} profile={profile} stale={!!error} refresh={refresh} onRemove={()=>setTarget(profile)}/>)}</div>
       :!error&&<p role="status">{loading?'Checking…':labels.empty}</p>}
     {target&&<RemoveClusterDialog profile={target} onClose={()=>setTarget(null)} onRemoved={()=>{setTarget(null);void refresh()}}/>}
   </section>;

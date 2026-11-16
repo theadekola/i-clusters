@@ -27,33 +27,41 @@ export function storagePercent(rows: any[]) {
  return used != null && usedCapacity > 0 ? Math.round(used / usedCapacity * 100) : null;
 }
 
-export function ProxmoxResourceCard({resource, kind, disk = resource.diskPercent, onDetails, onShell, shellEnabled}: {
- resource: Resource; kind: Kind; disk?: number | null;
- onDetails: () => void; onShell: () => void; shellEnabled: boolean;
-}) {
- const Icon = {node: Server, vm: Monitor, lxc: Box}[kind];
- const status = resource.status || 'Unknown';
- const available = resource.nodeAvailable !== false && !['offline','unknown'].includes(status.toLowerCase());
- const subtitle = kind === 'node' ? resource.ip || 'IP not reported' : `${kind === 'vm' ? 'VM' : 'CT'} ${resource.id} · ${resource.node}`;
+export function ResourceReadings({cpu,memory,disk}:{cpu?:number|null;memory?:number|null;disk?:number|null}) {
  const readings = [
-  {label: 'CPU', icon: Cpu, value: resource.cpu, metric: 'cpu'},
-  {label: 'Memory', icon: MemoryStick, value: resource.memoryPercent, metric: 'memory'},
-  {label: 'Disk', icon: HardDrive, value: disk, metric: 'disk'},
+  {label:'CPU', icon:Cpu, value:cpu, metric:'cpu'},
+  {label:'Memory', icon:MemoryStick, value:memory, metric:'memory'},
+  {label:'Disk', icon:HardDrive, value:disk, metric:'disk'},
  ];
- return <article className="pve-resource-card" data-kind={kind} aria-label={resource.name}>
-  <header>
-   <span className="pve-resource-icon"><Icon size={23}/></span>
-   <div className="pve-resource-identity"><strong translate="no">{resource.name}</strong><small translate="no">{subtitle}</small></div>
-   <span className="pve-resource-status" data-status={status.toLowerCase()}>{status}</span>
-  </header>
-  <div className="pve-resource-readings">{readings.map(({label, icon: MetricIcon, value, metric}) => {
-   const reported = available && typeof value === 'number' && Number.isFinite(value) && value >= 0;
+ return <div className="pve-resource-readings">{readings.map(({label, icon: MetricIcon, value, metric}) => {
+   const reported = typeof value === 'number' && Number.isFinite(value) && value >= 0;
    return <div className="pve-resource-reading" data-metric={metric} key={metric}>
     <span><MetricIcon size={14}/>{label}</span>
     <span className="pve-resource-track" aria-hidden="true">{reported && <i style={{width: Math.min(value, 100) + '%'}}/>}</span>
     <span>{reported ? Math.round(value) + '%' : 'Unknown'}</span>
    </div>;
-  })}</div>
+  })}</div>;
+}
+
+export function ResourceHeader({name,subtitle,status,kind}:{name:string;subtitle?:string;status:string;kind:Kind|'cluster'}) {
+ const Icon={node:Server,vm:Monitor,lxc:Box,cluster:Server}[kind];
+ return <header>
+  <span className="pve-resource-icon"><Icon size={23}/></span>
+  <div className="pve-resource-identity"><strong translate="no" title={name}>{name}</strong><small translate="no">{subtitle}</small></div>
+  <span className="pve-resource-status" data-status={status.toLowerCase()}>{status}</span>
+ </header>;
+}
+
+export function ProxmoxResourceCard({resource, kind, disk = resource.diskPercent, onDetails, onShell, shellEnabled}: {
+ resource: Resource; kind: Kind; disk?: number | null;
+ onDetails: () => void; onShell: () => void; shellEnabled: boolean;
+}) {
+ const status = resource.status || 'Unknown';
+ const available = resource.nodeAvailable !== false && !['offline','unknown'].includes(status.toLowerCase());
+ const subtitle = kind === 'node' ? resource.ip || 'IP not reported' : `${kind === 'vm' ? 'VM' : 'CT'} ${resource.id} · ${resource.node}`;
+ return <article className="pve-resource-card" data-kind={kind} data-status={resource.nodeAvailable===false?'unknown':status.toLowerCase()} aria-label={resource.name}>
+  <ResourceHeader name={resource.name} subtitle={subtitle} status={resource.nodeAvailable===false?'Unknown':status} kind={kind}/>
+  <ResourceReadings cpu={available?resource.cpu:null} memory={available?resource.memoryPercent:null} disk={available?disk:null}/>
   <footer>
    <button type="button" onClick={onDetails}><Info size={15}/>Details</button>
    <button type="button" disabled={!shellEnabled} onClick={onShell}><Terminal size={15}/>Shell</button>

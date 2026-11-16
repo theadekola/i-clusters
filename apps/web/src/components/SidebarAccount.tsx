@@ -1,14 +1,17 @@
 import {useEffect,useRef,useState} from 'react';
 import {CircleUserRound,LogOut,Monitor,Moon,Sun} from 'lucide-react';
+import {SavedPicture} from './ProfilePanels';
 import {loadAppearance,saveAppearance} from '../appearance';
 
 const modes=[['light','Light',Sun],['dark','Dark',Moon],['system','System',Monitor]] as const;
 
-export default function SidebarAccount({labels=false,openAccount,signOut,theme=false}:{labels?:boolean;openAccount?:()=>void;signOut?:()=>void;theme?:boolean}){
+export default function SidebarAccount({labels=false,user,openAccount,signOut,theme=false}:{labels?:boolean;user?:{sub?:string;id?:string;profile?:{pictureVersion?:string}};openAccount?:()=>void;signOut?:()=>void;theme?:boolean}){
  const [menu,setMenu]=useState<'theme'|'account'|null>(null);
  const [mode,setMode]=useState(()=>loadAppearance().theme);
  const [error,setError]=useState('');
  const root=useRef<HTMLDivElement>(null),trigger=useRef<HTMLButtonElement|null>(null);
+ const accountId=user?.sub||user?.id;
+ const version=user?.profile?.pictureVersion;
  const Icon=modes.find(([id])=>id===mode)![2];
  useEffect(()=>{
   const sync=()=>setMode(loadAppearance().theme);
@@ -31,7 +34,8 @@ export default function SidebarAccount({labels=false,openAccount,signOut,theme=f
    items[e.key==='Home'?0:e.key==='End'?items.length-1:(i+(e.key==='ArrowDown'?1:-1)+items.length)%items.length].focus();
   }
  }}>
- {!theme?<button type="button" className="profile-trigger" aria-label="User profile" title="User profile" aria-expanded={menu==='account'} aria-haspopup="menu" onClick={e=>toggle('account',e.currentTarget)}><CircleUserRound/>{labels&&'Profile'}</button>:
+ {!theme?<button type="button" className="nav-item profile-trigger" aria-label="User profile" title="User profile" aria-expanded={menu==='account'} aria-haspopup="menu" onClick={e=>toggle('account',e.currentTarget)}>{accountId&&version?<SavedPicture id={accountId} version={version} fallback={<CircleUserRound size={20}/>}/>:<CircleUserRound size={20}/>}
+  {labels&&<span>Profile</span>}</button>:
  <button type="button" className="icon-btn" aria-label="Theme mode" title="Theme mode" aria-expanded={menu==='theme'} aria-haspopup="menu" onClick={e=>toggle('theme',e.currentTarget)}><Icon size={19}/></button>}
  {menu&&<div className="sidebar-popover" role="menu" aria-label={menu==='theme'?'Theme mode':'User profile'}>
  {menu==='theme'?modes.map(([id,label,Glyph])=><button type="button" role="menuitemradio" aria-label={label} title={label} key={id} aria-checked={mode===id} onClick={()=>{try{saveAppearance({...loadAppearance(),theme:id});close()}catch(err){setError(String(err))}}}><Glyph size={19} aria-hidden="true"/></button>):<><button role="menuitem" onClick={()=>{close();openAccount?.()}}><CircleUserRound size={18}/>View account</button><button role="menuitem" onClick={()=>{close();signOut?.()}}><LogOut size={18}/>Sign out</button></>}

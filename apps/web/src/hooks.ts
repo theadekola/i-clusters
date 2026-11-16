@@ -1,11 +1,11 @@
-import {clusterStorageKey} from './cluster-context';
+import {clusterId,clusterStorageKey} from './cluster-context';
 import {isSoftwareUpdating} from './software-update-state';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from './api';
 let interval=30000;
 export function configureRefresh(seconds:number){interval=Math.max(15,Math.min(300,seconds||30))*1000;window.dispatchEvent(new Event('iclusters-refresh'));}
 
-type Resource={path:string;scope:string;data:any;hasData:boolean;error:string;loading:boolean;updated:number;created:number;generation:number;listeners:Set<()=>void>;pending?:Promise<void>;manualPending?:Promise<void>;forced?:boolean;controller?:AbortController};
+type Resource={path:string;clusterProfile:string;scope:string;data:any;hasData:boolean;error:string;loading:boolean;updated:number;created:number;generation:number;listeners:Set<()=>void>;pending?:Promise<void>;manualPending?:Promise<void>;forced?:boolean;controller?:AbortController};
 const resources=new Map<string,Resource>();
 let eventWindow:Window|undefined;
 const identity=()=>{const token=window.sessionStorage.getItem('iclusters_access_token')||window.localStorage.getItem('iclusters_access_token')||'';try{const claim=JSON.parse(window.atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));if(typeof claim.sub==='string')return JSON.stringify([claim.sub,claim.role,claim.sid,claim.ver]);}catch{}return token};
@@ -20,11 +20,11 @@ function listen(){
  if(eventWindow){eventWindow.removeEventListener('iclusters-session-expired',clear);eventWindow.removeEventListener('iclusters-connection',clear);eventWindow.removeEventListener('iclusters-api-write',invalidate);eventWindow.removeEventListener('iclusters-settings',refreshSettings);eventWindow.removeEventListener('iclusters-resource-refresh',refreshMatching);clear();}
  eventWindow=window;window.addEventListener('iclusters-session-expired',clear);window.addEventListener('iclusters-connection',clear);window.addEventListener('iclusters-api-write',invalidate);window.addEventListener('iclusters-settings',refreshSettings);window.addEventListener('iclusters-resource-refresh',refreshMatching);
 }
-function resource(path:string){
- listen();const identity=scope(),key=JSON.stringify([identity,path]);let entry=resources.get(key);
+function resource(path:string,clusterProfile:string){
+ listen();const identity=scope(),key=JSON.stringify([identity,clusterProfile,path]);let entry=resources.get(key);
  if(!entry){
   for(const [key,row] of resources)if(!row.listeners.size&&!row.pending&&(Date.now()-(row.updated||row.created)>300000||resources.size>=100))resources.delete(key);
-  entry={path,scope:identity,data:undefined,hasData:false,error:'',loading:true,updated:0,created:Date.now(),generation:0,listeners:new Set()};resources.set(key,entry);
+  entry={path,clusterProfile,scope:identity,data:undefined,hasData:false,error:'',loading:true,updated:0,created:Date.now(),generation:0,listeners:new Set()};resources.set(key,entry);
  }
  return entry;
 }
@@ -42,7 +42,7 @@ function load(entry:Resource,force=false,background=false):Promise<void>{
   try{
    let manual=force&&!background;
    do{
-    const result=await api(entry.path,{signal:controller.signal,...(manual?{headers:{'X-IClusters-Refresh':'1'}}:{})});manual=false;
+    const result=await api(entry.path,{clusterProfile:entry.clusterProfile,signal:controller.signal,...(manual?{headers:{'X-IClusters-Refresh':'1'}}:{})});manual=false;
     if(ticket!==entry.generation||entry.scope!==scope()||controller.signal.aborted)break;
     entry.data=result;entry.hasData=true;entry.updated=Date.now();entry.error='';emit(entry);
     if(!force||background||!result?.refreshing)break;
@@ -57,8 +57,8 @@ function load(entry:Resource,force=false,background=false):Promise<void>{
  })();entry.pending=work;emit(entry);return work;
 }
 
-export function useApi<T>(path: string, initial: T, refreshMs?:number|((data:T)=>number)) {
- const entry=resource(path),initialValue=useRef(initial),[,render]=useState(0);
+export function useApi<T>(path: string, initial: T, refreshMs?:number|((data:T)=>number),clusterProfile=clusterId) {
+ const entry=resource(path,clusterProfile),initialValue=useRef(initial),[,render]=useState(0);
  const {data:renderedData,loading:renderedLoading,error:renderedError}=entry;
  const refresh=useCallback(()=>load(entry,true),[entry]);
  const setData=useCallback((value:T|((previous:T)=>T))=>{entry.generation++;entry.controller?.abort();entry.pending=undefined;entry.loading=false;entry.data=typeof value==='function'?(value as (previous:T)=>T)(entry.hasData?entry.data:initialValue.current):value;entry.hasData=true;entry.updated=Date.now();entry.error='';emit(entry);},[entry]);
