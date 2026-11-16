@@ -337,3 +337,25 @@ test('Proxmox cards distinguish zero and unavailable telemetry and open the matc
   }finally{await page.close()}
  }
 });
+
+test('Host cards show measurements from their own cluster and leave offline readings unknown',async()=>{
+ const profiles=['default','office','offline'].map(id=>({id,name:id,configured:true,status:id==='offline'?'offline':'online',endpoint:id+'.example.test:8006'}));
+ const reads=[];
+ const page=await mounted('components/ClusterHosts.tsx',{},async(path,options)=>{
+  if(path==='/cluster-profiles')return {clusters:profiles};
+  assert.equal(path,'/proxmox');
+  const id=options.clusterProfile;reads.push(id);
+  const cpu=id==='office'?68:12;
+  return {nodes:[{name:'node',status:'online',cpu,cores:4,memoryBytes:60,memoryTotal:100}],
+   storage:[{id:'local',node:'node',status:'online',used:20,capacity:50}]};
+ });
+ try{
+  assert.deepEqual(reads.sort(),['default','office']);
+  for(const [id,expected] of [['default',['12%','60%','40%']],['office',['68%','60%','40%']],['offline',['Unknown','Unknown','Unknown']]]){
+   const card=page.container.querySelector('article[aria-label="'+id+'"]');
+   assert.deepEqual([...card.querySelectorAll('.pve-resource-reading>span:last-child')].map(el=>el.textContent),expected);
+   assert.equal(card.dataset.status,id==='offline'?'offline':'online');
+   assert.deepEqual([...card.querySelectorAll('footer button')].map(b=>b.textContent.trim()),['Check health','Remove']);
+  }
+ }finally{await page.close()}
+});

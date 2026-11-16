@@ -12,6 +12,11 @@
  border-color:var(--theme-icon);
  box-shadow:0 0 0 1px color-mix(in srgb,var(--theme-icon) 25%,transparent);
 }
+/* Match the status stripe on Connected Sources cards in every inventory. */
+.pve-resource-card[data-status] {border-inline-start:4px solid var(--resource-status-edge,var(--theme-muted))}
+.pve-resource-card:is([data-status=online],[data-status=running]) {--resource-status-edge:#13dca0}
+.pve-resource-card:is([data-status=offline],[data-status=stopped]) {--resource-status-edge:#f25d73}
+.pve-resource-card:is([data-status=paused],[data-status=suspended],[data-status=warning]) {--resource-status-edge:#e6b24b}
 .pve-resource-card > header {display:flex;align-items:flex-start;gap:10px;padding:14px 14px 8px}
 .pve-resource-icon {
  display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:11px;
@@ -29,9 +34,9 @@
 .pve-resource-status::before {content:'';width:6px;height:6px;flex:none;border-radius:50%;background:currentColor}
 .pve-resource-status:is([data-status=running],[data-status=online]) {color:light-dark(#167047,#63e8a7);background:color-mix(in srgb,#16a36a 12%,var(--theme-surface))}
 .pve-resource-status:is([data-status=offline],[data-status=stopped]) {color:light-dark(#9f3e37,#f6a29c)}
-.pve-resource-readings {display:grid;gap:7px;padding:6px 14px 14px;margin-top:auto}
-.pve-resource-reading {display:grid;grid-template-columns:5.1rem minmax(16px,1fr) minmax(3.8rem,max-content);align-items:center;gap:8px;font-size:.8rem}
-.pve-resource-reading > :first-child {display:inline-flex;align-items:center;gap:6px}
+.pve-resource-readings {display:grid;grid-template-columns:max-content minmax(12px,1fr) max-content;column-gap:8px;row-gap:7px;padding:6px 14px 14px;margin-top:auto}
+.pve-resource-reading {display:grid;grid-column:1/-1;grid-template-columns:subgrid;align-items:center;font-size:.8rem}
+.pve-resource-reading > :first-child {display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .pve-resource-reading > :last-child {text-align:end;white-space:nowrap;font-variant-numeric:tabular-nums}
 .pve-resource-track {height:7px;border-radius:9px;overflow:hidden;background:color-mix(in srgb,var(--theme-muted) 22%,var(--theme-surface))}
 .pve-resource-track i {height:100%;display:block;border-radius:inherit;background:#24c781}
@@ -60,5 +65,5 @@
  .guest-inventory .pve-layout-switch {justify-self:end}
  .pve-resource-card > footer button,.pve-layout-switch button {min-height:44px}
  .pve-layout-switch button {width:44px}
- .pve-resource-reading {grid-template-columns:4.5rem minmax(12px,1fr) minmax(3.8rem,max-content);gap:5px}
+ .pve-resource-readings {column-gap:5px}
 }

@@ -10,8 +10,11 @@
 .account-panel .security-settings-card{margin-bottom:.75rem}
 @media(max-width:700px){.account-layout{grid-template-columns:minmax(0,1fr)}.account-identity dl{display:none}.account-identity h2{margin:.5rem}.account-identity .btn{margin:.4rem}}
 .sidebar .nav-scroll{flex:1;min-height:0}
-.sidebar-account{position:relative;flex:none;display:flex;flex-wrap:wrap;justify-content:space-around;gap:.25rem;padding:.5rem .25rem max(.5rem,env(safe-area-inset-bottom));border-top:1px solid var(--theme-border)}
+.sidebar-account{position:relative;flex:none;padding:.5rem 11px max(.5rem,env(safe-area-inset-bottom));border-top:1px solid var(--theme-border)}
 .sidebar-account .profile-trigger,.sidebar-popover button{display:flex;align-items:center;justify-content:center;gap:.4rem;min-height:44px;min-width:44px;background:transparent;color:var(--theme-text);border:0;border-radius:.5rem;cursor:pointer}
+.sidebar-account .profile-trigger{width:100%;justify-content:flex-start;gap:11px;padding:9px 11px;text-align:start;font:inherit}
+.sidebar-account .profile-trigger :is(img,svg){width:20px;height:20px;flex:none}
+.sidebar-account .saved-account-picture{border-radius:50%;object-fit:cover}
 .sidebar-account .sidebar-popover{position:absolute;z-index:12;bottom:100%;left:.25rem;width:max-content;min-width:9rem;padding:.4rem;border:1px solid var(--theme-border);border-radius:.75rem;background:var(--theme-surface);box-shadow:var(--card-shadow)}
 .sidebar-popover button{justify-content:flex-start;width:100%;padding:.4rem .75rem}.sidebar-popover button[aria-checked=true]{background:var(--theme-highlight);color:var(--theme-icon)}
 

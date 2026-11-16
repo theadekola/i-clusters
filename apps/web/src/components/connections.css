@@ -106,3 +106,19 @@
  .connection-title-line {gap:3px}
  .connection-title-line .badge {padding:2px 4px}
 }
+
+/* Give each available action an equal share of the card, including optional updates. */
+.connections-page .connection-inventory.grid .connection-row-actions {
+ display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:0;
+ grid-column:1/-1;align-self:end;width:100%;border-top:1px solid var(--theme-border);
+}
+.connections-page .connection-inventory.grid .connection-row-actions .btn {
+ display:flex;align-items:center;justify-content:center;position:relative;min-width:0;min-height:44px;
+ width:100%;padding:0;gap:0;font-size:0!important;
+}
+.connections-page .connection-inventory.grid .connection-row-actions .btn svg {
+ display:block;width:clamp(16px,8cqi,21px);height:clamp(16px,8cqi,21px)
+}
+.connections-page .connection-inventory.grid .connection-row-actions .btn span {
+ position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap
+}

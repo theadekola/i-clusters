@@ -93,7 +93,7 @@ export default function Layout() {
           </NavLink>)}
         </div>)}
       </nav>
-      <SidebarAccount key={String(mobile&&menuOpen)} labels={showLabels} signOut={signOut} openAccount={()=>{if(mobile)closeMenu();setAccountOpen(true)}}/>
+      <SidebarAccount key={String(mobile&&menuOpen)} labels={showLabels} user={session?.user} signOut={signOut} openAccount={()=>{if(mobile)closeMenu();setAccountOpen(true)}}/>
     </aside>
     {accountOpen&&<MyAccountDialog onClose={()=>{setAccountOpen(false);window.requestAnimationFrame(()=>{(mobile?toggleRef.current:menuRef.current?.querySelector<HTMLButtonElement>('.profile-trigger'))?.focus({preventScroll:true})})}}/>}
     <div className="main-shell" inert={mobile&&menuOpen}>

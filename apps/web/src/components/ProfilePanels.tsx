@@ -1,4 +1,4 @@
-import {useRef,useState, type ChangeEvent} from 'react';
+import {useRef,useState, type ReactNode,type ChangeEvent} from 'react';
 import {Box,Camera,Check,Crown,Layers,Monitor,Pencil,Server,ShieldCheck,UserRound} from 'lucide-react';
 import {api} from '../api';
 import {useApi} from '../hooks';
@@ -22,9 +22,9 @@ async function thumbnail(file:File) {
   }finally{URL.revokeObjectURL(source)}
 }
 
-export function SavedPicture({id,version}:{id:string;version:string}){
+export function SavedPicture({id,version,fallback=null}:{id:string;version:string;fallback?:ReactNode}){
   const live=useApi<{image:string}|null>('/account/profile-picture/'+encodeURIComponent(id)+'?v='+encodeURIComponent(version),null,0);
-  return live.data?.image?<img className="saved-account-picture" alt="" src={live.data.image}/>:null;
+  return live.data?.image?<img className="saved-account-picture" alt="" src={live.data.image}/>:fallback;
 }
 
 export function ProfileForm({user,self,role,onSaved}:{user:any;self:boolean;role:string;onSaved:(patch:any)=>void}){
