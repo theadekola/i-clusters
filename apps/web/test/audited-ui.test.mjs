@@ -882,12 +882,14 @@ test('selection is exclusive within a table, independent across tables, and acti
 });
 
 
-test('Monitoring groups provider links with its controls and keeps diagnostics restricted',async()=>{
+test('Monitoring places its summary before navigation and keeps diagnostics restricted',async()=>{
  for(const role of ['owner','viewer']){const page=await mounted('pages/Monitoring.tsx',{},monitoringRedesignApi(monitoringRedesignFixture(),role));try{
   const actions=page.container.querySelector('.monitoring-actions');assert.ok(actions);
-  assert.ok(actions.querySelector('a[href="/monitoring?tab=Provider%20Jobs"]'));
-  assert.equal(Boolean(actions.querySelector('a[href="/monitoring?tab=Hardware%20%26%20Diagnostics"]')),role==='owner');
-  assert.ok([...actions.querySelectorAll('a')].some(a=>a.textContent==='Temperatures'));assert.ok(button(actions,'Customize'));assert.ok(actions.querySelector('[aria-label="Refresh monitoring"]'));
+  const tabs=page.container.querySelector('nav[aria-label="Monitoring"]'),summary=page.container.querySelector('.monitor-stats');
+  assert.ok(actions.compareDocumentPosition(summary)&4);assert.ok(summary.compareDocumentPosition(tabs)&4);
+  assert.ok(tabs.querySelector('a[href="/monitoring?tab=Provider%20Jobs"]'));
+  assert.equal(Boolean(tabs.querySelector('a[href="/monitoring?tab=Hardware%20%26%20Diagnostics"]')),role==='owner');
+  assert.ok([...tabs.querySelectorAll('a')].some(a=>a.textContent==='Temperatures'));assert.ok(button(actions,'Customize'));assert.ok(actions.querySelector('[aria-label="Refresh monitoring"]'));
   assert.equal(page.container.querySelector('.page-header>div:first-child a'),null);
  }finally{await page.close();}}
 });
