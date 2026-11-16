@@ -63,10 +63,16 @@ function fixture(path){
  if(path==='/auth/setup')return {registrationOpen:false};
  if(aiFixture&&path==='/configuration/ai')return aiFixture;
  if(process.env.LAYOUT_PROXMOX_SAVE&&path==='/connections/proxmox')return {cluster:null};
- if(path==='/auth/me')return {user:{id:'owner',name:'Layout Review',role:process.env.LAYOUT_ROLE||'owner'}};
+ if(path==='/account/profile-picture/owner')return {image:'data:image/png;base64,'+readFileSync(pathToFileURL(root+'public/assets/iclusters-192.png')).toString('base64')};
+ if(path==='/auth/me')return {user:{...(process.env.LAYOUT_CHECK_LANGUAGES?{profile:{pictureVersion:'fixture'}}:{}),id:'owner',name:'Layout Review',role:process.env.LAYOUT_ROLE||'owner'}};
  if(path==='/header-notifications')return {attentionCount:1,updateCount:1,criticalCount:0,attention:[{id:'update',kind:'update',title:'Docker image update available',message:'control-vm / zabbix-postgres · postgres:16 has a new registry image',severity:'info',link:'/docker?tab=Updates'}]};
  if(path==='/proxmox/tasks')return {tasks:[{upid:'UPID:node01:00000001:00000001:00000001:aptupdate::root@pam:',node:'node01',type:'aptupdate',status:'OK',starttime:Math.floor(Date.now()/1000)-80,endtime:Math.floor(Date.now()/1000)-72}]};
  if(path==='/docker/updates')return {rows:[],settings:{enabled:true,intervalHours:6}};
+ if(path==='/audit')return {...sample,logins:[],summary:Object.fromEntries(['total','signin','security','infrastructure'].map(key=>[key,{current:0,previous:0}]))};
+ if(path==='/users/owner/permissions'){
+  const keys=['cluster','vm','containers','network','backups','users','audit','settings'].flatMap(area=>['view','create','edit','delete','manage'].map(action=>area+'.'+action));
+  return {role:'owner',keys,ceiling:keys,scopeCeiling:keys,templateCeiling:keys,editable:false,revision:0,templates:[],changes:[],next:null};
+ }
  if(path==='/account/sessions')return {sessions:[]};
  if(path==='/account/security')return {mfaEnabled:false,recoveryCodesRemaining:0};
  if(path==='/security')return {password:{minimumCharacters:12,maximumBytes:72},roles:['owner','admin','operator','viewer'],twoFactor:true};
@@ -126,7 +132,7 @@ function actionLayoutIssues(root){
  return [...issues];
 }
 
-const routes=['/','/proxmox','/docker','/storage','/network','/backups','/monitoring','/alerts','/ai','/users','/settings','/tools/sftp','/tools/shell'];
+const routes=['/','/account','/proxmox','/docker','/storage','/network','/backups','/monitoring','/alerts','/ai','/users','/settings','/tools/sftp','/tools/shell'];
 for(const [page,tabs] of Object.entries({
  proxmox:['Overview','Nodes','Virtual Machines','LXC Containers','Storage','Networks','Tasks & Logs'],
  docker:['Images','Volumes','Compose Stacks','Events','Updates'],
@@ -879,11 +885,26 @@ try{
   }
   if(process.env.LAYOUT_CHECK_LANGUAGES==='1'){
    await page.goto(base);
+   if(width>800){
+    await page.goto(base);
+    const photo=page.locator('.sidebar-account .saved-account-picture'),sidebar=page.locator('#primary-navigation');
+    for(let pass=0;pass<2;pass++){
+     await photo.waitFor();
+     const bounds=await photo.boundingBox(),rail=await sidebar.boundingBox(),trigger=await page.locator('.sidebar-account .profile-trigger').boundingBox();
+     assert.ok(bounds.width===20&&bounds.height===20&&bounds.x>=rail.x&&bounds.x+bounds.width<=rail.x+rail.width);
+     assert.ok(bounds.y>=trigger.y&&bounds.y+bounds.height<=trigger.y+trigger.height);
+     await page.locator('.nav-toggle').click();
+    }
+   }
    const themeButton=page.locator('.header-theme button').first();
    assert.ok((await themeButton.boundingBox()).x>(await page.locator('#header-language').boundingBox()).x);
    const savedAppearance=await page.evaluate(()=>localStorage.getItem('iclusters_appearance'));
    for(const [name,mode] of [['Light','light'],['Dark','dark'],['System','system']]){
     await themeButton.click();
+    const choices=page.locator('.header-theme [role=menuitemradio]');
+    const boxes=await choices.evaluateAll(items=>items.map(item=>{const {x,y,width,height}=item.getBoundingClientRect();return {x,y,width,height}}));
+    assert.equal(boxes.length,3);
+    boxes.forEach((box,index)=>{assert.ok(box.x>=0&&box.x+box.width<=width&&box.height>=40);if(index)assert.ok(Math.abs(box.x-boxes[0].x)<1&&box.y>=boxes[index-1].y+boxes[index-1].height)});
     const item=page.getByRole('menuitemradio',{name:copy(name),exact:true});
     assert.equal(await item.innerText(),'');
     await item.click();
@@ -894,9 +915,20 @@ try{
    if(width<=800)await page.locator('.nav-toggle').click();
    await page.locator('.sidebar-account .profile-trigger').click();
    await page.getByRole('menuitem',{name:copy('View account'),exact:true}).click();
-   const account=page.getByRole('dialog',{name:copy('View account'),exact:true});
+   const account=page.locator('main .account-page');
    await account.getByRole('tab',{name:copy('Profile'),exact:true}).waitFor();
-   await account.getByRole('button',{name:copy('Close dialog'),exact:true}).click();
+   assert.equal(new URL(page.url()).pathname,'/account');
+   assert.equal(await page.getByRole('dialog').count(),0);
+   await account.getByRole('tab',{name:copy('Security'),exact:true}).click();
+   await page.reload();await account.getByRole('tab',{name:copy('Security'),exact:true,selected:true}).waitFor();
+   await page.goBack();await page.locator('.overview-toolbar').waitFor();
+   await page.goto(base+'settings?tab=General&account=security');await account.getByRole('tab',{name:copy('Security'),exact:true,selected:true}).waitFor();
+   await page.goto(base+'users');await page.getByRole('button',{name:'View account for Layout Review'}).click();
+   await account.getByRole('heading',{name:copy('View account'),exact:true}).waitFor();
+   assert.equal(new URL(page.url()).searchParams.get('account'),'owner');
+   assert.equal(await page.locator('.users-list,[role=dialog]').count(),0);
+   await page.reload();await account.locator('.account-identity').waitFor();
+   await page.goBack();await page.locator('.users-list').waitFor();
    for(const [locale,code,name,title] of languageChoices){
     await page.goto(base+'settings?tab=Appearance');await page.locator('#interface-language').waitFor();const search=page.locator('.settings-page input[type=search],.settings-search input').first();await search.fill('language');const saved=await search.elementHandle();await page.locator('#interface-language').click();const options=page.locator('.language-options [role=option]');assert.equal(await options.count(),5);assert.equal(await options.locator('img').count(),0);await page.locator(`[data-locale="${locale}"]`).click();await page.waitForFunction(locale=>document.documentElement.lang===locale,locale);assert.equal(await saved.evaluate(element=>element===document.querySelector('.settings-page input[type=search],.settings-search input')) ,true,'Language switching retains the form element');assert.equal(await search.inputValue(),'language');assert.equal(await page.locator('#interface-language').innerText(),name);assert.equal(await page.evaluate(()=>localStorage.getItem('iclusters_access_token')),'layout-fixture');assert.equal(await page.evaluate(()=>document.documentElement.dir),'ltr');
     await page.goto(base);await page.getByRole('heading',{name:title,exact:true}).waitFor();assert.equal(await page.evaluate(()=>localStorage.getItem('iclusters_language')),locale);

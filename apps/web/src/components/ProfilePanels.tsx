@@ -22,9 +22,9 @@ async function thumbnail(file:File) {
   }finally{URL.revokeObjectURL(source)}
 }
 
-export function SavedPicture({id,version,fallback=null}:{id:string;version:string;fallback?:ReactNode}){
+export function SavedPicture({id,version,size,fallback=null}:{id:string;version:string;size?:number;fallback?:ReactNode}){
   const live=useApi<{image:string}|null>('/account/profile-picture/'+encodeURIComponent(id)+'?v='+encodeURIComponent(version),null,0);
-  return live.data?.image?<img className="saved-account-picture" alt="" src={live.data.image}/>:fallback;
+  return live.data?.image?<img className="saved-account-picture" width={size} height={size} alt="" src={live.data.image}/>:fallback;
 }
 
 export function ProfileForm({user,self,role,onSaved}:{user:any;self:boolean;role:string;onSaved:(patch:any)=>void}){

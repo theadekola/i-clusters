@@ -21,8 +21,11 @@ const sections:Record<string,{name:string;tabs?:string[]}>= {
 export type PageCrumb={label:string;to?:string};
 export function pageTrail(pathname:string,search:string,host?:string,role?:string):PageCrumb[]{
  if(pathname==='/settings/delivery-history')return [{label:'Settings',to:'/settings'},{label:'Integrations',to:'/settings?tab=Integrations'},{label:'Delivery History'}];
+ const params=new URLSearchParams(search),accountSection=params.get('section');
+ if(pathname==='/account')return [{label:'View account',to:'/account'},{label:['Security','Roles & Permissions','Activity'].includes(accountSection||'')?accountSection!:'Profile'}];
+ if(pathname==='/users'&&params.has('account')&&['owner','admin'].includes(role||''))return [{label:'Users',to:'/users'},{label:'Accounts',to:'/users?tab=Accounts'},{label:'View account'}];
  const section=sections[pathname];if(!section)return [];
- const params=new URLSearchParams(search),requested=params.get('tab')||'';
+ const requested=params.get('tab')||'';
  let tab=section.tabs?(section.tabs.includes(requested)?requested:section.tabs[0]):'';
  if(pathname==='/settings')tab=settingsCategory(requested);
  if(pathname==='/users'&&['operator','auditor'].includes(role||''))tab='Audit Logs';

@@ -1,0 +1,14 @@
+.sidebar .nav-scroll{flex:1;min-height:0}
+.sidebar-account{position:relative;flex:none;padding:.5rem 11px max(.5rem,env(safe-area-inset-bottom));border-top:1px solid var(--theme-border)}
+.sidebar-account .profile-trigger,.sidebar-popover button{display:flex;align-items:center;justify-content:center;gap:.4rem;min-height:44px;min-width:44px;background:transparent;color:var(--theme-text);border:0;border-radius:.5rem;cursor:pointer}
+.sidebar-account .profile-trigger{width:100%;justify-content:flex-start;gap:11px;padding:9px 11px;text-align:start;font:inherit}
+.sidebar-account .profile-trigger :is(img,svg){width:20px;height:20px;flex:0 0 20px}
+.sidebar-account .saved-account-picture{display:block;border-radius:50%;object-fit:cover}
+.sidebar-account .sidebar-popover{position:absolute;z-index:12;bottom:100%;left:.25rem;width:max-content;min-width:9rem;padding:.4rem;border:1px solid var(--theme-border);border-radius:.75rem;background:var(--theme-surface);box-shadow:var(--card-shadow)}
+.sidebar-popover button{justify-content:flex-start;width:100%;padding:.4rem .75rem}.sidebar-popover button[aria-checked=true]{background:var(--theme-highlight);color:var(--theme-icon)}
+
+/* Keep the two menus in the hit-testing layer of their respective navigation bars. */
+.sidebar:has(.sidebar-popover){z-index:45}
+.header-theme{position:relative;display:flex;flex:none}
+.header-theme .sidebar-popover{position:absolute;inset-block-start:calc(100% + .5rem);inset-inline-end:0;z-index:15;display:flex;flex-direction:column;gap:.25rem;padding:.35rem;background:var(--theme-surface);border:1px solid var(--theme-border);border-radius:.7rem;box-shadow:var(--card-shadow)}
+.header-theme .sidebar-popover button{justify-content:center;min-width:42px;min-height:42px;padding:0}

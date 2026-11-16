@@ -1,5 +1,3 @@
-import {lazy,Suspense} from 'react';
-const MyAccountDialog=lazy(()=>import('./AccountDialog').then(module=>({default:module.MyAccountDialog})));
 import SidebarAccount from './SidebarAccount';
 import {PageRefreshContext,usePageRefreshController} from './PageRefresh';
 import RefreshButton from './RefreshButton';
@@ -16,7 +14,7 @@ import HeaderNotifications from './HeaderNotifications';
 import LanguageSelector from './LanguageSelector';
 import {canAccessPage} from '../permissions';
 import {applyAppearance,watchSystemTheme,loadSidebarDisplay} from '../appearance';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Boxes, Container, Database, Network, HardDriveDownload,
   CalendarClock, History, RotateCcw, Activity, Bell, Sparkles, Users, Settings,
@@ -55,13 +53,13 @@ export default function Layout() {
     query.addEventListener('change',change);
     return ()=>query.removeEventListener('change',change);
   },[]);
-  const [accountOpen,setAccountOpen]=useState(false);
+  const navigate=useNavigate();
   const location = useLocation();
   const pageRefresh=usePageRefreshController();
   const {data:session}=useApi<any>('/auth/me',null);
   const {data:configuration}=useApi<any>('/settings',null);
   useEffect(()=>{if(configuration?.settings)configureRefresh(configuration.settings.refresh);},[configuration?.settings?.refresh]);
-  useEffect(()=>{if(menuOpen)toggleRef.current?.focus({preventScroll:true});setMenuOpen(false);setAccountOpen(false);},[location.pathname,location.search]);
+  useEffect(()=>{if(menuOpen)toggleRef.current?.focus({preventScroll:true});setMenuOpen(false);},[location.pathname,location.search]);
   useEffect(()=>{
     if(!mobile||!menuOpen)return;
     const unlock=lockPageScroll();
@@ -94,9 +92,8 @@ export default function Layout() {
           </NavLink>)}
         </div>)}
       </nav>
-      <SidebarAccount key={String(mobile&&menuOpen)} labels={showLabels} user={session?.user} signOut={signOut} openAccount={()=>{if(mobile)closeMenu();setAccountOpen(true)}}/>
+      <SidebarAccount key={String(mobile&&menuOpen)} labels={showLabels} user={session?.user} signOut={signOut} openAccount={()=>{if(mobile)closeMenu();navigate('/account')}}/>
     </aside>
-    {accountOpen&&<Suspense fallback={null}><MyAccountDialog onClose={()=>{setAccountOpen(false);window.requestAnimationFrame(()=>{(mobile?toggleRef.current:menuRef.current?.querySelector<HTMLButtonElement>('.profile-trigger'))?.focus({preventScroll:true})})}}/></Suspense>}
     <div className="main-shell" inert={mobile&&menuOpen}>
       <header className="topbar">
         <button ref={toggleRef} className="icon-btn nav-toggle" aria-label={navigationOpen?'Close navigation':'Open navigation'} aria-controls="primary-navigation" aria-expanded={navigationOpen} onClick={()=>mobile?setMenuOpen(v=>!v):toggleDesktop()}><NavIcon size={19} aria-hidden="true"/></button>
