@@ -47,6 +47,8 @@ import {validateNotificationPreferences} from './notifications.js';
 import {apiPolicy} from './api-policy.js';
 import {connectionHealth} from './connection-health.js';
 import {createReadCache} from './read-cache.js';
+import {accountPermissionRoutes} from './account-permissions.js';
+import {permits,permittedInventory} from './permission-policy.js';
 import {resolveActionApproval} from './action-approval.js';
 import {updateShellPresence} from './ssh-idle.js';
 import {streamShellOutput} from './ssh-stream.js';
@@ -153,6 +155,9 @@ export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:c
  app.get('/api/auth/me',authenticate,(req,res)=>res.json({user:req.user}));
  app.use('/api',authenticate);
  app.use('/api',(req,res,next)=>{if(!['GET','HEAD'].includes(req.method)&&(process.env.ICLUSTERS_CONTROLLER_DATA||process.env.DATA_DIR)&&existsSync((process.env.ICLUSTERS_CONTROLLER_DATA||process.env.DATA_DIR)+'/maintenance.json'))return res.status(503).json({error:'Controller maintenance is in progress. Retry after it completes.'});next();});
+ app.use('/api',(req,res,next)=>permits(req.user.permissionKeys,req.method,req.path,req.body,req.user.sub)
+   ?next():res.status(403).json({error:'This action is restricted by your account permissions.'}));
+ accountPermissionRoutes(app,db,authorize,onSessionRevoked);
  app.use('/api/product',productRouter(db));
  app.use('/api/account',accountSecurityRouter({db,audit,limiter:loginLimiter,onSessionRevoked}));
  app.use('/api',(req,res,next)=>{for(const [key,value] of Object.entries(req.headers))if(key.startsWith('x-homecloud-')&&!Object.hasOwn(req.headers,key.replace('x-homecloud-','x-iclusters-')))req.headers[key.replace('x-homecloud-','x-iclusters-')]=value;next()});
@@ -262,7 +267,7 @@ export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:c
  const cachedReads=new Set(['/proxmox/topology-connections','/backups/jobs','/restore','/dashboard','/monitoring','/proxmox','/proxmox/tasks','/docker','/storage','/network','/backups','/schedules','/retention','/proxmox/storage','/storage/disks','/storage/datasets','/storage/snapshots']);
  const forceRead=req=>req?.query?.refresh==='1'||req?.get?.('X-IClusters-Refresh')==='1';
  const sampleView=async req=>{if(!monitor.isRefreshing)return monitor.sample(forceRead(req));if(forceRead(req))void monitor.sample(true).catch(()=>{});const s=await monitor.sample();return {...s,refreshing:!!s.refreshing||monitor.isRefreshing()};};
- const read=(path,handler,role='viewer')=>app.get(`/api${path}`,authorize(role),async(req,res)=>{res.set('Cache-Control','no-store');if(!cachedReads.has(path))return res.json(await handler(req));const url=new URL(req.originalUrl,'http://local');url.searchParams.delete('refresh');url.searchParams.sort();const key=JSON.stringify([req.user?.sub,req.user?.role,connectionScope(),selectedAgentHost(),url.pathname+url.search]);res.json(await readCache.run(key,()=>handler(req),{force:forceRead(req),background:true}));});
+ const read=(path,handler,role='viewer')=>app.get(`/api${path}`,authorize(role),async(req,res)=>{res.set('Cache-Control','no-store');if(!cachedReads.has(path))return res.json(await handler(req));const url=new URL(req.originalUrl,'http://local');url.searchParams.delete('refresh');url.searchParams.sort();const key=JSON.stringify([req.user?.sub,req.user?.role,req.user?.permissionKeys,connectionScope(),selectedAgentHost(),url.pathname+url.search]);res.json(await readCache.run(key,()=>handler(req),{force:forceRead(req),background:true}));});
 
  app.get('/api/ssh/connections',authorize('admin'),(req,res)=>{try{res.json(publicSavedSSH(req.user.sub));}catch(e){res.status(500).json({error:'Saved connections unavailable'});}});
  const approvalHosts=new Map();
@@ -328,7 +333,7 @@ export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:c
  });
  read('/monitoring',async req=>{const s=await sampleView(req);return {...s,...discovered(s),services:s.services.filter(x=>x.status!=='not-configured'),proxmox:undefined,docker:undefined,truenas:undefined,operations:undefined};});
 
- read('/proxmox',async req=>{if(forceRead(req))void monitor.sample(true).catch(()=>{});const config=clusterConfig();return {...await snapshot('proxmox',forceRead(req)),cluster:config.url?{name:config.name,url:config.url,accessMode:config.accessMode||'management'}:null};});
+ read('/proxmox',async req=>{if(forceRead(req))void monitor.sample(true).catch(()=>{});const config=clusterConfig();return permittedInventory({...await snapshot('proxmox',forceRead(req)),cluster:config.url?{name:config.name,url:config.url,accessMode:config.accessMode||'management'}:null},req.user.permissionKeys);});
 
  const readStorage=req=>readCache.run('storage-inventory:'+connectionScope(),()=>storageInventory(),{force:forceRead(req)});
  const readBackupJobs=req=>readCache.run('backup-jobs:'+connectionScope(),()=>backupJobs(),{force:forceRead(req)});
@@ -604,7 +609,7 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
    const {email,name,password,role='viewer'}=req.body;if(!roles[role]||(role==='owner'&&req.user.role!=='owner')||roles[role]>roles[req.user.role])throw httpError('Role cannot be granted',403);
    const {email:normalizedEmail,username}=accountIdentity(req.body),normalizedName=required(name,'Name');if(normalizedName.length>200)throw httpError('Name must be at most 200 characters');if(typeof password!=='string'||password.length<12||Buffer.byteLength(password)>72)throw httpError('Password must have at least 12 characters and at most 72 bytes');
 
-   const hash=await bcrypt.hash(password,12);try{return (await db.query(`INSERT INTO users(email,name,password_hash,role,status,username) VALUES($1,$2,$3,$4,'active',$5) RETURNING id,email,username,name,role,status`,[normalizedEmail,normalizedName,hash,role,username])).rows[0];}catch(e){if(e.code==='23505')throw httpError('Username or email already exists',409);throw e;}
+   const hash=await bcrypt.hash(password,12);try{return (await db.query(`INSERT INTO users(email,name,password_hash,role,status,username,permission_keys) VALUES($1,$2,$3,$4,'active',$5,$6) RETURNING id,email,username,name,role,status`,[normalizedEmail,normalizedName,hash,role,username,req.user.permissionKeys??null])).rows[0];}catch(e){if(e.code==='23505')throw httpError('Username or email already exists',409);throw e;}
  });
  action('post','/users/:id/toggle','admin','user.toggle',async req=>{
    if(req.params.id===req.user.sub)throw httpError('You cannot deactivate yourself');
