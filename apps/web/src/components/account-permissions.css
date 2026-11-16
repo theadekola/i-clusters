@@ -25,7 +25,6 @@
 .perm-footer {justify-content:flex-end}.perm-footer small {margin-inline-end:auto;color:var(--theme-muted)}.permissions-workspace button:focus-visible,.permissions-workspace summary:focus-visible {outline:2px solid var(--theme-icon);outline-offset:2px}
 @container (max-width: 43rem) {.perm-grid {grid-template-columns:minmax(0,1fr)}.perm-hero {flex-wrap:wrap}.perm-hero>span {margin-inline-start:0}.perm-controls button {min-height:2.15rem}.perm-footer small{flex-basis:100%}}
 @media(pointer:coarse) {.perm-controls button,.perm-link,.perm-templates button {min-height:44px}}
-.account-layout:has(.permissions-workspace){grid-template-columns:minmax(12rem,.63fr) minmax(0,3fr)}
 .account-panels .profile-tabs .tab {flex:1 0 auto}
 .account-panels .profile-tabs .tab[aria-selected=true] {background:var(--app-accent-fill);color:var(--app-accent-text)}
 .permissions-workspace .perm-controls button {font-size:.71rem;line-height:1.1}
@@ -38,7 +37,6 @@
   .perm-hero>span{grid-column:2;justify-self:start}
 }
 @media(max-width:760px){
-  .account-layout:has(.permissions-workspace){grid-template-columns:minmax(0,1fr)}
   .account-layout .account-panels .profile-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}
   .account-panels .profile-tabs .tab{min-width:0;white-space:normal;padding:.4rem .2rem}
 }

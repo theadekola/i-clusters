@@ -143,6 +143,7 @@ for(const [page,tabs] of Object.entries({
  alerts:['Alert History','Alert Rules'],users:['Audit Logs'],
  settings:['General','Connections','Integrations','Appearance','About']
 }))for(const tab of tabs)routes.push(`/${page}?tab=${encodeURIComponent(tab)}`);
+for(const section of ['Security','Roles & Permissions','Activity'])routes.push('/account?section='+encodeURIComponent(section));
 routes.push('/settings?tab=System#provider-compatibility');
 for(const section of ['connected','setup','notifications','remote'])routes.push(`/settings?tab=Connections&section=${section}`);
 const selectedRoutes=process.env.LAYOUT_ROUTES?.split(',')||routes;
@@ -886,7 +887,6 @@ try{
   if(process.env.LAYOUT_CHECK_LANGUAGES==='1'){
    await page.goto(base);
    if(width>800){
-    await page.goto(base);
     const photo=page.locator('.sidebar-account .saved-account-picture'),sidebar=page.locator('#primary-navigation');
     for(let pass=0;pass<2;pass++){
      await photo.waitFor();

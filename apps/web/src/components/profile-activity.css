@@ -1,4 +1,3 @@
-.account-layout:has(.account-activity-workspace),.account-layout:has(.profile-editor){grid-template-columns:minmax(12rem,.66fr) minmax(0,3fr)}
 .account-layout:has(.account-activity-workspace,.profile-editor) .account-cover{position:relative;overflow:hidden;background:radial-gradient(ellipse at 92% -25%,var(--app-accent) 2%,transparent 72%),linear-gradient(140deg,var(--theme-input) 15%,var(--theme-highlight) 100%)}
 .account-layout:has(.account-activity-workspace,.profile-editor) .account-cover::after{content:"";position:absolute;inset:-130% -12% 20% -28%;border-radius:50%;transform:rotate(-18deg);box-shadow:0 2px 1px var(--app-accent),0 8px 14px -5px var(--app-accent)}
 .account-layout:has(.account-activity-workspace,.profile-editor) .account-identity>.users-avatar{position:relative}
@@ -30,7 +29,7 @@
 .activity-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}.activity-filters label{display:grid;gap:.25rem;font-size:.8rem}.activity-filters label:last-child{grid-column:1/-1}
 .activity-filters :is(select,input){min-width:0;width:100%;min-height:38px;background:var(--theme-input);color:var(--theme-text);border:1px solid var(--theme-border);border-radius:.45rem;padding:.4rem}
 .activity-table-wrap{overflow-x:auto}.activity-table-wrap table{border-collapse:collapse;text-align:start;width:100%;font-size:.8rem}.activity-table-wrap :is(th,td){text-align:start;white-space:normal;padding:.45rem .3rem;border-top:1px solid var(--theme-border)}.activity-table-wrap th{color:var(--theme-muted)}
-.activity-table-wrap small{display:block;width:fit-content}.activity-actions{display:flex;gap:.6rem;flex-wrap:wrap}.activity-actions button{flex:1 1 auto;justify-content:center}
+.activity-table-wrap small{display:block;width:fit-content}.activity-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem}.activity-actions button{min-width:0;justify-content:center;padding-inline:.5rem;overflow-wrap:normal}
 .profile-fields :is(input,textarea)[readonly]{border-color:var(--theme-border);background:var(--theme-input);color:var(--theme-text)}
 .profile-bio small{text-align:end;color:var(--theme-muted)}.profile-photo-field>div{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin-top:.25rem}
 .profile-photo-preview{display:grid;place-items:center;position:relative;overflow:hidden;border-radius:50%;width:2.5rem;height:2.5rem;background:var(--theme-highlight);color:var(--theme-icon)}
@@ -41,5 +40,5 @@
 @container(min-width:62rem){.activity-filters{grid-template-columns:1fr 1fr 1.35fr}.activity-filters label:last-child{grid-column:auto}}
 @container(max-width:49rem){.activity-grid{grid-template-columns:minmax(0,1fr)}.activity-tools{order:1}.activity-grid>.activity-recent{order:2}.activity-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @container(max-width:33rem){.activity-hero{flex-wrap:wrap}.activity-hero button{margin-inline-start:0}.activity-timeline li{grid-template-columns:auto minmax(0,1fr) auto}.activity-timeline time{grid-row:2;grid-column:2/-1}.activity-metrics>div{grid-template-columns:1fr auto}.activity-metrics svg{display:none}.activity-metrics small{grid-column:1/-1}.activity-metrics span{grid-column:2}.activity-card{padding:.65rem}}
-@media(max-width:760px){.account-layout:has(.account-activity-workspace),.account-layout:has(.profile-editor){grid-template-columns:minmax(0,1fr)}.account-panel .account-overview-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.account-panel .account-overview-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.account-identity .account-quick{display:grid;grid-template-columns:minmax(0,1fr);gap:.3rem}.account-identity .account-quick button{width:100%;margin:0;justify-content:flex-start}.account-identity .account-quick button svg:last-child{display:block}}
