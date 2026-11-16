@@ -59,7 +59,7 @@ function fixture(path){
   {id:'proxmox',kind:'proxmox',provider:'proxmox',name:'Fixture cluster',method:'Proxmox API',endpoint:'https://192.0.2.10:8006',source:'saved',status:'online',checkedAt:now},
   ...['engine','build','services'].map(id=>({id:id+':node',agentId:id,kind:'docker',provider:'docker',name:id,method:'Paired Docker host',endpoint:id,status:'online',checkedAt:now}))
  ]};
- if(process.env.LAYOUT_HOST_CARDS&&path==='/connections/proxmox/guests')return {guests:[{id:'100',node:'node01',name:'Fixture guest with a long name',status:'connected',detail:'Debian'}]};
+ if(process.env.LAYOUT_HOST_CARDS&&path==='/connections/proxmox/guests')return {guests:[{id:'100',node:'node01',name:'Fixture guest with a long name',status:'connected',detail:'Debian'},{id:'200',node:'node02',name:'Guest requiring setup',status:'disabled',detail:'Guest-agent access is disabled in this VM’s Proxmox options.'}]};
  if(path==='/auth/setup')return {registrationOpen:false};
  if(aiFixture&&path==='/configuration/ai')return aiFixture;
  if(process.env.LAYOUT_PROXMOX_SAVE&&path==='/connections/proxmox')return {cluster:null};
@@ -303,8 +303,10 @@ try{
     await card.waitFor();
     assert.equal(await page.getByRole('dialog').count(),0);
     assert.equal(await card.locator('.pve-resource-reading').count(),3);
-    const trigger=card.getByRole('button',{name:copy('Details'),exact:true});
-    assert.ok(await card.getByRole('button',{name:copy('Shell'),exact:true}).isVisible());
+    const overview=route==='/proxmox'||route==='/proxmox?tab=Overview';
+    const trigger=overview?card.locator('button.pve-resource-name'):card.getByRole('button',{name:copy('Details'),exact:true});
+    if(overview)assert.equal(await card.locator('footer').count(),0);
+    else assert.ok(await card.getByRole('button',{name:copy('Shell'),exact:true}).isVisible());
     await trigger.click();
     const dialog=page.getByRole('dialog');
     await dialog.locator(guestInventoryRoute?'.vm-detail-head':'.nodes-detail-head').waitFor();
@@ -339,6 +341,14 @@ try{
     await page.keyboard.press('Escape');
     await page.getByRole('button',{name:copy('Grid view'),exact:true}).click();
    }
+   if(route.startsWith('/monitoring')){
+    const summary=page.locator('.monitor-stats,.performance-stats,.network-traffic .metric-grid').first();
+    if(await summary.count()){
+     const cards=await summary.boundingBox();
+     const tabs=await page.getByRole('navigation',{name:copy('Monitoring'),exact:true}).boundingBox();
+     assert.ok(cards&&tabs&&cards.y+cards.height<=tabs.y+1,'Monitoring summary should be above the tabs');
+    }
+   }
    if(process.env.LAYOUT_HOST_CARDS){
     const checkCards=async()=>{
      const issues=await page.evaluate(()=>{
@@ -362,11 +372,18 @@ try{
         table.scrollLeft=0;
        }
       }
-      for(const group of document.querySelectorAll('.guest-title-line,.host-identity,.shell-view-switch,.connection-method-time,.connection-inventory .connection-row-actions')){
+      for(const group of document.querySelectorAll('.host-identity,.shell-view-switch,.connection-method-time,.connection-inventory .connection-row-actions')){
        if(!group.clientWidth)continue;
        const children=[...group.children],rects=children.map(el=>el.getBoundingClientRect());
        if(Math.max(...rects.map(r=>r.top))>=Math.min(...rects.map(r=>r.bottom)))issues.push('Misaligned '+group.className+' ('+group.clientWidth+'px): '+children.map(el=>el.textContent.trim()+' '+Math.round(el.getBoundingClientRect().width)+'px').join(', '));
        if(group.matches('.host-identity')&&!children[1]?.title)issues.push('Missing full guest name');
+      }
+      for(const info of document.querySelectorAll('.connection-guest-info')){
+       const name=info.querySelector('h4'),status=info.querySelector('.badge'),identity=info.querySelector('small'),detail=info.querySelector('p');
+       if(!name||!status||!identity||!detail)continue;
+       const a=name.getBoundingClientRect(),b=status.getBoundingClientRect();
+       if(name.scrollWidth>name.clientWidth+1||Math.min(a.right,b.right)>Math.max(a.left,b.left)+1&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)+1)issues.push('Clipped or overlapping guest name: '+name.textContent);
+       if(identity.getBoundingClientRect().top+1<Math.max(a.bottom,b.bottom)||detail.getBoundingClientRect().top+1<identity.getBoundingClientRect().bottom)issues.push('Overlapping guest details: '+name.textContent);
       }
       for(const grid of document.querySelectorAll('.connection-inventory.grid')){
        if(grid.querySelector('code'))issues.push('Repeated endpoint in connection inventory');
@@ -386,7 +403,16 @@ try{
      assert.ok((await picker.locator('.host-identity b').allTextContents()).every(s=>! /^(VM|CT) \d+ ·/.test(s)));
      await checkCards();await picker.getByRole('button',{name:'List view'}).click();await checkCards();
     }
-    if(route.includes('Connections'))await page.locator('.guest-title-line').first().waitFor();
+    if(route.includes('Connections')){
+     const tabs=page.getByRole('navigation',{name:'Connection sections'});
+     await page.locator('[data-vm-id="100"] .guest-title-line').waitFor();
+     await checkCards();
+     await tabs.getByRole('button',{name:'Needs Setup',exact:true}).click();
+     await page.locator('[data-vm-id="200"]').getByRole('button',{name:'Set Up Guest Agent'}).waitFor();
+     await checkCards();
+     await tabs.getByRole('button',{name:'Connected',exact:true}).click();
+     await page.locator('[data-vm-id="100"] .guest-title-line').waitFor();
+    }
     await checkCards();
     if(width>800){await page.locator('.nav-toggle').click();await page.waitForTimeout(300);await checkCards();await page.locator('.nav-toggle').click();}
    }

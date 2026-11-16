@@ -1832,13 +1832,12 @@ html.shell-scroll-locked,html.shell-scroll-locked body{height:100%;overflow:hidd
 .login-card{width:min(430px,100%);min-width:0}.login-card input{min-width:0}@media(max-width:480px){.login-page{padding:16px}.login-card{padding:22px}.login-card input{font-size:16px}}
 .connection-success{display:flex;flex-direction:column;align-items:center;gap:14px;padding:30px 18px;text-align:center;color:#86efac;border:1px solid #22875c;border-radius:12px;background:rgba(16,185,129,.09);line-height:1.6;outline:none;overflow-wrap:anywhere}.connection-success small{color:var(--muted,#a8b7ca)}
 
-/* Keep summary cards above the charts and the complete status sidebar. */
-.monitor-layout{grid-template-areas:"stats stats" "main sidebar"}
-.monitor-layout>.monitor-stats{grid-area:stats}
+/* The overview summary and tabs precede the chart and sidebar grid. */
+.monitor-layout{grid-template-areas:"main sidebar"}
 .monitor-layout>.monitor-main{grid-area:main}
 .monitor-layout>.monitor-sidebar{grid-area:sidebar}
-.monitor-layout.without-sidebar{grid-template-areas:"stats" "main"}
-@media(max-width:950px){.monitor-layout{grid-template-areas:"stats" "main" "sidebar"}.monitor-layout.without-sidebar{grid-template-areas:"stats" "main"}}
+.monitor-layout.without-sidebar{grid-template-areas:"main"}
+@media(max-width:950px){.monitor-layout{grid-template-areas:"main" "sidebar"}.monitor-layout.without-sidebar{grid-template-areas:"main"}}
 
 /* Match Proxmox panels within each desktop row; let mobile panels size naturally. */
 @media(min-width:951px){

@@ -67,3 +67,6 @@
  .pve-layout-switch button {width:44px}
  .pve-resource-readings {column-gap:5px}
 }
+
+.pve-resource-name{font:inherit;color:inherit;text-align:start;overflow-wrap:anywhere;background:transparent;border:0;padding:0;cursor:pointer}
+.pve-resource-name:hover{text-decoration:underline}

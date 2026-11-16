@@ -44,28 +44,28 @@ export function ResourceReadings({cpu,memory,disk}:{cpu?:number|null;memory?:num
   })}</div>;
 }
 
-export function ResourceHeader({name,subtitle,status,kind}:{name:string;subtitle?:string;status:string;kind:Kind|'cluster'}) {
+export function ResourceHeader({name,subtitle,status,kind,onOpen}:{name:string;subtitle?:string;status:string;kind:Kind|'cluster';onOpen?:()=>void}) {
  const Icon={node:Server,vm:Monitor,lxc:Box,cluster:Server}[kind];
  return <header>
   <span className="pve-resource-icon"><Icon size={23}/></span>
-  <div className="pve-resource-identity"><strong translate="no" title={name}>{name}</strong><small translate="no">{subtitle}</small></div>
+  <div className="pve-resource-identity"><strong translate="no" title={name}>{onOpen?<button type="button" className="pve-resource-name" onClick={onOpen}>{name}</button>:name}</strong><small translate="no">{subtitle}</small></div>
   <span className="pve-resource-status" data-status={status.toLowerCase()}>{status}</span>
  </header>;
 }
 
 export function ProxmoxResourceCard({resource, kind, disk = resource.diskPercent, onDetails, onShell, shellEnabled}: {
  resource: Resource; kind: Kind; disk?: number | null;
- onDetails: () => void; onShell: () => void; shellEnabled: boolean;
+ onDetails: () => void; onShell?: () => void; shellEnabled?: boolean;
 }) {
  const status = (kind==='vm'&&resource.powerStatus) || resource.status || 'Unknown';
  const available = resource.nodeAvailable !== false && !['offline','unknown'].includes(status.toLowerCase());
  const subtitle = kind === 'node' ? resource.ip || 'IP not reported' : `${kind === 'vm' ? 'VM' : 'CT'} ${resource.id} · ${resource.node}`;
  return <article className="pve-resource-card" data-kind={kind} data-status={resource.nodeAvailable===false?'unknown':status.toLowerCase()} aria-label={resource.name}>
-  <ResourceHeader name={resource.name} subtitle={subtitle} status={resource.nodeAvailable===false?'Unknown':status} kind={kind}/>
+  <ResourceHeader name={resource.name} subtitle={subtitle} status={resource.nodeAvailable===false?'Unknown':status} kind={kind} onOpen={onShell?undefined:onDetails}/>
   <ResourceReadings cpu={available?resource.cpu:null} memory={available?resource.memoryPercent:null} disk={available?disk:null}/>
-  <footer>
+  {onShell&&<footer>
    <button type="button" onClick={onDetails}><Info size={15}/>Details</button>
    <button type="button" disabled={!shellEnabled} onClick={onShell}><Terminal size={15}/>Shell</button>
-  </footer>
+  </footer>}
  </article>;
 }
