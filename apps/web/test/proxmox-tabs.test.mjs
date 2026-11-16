@@ -332,8 +332,11 @@ test('Proxmox cards distinguish zero and unavailable telemetry and open the matc
    assert.equal(reading('memory').querySelector('i').style.width,'62%');
    assert.equal(reading('disk').lastElementChild.textContent,disk==null?'Unknown':disk+'%');
    assert.equal(reading('disk').querySelector('i')?.style.width,disk==null?undefined:disk+'%');
-   await page.click(button(page,'Shell'));
-   assert.equal(route(page),'/tools/shell?target='+encodeURIComponent(target));
+   if(tab==='Overview')assert.equal(card.querySelector('footer'),null);
+   else{
+    await page.click(button(page,'Shell'));
+    assert.equal(route(page),'/tools/shell?target='+encodeURIComponent(target));
+   }
   }finally{await page.close()}
  }
 });

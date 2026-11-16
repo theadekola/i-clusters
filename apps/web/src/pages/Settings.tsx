@@ -26,7 +26,7 @@ import {safeLocale} from '../regional';
 const categories=[['General',SettingsIcon],['Connections',Link2],['Integrations',SlidersHorizontal],['Appearance',Palette],['About',Info]] as const;
 function Switch({label,detail,checked,onChange}:{label:string;detail?:string;checked:boolean;onChange:(v:boolean)=>void}){return <label className="settings-toggle"><span><b>{label}</b>{detail&&<small>{detail}</small>}</span><input type="checkbox" role="switch" checked={checked} onChange={e=>onChange(e.target.checked)}/><span className="settings-switch-track" aria-hidden="true"/></label>}
 function SettingsCard({title,detail,icon:Icon,children}:{title:string;detail:string;icon:any;children:any}){return <Card className="settings-overview-card"><div className="settings-card-heading"><span><Icon size={23}/></span><div><h2>{title}</h2><p>{detail}</p></div></div>{children}</Card>}
-export default function Settings(){const [query,setQuery]=useSearchParams();const raw=query.get('tab')||'General',category=settingsCategory(raw);const change=(tab:string)=>{const next=new URLSearchParams(query);next.set('tab',tab);next.delete('setup');next.delete('section');setQuery(next)};
+export default function Settings(){const [query,setQuery]=useSearchParams();const raw=query.get('tab')||'General',category=settingsCategory(raw);const change=(tab:string)=>{const next=new URLSearchParams(query);next.set('tab',tab);next.delete('setup');if(tab==='Connections')next.set('section','connected');else next.delete('section');setQuery(next)};
  const {hash}=useLocation();
  if(['System','Advanced','Backup & Restore','Notifications'].includes(raw)){
   const next=new URLSearchParams(query);
