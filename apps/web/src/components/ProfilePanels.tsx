@@ -1,10 +1,7 @@
-import {useEffect,useState} from 'react';
-import {Link} from 'react-router-dom';
-import {Activity as Pulse,Bell,Clock,Download,Filter,KeyRound,Layers,ShieldCheck,UserRound} from 'lucide-react';
+import {useState} from 'react';
+import {Activity as Pulse,Clock,Download,Filter,KeyRound,Layers,ShieldCheck,UserRound} from 'lucide-react';
 import {api} from '../api';
 import {useApi} from '../hooks';
-import {loadAppearance,saveAppearance,themePresets} from '../appearance';
-import LanguageSelector from './LanguageSelector';
 import ReportLoading from './ReportLoading';
 
 export function ProfileForm({user,self,onSaved}:{user:any;self:boolean;onSaved:(patch:any)=>void}){
@@ -25,22 +22,6 @@ export function ProfileForm({user,self,onSaved}:{user:any;self:boolean;onSaved:(
  <label className="profile-bio">Bio<textarea maxLength={300} rows={2} value={draft.bio} onChange={e=>change('bio',e.target.value)}/></label>
  </fieldset>{self&&<div className="profile-actions"><button type="button" className="btn secondary" disabled={!dirty||busy} onClick={()=>{setDraft(initial);setError('');setNotice('')}}>Discard</button><button className="btn primary" disabled={!dirty||busy}>Save Changes</button></div>}
  {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}</form>
-}
-
-export function ProfilePreferences(){
- const [prefs,setPrefs]=useState(loadAppearance),[error,setError]=useState('');
- useEffect(()=>{const sync=()=>setPrefs(loadAppearance());window.addEventListener('iclusters-appearance',sync);return()=>window.removeEventListener('iclusters-appearance',sync)},[]);
- const save=(patch:Partial<typeof prefs>)=>{try{saveAppearance({...loadAppearance(),...patch});setError('')}catch(e:any){setError(e.message)}};
- return <section className="profile-section"><h3>Appearance</h3><div className="profile-fields"><label>Theme Mode<select value={prefs.theme} onChange={e=>save({theme:e.target.value as typeof prefs.theme})}><option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option></select></label>
- <label>Theme Colour<select value={prefs.preset} onChange={e=>{const preset=themePresets.find(p=>p.id===e.target.value)!;save({preset:preset.id,accent:preset.accent})}}>{themePresets.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label><LanguageSelector/></div>{error&&<p role="alert">{error}</p>}</section>
-}
-
-export function ProfileNotifications(){
- const live=useApi<any>('/header-notifications',null,10000),[busy,setBusy]=useState(false),[error,setError]=useState('');
- const data=live.data;
- return <section className="profile-section"><h3><Bell/>Notifications</h3>{(error||live.error)&&<p role="alert">{error||live.error}</p>}
- {data?<><p>{data.unreadCount||0} · Unread</p>{data.attention?.map((r:any)=><Link className="profile-event" key={r.id} to={r.link}>{r.title}</Link>)}</>:live.loading&&<ReportLoading/>}
- <div className="profile-actions"><Link className="btn secondary" to="/alerts">View all alerts</Link><button className="btn secondary" onClick={()=>live.refresh()}>Refresh</button><button className="btn primary" disabled={busy||!data?.unreadCount} onClick={async()=>{setBusy(true);setError('');try{await api('/header-notifications/read',{method:'POST',body:JSON.stringify({sequence:data.latestSequence})});await live.refresh()}catch(e:any){setError(e.message)}finally{setBusy(false)}}}>Mark activity read</button></div></section>
 }
 
 function category(action:string){

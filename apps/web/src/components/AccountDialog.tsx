@@ -1,10 +1,11 @@
+import AccountPermissions from './AccountPermissions';
 import {useState} from 'react';
-import {Clock,CheckCircle,ShieldCheck,UserRound,Mail,Calendar,LockKeyhole,Layers,SlidersHorizontal,Bell,Activity as Pulse,KeyRound,ChevronRight} from 'lucide-react';
+import {Clock,ShieldCheck,UserRound,Mail,Calendar,Layers,SlidersHorizontal,Activity as Pulse,KeyRound,ChevronRight} from 'lucide-react';
 import {Badge,Modal,tabKeys} from './UI';
 import {useApi} from '../hooks';
 import {confirmedApi} from '../api';
 import {isActionCancelled} from '../action-cancellation';
-import {ProfileForm,ProfilePreferences,ProfileNotifications,ProfileActivity} from './ProfilePanels';
+import {ProfileForm,ProfileActivity} from './ProfilePanels';
 import ReportLoading from './ReportLoading';
 import AccountSecurity, {type SecurityPanel} from './AccountSecurity';
 import '../pages/settings-overview.css';
@@ -32,7 +33,7 @@ export function AccountDialog({selected:account,actor,self,onClose,initialTab='P
  const select=(name:string)=>{setSecurityPanel(null);setTab(name)};
  const jump=(action:SecurityPanel)=>{setTab('Security');setSecurityPanel(action)};
  const activity=['owner','admin','operator','auditor'].includes(actor?.role);
- const tabs=[['Profile',UserRound],['Security',ShieldCheck],...(self?[['Preferences',SlidersHorizontal]]:[]),['Roles & Permissions',Layers],...(self?[['Notifications',Bell]]:[]),...(activity?[['Activity',Pulse]]:[])];
+ const tabs=[['Profile',UserRound],['Security',ShieldCheck],['Roles & Permissions',Layers],...(activity?[['Activity',Pulse]]:[])];
  return <Modal open title="View account" onClose={onClose}><div className="account-layout">
  <aside className="account-identity"><div className="account-cover"/><Avatar user={selected}/><h2>{selected.name||selected.username||selected.email}</h2>
  <Badge tone="purple">{roleNames[selected.role]||selected.role}</Badge>
@@ -40,16 +41,15 @@ export function AccountDialog({selected:account,actor,self,onClose,initialTab='P
  {contact&&<><dt><Mail size={16}/>Contact email</dt><dd>{contact}</dd></>}
  {selected.createdAt&&<><dt><Calendar size={16}/>Created</dt><dd>{date(selected.createdAt)}</dd></>}
  <dt><Clock size={16}/>Last login</dt><dd>{date(selected.lastLogin)}</dd></dl>
- <div className="account-quick"><h3>Quick Actions</h3>{self&&<><button onClick={()=>jump('password')}><KeyRound/>Change password<ChevronRight/></button><button onClick={()=>jump('mfa')}><ShieldCheck/>Multi-factor authentication<ChevronRight/></button></>}<button onClick={()=>select(self?'Preferences':'Security')}><SlidersHorizontal/>{self?'Preferences':'Account Security'}<ChevronRight/></button></div></aside>
+ <div className="account-quick"><h3>Quick Actions</h3>{self&&<><button onClick={()=>jump('password')}><KeyRound/>Change password<ChevronRight/></button><button onClick={()=>jump('mfa')}><ShieldCheck/>Multi-factor authentication<ChevronRight/></button></>}<button onClick={()=>select(self?'Profile':'Security')}><SlidersHorizontal/>{self?'Account Settings':'Account Security'}<ChevronRight/></button></div></aside>
  <section className="account-panels"><div className="tabs profile-tabs" role="tablist" aria-label="View account" onKeyDown={tabKeys}>{tabs.map(([name,Icon]:any)=><button key={name} type="button" role="tab" aria-selected={tab===name} tabIndex={tab===name?0:-1} className={tab===name?'tab active':'tab'} onClick={()=>select(name)}><Icon size={17}/>{name}</button>)}</div>
  <div className="account-panel" onClick={event=>{
   const link=(event.target as Element).closest<HTMLAnchorElement>('a[href]');
   if(link && link.target!=='_blank' && link.origin===window.location.origin)onClose();
  }}>
  {tab==='Profile'&&<><ProfileForm user={selected} self={self} onSaved={result=>{setPatch(result);void onSaved?.()}}/><section className="profile-section"><h3><Layers/>Account Overview</h3><div className="profile-stats"><div><UserRound/><strong>{roleNames[selected.role]}</strong><small>Role</small></div><div><ShieldCheck/><strong>{factor(selected)}</strong><small>Multi-factor authentication</small></div><div><Clock/><strong>{selected.status||'Not reported'}</strong><small>Status</small></div></div><dl className="users-facts"><dt>User ID</dt><dd>{selected.id}</dd><dt>Created</dt><dd>{date(selected.createdAt)}</dd></dl><button className="btn secondary" onClick={()=>select('Roles & Permissions')}>View permissions →</button></section></>}
- {tab==='Preferences'&&self&&<ProfilePreferences/>}
- {tab==='Notifications'&&self&&<ProfileNotifications/>}
- {tab==='Roles & Permissions'&&<div className="profile-section"><h3><Layers/>Permissions Summary</h3><div className="profile-role"><ShieldCheck/><div><small>Assigned Role</small><strong>{roleNames[selected.role]}</strong></div></div>{onSaved&&actor?.role==='owner'&&selected.role!=='owner'&&<ClusterAccess key={selected.id+JSON.stringify(selected.clusterRoles)} account={selected} onSaved={onSaved}/>}<h4>Role scope</h4>{selected.clusterRoles==null?<p>Account role applies across the installation.</p>:<dl className="users-facts">{Object.entries(selected.clusterRoles).map(([id,role])=><div key={id}><dt>{id}</dt><dd>{roleNames[String(role)]}</dd></div>)}{!Object.keys(selected.clusterRoles).length&&<dt>No access</dt>}</dl>}<h4>Permission groups</h4>{[['View dashboards and inventory',10],['View audit logs',20],['Run infrastructure actions',30],['Manage lower-privilege users',40],['View notification diagnostics',50]].map(([label,rank]:any)=><div className="users-permission" key={label}><CheckCircle size={15} className={(ranks[selected.role]||0)>=rank?'positive':'muted'}/><span>{label}</span><small>{(ranks[selected.role]||0)>=rank?'Allowed':'Restricted'}</small></div>)}<p className="muted small">Role-level access summary. Individual actions may require additional confirmation.</p></div>}
+ {tab==='Roles & Permissions'&&<AccountPermissions key={selected.id} account={selected} owner={actor?.role==='owner'}
+  clusterAccess={onSaved && actor?.role==='owner' && selected.role!=='owner' ? <ClusterAccess key={selected.id+JSON.stringify(selected.clusterRoles)} account={selected} onSaved={onSaved}/> : undefined}/>}
  {tab==='Activity'&&<ProfileActivity key={selected.id} user={selected} self={self} date={date}/>}
 
  {tab==='Security'&&(self?<AccountSecurity panel={securityPanel} onPanel={setSecurityPanel}/>:<section><h3>Account Security</h3><dl className="users-facts"><dt>Status</dt><dd>{selected.status}</dd><dt>Two-factor flag</dt><dd>{factor(selected)}</dd><dt>Last login</dt><dd>{date(selected.lastLogin)}</dd></dl></section>)}

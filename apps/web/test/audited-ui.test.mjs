@@ -347,8 +347,29 @@ test('non-owners cannot fetch notification diagnostics or send channel tests',as
 
 const usersRedesignFixture=[{id:'owner',name:'Fixture Owner',email:'owner@test.local',role:'owner',status:'active',twoFactor:false,lastLogin:'2026-10-12T10:28:10Z',createdAt:'2025-01-12T09:14:00Z'},{id:'viewer',name:'Fixture Viewer',email:'viewer@test.local',role:'viewer',status:'active',twoFactor:true,lastLogin:null,createdAt:'2025-02-01T10:00:00Z'},{id:'admin',name:'Fixture Admin',email:'admin@test.local',role:'admin',status:'inactive',twoFactor:false}];
 test('Users has compact account summaries, working detail tabs, filters and card view',async()=>{
- const calls=[];const page=await mounted('pages/Users.tsx',{},async p=>{calls.push(p);return p==='/users'?{users:usersRedesignFixture}:p==='/auth/me'?{user:{sub:'owner',role:'owner'}}:p==='/audit'?{logs:[{id:'1',user:'viewer@test.local',action:'inventory.read',resource:'network',status:'success',time:'2026-10-12T10:00:00Z'},{id:'2',user:'owner@test.local',action:'private.other.actor',time:'2026-10-12T11:00:00Z'}]}:{};});
+ const calls=[];const page=await mounted('pages/Users.tsx',{},async p=>{calls.push(p);return p==='/users/viewer/permissions'?{role:'viewer',keys:['vm.view'],ceiling:['vm.view'],editable:true,revision:0,templates:[],changes:[],next:null}:p==='/users'?{users:usersRedesignFixture}:p==='/auth/me'?{user:{sub:'owner',role:'owner'}}:p==='/audit'?{logs:[{id:'1',user:'viewer@test.local',action:'inventory.read',resource:'network',status:'success',time:'2026-10-12T10:00:00Z'},{id:'2',user:'owner@test.local',action:'private.other.actor',time:'2026-10-12T11:00:00Z'}]}:{};});
  try{assert.equal(page.container.querySelectorAll('h1').length,1);assert.equal(page.container.querySelectorAll('.users-stats>button').length,5);assert.equal(page.container.querySelectorAll('.users-table tbody tr').length,3);assert.equal(page.container.querySelector('[role=dialog]'),null);await page.click(page.container.querySelector('[aria-label="View account for Fixture Owner"]'));assert.equal(button(page.container,'Deactivate User').disabled,true);await page.click(page.container.querySelector('[aria-label="Close dialog"]'));await page.click(page.container.querySelector('[aria-label="View account for Fixture Viewer"]'));assert.ok(page.container.querySelector('.account-identity').textContent.includes('Fixture Viewer'));await page.click(button(page.container,'Roles & Permissions'));assert.ok(page.container.querySelector('.account-layout').textContent.includes('Restricted'));await page.click(button(page.container,'Activity'));assert.ok(page.container.querySelector('.users-activity').textContent.includes('inventory.read'));assert.ok(!page.container.querySelector('.users-activity').textContent.includes('private.other.actor'));await page.click(page.container.querySelector('[aria-label="Close dialog"]'));await page.click(page.container.querySelectorAll('.users-stats>button')[4]);assert.equal(page.container.querySelectorAll('.users-table tbody tr').length,1);assert.ok(page.container.querySelector('.users-table').textContent.includes('Fixture Admin'));await page.click(page.container.querySelector('[aria-label="Reset filters"]'));await page.click(page.container.querySelector('[aria-label="Card view"]'));assert.equal(page.container.querySelectorAll('.users-account-card').length,3);await page.click(page.container.querySelector('.users-account-card'));await page.click(page.container.querySelector('[aria-label="Close dialog"]'));assert.equal(page.container.querySelector('.account-layout'),null);await page.click(page.container.querySelectorAll('.users-account-card')[1]);assert.ok(page.container.querySelector('.account-layout'));}finally{await page.close();}
+});
+test('account permission switches stage changes, reset them, and save a named role within the account ceiling',async()=>{
+ const route='/users/target/permissions',ceiling=['vm.view','vm.manage','network.view'];
+ let policy={role:'operator',keys:[...ceiling],ceiling,editable:true,templateCeiling:ceiling,revision:4,
+   templates:[{name:'Network Reviewer',keys:['cluster.view','network.view']}],changes:[],next:null};
+ const writes=[];
+ const page=await mounted('components/AccountPermissions.tsx',{account:{id:'target',role:'operator'},owner:true},async(p,init)=>{
+   assert.equal(p,route);
+   if(init?.method==='PUT'){const draft=JSON.parse(init.body);writes.push(draft);policy={...policy,...draft,revision:5};}
+   return policy;
+ });
+ try{
+   const control=()=>page.container.querySelector('[role=switch][aria-label="Virtual Machines · Manage"]');
+   await page.click(control());assert.equal(control().getAttribute('aria-checked'),'false');assert.equal(writes.length,0);
+   await page.click(button(page.container,'Reset Changes'));assert.equal(control().getAttribute('aria-checked'),'true');
+   await page.click(page.container.querySelector('.perm-templates button'));await page.click(button(page.container,'Apply role'));
+   assert.equal(control().getAttribute('aria-checked'),'false');
+   await page.click(button(page.container,'Save Permissions'));
+   assert.deepEqual(writes,[{keys:['network.view'],template:'Network Reviewer',revision:4}]);
+   assert.equal(page.container.querySelector('.perm-assigned strong').textContent,'Network Reviewer');
+ }finally{await page.close()}
 });
 test('Users status writes require review and preserve protected accounts',async()=>{
  const calls=[];let users=structuredClone(usersRedesignFixture);const page=await mounted('pages/Users.tsx',{},async(p,init)=>{calls.push({p,init});if(p==='/users')return {users};if(p==='/auth/me')return {user:{sub:'admin',role:'admin'}};if(p==='/users/viewer/toggle'){users=users.map(u=>u.id==='viewer'?{...u,status:'inactive'}:u);return {status:'inactive'}}return {};});

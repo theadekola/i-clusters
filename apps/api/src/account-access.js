@@ -50,10 +50,10 @@ export async function createInventoryToken(db,user,name,days){
 export async function inventoryIdentity(query,raw,method,path){
  if(method!=='GET'||!['/api/proxmox','/api/monitoring'].includes(path.split('?')[0]))return null;
  if(!/^icl_[0-9a-f]{64}$/.test(raw))return null;
- const result=await query("SELECT u.id,u.username,u.name,u.email,u.role,u.cluster_roles FROM account_api_tokens t JOIN users u ON u.id=t.user_id WHERE t.digest=$1 AND t.expires_at>NOW() AND t.version=u.token_version AND u.status='active'",[hash(raw)]);
+ const result=await query("SELECT u.id,u.username,u.name,u.email,u.role,u.cluster_roles,u.permission_keys FROM account_api_tokens t JOIN users u ON u.id=t.user_id WHERE t.digest=$1 AND t.expires_at>NOW() AND t.version=u.token_version AND u.status='active'",[hash(raw)]);
  const u=result.rows[0];
  if(!u||!['viewer','auditor','operator','admin','owner'].includes(u.role))return null;
  const scope=process.env.ICLUSTERS_CLUSTER_PROFILE||'default';
  if(u.role!=='owner'&&u.cluster_roles!=null&&!['viewer','auditor','operator','admin'].includes(u.cluster_roles[scope]))return null;
- return {sub:u.id,email:u.email||u.username,username:u.username,name:u.name,role:'viewer'};
+ return {sub:u.id,email:u.email||u.username,username:u.username,name:u.name,role:'viewer',...(u.role!=='owner'&&u.permission_keys!=null?{permissionKeys:u.permission_keys}:{})};
 }
