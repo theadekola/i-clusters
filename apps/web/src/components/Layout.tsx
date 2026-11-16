@@ -1,4 +1,5 @@
-import {MyAccountDialog} from './AccountDialog';
+import {lazy,Suspense} from 'react';
+const MyAccountDialog=lazy(()=>import('./AccountDialog').then(module=>({default:module.MyAccountDialog})));
 import SidebarAccount from './SidebarAccount';
 import {PageRefreshContext,usePageRefreshController} from './PageRefresh';
 import RefreshButton from './RefreshButton';
@@ -95,7 +96,7 @@ export default function Layout() {
       </nav>
       <SidebarAccount key={String(mobile&&menuOpen)} labels={showLabels} user={session?.user} signOut={signOut} openAccount={()=>{if(mobile)closeMenu();setAccountOpen(true)}}/>
     </aside>
-    {accountOpen&&<MyAccountDialog onClose={()=>{setAccountOpen(false);window.requestAnimationFrame(()=>{(mobile?toggleRef.current:menuRef.current?.querySelector<HTMLButtonElement>('.profile-trigger'))?.focus({preventScroll:true})})}}/>}
+    {accountOpen&&<Suspense fallback={null}><MyAccountDialog onClose={()=>{setAccountOpen(false);window.requestAnimationFrame(()=>{(mobile?toggleRef.current:menuRef.current?.querySelector<HTMLButtonElement>('.profile-trigger'))?.focus({preventScroll:true})})}}/></Suspense>}
     <div className="main-shell" inert={mobile&&menuOpen}>
       <header className="topbar">
         <button ref={toggleRef} className="icon-btn nav-toggle" aria-label={navigationOpen?'Close navigation':'Open navigation'} aria-controls="primary-navigation" aria-expanded={navigationOpen} onClick={()=>mobile?setMenuOpen(v=>!v):toggleDesktop()}><NavIcon size={19} aria-hidden="true"/></button>

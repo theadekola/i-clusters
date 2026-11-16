@@ -12,7 +12,7 @@ def connector_path(root,relative):
 def connector_unit(root):
     return 'iclusters-node-agent.service' if (root/'etc/iclusters-node-agent.json').exists() or not (root/'etc/homecloud-node-agent.json').exists() else 'homecloud-node-agent.service'
 
-VERSION=10
+VERSION=11
 REVISION=hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest()
 HOSTS=[]
 RESCAN=threading.Event()
@@ -226,18 +226,55 @@ def network_scan():
   time.sleep(5)
 
 OPERATIONS=None
+THERMAL_ENABLED=False
+DRIVE_OFFSET=0
+
+def system_temperatures(root=pathlib.Path('/sys/class/hwmon')):
+ readings=[]
+ for chip in sorted(root.glob('hwmon*')):
+  try:
+   driver=(chip/'name').read_text().strip()
+   device=(chip/'device').resolve() if (chip/'device').exists() else chip.resolve().parent.parent
+   if driver in ('drivetemp','nvme'):continue  # Drives are identified through SMART.
+   for sensor in sorted(chip.glob('temp*_input')):
+    key=sensor.name.split('_')[0]
+    try:
+     label=(chip/(key+'_label')).read_text().strip() if (chip/(key+'_label')).is_file() else key
+     value=int(sensor.read_text().strip())/1000
+     if -80<=value<=200:
+      identity=hashlib.sha256(f'{device}/{driver}/{key}'.encode()).hexdigest()
+      readings.append({'kind':'system','id':identity,'label':driver+' / '+label,'value':value})
+    except (ValueError,OSError):continue
+  except OSError:continue
+ return readings
+
 def command_json(args,timeout=5):
  p=subprocess.run(args,capture_output=True,text=True,timeout=timeout)
  return json.loads(p.stdout)
 def collect_operations():
+ global DRIVE_OFFSET
+ thermal=THERMAL_ENABLED
  report={'sampledAt':time.time(),'disks':[],'ups':[],'errors':[]}
+ if thermal:report['thermalSamples']=system_temperatures()
  try:
-  devices=command_json(['smartctl','--scan','--json']).get('devices',[])[:16]
-  for device in devices:
+  devices=command_json(['smartctl','--scan','--json']).get('devices',[])
+  start=DRIVE_OFFSET%len(devices) if devices else 0
+  batch=(devices[start:]+devices[:start])[:16]
+  DRIVE_OFFSET+=len(batch)
+  report['driveCount']=len(devices)
+  for device in batch:
    name=device.get('name','')
    if not re.fullmatch(r'/dev/[A-Za-z0-9_./-]{1,100}',name):continue
    try:
-    data=command_json(['smartctl','-H','-n','standby','--json',name],3)
+    options=['-A','-i'] if thermal else []
+    device_type=device.get('type')
+    if device_type and re.fullmatch(r'[a-zA-Z0-9,+_-]{1,48}',device_type):options+=['-d',device_type]
+    data=command_json(['smartctl','-H','-n','standby',*options,'--json',name],3)
+    if thermal:
+     value=data.get('temperature',{}).get('current')
+     stable=data.get('serial_number') or name
+     if isinstance(value,(int,float)) and -80<=value<=200:
+      report['thermalSamples'].append({'kind':'drive','id':hashlib.sha256(str(stable).encode()).hexdigest(),'label':name+' '+str(data.get('model_name','')),'value':value})
     report['disks'].append({'name':name,'healthy':data.get('smart_status',{}).get('passed')})
    except Exception:report['disks'].append({'name':name,'healthy':None})
  except Exception:report['errors'].append('Disk health unavailable. Install smartmontools and check device support/permissions.')
@@ -416,7 +453,7 @@ def connector_update_receipt():
  return False,''
 
 def poll_once(config,reads,writes,completed,ready):
- global AUTO_UPDATE_ERROR
+ global AUTO_UPDATE_ERROR,THERMAL_ENABLED
  started=time.monotonic();ready.clear();results=[]
  # Drain BEFORE sending. Completed results wake the next poll instead of waiting
  # through an extra heartbeat. Restore results on transport failure.
@@ -434,6 +471,7 @@ def poll_once(config,reads,writes,completed,ready):
   with PULL_PROGRESS_LOCK:
    for item in progress:PULL_PROGRESS.setdefault(item['id'],item)
   ready.set();raise
+ THERMAL_ENABLED=response.get('collectTemperatures') is True
  if response.get('connectorUpdateVerified'):
   try:verify_connector_update(config,response['connectorUpdateVerified'])
   except Exception:AUTO_UPDATE_ERROR=True

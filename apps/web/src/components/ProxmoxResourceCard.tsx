@@ -9,6 +9,7 @@ type Resource = {
  ip?: string;
  node?: string;
  status?: string;
+ powerStatus?: string;
  nodeAvailable?: boolean;
  cpu?: number | null;
  memoryPercent?: number | null;
@@ -56,7 +57,7 @@ export function ProxmoxResourceCard({resource, kind, disk = resource.diskPercent
  resource: Resource; kind: Kind; disk?: number | null;
  onDetails: () => void; onShell: () => void; shellEnabled: boolean;
 }) {
- const status = resource.status || 'Unknown';
+ const status = (kind==='vm'&&resource.powerStatus) || resource.status || 'Unknown';
  const available = resource.nodeAvailable !== false && !['offline','unknown'].includes(status.toLowerCase());
  const subtitle = kind === 'node' ? resource.ip || 'IP not reported' : `${kind === 'vm' ? 'VM' : 'CT'} ${resource.id} · ${resource.node}`;
  return <article className="pve-resource-card" data-kind={kind} data-status={resource.nodeAvailable===false?'unknown':status.toLowerCase()} aria-label={resource.name}>

@@ -20,7 +20,7 @@ test('Docker paths retain host context across every resource tab',()=>{
  for(const tab of ['Containers','Images','Volumes','Compose Stacks','Events','Updates'])assert.deepEqual(labels('/docker',`?tab=${encodeURIComponent(tab)}`,'control-vm'),['Docker','control-vm',tab]);
 });
 test('all other pages show their current section and reject unknown tabs',()=>{
- for(const [route,tab] of Object.entries({proxmox:'Nodes',storage:'Datasets / Volumes',network:'Traffic Analysis',backups:'Reports',monitoring:'Provider Jobs',alerts:'Alert History',users:'Audit Logs'})){
+ for(const [route,tab] of Object.entries({proxmox:'Nodes',storage:'Datasets / Volumes',network:'Routing',backups:'Reports',monitoring:'Provider Jobs',alerts:'Alert History',users:'Audit Logs'})){
   assert.equal(labels('/'+route,`?tab=${encodeURIComponent(tab)}`).at(-1),tab);
   assert.ok(!labels('/'+route,'?tab=Unknown').includes('Unknown'));
  }

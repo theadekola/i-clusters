@@ -13,10 +13,10 @@ const sections={
  '/':[''],
  '/proxmox':['Overview','Nodes','Virtual Machines','LXC Containers','Storage','Networks','Tasks & Logs'],
  '/docker':['Containers','Images','Volumes','Compose Stacks','Events','Updates'],
- '/storage':['Storage Pools','Configuration','Disks','Datasets / Volumes','Snapshots','Shares','Performance'],
- '/network':['Network Map','Interfaces','Devices','Routing','DNS','Traffic Analysis','Docker Networks'],
+ '/storage':['Storage Pools','Configuration','Disks','Datasets / Volumes','Snapshots','Shares'],
+ '/network':['Network Map','Interfaces','Devices','Routing','DNS','Docker Networks'],
  '/backups':['Backup Jobs','Backup Archives','Restore Points','Schedules','Retention Policies','Destinations','Reports'],
- '/monitoring':['','Provider Jobs','Hardware & Diagnostics'],
+ '/monitoring':['','Performance Reports','Network Traffic','Backup Trends','Temperatures','Provider Jobs','Hardware & Diagnostics'],
  '/alerts':['Active Alerts','Alert History','Alert Rules'],
  '/ai':[''],'/tools/shell':[''],'/tools/sftp':[''],'/users':['','Audit Logs'],
  '/settings':['General','Connections','Integrations','Appearance','About']
@@ -94,7 +94,7 @@ export async function auditClusterReports({base,owner,profile,tls}){
    const main=page.locator('main.content');
    if(expected)await main.getByText(expected,{exact:false}).filter({visible:true}).first().waitFor({timeout:8000}).catch(e=>{throw Error(pathname+' expected '+expected+': '+e.message)});
    await page.waitForLoadState('networkidle',{timeout:6000}).catch(()=>{});
-   assert.equal(await main.getByRole('button',{name:/^export(?:\s|$)/i}).count(),0,pathname+': export action');
+   if(pathname!=='/monitoring/Temperatures')assert.equal(await main.getByRole('button',{name:/^export(?:\s|$)/i}).count(),0,pathname+': export action');
    const text=await main.innerText();
    assert.ok(!text.includes('This page could not load'),pathname+': page error boundary');
    const foreign=page.url().includes('/clusters/'+profile+'/')?'Home':'Office';
@@ -122,7 +122,7 @@ export async function auditClusterReports({base,owner,profile,tls}){
      const search=new URLSearchParams();if(tab)search.set('tab',tab);
      const target=dest+(tab?'?'+search:'');
      if(tab&&new URL(page.url()).searchParams.get('tab')!==tab){
-      const button=page.locator('main').getByRole('button',{name:tab,exact:true}).first();
+      const button=page.locator('main').getByRole('tab',{name:tab,exact:true}).or(page.locator('main').getByRole('link',{name:tab,exact:true})).or(page.locator('main').getByRole('button',{name:tab,exact:true})).first();
       if(await button.isVisible()){await button.click();tabs++}
      }
      // Exercise bookmark loading as well as the controls. A new document also
@@ -144,7 +144,8 @@ export async function auditClusterReports({base,owner,profile,tls}){
      const guestInventory=pathname==='/proxmox'&&['Virtual Machines','LXC Containers'].includes(tab);
      if(guestInventory)await page.locator('.pve-resource-card').first().getByRole('button',{name:'Details',exact:true}).click();
      if(details){
-      const [region,bar]=details,buttons=page.locator(region).locator(bar).getByRole('button');
+      const [region,bar]=details,buttons=page.locator(region).locator(bar).locator('button,[role=tab]');
+      if(guestInventory){await buttons.first().waitFor();assert.ok(await buttons.count()>1,'Guest detail tabs must be exercised')}
       for(const label of await buttons.allTextContents()){
        const item=buttons.filter({hasText:label}).first();
        if(!await item.isVisible())continue;
@@ -165,7 +166,8 @@ export async function auditClusterReports({base,owner,profile,tls}){
      if(pathname==='/users'&&tab==='Audit Logs'){
       await page.getByRole('button',{name:'Create Audit Report'}).click();
       const dialog=page.getByRole('dialog',{name:'Audit Report'});
-      const report=JSON.parse(await dialog.locator('pre').innerText());
+      await dialog.getByText('Technical details',{exact:true}).click();
+      const report=JSON.parse(await dialog.locator('pre').textContent());
       assert.equal(report.sourceCluster.id,prefix?profile:'default');
       assert.equal(report.sourceCluster.name,scopeName==='Home'?'Environment cluster':'Office');
       await dialog.getByRole('button',{name:'Close dialog'}).click();

@@ -1,3 +1,4 @@
+import {retainAlerts} from './alert-history-cleanup.js';
 import {guestAvailability,reconcileGuestAlert} from './guest-availability.js';
 import {operationsView,operationalConditions,operationalRecovery} from './operations-health.js';
 import {operationalNodes} from './node-agents.js';
@@ -33,7 +34,7 @@ export function alertConditions(snapshot,rules,guests=guestAvailability(snapshot
    const outcome=String(task.exitstatus||task.status||'');
    const finished=Number.isFinite(task.endtime)&&task.endtime>0;
    const recent=Number.isFinite(task.starttime)&&task.starttime*1000>=Date.now()-86400000&&task.starttime*1000<=Date.now()+60000;
-   if(task.upid&&task.node&&recent&&finished&&outcome&&!['ok','running','stopped','unknown'].includes(outcome.toLowerCase()))conditions.push({key:`backup-task:${task.upid}`,title:'Backup task failed',source:`${task.node} / ${task.id||'Guest selection'}`,node:task.node,provider:'proxmox',severity:'critical',occurredAt:new Date(task.endtime*1000).toISOString(),details:'Proxmox reports a failed backup task. Open Backups → Reports → Inspect Task Logs to investigate. An online destination does not establish that it is writable or that the backup succeeded.'});
+   if(task.upid&&task.node&&recent&&finished&&outcome&&!['ok','running','stopped','unknown','skipped'].includes(outcome.toLowerCase()))conditions.push({key:`backup-task:${task.upid}`,title:'Backup task failed',source:`${task.node} / ${task.id||'Guest selection'}`,node:task.node,provider:'proxmox',severity:'critical',occurredAt:new Date(task.endtime*1000).toISOString(),details:'Proxmox reports a failed backup task. Open Backups → Reports → Inspect Task Logs to investigate. An online destination does not establish that it is writable or that the backup succeeded.'});
   }
   const resources=[...(snapshot.proxmox?.nodes||[]).map(n=>({...n,provider:'proxmox'})),...monitoredDocker(snapshot).map(c=>({...c,id:c.monitorId,provider:'docker',memory:c.memoryPercent})),...(snapshot.proxmox?.storage||[]).map(p=>({...p,provider:'proxmox',storage:p.usage})),...(snapshot.truenas?.pools||[]).map(p=>({...p,provider:'truenas',storage:p.usage}))];
   for(const rule of rules.filter(r=>r.enabled!==false))for(const resource of resources){
@@ -127,7 +128,7 @@ export function createMonitor(sources=providers,persistence={get,mutate},checkSe
         for(const condition of conditions){const closed=state.alerts.find(a=>a.key===condition.key&&a.status==='resolved'&&a.resolution==='manual');if(closed&&(condition.key.startsWith('backup-task:')||Date.parse(snapshot.sampledAt)<=Date.parse(closed.resolvedAt)))continue;const current=state.alerts.find(a=>a.key===condition.key&&a.status!=='resolved');
           if(current){Object.assign(current,condition,{lastSeen:snapshot.sampledAt});}else state.alerts.unshift({...condition,id:crypto.randomUUID(),status:'active',triggered:snapshot.sampledAt,lastSeen:snapshot.sampledAt});
         }
-        state.alerts=state.alerts.slice(0,1000);
+        state.alerts=retainAlerts(state.alerts);
         observeHeaderActivity(state,snapshot);
       });
       snapshot.metrics=persistence.get().metrics;

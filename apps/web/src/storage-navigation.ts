@@ -1,1 +1,1 @@
-export const storageTabs=['Storage Pools','Configuration','Disks','Datasets / Volumes','Snapshots','Shares','Performance'];
+export const storageTabs=['Storage Pools','Configuration','Disks','Datasets / Volumes','Snapshots','Shares'];

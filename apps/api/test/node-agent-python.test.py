@@ -205,6 +205,23 @@ class OperationsCollectionTests(unittest.TestCase):
   self.assertNotIn('temperatures',report)
   self.assertEqual(report['disks'],[{'name':'/dev/sda','healthy':True}])
 
+class TemperatureTests(unittest.TestCase):
+ def test_collects_labelled_hwmon_and_rotates_drive_reads(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   chip=pathlib.Path(tmp)/'hwmon0';chip.mkdir()
+   (chip/'name').write_text('coretemp');(chip/'temp1_input').write_text('45000');(chip/'temp1_label').write_text('Package')
+   readings=agent.system_temperatures(pathlib.Path(tmp))
+   self.assertEqual((readings[0]['value'],readings[0]['label']),(45,'coretemp / Package'))
+  def command(args,timeout=5):
+   if '--scan' in args:return {'devices':[{'name':'/dev/test'+str(i)} for i in range(17)]}
+   self.assertIn('-A',args);self.assertIn('standby',args)
+   return {'smart_status':{'passed':True},'temperature':{'current':42},'serial_number':args[-1]}
+  with patch.object(agent,'THERMAL_ENABLED',True),patch.object(agent,'DRIVE_OFFSET',0),patch.object(agent,'command_json',side_effect=command),patch.object(agent,'system_temperatures',return_value=[]),patch.object(agent,'run',return_value=''):
+   first=agent.collect_operations();second=agent.collect_operations()
+   self.assertEqual(first['driveCount'],17);self.assertEqual(len(first['disks']),16)
+   self.assertEqual(len({row['name'] for row in first['disks']+second['disks']}),17)
+   self.assertEqual(first['thermalSamples'][0]['value'],42)
+
 class DiskTests(unittest.TestCase):
  def test_physical_whole_disks_only_and_sector_units_preserved(self):
   with tempfile.TemporaryDirectory() as tmp:

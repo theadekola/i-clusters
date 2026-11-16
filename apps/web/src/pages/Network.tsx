@@ -2,7 +2,7 @@ import RefreshButton from '../components/RefreshButton';
 import ClusterTopology from '../components/ClusterTopology';
 import {InspectableRow,SelectionBody} from '../components/TableActions';
 import ReportLoading from '../components/ReportLoading';
-import NetworkTraffic from './NetworkTraffic';
+import {Navigate} from 'react-router-dom';
 import NetworkDNS from './NetworkDNS';
 import NetworkRouting from './NetworkRouting';
 import NetworkDevices from './NetworkDevices';
@@ -17,7 +17,7 @@ export default function Network(){
  const cluster=useApi<any>('/proxmox',null);
  const live=useApi<any>('/network',null),session=useApi<any>('/auth/me',null);
  const [params,setParams]=useSearchParams();
- const sections=['Network Map','Interfaces','Devices','Routing','DNS','Traffic Analysis','Docker Networks'];
+ const sections=['Network Map','Interfaces','Devices','Routing','DNS','Docker Networks'];
  const tab=sections.includes(params.get('tab')||'')?params.get('tab')!:'Network Map';
  const setTab=(value:string)=>{const next=new URLSearchParams(params);next.set('tab',value);setParams(next);};
  const [search,setSearch]=useState(''),[selected,setSelected]=useState<any>(null);
@@ -30,12 +30,13 @@ export default function Network(){
  const rows=(dockerKnown?networks:[]).filter((r:any)=>JSON.stringify(r).toLowerCase().includes(search.trim().toLowerCase()));
  const network=tab==='Docker Networks'&&dockerKnown&&selected&&selected.host===data?.dockerHost?.id?networks.find((r:any)=>r.id===selected?.id):null;
  const inspect=(r:any)=>setSelected({id:r.id,host:data?.dockerHost?.id});
- const navigation=<Tabs items={['Network Map','Interfaces','Devices','Routing','DNS','Traffic Analysis','Docker Networks']} active={tab} onChange={v=>{setTab(v);setSearch('');setSelected(null)}}/>;
+ const navigation=<Tabs items={['Network Map','Interfaces','Devices','Routing','DNS','Docker Networks']} active={tab} onChange={v=>{setTab(v);setSearch('');setSelected(null)}}/>;
+ if(params.get('tab')==='Traffic Analysis')return <Navigate replace to={'/monitoring?'+new URLSearchParams({...Object.fromEntries(params),tab:'Network Traffic'})}/>;
  return <div className="network-overview">{overview&&<PageHeader title="Network Overview" subtitle="Explore connected nodes, virtual machines and containers." actions={<><RefreshButton className="btn secondary" aria-busy={live.loading||cluster.loading} disabled={live.loading||cluster.loading} onClick={()=>Promise.all([live.refresh(),cluster.refresh()])}><RefreshCw size={15}/> Refresh</RefreshButton><Link className="btn primary" to="/proxmox?tab=Networks"><NetworkIcon size={14}/>Manage Interfaces</Link></>}/>}
  {overview&&live.error&&<p role="alert" className="error">{live.error}</p>}
  {overview&&<div className="network-stats metric-grid"><Stat reading={live} label="Provider Availability" value={configured.length?`${reachable}/${configured.length}`:'Unknown'} sub="Responding providers" icon={<Shield/>}/><Stat reading={cluster} label="Network Nodes" value={cluster.data&&!cluster.error&&(cluster.data.nodeInventory?.complete!==false||cluster.data.nodes?.length)?cluster.data.nodes?.length??'Unknown':'Unknown'} sub="Reported Proxmox nodes" icon={<Server/>}/><Stat reading={live} label={data?.interfaceCoverage?.complete===false?'Reported Interfaces':'Interfaces'} value={interfacesKnown?interfaces.length:'Unknown'} sub={interfacesKnown?`${interfaces.filter((r:any)=>r.status==='up').length} reported up`:'Not reported'} icon={<NetworkIcon/>}/><Stat reading={live} label="Docker Networks" value={dockerKnown?networks.length:'Unknown'} sub="Selected Docker host" icon={<Layers/>}/></div>}
  {overview&&navigation}
- {tab==='Traffic Analysis'?<NetworkTraffic navigation={navigation}/>:tab==='DNS'?<NetworkDNS navigation={navigation}/>:tab==='Routing'?<NetworkRouting navigation={navigation} onMap={()=>setTab('Network Map')}/>:tab==='Devices'?<NetworkDevices navigation={navigation}/>:tab==='Interfaces'?<ProxmoxNetworks navigation={navigation} interfaceView role={session.data?.user?.role} clusterUrl={cluster.data?.cluster?.url}/>:<div className="network-layout network-topology-layout"><div>{tab==='Network Map'?<ClusterTopology networkMap interfaces={live.error?undefined:data?.interfaces} data={cluster.data} loading={cluster.loading} error={cluster.error}/>:<Card><div className="network-panel-head"><h3>{tab}</h3><input aria-label="Search network resources" placeholder="Search network resources" value={search} onChange={e=>setSearch(e.target.value)}/></div>
+ {tab==='DNS'?<NetworkDNS navigation={navigation}/>:tab==='Routing'?<NetworkRouting navigation={navigation} onMap={()=>setTab('Network Map')}/>:tab==='Devices'?<NetworkDevices navigation={navigation}/>:tab==='Interfaces'?<ProxmoxNetworks navigation={navigation} interfaceView role={session.data?.user?.role} clusterUrl={cluster.data?.cluster?.url}/>:<div className="network-layout network-topology-layout"><div>{tab==='Network Map'?<ClusterTopology networkMap interfaces={live.error?undefined:data?.interfaces} data={cluster.data} loading={cluster.loading} error={cluster.error}/>:<Card><div className="network-panel-head"><h3>{tab}</h3><input aria-label="Search network resources" placeholder="Search network resources" value={search} onChange={e=>setSearch(e.target.value)}/></div>
  <DockerHostSelector/><p className="muted">Selected host: {data?.dockerHost?.name||data?.dockerHost?.id||'Unavailable'}.</p>
  <div className="table-wrap" tabIndex={0} role="region" aria-label="Network resources table, scroll horizontally for all columns"><table className="single-line-table"><thead><tr><th>Name</th><th>Driver</th><th>Subnet</th><th>Actions</th></tr></thead><SelectionBody>
  {rows.map((r:any)=><InspectableRow onInspect={()=>inspect(r)} aria-label={`Inspect ${r.name||r.id}`} key={r.id}><td>{r.name||r.id}</td><td>{r.driver||'Not reported'}</td><td>{r.subnets||'Not reported'}</td><td><button className="btn secondary small" onClick={()=>inspect(r)}>Details</button></td></InspectableRow>)}

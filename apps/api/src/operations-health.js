@@ -4,7 +4,7 @@ export function publicOperations(input,receivedAt=Date.now(),previous=null){
  if(!input||typeof input!=='object')return null;
  if(previous&&previous.sampledAt===input.sampledAt)return previous;
  const list=(v,n)=>Array.isArray(v)?v.slice(0,n):[];
- return {receivedAt,sampledAt:number(input.sampledAt,0,1e12),disks:list(input.disks,16).map(r=>({name:text(r?.name),healthy:typeof r?.healthy==='boolean'?r.healthy:null})),ups:list(input.ups,8).map(r=>({name:text(r?.name),status:text(r?.status,80),charge:number(r?.charge,0,100),runtime:number(r?.runtime,0,1e9)})),errors:list(input.errors,32).map(v=>text(v,240))};
+ return {receivedAt,sampledAt:number(input.sampledAt,0,1e12),disks:list(input.disks,16).map(r=>({name:text(r?.name),healthy:typeof r?.healthy==='boolean'?r.healthy:null})),...(Number.isSafeInteger(input.driveCount)&&input.driveCount>=0?{driveCount:input.driveCount}:{}),ups:list(input.ups,8).map(r=>({name:text(r?.name),status:text(r?.status,80),charge:number(r?.charge,0,100),runtime:number(r?.runtime,0,1e9)})),errors:list(input.errors,32).map(v=>text(v,240))};
 }
 export function operationsView(nodes,now=Date.now()){
  return {sampledAt:new Date(now).toISOString(),nodes:nodes.map(n=>({id:n.id,name:n.name,online:n.online,version:n.version,status:!n.online?'offline':n.version<7?'update-required':!n.operations?'waiting':now-n.operations.receivedAt>180000?'stale':'current',...{report:n.operations||null}}))};

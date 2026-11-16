@@ -67,14 +67,16 @@ export function permits(selection, method, url, body = {}, sub) {
     if (path === '/proxmox') return ['cluster','vm','containers'].some(group => has(group + '.view'));
     if (/^\/proxmox\/create-options\/[^/]+$/.test(path)) return has('vm.create') || has('containers.create');
     if (/^\/users\/[^/]+\/(permissions|permission-history)$/.test(path)) return path.split('/')[2] === sub || has('users.view');
-    if (['/dashboard','/monitoring','/discovery','/proxmox/topology-connections','/tasks','/proxmox/tasks'].includes(path))
+    if (['/dashboard','/monitoring','/monitoring/performance','/storage/performance','/discovery','/proxmox/topology-connections','/tasks','/proxmox/tasks'].includes(path))
       return ['cluster','vm','containers','network','backups'].every(area=>has(area+'.view'));
     if (/^\/docker(?:\/(?:hosts|events|container\/[^/]+\/logs|image\/[^/]+|volume\/[^/]+|volumes\/usage|network\/[^/]+))?$/.test(path))
       return has('containers.view') && has('network.view');
+    if(path === '/monitoring/temperatures')return has('cluster.view');
     if (path === '/storage/datasets/guest-layout') return has('vm.edit');
     const rule = reads.find(([pattern]) => pattern.test(path));
     return !!rule && has(rule[1] + '.view');
   }
+  if(method==='PUT'&&path==='/monitoring/temperatures')return has('settings.edit');
   if (method === 'PUT' && path === '/product/preferences') return true;
   if (method === 'POST' && ['/product/visit','/product/feedback'].includes(path)) return true;
   if (method === 'POST' && (path === '/ssh/fingerprint' && body?.action === true || path === '/ssh/connect' && body?.mode === 'authorize')) {

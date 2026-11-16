@@ -12,12 +12,11 @@ import StorageRegistration from '../components/StorageRegistration';
 import {useEffect,useRef,useState} from 'react';
 import {Link,useLocation,useNavigate,useSearchParams} from 'react-router-dom';
 import {Database,Server,CheckCircle,AlertTriangle,PieChart as PieIcon,Search,RefreshCw,Plus,Play,FileText,HardDrive,Network,Folder,Pencil,Eye,X,ChevronLeft,ChevronRight,Info,Clock,ArrowUpRight} from 'lucide-react';
-import {ResponsiveContainer,AreaChart,Area,XAxis,YAxis,CartesianGrid,Tooltip} from 'recharts';
 import {useApi,refreshResources,useResourceRefresh} from '../hooks';
 import {api,confirmedApi} from '../api';
 import {storageCapacity} from '../storage-presentation';
 import {distinctStorage,inventoryComplete} from '../proxmox-state';
-import {destinationCategory as category,destinationReading,destinationEndpoint,destinationHistory} from '../destination-presentation';
+import {destinationCategory as category,destinationReading,destinationEndpoint} from '../destination-presentation';
 import {Card,Badge,Tabs,Modal} from '../components/UI';
 
 const colors=['#168dff','#00d598','#ac57f5','#ff9b19','#26cbd4'];
@@ -145,9 +144,8 @@ function DestinationDetails({current,detail,admin,inventoryError,refresh,onBrows
 }
 
 function DestinationAnalytics({rows,current,detail,select,grouped,gradient,complete,selectCategory}:any){
- const history=destinationHistory(Array.isArray(detail.data?.history)?detail.data.history:[]),historyIssue=(detail.data?.errors||[]).some((value:string)=>value.startsWith('history:'));
  return <div className="destination-bottom"><Card><h3>Storage Usage by Destination</h3><div className="destination-usage-list">{rows.map((row:any,index:number)=><button key={row.id} onClick={()=>select(row)} title={`${row.name} / ${row.node}`}><span><HardDrive size={15}/><span>{row.name}<small>{row.shared?'Shared':row.node}</small></span></span><Usage row={row} color={colors[index%colors.length]}/><b>{bytes(row.capacity)}</b></button>)}</div>{!rows.length&&<div className="destination-empty"><HardDrive size={25}/><small>No storage readings available.</small></div>}</Card>
   <Card><h3>Destination Types</h3><div className="destination-distribution"><div className="destination-ring" role="img" aria-label={`${rows.length} returned destinations by type`} style={{background:rows.length?`conic-gradient(${gradient})`:'#19364a'}}><strong>{complete?rows.length:'N/A'}<small>{complete?'Destinations':'Partial inventory'}</small></strong></div><div className="destination-legend">{grouped.map((row:any,index:number)=><button key={row.name} onClick={()=>selectCategory(row.name)}><i style={{background:colors[index]}}/><span>{row.name}</span><b>{row.count} ({rows.length?Math.round(row.count/rows.length*100):0}%)</b></button>)}</div></div>{!rows.length&&<small className="muted">No destination types reported.</small>}</Card>
-  <Card><div className="widget-title"><h3>Storage Usage History</h3><small>Last 7 days</small></div><small className="destination-history-caption">{current?`${current.name} · ${current.node} · GiB`:'Select a destination'}</small><div className="destination-chart-key"><span><i style={{background:'#168dff'}}/>Used</span><span><i style={{background:'#00d598'}}/>Capacity</span></div>{current&&!detail.error&&!historyIssue&&history.some(row=>row.used!==null||row.total!==null)?<ResponsiveContainer width="100%" height={140}><AreaChart data={history}><CartesianGrid stroke="#16364b" vertical={false}/><XAxis dataKey="time" tickFormatter={value=>new Date(value).toLocaleDateString([],{month:'short',day:'numeric'})} minTickGap={30} tick={{fontSize:9}}/><YAxis width={36} tick={{fontSize:9}}/><Tooltip labelFormatter={value=>new Date(Number(value)).toLocaleString()} formatter={(value:number)=>[`${value.toFixed(1)} GiB`]} contentStyle={{background:'#071e30',border:'1px solid #1c445b',fontSize:11}}/><Area dataKey="total" name="Capacity" stroke="#00d598" fill="#00d5980b" connectNulls={false}/><Area dataKey="used" name="Used" stroke="#168dff" fill="#168dff30" connectNulls={false}/></AreaChart></ResponsiveContainer>:<div className="destination-empty"><Clock size={26}/><small>{detail.loading?<ReportLoading/>:detail.error||historyIssue?'Storage history unavailable.':'No storage usage history reported.'}</small>{(detail.error||historyIssue)&&<button className="destination-text-button" onClick={()=>detail.refresh()}>Retry History</button>}</div>}<small className="destination-history-note">Provider capacity and usage readings.</small></Card>
+  {current&&<Link className="btn secondary" to={'/monitoring?'+new URLSearchParams({tab:'Performance Reports',source:'node:'+current.node,pool:current.name,timeframe:'week'})}>View capacity history</Link>}
  </div>;
 }
