@@ -22,11 +22,11 @@
 .cluster-topology-nodes,.cluster-topology-guests{list-style:none;margin:0;padding:0}
 .cluster-topology-nodes{display:grid;gap:24px}
 .cluster-topology-branch{display:grid;grid-template-columns:var(--host-width) max-content;align-items:center;column-gap:var(--map-gap)}
-.topology-host-lane{align-self:stretch;display:flex;align-items:center;justify-content:center;padding:18px 10px;border-radius:16px;background:color-mix(in srgb,var(--theme-highlight) 62%,var(--theme-input))}
+.topology-host-lane{align-self:stretch;display:flex;align-items:center;justify-content:center;padding:18px 10px}
 .cluster-topology-guests{display:grid;grid-template-columns:repeat(var(--topology-columns),var(--guest-width));gap:34px 18px;padding-block:20px}
 .cluster-topology-guests>li{min-width:0}
-.cluster-topology .cluster-topology-node,.cluster-topology .cluster-topology-guest,.cluster-topology-root{position:relative;z-index:2;box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:12px;text-align:start;border:1px solid var(--theme-border);border-radius:12px;background:var(--theme-surface);color:var(--theme-text);box-shadow:0 2px 4px color-mix(in srgb,var(--theme-text) 6%,transparent);font:inherit}
-.cluster-topology-root{width:max-content;min-width:164px;max-width:250px;margin-top:30px}
+.cluster-topology .cluster-topology-node,.cluster-topology .cluster-topology-guest,.cluster-topology-root{position:relative;z-index:2;box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:12px;text-align:start;border:1px solid var(--theme-border);border-radius:12px;background:var(--theme-surface,#10243a);color:var(--theme-text);box-shadow:0 2px 4px color-mix(in srgb,var(--theme-text) 6%,transparent);font:inherit}
+.cluster-topology-root{width:max-content;min-width:164px;max-width:250px}
 .cluster-topology .cluster-topology-node{width:100%;border-color:color-mix(in srgb,var(--app-accent) 58%,var(--theme-border))}
 .cluster-topology .cluster-topology-guest{width:100%;min-height:62px}
 .cluster-topology :is(.cluster-topology-node,.cluster-topology-guest){cursor:pointer}
@@ -44,19 +44,29 @@
 .topology-system-state{text-transform:capitalize}
 .topology-guest-address{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .topology-guest-meta{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 8px;min-width:0}
-.topology-vlan-label{display:block;margin:4px 12px 0}
+.topology-vlan-label{display:inline}
+.topology-backup-mark{display:flex;align-items:center;gap:4px;color:var(--theme-muted);font-size:.72rem}
+.topology-backup-mark svg{color:var(--theme-icon);flex-shrink:0}
+.cluster-topology button[data-highlighted="true"]{outline:3px solid var(--theme-icon,#38bdf8);outline-offset:2px}
 .cluster-topology-warning{color:var(--theme-warning,var(--theme-muted));font-size:.72rem}
 .cluster-topology-empty{align-self:center;max-width:220px;color:var(--theme-muted);font-size:.85rem}
 .cluster-topology-links{position:absolute;inset:0;z-index:1;width:100%;height:100%;pointer-events:none}
 .cluster-topology-links path{fill:none;stroke:color-mix(in srgb,var(--app-accent) 58%,var(--theme-muted));stroke-width:1.8;stroke-dasharray:5 7;stroke-linecap:round;stroke-linejoin:round}
+.cluster-topology-links path[data-highlighted="true"]{stroke:var(--theme-icon,#38bdf8);stroke-width:2.5}
+.cluster-topology-links .map-link-hit{stroke:transparent;stroke-width:12;stroke-dasharray:none;pointer-events:stroke;cursor:pointer}
+.cluster-topology-links .map-link-hit:focus-visible{stroke:var(--theme-icon,#38bdf8);stroke-width:4;outline:none}
+.cluster-topology-links .map-availability{stroke:#23bf88;stroke-width:5;stroke-dasharray:0 100;stroke-dashoffset:-50}
 .cluster-topology-links .map-pulse{stroke:#33c8e2;stroke-width:3;stroke-dasharray:2 38}
 .cluster-topology-links .tx{stroke:#a581e5;stroke-dashoffset:20}
 .cluster-topology>small{display:block;margin-top:12px;line-height:1.5;font-size:.75rem}
-.map-flow-key i,.map-flow-key em{display:inline-block;width:8px;height:8px;border-radius:50%;background:#33c8e2}
+.map-flow-key i,.map-flow-key em,.map-availability-key{display:inline-block;width:8px;height:8px;border-radius:50%;background:#33c8e2}
 .map-flow-key em{background:#a581e5}
+.map-availability-key{background:#23bf88}
+@keyframes map-availability{from{stroke-dashoffset:0}to{stroke-dashoffset:-100}}
 @keyframes map-in{to{stroke-dashoffset:-40}}
 @keyframes map-out{to{stroke-dashoffset:60}}
 @media(prefers-reduced-motion:no-preference){
+ .cluster-topology-links .map-availability{animation:map-availability 2.6s linear infinite}
  .cluster-topology-links .rx{animation:map-in 1.8s linear infinite}
  .cluster-topology-links .tx{animation:map-out 1.8s linear infinite}
 }

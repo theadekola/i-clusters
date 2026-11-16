@@ -11,20 +11,22 @@ const executable=process.env.ICLUSTERS_CHROMIUM_EXECUTABLE||(await import(pathTo
 const browser=await chromium.launch({executablePath:await executable,args:['--no-sandbox','--disable-gpu','--disable-dev-shm-usage','--no-zygote','--single-process'],headless:true});
 const output=process.env.ICLUSTERS_LAYOUT_ARTIFACTS||'/tmp/iclusters-popup-layout';await fs.mkdir(output,{recursive:true});
 const bundle=await build({stdin:{loader:'tsx',resolveDir:path.join(web,'src'),contents:`
-import Alerts from './pages/Alerts';import NetworkTraffic from './pages/NetworkTraffic';import Backups from './pages/Backups';import BrowserCertificateSetup from './components/BrowserCertificateSetup';import React from 'react';import {createRoot} from 'react-dom/client';import {Modal} from './components/UI';import DiskConfiguration from './components/DiskConfiguration';import PasswordInput from './components/PasswordInput';import DockerEvents from './pages/DockerEvents';import DockerImages from './pages/DockerImages';import DockerVolumes from './pages/DockerVolumes';import DockerUpdates from './components/DockerUpdates';import ClusterTopology from './components/ClusterTopology';import ClusterNodes from './pages/ClusterNodes';import ProxmoxNetworks from './pages/ProxmoxNetworks';import {MemoryRouter} from 'react-router-dom';
+import Alerts from './pages/Alerts';import NetworkTraffic from './pages/NetworkTraffic';import Backups from './pages/Backups';import BrowserCertificateSetup from './components/BrowserCertificateSetup';import React from 'react';import {createRoot} from 'react-dom/client';import {Modal} from './components/UI';import DiskConfiguration from './components/DiskConfiguration';import PasswordInput from './components/PasswordInput';import DockerEvents from './pages/DockerEvents';import DockerImages from './pages/DockerImages';import DockerVolumes from './pages/DockerVolumes';import DockerUpdates from './components/DockerUpdates';import ClusterTopology from './components/ClusterTopology';import Network from './pages/Network';import ClusterNodes from './pages/ClusterNodes';import ProxmoxNetworks from './pages/ProxmoxNetworks';import {MemoryRouter} from 'react-router-dom';
 const root=createRoot(document.getElementById('root'));
 window.renderSample=(sample)=>root.render(<div className={sample}><Modal open title={sample==='disk'?'Configure Disk':'Popup form'} onClose={()=>{}}>{sample==='disk'?<DiskConfiguration onBusy={()=>{}} onSaved={()=>{}}/>:<form className={'form-grid '+(sample==='guest-permission-form'?'guest-permission-form':'')}><label><input type="checkbox" defaultChecked/><span>Enable scheduled backup</span></label><label><input type="radio" name="mode"/><span>Selected nodes</span></label><label><span><input type="checkbox"/> I approve this operation</span></label><label>Storage<select><option>backup-ssd</option></select></label><label>Destination<input value="/mnt/pve/backup-ssd" readOnly/></label><label>SSH password<PasswordInput aria-label="SSH password" name="password" defaultValue="fixture"/></label><button type="button" className="btn primary">Save Changes</button></form>}</Modal></div>);
 const hash='a'.repeat(64),networks=Array.from({length:8},(_,i)=>({id:'net'+i,name:'application-network-'+i,driver:'bridge',scope:'local',subnets:'172.20.0.0/16'})),containers=[{id:'wiki',name:'wikijs',status:'running',portBindings:[{hostIp:'192.0.2.10',hostPort:8080,containerPort:80,protocol:'tcp'}],networks:{'application-network-0':{IPAddress:'172.20.0.9'}},mounts:[{Type:'volume',Name:hash,Destination:'/wiki/data/content',RW:true}]}];
 window.renderDocker=(sample)=>{const Component={images:DockerImages,volumes:DockerVolumes}[sample];root.render(<main className="content"><Component key={sample} data={{host:{hostname:'fixture'},networks,containers,images:[{id:'sha256:'+hash,name:'postgres:16, postgres@sha256:'+hash,tags:['postgres:16'],size:1024}],volumes:[{id:hash,name:hash,mountpoint:'/var/lib/docker/volumes/'+hash+'/_data'}]}} enabled admin refresh={async()=>{}}/></main>)};
 window.renderPveNetwork=()=>root.render(<MemoryRouter><main className="content"><ProxmoxNetworks role="viewer"/></main></MemoryRouter>);
 window.renderEvents=()=>root.render(<main className="content"><DockerEvents host={{hostname:"fixture"}}/></main>);
-window.renderUpdates=()=>root.render(<main className="content"><DockerUpdates owner onUpdated={()=>{}}/></main>);const topologyData={clusterStatus:[{type:'cluster',name:'Fixture cluster'}],nodes:[{name:'node01',status:'online',ip:'192.0.2.10'},{name:'node02',status:'offline',ip:'192.0.2.11'}],vms:[{id:'100',name:'Control VM',node:'node01',status:'running',addresses:['192.0.2.100']},{id:'101',name:'Database server with a longer reported name',node:'node01',status:'running',addresses:['192.0.2.101','2001:db8::101']},...[102,103,104].map(id=>({id:String(id),name:'Guest '+id,node:'node01',status:'running'})),{id:'200',name:'Offline media server',node:'node02',status:'running',addresses:['192.0.2.200']}],lxc:[{id:'130',name:'DNS service',node:'node01',status:'running',addresses:['192.0.2.130']}]};
+window.renderUpdates=()=>root.render(<main className="content"><DockerUpdates owner onUpdated={()=>{}}/></main>);const topologyData={clusterStatus:[{type:'cluster',name:'Fixture cluster'}],nodes:[{name:'node01',status:'online',ip:'192.0.2.10'},{name:'node02',status:'offline',ip:'192.0.2.11'}],vms:[{id:'100',name:'Control VM',node:'node01',status:'running',addresses:['192.0.2.100']},{id:'101',name:'Database server with a longer reported name',node:'node01',status:'running',addresses:['192.0.2.101','2001:db8::101']},...[102,103,104,105].map(id=>({id:String(id),name:'Guest '+id,node:'node01',status:'running'})),{id:'200',name:'Offline media server',node:'node02',status:'running',addresses:['192.0.2.200']}],lxc:[{id:'130',name:'DNS service',node:'node01',status:'running',addresses:['192.0.2.130']}]};
 window.renderAlerts=(history)=>root.render(<MemoryRouter key={history?'history':'active'} initialEntries={[history?'/alerts?tab=Alert%20History':'/alerts']}><main className="content"><Alerts/></main></MemoryRouter>);
 window.renderTraffic=()=>root.render(<MemoryRouter><main className="content"><NetworkTraffic/></main></MemoryRouter>);
 window.renderBackups=(archives)=>root.render(<MemoryRouter key={archives?'archives':'jobs'} initialEntries={[archives?'/backups?tab=Backup%20Archives':'/backups']}><main className="content"><Backups/></main></MemoryRouter>);
 window.renderCertificate=()=>root.render(<main className="content"><BrowserCertificateSetup/></main>);
 window.renderNodes=()=>root.render(<MemoryRouter><main className="content"><ClusterNodes data={{...topologyData,nodeServices:[],storage:[]}} metrics={[]} tasks={[]} network={{}} hours="24" role="viewer" refresh={async()=>{}}/></main></MemoryRouter>);
-window.renderTopology=()=>root.render(<MemoryRouter><main className="content"><ClusterTopology networkMap data={topologyData} loading={false} interfaces={[{node:'node01',telemetryStatus:'ok',status:'up',rxMbps:2,txMbps:1,networkSampledAt:new Date().toISOString()}]}/></main></MemoryRouter>);window.disposeSample=()=>root.unmount();window.renderSample('disk');`},bundle:true,loader:{'.css':'empty'},format:'iife',platform:'browser',jsx:'automatic',write:false,define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'fixture-api',setup(b){b.onResolve({filter:/\/api$/},()=>({path:'fixture-api',namespace:'fixture'}));b.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:`export const confirmedApi=()=>{throw Error('No writes in layout verification')};export async function api(path){if(path==='/proxmox/topology-connections')return {guests:[{key:'node01:qemu:100',storage:['local-lvm'],vlans:[20],networks:1}],errors:[]};if(path==='/storage/datasets')return {resources:[{id:'disk-fixture',node:'node01',vmid:100,type:'VM Volume',pool:'local-lvm',resourceId:'vm-100-disk-0'}]};if(path==='/monitoring')return {dockerFleet:{hosts:[{id:'agent:qemu/100',node:'node01',status:'reachable',inventory:{containers:[{id:'wiki',name:'Wiki fixture',status:'running'}]}}]}};if(path==='/auth/me')return {user:{role:'owner'}};if(path==='/alerts')return {alerts:[{id:'fixture-active',title:'Image update available',severity:'info',status:'active',source:'control-vm / a-very-long-service-name-to-check-select-sizing',provider:'docker',triggered:new Date().toISOString()},{id:'fixture-ack',title:'Memory high',severity:'warning',status:'acknowledged',source:'node01',provider:'proxmox',triggered:new Date().toISOString()}],rules:[]};if(path==='/backups'||path==='/backups/jobs')return {jobs:[],points:[],errors:[],archiveInventory:{configured:true,complete:true}};if(path.startsWith('/proxmox/tasks'))return {tasks:[],errors:[]};if(path==='/proxmox/network')return {nodes:[{node:'node01'}],interfaces:[{id:'n1',node:'node01',name:'vmbr0.20',type:'vlan',status:'up',address:'192.0.2.10/24'}],errors:[],complete:true};if(path.startsWith('/docker/events'))return {since:0,until:Date.now()/1000,events:[{Type:'container',Action:'start',time:Date.now()/1000,Actor:{ID:'app',Attributes:{name:'Wiki'}}}]};if(path==='/docker/updates')return {rows:[{containerId:'a',name:'Grafana',image:'grafana/grafana:latest',status:'current',detail:'Up to date',remoteDigest:'sha256:fixture'},{containerId:'b',name:'n8n',image:'n8n:latest',status:'available',detail:'Update available',remoteDigest:'sha256:fixture'},{containerId:'c',name:'Wiki',image:'wiki:latest',status:'current',detail:'Up to date',remoteDigest:'sha256:fixture'}],settings:{enabled:true,intervalHours:6}};if(path.endsWith('/plan'))return new Promise(()=>{});if(path.startsWith('/docker/'))return {Id:'fixture',Name:'fixture',Architecture:'amd64',Os:'linux',volumes:[]};if(path==='/proxmox/storage-options')return {resources:[{id:'backup-ssd',type:'dir',path:'/mnt/pve/backup-ssd'}],nodes:[{node:'node01'},{node:'node02'}],connectionScope:'fixture'};return {id:'backup-ssd',type:'dir',path:'/mnt/pve/backup-ssd',content:['backup'],allowedContent:['images','rootdir','iso','vztmpl','backup','snippets','import'],nodes:['node01'],enabled:true,shared:true,revision:'fixture',connectionScope:'fixture'};}` }));}}]});
+window.fixtureTopology=topologyData;window.topologyReads=0;
+window.renderPollingMap=()=>root.render(<MemoryRouter key="polling"><main className="content"><Network/></main></MemoryRouter>);
+window.renderTopology=()=>root.render(<MemoryRouter><main className="content"><ClusterTopology networkMap data={topologyData} loading={false} interfaces={[{node:'node01',telemetryStatus:'ok',status:'up',rxMbps:2,txMbps:1,networkSampledAt:new Date().toISOString()}]}/></main></MemoryRouter>);window.disposeSample=()=>root.unmount();window.renderSample('disk');`},bundle:true,loader:{'.css':'empty'},format:'iife',platform:'browser',jsx:'automatic',write:false,define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'fixture-api',setup(b){b.onResolve({filter:/\/api$/},()=>({path:'fixture-api',namespace:'fixture'}));b.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:`export const confirmedApi=()=>{throw Error('No writes in layout verification')};export const setDockerHost=()=>{};export async function api(path){if(path==='/proxmox'){window.topologyReads++;return window.fixtureTopology}if(path==='/network')return {interfaces:[],connectors:[]};if(path==='/proxmox/topology-connections')return {guests:[{key:'node01:qemu:100',storage:['local-lvm'],vlans:[20],networks:1}],errors:[]};if(path==='/storage/datasets')return {resources:[{id:'disk-fixture',node:'node01',vmid:100,type:'VM Volume',pool:'local-lvm',resourceId:'vm-100-disk-0'}]};if(path==='/monitoring')return {dockerFleet:{hosts:[{id:'agent:qemu/100',node:'node01',status:'reachable',inventory:{containers:[{id:'wiki',name:'Wiki fixture',status:'running'}]}}]}};if(path==='/auth/me')return {user:{role:'owner'}};if(path==='/alerts')return {alerts:[{id:'fixture-active',title:'Image update available',severity:'info',status:'active',source:'control-vm / a-very-long-service-name-to-check-select-sizing',provider:'docker',triggered:new Date().toISOString()},{id:'fixture-ack',title:'Memory high',severity:'warning',status:'acknowledged',source:'node01',provider:'proxmox',triggered:new Date().toISOString()}],rules:[]};if(path==='/backups'||path==='/backups/jobs')return {jobs:[],points:[{node:'node01',type:'qemu',vmid:100}],errors:[],archiveInventory:{configured:true,complete:false,completeNodes:['node01']}};if(path.startsWith('/proxmox/tasks'))return {tasks:[],errors:[]};if(path==='/proxmox/network')return {nodes:[{node:'node01'}],interfaces:[{id:'n1',node:'node01',name:'vmbr0.20',type:'vlan',status:'up',address:'192.0.2.10/24'}],errors:[],complete:true};if(path.startsWith('/docker/events'))return {since:0,until:Date.now()/1000,events:[{Type:'container',Action:'start',time:Date.now()/1000,Actor:{ID:'app',Attributes:{name:'Wiki'}}}]};if(path==='/docker/updates')return {rows:[{containerId:'a',name:'Grafana',image:'grafana/grafana:latest',status:'current',detail:'Up to date',remoteDigest:'sha256:fixture'},{containerId:'b',name:'n8n',image:'n8n:latest',status:'available',detail:'Update available',remoteDigest:'sha256:fixture'},{containerId:'c',name:'Wiki',image:'wiki:latest',status:'current',detail:'Up to date',remoteDigest:'sha256:fixture'}],settings:{enabled:true,intervalHours:6}};if(path.endsWith('/plan'))return new Promise(()=>{});if(path.startsWith('/docker/'))return {Id:'fixture',Name:'fixture',Architecture:'amd64',Os:'linux',volumes:[]};if(path==='/proxmox/storage-options')return {resources:[{id:'backup-ssd',type:'dir',path:'/mnt/pve/backup-ssd'}],nodes:[{node:'node01'},{node:'node02'}],connectionScope:'fixture'};return {id:'backup-ssd',type:'dir',path:'/mnt/pve/backup-ssd',content:['backup'],allowedContent:['images','rootdir','iso','vztmpl','backup','snippets','import'],nodes:['node01'],enabled:true,shared:true,revision:'fixture',connectionScope:'fixture'};}` }));}}]});
 const assets=await fs.readdir(path.join(web,'dist/assets'));const css=(await Promise.all(assets.filter(p=>p.endsWith('.css')).map(p=>fs.readFile(path.join(web,'dist/assets',p),'utf8')))).join('\n');
 const page=await browser.newPage();await page.route('**/*',route=>new URL(route.request().url()).pathname==='/local-ca.crt'?route.fulfill({contentType:'application/x-x509-ca-cert',body:'-----BEGIN CERTIFICATE-----\nMAA=\n-----END CERTIFICATE-----\n'}):route.request().resourceType()==='document'?route.fulfill({contentType:'text/html',body:'<html><body></body></html>'}):route.abort());await page.goto('https://layout-fixture.test/');
 try{
@@ -110,11 +112,11 @@ try{
   await page.getByRole('button',{name:'Expand',exact:true}).waitFor();
   await page.getByLabel('Zoom in topology',{exact:true}).click();assert.equal(await page.locator('.cluster-topology-canvas').evaluate(el=>el.style.zoom),'1.1');
   const perRow=page.getByRole('combobox',{name:'Guests per row',exact:true});
-  assert.equal(await perRow.inputValue(),'3');
+  assert.equal(await perRow.inputValue(),'4');
   assert.equal(await page.getByRole('button',{name:'Layout',exact:true}).count(),0);
   assert.equal(await page.getByRole('combobox',{name:'Layout',exact:true}).count(),0);
-  assert.deepEqual(await perRow.locator('option').evaluateAll(options=>options.map(o=>o.value)),['1','2','3','4','5']);
-  for(const count of [3,2,4,5,1]){
+  assert.deepEqual(await perRow.locator('option').evaluateAll(options=>options.map(o=>o.value)),['3','4','5','6','7']);
+  for(const count of [4,5,6,7,3]){
    await perRow.selectOption(String(count));
    const branches=await page.locator('.cluster-topology-guests').evaluateAll(lists=>lists.map(list=>getComputedStyle(list).gridTemplateColumns.split(' ').length));
    assert.deepEqual(branches,[count,1],'Each host uses only as many columns as it needs');
@@ -128,10 +130,38 @@ try{
     });
    });
   }
+  const centerError=await page.evaluate(()=>{
+   const center=el=>{const rect=el.getBoundingClientRect();return rect.top+rect.height/2};
+   const hosts=[...document.querySelectorAll('.cluster-topology-node')];
+   return Math.abs(center(document.querySelector('.cluster-topology-root'))-(center(hosts[0])+center(hosts.at(-1)))/2);
+  });
+  assert.ok(centerError<2,'Cluster is centered between the host cards');
+  const control=page.getByRole('button',{name:'Inspect VM Control VM on node01',exact:true});
+  assert.equal(await control.locator('.topology-system-state').count(),0);
+  assert.equal(await control.getByText('running',{exact:true}).evaluate(el=>getComputedStyle(el).clipPath),'inset(50%)');
+  await page.getByRole('switch',{name:'Backup',exact:true}).check();
+  await control.getByText('Backup archive',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Inspect CT DNS service on node01',exact:true}).getByText('No archive reported').waitFor();
+  await page.getByRole('button',{name:'Inspect VM Offline media server on node02',exact:true}).getByText('Backup status unknown').waitFor();
+  await page.getByRole('switch',{name:'Backup',exact:true}).uncheck();
+  assert.equal(await page.locator('.topology-backup-mark').count(),0);
+  const hit=page.getByRole('button',{name:'Highlight connection to VM Control VM on node01',exact:true});
+  await control.scrollIntoViewIfNeeded();
+  const tip=await hit.evaluate(el=>{
+   const {x,y}=el.getPointAtLength(el.getTotalLength()-5).matrixTransform(el.getScreenCTM());
+   return {x,y};
+  });
+  await page.mouse.click(tip.x,tip.y);
+  assert.equal(await control.getAttribute('data-highlighted'),'true');
+  assert.ok(await control.evaluate(el=>parseFloat(getComputedStyle(el).outlineWidth)>=2),'The selected guest has a visible outline');
+  const ctLink=page.getByRole('button',{name:'Highlight connection to CT DNS service on node01',exact:true});
+  await ctLink.focus();await page.keyboard.press('Enter');
+  assert.equal(await control.getAttribute('data-highlighted'),'false');
+  assert.equal(await page.locator('.cluster-topology-guest[data-highlighted=true]').getAttribute('data-flow'),'node01:lxc:130');
   await page.getByRole('switch',{name:'Storage',exact:true}).check();
   await page.getByRole('switch',{name:'VLAN',exact:true}).check();
   await page.locator('.topology-storage-pool').first().waitFor();
-  await page.getByText('VLAN 20',{exact:true}).waitFor();
+  await control.getByText('VLAN 20',{exact:true}).waitFor();
   assert.equal(await page.locator('.topology-storage-pool').count(),1);
   assert.equal(await page.locator('path.storage-link').count(),1);
   await page.getByRole('switch',{name:'IP address',exact:true}).check();
@@ -169,6 +199,39 @@ try{
    if(!history){assert.equal(await page.locator('.active-alert-table tbody tr').count(),2,'acknowledged alert stays in Active view');await page.getByLabel('Alert status',{exact:true}).selectOption('acknowledged');assert.equal(await page.locator('.active-alert-table tbody tr').count(),1);await page.getByLabel('Reset alert filters',{exact:true}).click();assert.equal(await page.locator('.active-alert-table tbody tr').count(),2)}
    if(width>=1280){const centers=await toolbar.locator(history?':scope>.history-search,:scope>select':':scope>label,:scope>select,:scope>button').evaluateAll(elements=>elements.map(el=>{const r=el.getBoundingClientRect();return r.y+r.height/2}));assert.ok(Math.max(...centers)-Math.min(...centers)<3,`${history?'history':'active'} alert filters share a desktop row`)}
    await page.screenshot({path:path.join(output,`alert-${history?'history':'active'}-filters-${width}.png`)});
+  }
+  if(width===1280){
+   await page.clock.install();
+   await page.evaluate(()=>window.renderPollingMap());
+   const active=key=>page.locator('.map-availability[data-target="'+key+'"]');
+   const vm=active('node01:qemu:100'),ct=active('node01:lxc:130'),host=active('node:node01');
+   await vm.waitFor({state:'attached'});await host.waitFor({state:'attached'});
+   const reads=await page.evaluate(()=>window.topologyReads);
+   await page.clock.fastForward(65000);
+   await page.waitForFunction(count=>window.topologyReads>count,reads);
+   const offset=await vm.evaluate(el=>getComputedStyle(el).strokeDashoffset);
+   await page.waitForFunction(start=>getComputedStyle(document.querySelector('.map-availability[data-target="node01:qemu:100"]')).strokeDashoffset!==start,offset);
+   await page.evaluate(()=>{
+    const data=window.fixtureTopology;
+    window.fixtureTopology={...data,vms:data.vms.map(vm=>vm.id==='100'?{...vm,status:'stopped'}:vm)};
+   });
+   await page.clock.fastForward(31000);
+   await vm.waitFor({state:'detached'});assert.equal(await ct.count(),1);
+   await page.evaluate(()=>{
+    const data=window.fixtureTopology;
+    window.fixtureTopology={...data,vms:data.vms.map(vm=>({...vm,status:'running'})),nodes:data.nodes.map(n=>({...n,status:'offline'}))};
+   });
+   await page.clock.fastForward(31000);
+   await ct.waitFor({state:'detached'});assert.equal(await host.count(),0);
+   await page.evaluate(()=>{
+    const data=window.fixtureTopology;
+    window.fixtureTopology={...data,nodes:data.nodes.map(n=>({...n,status:'online'}))};
+   });
+   await page.clock.fastForward(31000);
+   await vm.waitFor({state:'attached'});await ct.waitFor({state:'attached'});await host.waitFor({state:'attached'});
+   await page.emulateMedia({reducedMotion:'reduce'});
+   assert.equal(await vm.evaluate(el=>getComputedStyle(el).animationName),'none');
+   console.log('Topology polling, ongoing animation, offline transitions and recovery passed');
   }
   console.log(`Popup geometry passed at ${width}px`);await page.evaluate(()=>window.disposeSample());
  }
