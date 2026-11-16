@@ -10,8 +10,8 @@ let sessionRevoked=false,sessionUnavailable=false;
 const user={id:'actual-user-id',user_id:'actual-user-id',email:'owner@test',name:'Owner',role:'owner',status:'active'};
 pool.query=async(sql,args)=>{
  if(sql.startsWith('INSERT INTO auth_sessions'))return {rows:[],rowCount:1};
- if(sql.startsWith('SELECT id FROM auth_sessions')&&sessionUnavailable)throw Error('Database unavailable');
- if(sql.startsWith('SELECT id FROM auth_sessions'))return {rows:sessionRevoked?[]:[{id:args[0]}],rowCount:sessionRevoked?0:1};
+ if(sql.includes('SELECT id FROM auth_sessions')&&sessionUnavailable)throw Error('Database unavailable');
+ if(sql.includes('SELECT id FROM auth_sessions'))return {rows:sessionRevoked?[]:[{id:args[0]}],rowCount:sessionRevoked?0:1};
  if(sql.startsWith('INSERT INTO refresh_tokens')){assert.ok(!tokens.has(args[1]));tokens.set(args[1],{id:crypto.randomUUID(),user_id:args[0],revoked:false});return {rows:[],rowCount:1};}
  if(sql.includes('FROM refresh_tokens')){const record=tokens.get(args[0]);return {rows:record&&!record.revoked?[{...user,...record}]:[],rowCount:record&&!record.revoked?1:0};}
  if(sql.startsWith('UPDATE refresh_tokens')){const record=tokens.get(args[0]);if(!record||record.revoked)return {rows:[],rowCount:0};record.revoked=true;return {rows:[record],rowCount:1};}

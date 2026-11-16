@@ -1,4 +1,6 @@
 import {createInventoryToken,forgetDevice,rememberVerifiedDevice} from './account-access.js';
+import {accountIdentity} from './username.js';
+import {PNG} from 'pngjs';
 import {Router} from 'express';
 import {sessionResponse,clearSessionCookie,browserSession} from './browser-sessions.js';
 import {issueTokens} from './security.js';
@@ -24,6 +26,15 @@ export function accountSecurityRouter({db,audit,limiter,onSessionRevoked=()=>{}}
  router.get('/tokens',wrap(async(req,res)=>{
   const result=await db.query('SELECT t.id,t.name,t.expires_at FROM account_api_tokens t JOIN users u ON u.id=t.user_id WHERE t.user_id=$1 AND t.version=u.token_version AND t.expires_at>NOW() ORDER BY t.created_at DESC',[req.user.sub]);
   res.json({tokens:result.rows});
+ }));
+ router.get('/profile-picture/:id',wrap(async(req,res)=>{
+  if(req.params.id!==req.user.sub && (!['admin','owner'].includes(req.user.role) ||
+     (req.user.permissionKeys && !req.user.permissionKeys.includes('users.view')))) throw error('Insufficient permissions',403);
+  if(!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(req.params.id))throw error('Invalid account ID');
+  const result=await db.query('SELECT profile_picture FROM users WHERE id=$1',[req.params.id]);
+  const picture=result.rows[0]?.profile_picture;
+  if(!picture)throw error('Profile picture unavailable.',404);
+  res.json({image:'data:image/png;base64,'+picture.toString('base64')});
  }));
  router.use(limiter);
  const withAccount=async(req,change)=>transaction(async c=>{
@@ -67,10 +78,30 @@ export function accountSecurityRouter({db,audit,limiter,onSessionRevoked=()=>{}}
   if(typeof bio!=='string'||bio.length>300||typeof contactEmail!=='string'||contactEmail.length>254||(contactEmail&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)))throw error('Check the contact email and bio.');
   if(typeof timeZone!=='string'||timeZone.length>100)throw error('Choose a valid time zone.');
   try{new Intl.DateTimeFormat('en',{timeZone})}catch{throw error('Choose a valid time zone.')}
-  const profile={contactEmail,bio,timeZone};
-  await db.query('UPDATE users SET name=$1,profile=$2 WHERE id=$3',[name.trim(),profile,req.user.sub]);
+  const username=Object.hasOwn(req.body,'username') ? accountIdentity({username:req.body.username}).username : null;
+  const profile={contactEmail,bio,timeZone,revision:crypto.randomUUID()};
+  let picture=null;
+  if(Object.hasOwn(req.body,'picturePixels')){
+   // Accept only the exact RGBA thumbnail. The database image is encoded here from pixels.
+   const raw=req.body.picturePixels,bytes=128*128*4;
+   if(typeof raw!=='string'||raw.length!==4*Math.ceil(bytes/3))throw error('Invalid profile picture.');
+   const pixels=Buffer.from(raw,'base64');
+   if(pixels.length!==bytes||pixels.toString('base64')!==raw)throw error('Invalid profile picture.');
+   picture=PNG.sync.write({width:128,height:128,data:pixels});
+   profile.pictureVersion=profile.revision;
+  }
+  const expected=req.body.revision??null;
+  if(expected!==null && (typeof expected!=='string'||expected.length>36))throw error('Invalid profile revision.');
+  let result;
+  try{
+   result=await db.query(`UPDATE users SET name=$1,profile=profile || $2::jsonb,
+    username=COALESCE($4,username),profile_picture=COALESCE($5::bytea,profile_picture)
+    WHERE id=$3 AND ($6::text IS NULL OR COALESCE(profile->>'revision','')=$6)
+    RETURNING name,username,profile`,[name.trim(),profile,req.user.sub,username,picture,expected]);
+  }catch(e){if(e.code==='23505')throw error('That username is already in use.',409);throw e}
+  if(!result.rowCount)throw error('This profile changed. Reopen it before saving.',409);
   await audit(req,'account.profile.update',req.user.sub,{},'success');
-  res.json({name:name.trim(),profile});
+  res.json(result.rows[0]);
  }));
  router.post('/mfa/setup',wrap(async(req,res)=>{const user=await requirePassword(db,req.user.sub,req.body.password);if(user.two_factor_enabled)throw error('MFA is already enabled.');const secret=base32(crypto.randomBytes(20));await db.query("UPDATE users SET mfa_pending_secret=$1,mfa_pending_expires=NOW()+INTERVAL '10 minutes' WHERE id=$2 AND two_factor_enabled=FALSE",[seal(secret),req.user.sub]);res.json({secret,uri:`otpauth://totp/${encodeURIComponent('i-Clusters:'+user.username)}?secret=${secret}&issuer=i-Clusters&algorithm=SHA1&digits=6&period=30`,message:'Add this setup key to your authenticator app, then enter its six-digit code. MFA is not enabled until verified.'})}));
  router.post('/mfa/enable',wrap(async(req,res)=>{await requirePassword(db,req.user.sub,req.body.password);const codes=recoveryCodes();const version=await transaction(async c=>{const r=await c.query('SELECT * FROM users WHERE id=$1 FOR UPDATE',[req.user.sub]),u=r.rows[0];await requirePassword(c,req.user.sub,req.body.password);if(u.two_factor_enabled||!u.mfa_pending_secret||Date.parse(u.mfa_pending_expires)<=Date.now())throw error('Authenticator setup expired. Start again.');const step=matchingStep(unseal(u.mfa_pending_secret),req.body.code);if(step===null)throw error('Enter a valid authenticator code.',401);await c.query('UPDATE users SET two_factor_enabled=TRUE,totp_secret=mfa_pending_secret,mfa_pending_secret=NULL,mfa_pending_expires=NULL,totp_last_step=$1 WHERE id=$2',[step,u.id]);await c.query('DELETE FROM mfa_recovery_codes WHERE user_id=$1',[u.id]);for(const code of codes)await c.query('INSERT INTO mfa_recovery_codes(user_id,code_hash) VALUES($1,$2)',[u.id,digest(code.replace(/-/g,''))]);return invalidate(c,u.id)});await audit(req,'account.mfa.enable',req.user.sub,{},'success');sessionResponse(req,res,{ok:true,...await renewed(req,version),recoveryCodes:codes,message:'MFA enabled. Save these recovery codes securely. Other devices have been signed out.'})}));

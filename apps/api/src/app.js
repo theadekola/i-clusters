@@ -85,6 +85,7 @@ import { clusterStore,clusterConfig,publicCluster,validateCluster } from './clus
 import {productRouter,countAction} from './product-usage.js';
 import { pool } from './db.js';
 import { auth,requireRole,verifyAccessToken,verifyPassword,issueTokens,rotateRefreshToken,roles } from './security.js';
+import {accountActivity,sessionTag} from './profile-activity.js';
 import {searchAudit} from './audit-search.js';
 import { writeAudit } from './audit.js';
 import { get,mutate } from './store.js';
@@ -139,6 +140,15 @@ export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:c
   }finally{if(req.body){req.body.password='';delete req.body.setupToken;}}
  });
  app.get('/api/health',async(req,res,next)=>{try{await db.query('SELECT 1');res.json({ok:true,version:buildInfo.version,time:new Date().toISOString()});}catch(e){res.status(503).json({ok:false,error:'Database is unavailable'});}});
+ const finishSignIn=async(req,res,user,remember)=>{
+   const device=String(req.get('User-Agent')||'').slice(0,200);
+   const tokens=await issueTokens(user,{remember,device});
+   const sid=verifyAccessToken(tokens.accessToken).sid;
+   await db.query('UPDATE users SET last_login=NOW() WHERE id=$1',[user.id]);
+   req.user={sub:user.id,role:user.role,email:user.email||user.username};
+   await audit(req,'auth.login',user.id,{device,sessionTag:sessionTag(sid)},'success');
+   sessionResponse(req,res,{user:{id:user.id,email:user.email,username:user.username,name:user.name,role:user.role},...tokens});
+ };
  app.post('/api/auth/login',loginLimiter,async(req,res)=>{
    browserSession(req);
    const email=required(req.body.username??req.body.email,'Username'),password=req.body.password;
@@ -146,12 +156,11 @@ export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:c
    const user=await verifyPassword(email,password);if(user)req.activityUser={sub:user.id,role:user.role};if(!user)return res.status(401).json({error:'Invalid credentials'});
 
    if(user.two_factor_enabled&&!(req.body.remember===true&&await knownDevice(db,req,user)))return res.json(await beginMfaLogin(db,user,req.body.remember===true));
-   await db.query('UPDATE users SET last_login=NOW() WHERE id=$1',[user.id]);
-   sessionResponse(req,res,{user:{id:user.id,email:user.email,username:user.username,name:user.name,role:user.role},...await issueTokens(user,{remember:req.body.remember===true,device:req.get('User-Agent')})});
+   await finishSignIn(req,res,user,req.body.remember===true);
  });
  app.post('/api/auth/refresh',loginLimiter,async(req,res)=>{try{sessionResponse(req,res,await rotateRefreshToken(refreshCredential(req)));}catch(e){res.status(e.status===503?503:401).json({error:e.status===503?e.message:'Refresh token rejected'});}});
 
- app.post('/api/auth/mfa',loginLimiter,async(req,res)=>{try{browserSession(req);const {user,remember}=await completeMfaLogin(db,req.body.challengeToken,req.body.code);if(remember)await rememberVerifiedDevice(db,req,res,user);req.activityUser={sub:user.id,role:user.role};await db.query('UPDATE users SET last_login=NOW() WHERE id=$1',[user.id]);sessionResponse(req,res,{user:{id:user.id,username:user.username,name:user.name,role:user.role},...await issueTokens(user,{remember,device:req.get('User-Agent')})});}catch(e){res.status(e.status||503).json({error:e.status?e.message:'Account verification is temporarily unavailable.'});}});
+ app.post('/api/auth/mfa',loginLimiter,async(req,res)=>{try{browserSession(req);const {user,remember}=await completeMfaLogin(db,req.body.challengeToken,req.body.code);if(remember)await rememberVerifiedDevice(db,req,res,user);req.activityUser={sub:user.id,role:user.role};await finishSignIn(req,res,user,remember);}catch(e){res.status(e.status||503).json({error:e.status?e.message:'Account verification is temporarily unavailable.'});}});
  app.get('/api/auth/me',authenticate,(req,res)=>res.json({user:req.user}));
  app.use('/api',authenticate);
  app.use('/api',(req,res,next)=>{if(!['GET','HEAD'].includes(req.method)&&(process.env.ICLUSTERS_CONTROLLER_DATA||process.env.DATA_DIR)&&existsSync((process.env.ICLUSTERS_CONTROLLER_DATA||process.env.DATA_DIR)+'/maintenance.json'))return res.status(503).json({error:'Controller maintenance is in progress. Retry after it completes.'});next();});
@@ -617,7 +626,7 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
    if(user.role==='owner'||roles[user.role]>=roles[req.user.role])throw httpError('Only lower-privilege non-owner accounts can be changed',403);
    return (await db.query(`UPDATE users SET status=CASE status WHEN 'active' THEN 'inactive' ELSE 'active' END WHERE id=$1 RETURNING id,name,status`,[req.params.id])).rows[0];
  },true);
- read('/audit',async req=>req.query.size?searchAudit(db,process.env.ICLUSTERS_CLUSTER_PROFILE||'default',req.query):({logs:(await db.query(`SELECT id::text,created_at AS time,COALESCE(user_email,'system') AS "user",action,resource,details,status,COALESCE(ip,'-') ip FROM audit_logs WHERE cluster_id=$1 ORDER BY created_at DESC LIMIT 500`,[process.env.ICLUSTERS_CLUSTER_PROFILE||'default'])).rows}),'auditor');
+ read('/audit',async req=>req.query.accountId!==undefined?accountActivity(db,process.env.ICLUSTERS_CLUSTER_PROFILE||'default',req.query.accountId,req.user):req.query.size?searchAudit(db,process.env.ICLUSTERS_CLUSTER_PROFILE||'default',req.query):({logs:(await db.query(`SELECT id::text,created_at AS time,COALESCE(user_email,'system') AS "user",action,resource,details,status,COALESCE(ip,'-') ip FROM audit_logs WHERE cluster_id=$1 ORDER BY created_at DESC LIMIT 500`,[process.env.ICLUSTERS_CLUSTER_PROFILE||'default'])).rows}),'auditor');
  const recoveryTests=createRecoveryTests();
  read('/recovery-tests',()=>recoveryTests.list(),'admin');
  read('/recovery-tests/last-verified',()=>({verifiedAt:recoveryTests.list().tests.filter(row=>row.dataVerified&&row.verifiedAt).map(row=>row.verifiedAt).sort().at(-1)||null}));

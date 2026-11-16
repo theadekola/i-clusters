@@ -5,11 +5,13 @@ import {Badge,Modal,tabKeys} from './UI';
 import {useApi} from '../hooks';
 import {confirmedApi} from '../api';
 import {isActionCancelled} from '../action-cancellation';
-import {ProfileForm,ProfileActivity} from './ProfilePanels';
+import {AccountOverview,ProfileForm,SavedPicture} from './ProfilePanels';
+import AccountActivity from './AccountActivity';
 import ReportLoading from './ReportLoading';
 import AccountSecurity, {type SecurityPanel} from './AccountSecurity';
 import '../pages/settings-overview.css';
 import './account-dialog.css';
+import './profile-activity.css';
 export const roleNames:any={owner:'Owner',admin:'Administrator',operator:'Operator',auditor:'Auditor',viewer:'Viewer'};
 export const ranks:any={viewer:10,auditor:20,operator:30,admin:40,owner:50};
 export const date=(v:any)=>{if(!v)return 'Not reported';const d=new Date(v);return Number.isFinite(d.getTime())?d.toLocaleString([], {dateStyle:'medium',timeStyle:'short'}):'Not reported'};
@@ -22,7 +24,7 @@ function ClusterAccess({account,onSaved}:{account:any;onSaved:()=>Promise<void>}
  {roles===null?<p>Account role applies across the installation.</p>:clusters.data?.clusters.map((c:any)=><label key={c.id}>{c.name}<select value={roles[c.id]||''} onChange={e=>{const next={...roles};if(e.target.value)next[c.id]=e.target.value;else delete next[c.id];setRoles(next)}}><option value="">No access</option>{['viewer','auditor','operator','admin'].filter(r=>ranks[r]<=ranks[account.role]).map(r=><option key={r} value={r}>{roleNames[r]}</option>)}</select></label>)}
  {error&&<p role="alert">{error}</p>}<button type="button" className="btn secondary" disabled={pending} onClick={()=>setRoles(account.clusterRoles??null)}>Discard</button> <button className="btn primary" disabled={!clusters.data||pending} onClick={save}>Save cluster access</button></fieldset>;
 }
-export function Avatar({user:u}:{user:any}){return <span className={`users-avatar role-${u.role}`} aria-hidden="true">{(u.name||u.email||'?').split(/\s+/).slice(0,2).map((s:string)=>s[0]).join('').toUpperCase()}<i className={u.status==='active'?'online':''}/></span>}
+export function Avatar({user:u}:{user:any}){return <span className={`users-avatar role-${u.role}`} aria-hidden="true">{(u.name||u.email||'?').split(/\s+/).slice(0,2).map((s:string)=>s[0]).join('').toUpperCase()}{u.profile?.pictureVersion&&<SavedPicture id={u.id||u.sub} version={u.profile.pictureVersion}/>}<i className={u.status==='active'?'online':''}/></span>}
 type Props={selected:any;actor:any;self:boolean;onClose:()=>void;initialTab?:string;onSaved?:()=>Promise<void>;children?:React.ReactNode};
 export function AccountDialog({selected:account,actor,self,onClose,initialTab='Profile',onSaved,children}:Props){
  const [tab,setTab]=useState(initialTab);
@@ -32,7 +34,7 @@ export function AccountDialog({selected:account,actor,self,onClose,initialTab='P
  const [securityPanel,setSecurityPanel]=useState<SecurityPanel>(null);
  const select=(name:string)=>{setSecurityPanel(null);setTab(name)};
  const jump=(action:SecurityPanel)=>{setTab('Security');setSecurityPanel(action)};
- const activity=['owner','admin','operator','auditor'].includes(actor?.role);
+ const activity=['owner','admin','operator','auditor'].includes(actor?.role)&&(!actor.permissionKeys||actor.permissionKeys.includes('audit.view'));
  const tabs=[['Profile',UserRound],['Security',ShieldCheck],['Roles & Permissions',Layers],...(activity?[['Activity',Pulse]]:[])];
  return <Modal open title="View account" onClose={onClose}><div className="account-layout">
  <aside className="account-identity"><div className="account-cover"/><Avatar user={selected}/><h2>{selected.name||selected.username||selected.email}</h2>
@@ -47,10 +49,10 @@ export function AccountDialog({selected:account,actor,self,onClose,initialTab='P
   const link=(event.target as Element).closest<HTMLAnchorElement>('a[href]');
   if(link && link.target!=='_blank' && link.origin===window.location.origin)onClose();
  }}>
- {tab==='Profile'&&<><ProfileForm user={selected} self={self} onSaved={result=>{setPatch(result);void onSaved?.()}}/><section className="profile-section"><h3><Layers/>Account Overview</h3><div className="profile-stats"><div><UserRound/><strong>{roleNames[selected.role]}</strong><small>Role</small></div><div><ShieldCheck/><strong>{factor(selected)}</strong><small>Multi-factor authentication</small></div><div><Clock/><strong>{selected.status||'Not reported'}</strong><small>Status</small></div></div><dl className="users-facts"><dt>User ID</dt><dd>{selected.id}</dd><dt>Created</dt><dd>{date(selected.createdAt)}</dd></dl><button className="btn secondary" onClick={()=>select('Roles & Permissions')}>View permissions →</button></section></>}
+ {tab==='Profile'&&<><ProfileForm key={selected.id} user={selected} self={self} role={roleNames[selected.role]||selected.role} onSaved={result=>{setPatch(result);void onSaved?.()}}/><AccountOverview user={selected} self={self} role={roleNames[selected.role]||selected.role} onPermissions={()=>select('Roles & Permissions')}/></>}
  {tab==='Roles & Permissions'&&<AccountPermissions key={selected.id} account={selected} owner={actor?.role==='owner'}
   clusterAccess={onSaved && actor?.role==='owner' && selected.role!=='owner' ? <ClusterAccess key={selected.id+JSON.stringify(selected.clusterRoles)} account={selected} onSaved={onSaved}/> : undefined}/>}
- {tab==='Activity'&&<ProfileActivity key={selected.id} user={selected} self={self} date={date}/>}
+ {tab==='Activity'&&<AccountActivity key={selected.id} user={selected} date={date}/>}
 
  {tab==='Security'&&(self?<AccountSecurity panel={securityPanel} onPanel={setSecurityPanel}/>:<section><h3>Account Security</h3><dl className="users-facts"><dt>Status</dt><dd>{selected.status}</dd><dt>Two-factor flag</dt><dd>{factor(selected)}</dd><dt>Last login</dt><dd>{date(selected.lastLogin)}</dd></dl></section>)}
  {tab==='Profile'&&children}</div></section></div></Modal>

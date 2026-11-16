@@ -1,45 +1,91 @@
-import {useState} from 'react';
-import {Activity as Pulse,Clock,Download,Filter,KeyRound,Layers,ShieldCheck,UserRound} from 'lucide-react';
+import {useRef,useState, type ChangeEvent} from 'react';
+import {Box,Camera,Check,Crown,Layers,Monitor,Pencil,Server,ShieldCheck,UserRound} from 'lucide-react';
 import {api} from '../api';
 import {useApi} from '../hooks';
-import ReportLoading from './ReportLoading';
 
-export function ProfileForm({user,self,onSaved}:{user:any;self:boolean;onSaved:(patch:any)=>void}){
- const stored=user.profile||{};
- const initial={name:user.name||'',contactEmail:stored.contactEmail??(user.email?.includes('@')?user.email:''),timeZone:stored.timeZone||(self?(Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'):''),bio:stored.bio||''};
- const [draft,setDraft]=useState(initial),[busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[error,setError]=useState('');
- const change=(key:keyof typeof initial,value:string)=>{setDraft({...draft,[key]:value});setNotice('');setError('')};
- const dirty=Object.keys(initial).some(key=>initial[key as keyof typeof initial]!==draft[key as keyof typeof initial]);
- return <form className="profile-section" onSubmit={async e=>{
-  e.preventDefault();if(!self||!dirty||busy)return;setBusy(true);setError('');
-  try{const result=await api('/account/profile',{method:'PUT',body:JSON.stringify(draft)});onSaved(result);setDraft({...draft,name:result.name});setNotice('Saved successfully.')}catch(e:any){setError(e.message)}finally{setBusy(false)}
- }}>
- <h3><UserRound/>Personal Information</h3><fieldset disabled={!self||busy} className="profile-fields">
- <label>Full name<input required maxLength={200} value={draft.name} onChange={e=>change('name',e.target.value)}/></label>
- <label>Contact email<input type="email" maxLength={254} value={draft.contactEmail} onChange={e=>change('contactEmail',e.target.value)}/></label>
- <label>Time zone<input required maxLength={100} list="profile-time-zones" value={draft.timeZone} onChange={e=>change('timeZone',e.target.value)}/></label>
- <datalist id="profile-time-zones">{['UTC',...((Intl as any).supportedValuesOf?.('timeZone')||[])].map(zone=><option key={zone} value={zone}/>)}</datalist>
- <label className="profile-bio">Bio<textarea maxLength={300} rows={2} value={draft.bio} onChange={e=>change('bio',e.target.value)}/></label>
- </fieldset>{self&&<div className="profile-actions"><button type="button" className="btn secondary" disabled={!dirty||busy} onClick={()=>{setDraft(initial);setError('');setNotice('')}}>Discard</button><button className="btn primary" disabled={!dirty||busy}>Save Changes</button></div>}
- {error&&<p role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}</form>
+const PHOTO_SIZE=128;
+async function thumbnail(file:File) {
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>8*1024*1024)
+    throw Error('Choose a JPEG, PNG or WebP image up to 8 MB.');
+  const source=URL.createObjectURL(file);
+  try{
+    const img=new Image();img.src=source;await img.decode();
+    const canvas=document.createElement('canvas');canvas.width=canvas.height=PHOTO_SIZE;
+    const ctx=canvas.getContext('2d');
+    if(!ctx||!img.naturalWidth||!img.naturalHeight)throw Error('Could not read this picture.');
+    const side=Math.min(img.naturalWidth,img.naturalHeight);
+    ctx.drawImage(img,(img.naturalWidth-side)/2,(img.naturalHeight-side)/2,side,side,0,0,PHOTO_SIZE,PHOTO_SIZE);
+    const bytes=ctx.getImageData(0,0,PHOTO_SIZE,PHOTO_SIZE).data;
+    let binary='';
+    for(let i=0;i<bytes.length;i+=4096)binary+=String.fromCharCode(...bytes.subarray(i,i+4096));
+    return {preview:canvas.toDataURL('image/png'),pixels:btoa(binary)};
+  }finally{URL.revokeObjectURL(source)}
 }
 
-function category(action:string){
- if(/login|sign.in/i.test(action))return 'Sign-ins';
- if(/account|user|permission|role|mfa|password|token/i.test(action))return 'Account Security';
- return 'Infrastructure';
+export function SavedPicture({id,version}:{id:string;version:string}){
+  const live=useApi<{image:string}|null>('/account/profile-picture/'+encodeURIComponent(id)+'?v='+encodeURIComponent(version),null,0);
+  return live.data?.image?<img className="saved-account-picture" alt="" src={live.data.image}/>:null;
 }
-function LoginActivity({date}:{date:(v:any)=>string}){
- const live=useApi<any>('/account/sessions',null);
- return <section className="profile-section"><h3><UserRound/>Signed-in devices</h3>{live.error?<p role="alert">{live.error} <button className="btn secondary" onClick={()=>live.refresh()}>Retry</button></p>:live.data?.sessions?.length?live.data.sessions.map((session:any)=><div className="profile-event" key={session.id}><UserRound size={17}/><div><strong>{session.device}</strong>{session.current&&<small>This device</small>}</div><time>{date(session.created_at)}</time></div>):live.loading?<ReportLoading/>:<p>No active sessions.</p>}</section>
+
+export function ProfileForm({user,self,role,onSaved}:{user:any;self:boolean;role:string;onSaved:(patch:any)=>void}){
+  const stored=user.profile||{};
+  const current={name:user.name||'',username:user.username||'',contactEmail:stored.contactEmail??(user.email?.includes('@')?user.email:''),timeZone:stored.timeZone||(self?(Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'):''),bio:stored.bio||''};
+  const [draft,setDraft]=useState<typeof current|null>(null),[revision,setRevision]=useState('');
+  const [picture,setPicture]=useState<Awaited<ReturnType<typeof thumbnail>>|null>(null);
+  const [reading,setReading]=useState(false),[saving,setSaving]=useState(false);
+  const [message,setMessage]=useState(''),[error,setError]=useState('');
+  const input=useRef<HTMLInputElement>(null);
+  const editing=self&&draft!==null,values=draft??current,busy=reading||saving;
+  function edit(){setDraft({...current});setRevision(stored.revision||'');setError('');setMessage('')}
+  function discard(){setDraft(null);setPicture(null);setError('');setMessage('')}
+  function update(key:keyof typeof current,value:string){setDraft({...values,[key]:value});setError('')}
+  async function upload(event:ChangeEvent<HTMLInputElement>){
+    const file=event.target.files?.[0];event.target.value='';if(!file)return;
+    setReading(true);setError('');
+    try{setPicture(await thumbnail(file))}catch(e){setError(e instanceof Error?e.message:'Could not read this picture.')}finally{setReading(false)}
+  }
+  const dirty=picture!==null||Object.keys(current).some(key=>values[key as keyof typeof current]!==current[key as keyof typeof current]);
+  async function save(event:React.FormEvent){
+    event.preventDefault();if(!editing||!dirty||busy)return;setSaving(true);setError('');
+    try{
+      const result=await api('/account/profile',{method:'PUT',body:JSON.stringify({...draft,revision,...(picture?{picturePixels:picture.pixels}:{})})});
+      onSaved(result);setDraft(null);setPicture(null);setMessage('Profile saved.');
+    }catch(e:any){setError(e.message)}finally{setSaving(false)}
+  }
+  return <form className="profile-section profile-editor" onSubmit={save}>
+    <header className="account-section-title"><UserRound/><div><h3>Personal Information</h3><p>Update your name, username and profile details.</p></div></header>
+    <div className="profile-fields">
+      <label>Full name<input required maxLength={200} readOnly={!editing} disabled={busy} value={values.name} onChange={e=>update('name',e.target.value)}/></label>
+      <label>Contact email<input type="email" maxLength={254} readOnly={!editing} disabled={busy} value={values.contactEmail} onChange={e=>update('contactEmail',e.target.value)}/></label>
+      <label>Username<input required autoCapitalize="none" autoComplete="username" pattern="[a-zA-Z0-9][a-zA-Z0-9_.\-]{2,63}" minLength={3} maxLength={64} readOnly={!editing} disabled={busy} value={values.username} onChange={e=>update('username',e.target.value)}/></label>
+      <label>Time zone<input required maxLength={100} readOnly={!editing} disabled={busy} list={editing?'profile-time-zones':undefined} value={values.timeZone} onChange={e=>update('timeZone',e.target.value)}/></label>
+      {editing&&<datalist id="profile-time-zones">{['UTC',...((Intl as any).supportedValuesOf?.('timeZone')||[])].map(zone=><option key={zone} value={zone}/>)}</datalist>}
+      <label>Role<input readOnly value={role}/></label>
+      {self&&<div className="profile-photo-field"><span>Profile picture</span><div>
+        <span className="profile-photo-preview"><UserRound/>{picture?<img src={picture.preview} alt="Selected profile picture"/>:stored.pictureVersion&&<SavedPicture id={user.id} version={stored.pictureVersion}/>}</span>
+        <button type="button" className="btn secondary" disabled={busy} onClick={()=>{if(!editing)edit();input.current?.click()}}><Camera size={16}/>Upload profile picture</button>
+        <input ref={input} type="file" hidden accept="image/jpeg,image/png,image/webp" aria-label="Choose profile picture" onChange={upload}/>
+      </div></div>}
+      <label className="profile-bio">Bio<textarea maxLength={300} rows={3} readOnly={!editing} disabled={busy} value={values.bio} onChange={e=>update('bio',e.target.value)}/><small>{values.bio.length} / 300</small></label>
+    </div>
+    {error&&<p role="alert">{error}</p>}{message&&<p role="status">{message}</p>}
+    {self&&<div className="profile-actions">{editing?<><button type="button" className="btn secondary" disabled={busy} onClick={discard}>Discard</button><button className="btn primary" disabled={busy||!dirty}><Check size={16}/>Save</button></>:<button type="button" className="btn primary" onClick={edit}><Pencil size={16}/>Edit profile</button>}</div>}
+  </form>
 }
-export function ProfileActivity({user,self,date}:{user:any;self:boolean;date:(v:any)=>string}){
- const live=useApi<any>('/audit',null,30000),[search,setSearch]=useState(''),[days,setDays]=useState('all'),[group,setGroup]=useState('all');
- const rows=(live.data?.logs||[]).filter((r:any)=>r.user&&(r.user===user.email||r.user===user.username));
- const filtered=rows.filter((r:any)=>(days==='all'||Date.parse(r.time)>=Date.now()-Number(days)*86400000)&&(group==='all'||group===category(r.action))&&[r.action,r.resource,r.status,r.ip].join(' ').toLowerCase().includes(search.toLowerCase()));
- function download(){const url=URL.createObjectURL(new Blob([JSON.stringify(filtered,null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='account-activity.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
- return <><section className="profile-section"><h3><Pulse/>Account Activity</h3><p>Actions performed by this account in the latest 500 audit records.</p>{live.error?<p role="alert">{live.error} <button className="btn secondary" onClick={()=>live.refresh()}>Retry activity</button></p>:live.loading&&!live.data?<ReportLoading/>:<div className="profile-stats">{[['Total actions',Layers,rows.length],['Sign-ins',UserRound,rows.filter((r:any)=>category(r.action)==='Sign-ins').length],['Account Security',ShieldCheck,rows.filter((r:any)=>category(r.action)==='Account Security').length]].map(([name,Icon,count]:any)=><div key={name}><Icon size={20}/><strong>{count}</strong><small>{name}</small></div>)}</div>}</section>
- <section className="profile-section"><h3><Filter/>Filters</h3><div className="profile-fields"><label>Time Range<select value={days} onChange={e=>setDays(e.target.value)}><option value="all">All time</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select></label><label>Category<select value={group} onChange={e=>setGroup(e.target.value)}><option value="all">All activities</option>{['Sign-ins','Account Security','Infrastructure'].map(c=><option key={c}>{c}</option>)}</select></label><label>Search activity<input type="search" value={search} onChange={e=>setSearch(e.target.value)}/></label></div>
- <div className="profile-actions"><button className="btn secondary" onClick={()=>{setSearch('');setGroup('all');setDays('all')}}>Clear Filters</button><button className="btn primary" disabled={!filtered.length} onClick={download}><Download size={16}/>Export Activity</button></div></section>
- <section className="profile-section users-activity"><h3><Clock/>Recent Activity</h3>{filtered.map((r:any)=><article className="profile-event" key={r.id}><KeyRound size={17}/><div><strong>{r.action}</strong><small>{r.resource}</small></div><time>{date(r.time)}</time></article>)}{!filtered.length&&!live.loading&&!live.error&&<p>No matching activity in the returned audit history.</p>}</section>{self&&<LoginActivity date={date}/>}</>
+
+function InventoryCards({keys}:{keys?:string[]}){
+  const live=useApi<any>('/proxmox',null);
+  return <>{([{label:'Nodes',key:'cluster.view',field:'nodes',status:'online',caption:'Online',Icon:Server},{label:'VMs',key:'vm.view',field:'vms',status:'running',caption:'Running',Icon:Monitor},{label:'Containers',key:'containers.view',field:'lxc',status:'running',caption:'Running',Icon:Box}]).map(({label,key,field,status,caption,Icon})=>{
+    const allowed=!keys||keys.includes(key),rows=live.data?.[field];
+    const known=allowed&&!live.error&&live.data?.resourceInventoryComplete!==false&&Array.isArray(rows);
+    return <div key={field}><Icon/><strong>{known?rows.filter((r:any)=>r.status===status).length:'—'} {label}</strong><small>{!allowed?'Restricted':known?caption:live.loading?'Loading':'Not reported'}</small></div>
+  })}</>
+}
+
+export function AccountOverview({user,self,role,onPermissions}:{user:any;self:boolean;role:string;onPermissions:()=>void}){
+  return <section className="profile-section"><header className="account-section-title"><Layers/><div><h3>Account Overview</h3><p>Account access and resources in the selected cluster.</p></div></header>
+    <div className="profile-stats account-overview-cards"><div><Crown/><strong>{role}</strong><small>Assigned Role</small></div>
+    {self?<InventoryCards keys={user.permissionKeys}/>:<div><ShieldCheck/><strong>{user.status}</strong><small>Account status</small></div>}</div>
+    <button className="account-text-button" onClick={onPermissions}>View permissions →</button>
+  </section>
 }
