@@ -303,8 +303,10 @@ try{
     await card.waitFor();
     assert.equal(await page.getByRole('dialog').count(),0);
     assert.equal(await card.locator('.pve-resource-reading').count(),3);
-    const trigger=card.getByRole('button',{name:copy('Details'),exact:true});
-    assert.ok(await card.getByRole('button',{name:copy('Shell'),exact:true}).isVisible());
+    const overview=route==='/proxmox'||route==='/proxmox?tab=Overview';
+    const trigger=overview?card.locator('button.pve-resource-name'):card.getByRole('button',{name:copy('Details'),exact:true});
+    if(overview)assert.equal(await card.locator('footer').count(),0);
+    else assert.ok(await card.getByRole('button',{name:copy('Shell'),exact:true}).isVisible());
     await trigger.click();
     const dialog=page.getByRole('dialog');
     await dialog.locator(guestInventoryRoute?'.vm-detail-head':'.nodes-detail-head').waitFor();
@@ -338,6 +340,14 @@ try{
     await page.getByRole('dialog').locator('.vm-detail-head').waitFor();
     await page.keyboard.press('Escape');
     await page.getByRole('button',{name:copy('Grid view'),exact:true}).click();
+   }
+   if(route.startsWith('/monitoring')){
+    const summary=page.locator('.monitor-stats,.performance-stats,.network-traffic .metric-grid').first();
+    if(await summary.count()){
+     const cards=await summary.boundingBox();
+     const tabs=await page.getByRole('navigation',{name:copy('Monitoring'),exact:true}).boundingBox();
+     assert.ok(cards&&tabs&&cards.y+cards.height<=tabs.y+1,'Monitoring summary should be above the tabs');
+    }
    }
    if(process.env.LAYOUT_HOST_CARDS){
     const checkCards=async()=>{
