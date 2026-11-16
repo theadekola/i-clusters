@@ -1,17 +1,17 @@
 import AccountPermissions from './AccountPermissions';
-import {useState} from 'react';
+import {lazy,Suspense,useState} from 'react';
 import {Clock,ShieldCheck,UserRound,Mail,Calendar,Layers,SlidersHorizontal,Activity as Pulse,KeyRound,ChevronRight} from 'lucide-react';
 import {Badge,Modal,tabKeys} from './UI';
 import {useApi} from '../hooks';
 import {confirmedApi} from '../api';
 import {isActionCancelled} from '../action-cancellation';
 import {AccountOverview,ProfileForm,SavedPicture} from './ProfilePanels';
-import AccountActivity from './AccountActivity';
 import ReportLoading from './ReportLoading';
 import AccountSecurity, {type SecurityPanel} from './AccountSecurity';
 import '../pages/settings-overview.css';
 import './account-dialog.css';
 import './profile-activity.css';
+const AccountActivity=lazy(()=>import('./AccountActivity'));
 export const roleNames:any={owner:'Owner',admin:'Administrator',operator:'Operator',auditor:'Auditor',viewer:'Viewer'};
 export const ranks:any={viewer:10,auditor:20,operator:30,admin:40,owner:50};
 export const date=(v:any)=>{if(!v)return 'Not reported';const d=new Date(v);return Number.isFinite(d.getTime())?d.toLocaleString([], {dateStyle:'medium',timeStyle:'short'}):'Not reported'};
@@ -52,7 +52,7 @@ export function AccountDialog({selected:account,actor,self,onClose,initialTab='P
  {tab==='Profile'&&<><ProfileForm key={selected.id} user={selected} self={self} role={roleNames[selected.role]||selected.role} onSaved={result=>{setPatch(result);void onSaved?.()}}/><AccountOverview user={selected} self={self} role={roleNames[selected.role]||selected.role} onPermissions={()=>select('Roles & Permissions')}/></>}
  {tab==='Roles & Permissions'&&<AccountPermissions key={selected.id} account={selected} owner={actor?.role==='owner'}
   clusterAccess={onSaved && actor?.role==='owner' && selected.role!=='owner' ? <ClusterAccess key={selected.id+JSON.stringify(selected.clusterRoles)} account={selected} onSaved={onSaved}/> : undefined}/>}
- {tab==='Activity'&&<AccountActivity key={selected.id} user={selected} date={date}/>}
+ {tab==='Activity'&&<Suspense fallback={<ReportLoading/>}><AccountActivity key={selected.id} user={selected} date={date}/></Suspense>}
 
  {tab==='Security'&&(self?<AccountSecurity panel={securityPanel} onPanel={setSecurityPanel}/>:<section><h3>Account Security</h3><dl className="users-facts"><dt>Status</dt><dd>{selected.status}</dd><dt>Two-factor flag</dt><dd>{factor(selected)}</dd><dt>Last login</dt><dd>{date(selected.lastLogin)}</dd></dl></section>)}
  {tab==='Profile'&&children}</div></section></div></Modal>
