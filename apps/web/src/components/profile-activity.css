@@ -13,7 +13,7 @@
 .activity-title,.account-section-title{display:flex;align-items:center;gap:.55rem;margin-bottom:.65rem}
 .activity-title>svg,.account-section-title>svg{flex:none;color:var(--theme-icon);width:1.25rem;height:1.25rem}.activity-title h3,.account-section-title h3{margin:0;font-size:1rem}
 .activity-title>small{margin-inline-start:auto;padding:.12rem .45rem;background:var(--theme-highlight);border-radius:1rem;color:var(--theme-text)}
-.activity-metrics,.account-overview-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.55rem}
+.activity-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.55rem}
 .activity-metrics>div{display:grid;grid-template-columns:auto 1fr auto;gap:.2rem .45rem;align-items:center;border:1px solid var(--theme-border);border-radius:.6rem;background:var(--theme-input);padding:.65rem}
 .activity-metrics svg{grid-row:span 2;color:var(--theme-icon);width:1.7rem;height:1.7rem}.activity-metrics strong{font-size:1.3rem}.activity-metrics small{grid-column:2/-1;color:var(--theme-muted)}
 .activity-metrics span{grid-column:3;grid-row:1;font-size:.72rem;color:var(--theme-text);background:var(--theme-highlight);border-radius:1rem;padding:.1rem .35rem}
@@ -40,5 +40,4 @@
 @container(min-width:62rem){.activity-filters{grid-template-columns:1fr 1fr 1.35fr}.activity-filters label:last-child{grid-column:auto}}
 @container(max-width:49rem){.activity-grid{grid-template-columns:minmax(0,1fr)}.activity-tools{order:1}.activity-grid>.activity-recent{order:2}.activity-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @container(max-width:33rem){.activity-hero{flex-wrap:wrap}.activity-hero button{margin-inline-start:0}.activity-timeline li{grid-template-columns:auto minmax(0,1fr) auto}.activity-timeline time{grid-row:2;grid-column:2/-1}.activity-metrics>div{grid-template-columns:1fr auto}.activity-metrics svg{display:none}.activity-metrics small{grid-column:1/-1}.activity-metrics span{grid-column:2}.activity-card{padding:.65rem}}
-@media(max-width:760px){.account-panel .account-overview-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.account-identity .account-quick{display:grid;grid-template-columns:minmax(0,1fr);gap:.3rem}.account-identity .account-quick button{width:100%;margin:0;justify-content:flex-start}.account-identity .account-quick button svg:last-child{display:block}}
