@@ -901,7 +901,10 @@ try{
     await page.goto(base+'settings?tab=Appearance');await page.locator('#interface-language').waitFor();const search=page.locator('.settings-page input[type=search],.settings-search input').first();await search.fill('language');const saved=await search.elementHandle();await page.locator('#interface-language').click();const options=page.locator('.language-options [role=option]');assert.equal(await options.count(),5);assert.equal(await options.locator('img').count(),0);await page.locator(`[data-locale="${locale}"]`).click();await page.waitForFunction(locale=>document.documentElement.lang===locale,locale);assert.equal(await saved.evaluate(element=>element===document.querySelector('.settings-page input[type=search],.settings-search input')) ,true,'Language switching retains the form element');assert.equal(await search.inputValue(),'language');assert.equal(await page.locator('#interface-language').innerText(),name);assert.equal(await page.evaluate(()=>localStorage.getItem('iclusters_access_token')),'layout-fixture');assert.equal(await page.evaluate(()=>document.documentElement.dir),'ltr');
     await page.goto(base);await page.getByRole('heading',{name:title,exact:true}).waitFor();assert.equal(await page.evaluate(()=>localStorage.getItem('iclusters_language')),locale);
     if(locale==='fr-FR'){
-     assert.deepEqual(await page.locator('.overview-controls select').nth(1).locator('option').allTextContents(),['Dernière heure','6 dernières heures','24 dernières heures']);
+     await page.getByRole('link',{name:'Rapports de performances',exact:true}).click();
+     const range=page.getByRole('combobox',{name:'Durée de réalisation',exact:true});
+     await range.waitFor();
+     assert.deepEqual(await range.locator('option').allTextContents(),['Dernière heure','24 dernières heures','La semaine dernière','Le mois dernier',"L'année dernière"]);
      if(width<=800)await page.locator('.nav-toggle').click();
      await page.locator('.sidebar-account .profile-trigger').first().click();
      await page.getByRole('menuitem',{name:'Se déconnecter',exact:true}).waitFor();
