@@ -52,9 +52,9 @@ export function RemoveClusterDialog({profile,onClose,onRemoved}:{profile:Removal
 function HostReadings({id}:{id:string}){
   const live=useApi<any>('/proxmox',null,30000,id);
   const report=live.error?null:live.data;
-  const {cpuUsed,cores,usedMemory,totalMemory,storage}=proxmoxAvailability(report);
+  const {cpuUsed,cores,usedMemory,totalMemory,storage,partial,coverage}=proxmoxAvailability(report);
   const ratio=(used:number|null,total:number|null)=>used!=null&&total?100*used/total:null;
-  return <ResourceReadings cpu={ratio(cpuUsed,cores)} memory={ratio(usedMemory,totalMemory)} disk={storagePercent(storage)}/>;
+  return <><ResourceReadings cpu={ratio(cpuUsed,cores)} memory={ratio(usedMemory,totalMemory)} disk={storagePercent(storage)}/>{partial&&<small className="pve-coverage">{coverage}</small>}</>;
 }
 
 function HostCard({profile,stale,refresh,onRemove}:{profile:ClusterProfile;stale:boolean;refresh:()=>Promise<void>;onRemove:()=>void}){

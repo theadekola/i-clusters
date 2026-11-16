@@ -1,5 +1,9 @@
 import crypto from 'node:crypto';
 const fail=message=>{throw Object.assign(new Error(message),{status:400})};
+export function retainAlerts(alerts, limit=1000){
+ let resolved=0;
+ return alerts.filter(alert=>alert.status!=='resolved' || ++resolved<=limit);
+}
 export function cleanupRange(input){
  const date=key=>{const value=input?.[key];if(typeof value!=='string'||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(value)||!Number.isFinite(Date.parse(value))||new Date(value).toISOString()!==value)fail(`Invalid ${key} date`);return value};
  const from=date('from'),to=date('to');if(from>to)fail('From date must not be after To date');return {from,to};

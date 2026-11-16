@@ -1,0 +1,7 @@
+.thermal-reports{display:grid;gap:1rem;margin-block:1rem;min-width:0}
+.thermal-reports .header-actions{flex-wrap:wrap;align-items:center}
+.thermal-reports label{display:inline-flex;gap:.5rem;align-items:center}
+.thermal-reports select{max-width:100%;min-width:0}
+.thermal-reports .performance-charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,21rem),1fr));gap:1rem}
+.thermal-reports .card{min-width:0}
+.pve-coverage{display:block;margin:0 1rem .8rem;color:var(--muted);overflow-wrap:anywhere}

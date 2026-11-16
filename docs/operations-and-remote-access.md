@@ -30,7 +30,7 @@ TrueNAS monitoring now uses the same safe, actionable diagnostic messages as con
 
 ## Hardware monitoring scope
 
-Temperature collection, displays and alerts have been removed. Legacy connectors' temperature fields are ignored. Update paired connectors to stop their previous collection code. Existing i-Clusters temperature and sensor-fault alerts and their queued notifications are removed during controller startup; unrelated alerts, SMART health and UPS monitoring remain available.
+Open **Monitoring → Temperatures** to enable collection for this cluster. Paired version 11 or newer connectors collect supported Linux CPU/board sensors and SMART drive temperatures. Sleeping or unsupported disks may have no reading. Hardware graphs and physical disk throughput retain up to 30 days in the cluster runtime directory. Each cluster has its own history. Use the temperature report to select a host and sensor, compare daily, weekly or monthly readings, or export CSV. Older connector temperature fields and retired thermal alerts are still ignored.
 
 ### Monitoring-tool installation approval
 

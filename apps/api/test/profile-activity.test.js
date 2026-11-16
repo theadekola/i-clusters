@@ -48,6 +48,15 @@ test('profile rename and picture persist, sign-ins keep their owner, and activit
     assert.equal(report.logins.filter(row=>row.current).length,1);assert.equal(report.logins.length,2);
     assert.ok(report.logins.every(row=>row.device==='test-browser'&&row.ip&&!row.tag));
     assert.ok(report.logs.every(r=>r.action!=='wrong.cluster'));
+    await pool.query(`INSERT INTO audit_logs(user_id,action,resource,status,cluster_id,created_at)
+      SELECT $1,'storage.read','page fixture '||n,'success','default',now()-interval '20 days' FROM generate_series(1,505) n`,[id]);
+    const route='/audit?accountId='+id+'&days=all&group=infrastructure&search=page%20fixture';
+    const page=await call('GET',route,null,signed.accessToken);
+    assert.equal(page.logs.length,500);assert.ok(page.next);
+    const rest=await call('GET',route+'&before='+page.next+'&asOf='+encodeURIComponent(page.asOf),null,signed.accessToken);
+    assert.equal(rest.next,null);assert.equal(rest.logs.length,5);
+    assert.equal(new Set([...page.logs,...rest.logs].map(row=>row.id)).size,505);
+    assert.deepEqual((await call('GET',route.replace('days=all','days=7'),null,signed.accessToken)).logs,[]);
     assert.deepEqual((await call('GET','/audit?accountId='+other,null,token)).logs.map(r=>r.action),['auth.login']);
   }finally{
     if(server)await new Promise(r=>server.close(r));await pool.end();

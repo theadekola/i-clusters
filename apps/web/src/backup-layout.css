@@ -84,3 +84,5 @@
 }
 .content :is(.network-traffic,.backup-manager) {grid-template-columns:minmax(0,1fr);min-inline-size:0}
 .content :is(.network-traffic,.backup-manager) > :is(.page-header,.network-panel-head) {min-inline-size:0}
+
+.backup-manager .backup-workspace.backup-inventory-full{grid-template-columns:minmax(0,1fr)}

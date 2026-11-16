@@ -1,6 +1,7 @@
 // Physical leaf block devices only: partitions and stacked logical devices would
-// count the same I/O more than once. Keep bounded, process-local sampled history.
-const histories=new Map();
+// count the same I/O more than once. Retain measured rates independently of the raw counters.
+import {recordMeasurements,diskHistory} from './measurement-history.js';
+const saved=new Map();
 export function acceptDiskReport(previous,input,now=Date.now()){
  const error={status:'error',receivedAt:now,devices:[],series:[]};
  if(input?.status!=='ok'||typeof input.bootId!=='string'||!/^[A-Za-z0-9-]{1,64}$/.test(input.bootId)||!Number.isFinite(input.uptime)||input.uptime<0||!Array.isArray(input.devices)||input.devices.length>512)return error;
@@ -14,20 +15,23 @@ export function acceptDiskReport(previous,input,now=Date.now()){
 }
 export function recordDiskReport(id,previous,input,now=Date.now()){
  const report=acceptDiskReport(previous,input,now);if(report===previous)return report;
- const history=histories.get(id)||[];history.push({time:now,diskRead:report.diskRead??null,diskWrite:report.diskWrite??null});
- // One point per 30 seconds, up to 24 hours. Never persist device counters.
- if(history.length>1&&Math.floor(now/30000)===Math.floor(history.at(-2).time/30000))history.splice(-2,1);
- histories.set(id,history.filter(p=>now-p.time<=86400000).slice(-2880));return report;
+ const slot=Math.floor(now/30000),prior=saved.get(id);
+ if(input && (prior?.slot!==slot || prior.valid===false && report.diskRead!==null)){
+  recordMeasurements(id,[{kind:'io',id:'disk',label:'Physical disks',value:report.diskRead??null,secondary:report.diskWrite??null}],now);
+  saved.set(id,{slot,valid:report.diskRead!=null});
+ }
+ return report;
 }
 export function nodeDiskTelemetry(node,reports,timeframe='day',now=Date.now()){
  const exact=reports.filter(r=>r.kind==='proxmox'&&r.hostname===node),matches=exact.length?exact:reports.filter(r=>r.kind==='proxmox'&&r.hostname?.split('.')[0]===node);
  const unavailable=message=>({series:[],message,source:'connector',current:null});
  if(matches.length!==1)return unavailable(matches.length?'Multiple connectors match this node.':'Update and pair this node connector to collect physical disk throughput.');
  const r=matches[0],d=r.disk;
- if(!r.online)return unavailable('The node connector is offline.');
- if(!d)return unavailable('Update this node connector for physical disk throughput.');
- if(now-d.receivedAt>20000)return unavailable('Disk readings are stale. Check the node connector.');
- if(d.status!=='ok')return unavailable('The connector could not read local disk counters.');
- const limit=timeframe==='hour'?3600000:86400000;
- return {source:'connector',current:{time:d.receivedAt,diskRead:d.diskRead,diskWrite:d.diskWrite},series:(histories.get(r.id)||[]).filter(p=>now-p.time<=limit),message:d.diskRead==null?'Collecting two valid disk samples; no physical disks, a counter reset or device changes can delay readings.':null};
+ const series=diskHistory(r.id,timeframe,now);
+ const missing=message=>({...unavailable(message),series});
+ if(!r.online)return missing('The node connector is offline.');
+ if(!d)return missing('Update this node connector for physical disk throughput.');
+ if(now-d.receivedAt>20000)return missing('Disk readings are stale. Check the node connector.');
+ if(d.status!=='ok')return missing('The connector could not read local disk counters.');
+ return {source:'connector',current:{time:d.receivedAt,diskRead:d.diskRead,diskWrite:d.diskWrite},series,message:d.diskRead==null?'Collecting two valid disk samples; no physical disks, a counter reset or device changes can delay readings.':null};
 }

@@ -18,7 +18,7 @@ async function mounted(file,props,api,mobile=true){
 const button=(container,label)=>[...container.querySelectorAll('button')].find(b=>b.textContent.trim()===label);
 
 const empty={resources:[],pools:[],snapshots:[],schedules:[],services:[],resolvers:[],interfaces:[],nodes:[],errors:[],summary:{pools:0,online:0,capacity:0,used:0,available:0,complete:true},truenas:[],policies:[],series:[],sources:[]};
-for(const name of ['Storage','StorageDatasets','StorageShares','StorageSnapshots','StorageDisks','StoragePerformance','NetworkDNS','NetworkRouting'])test(name+' cards hide cached values after a failed refresh',async()=>{
+for(const name of ['Storage','StorageDatasets','StorageShares','StorageSnapshots','StorageDisks','PerformanceReports','NetworkDNS','NetworkRouting'])test(name+' cards hide cached values after a failed refresh',async()=>{
  let fail=false;const page=await mounted('pages/'+name+'.tsx',{onTab:()=>{}},async p=>{if(p==='/auth/me')return {user:{role:'viewer'}};if(fail)throw Error('Fixture provider offline');return structuredClone(empty)});
  try{assert.ok(page.container.querySelector('.metric-grid'),'summary grid rendered');fail=true;await page.click([...page.container.querySelectorAll('button')].find(b=>/^(Refresh|Scan Disks)$/.test(b.textContent.trim())));const values=[...page.container.querySelectorAll('.metric-grid strong,.metric-grid .stat-value')].map(el=>el.textContent);assert.ok(values.length);assert.ok(values.every(v=>v==='Unknown'),name+': '+values.join(', '));}finally{await page.close()}
 });
@@ -31,7 +31,7 @@ test('monitoring counts acknowledged critical alerts until they are resolved',as
  try{const card=[...page.container.querySelectorAll('.monitor-stat')].find(c=>c.textContent.includes('Active Alerts'));assert.equal(card.querySelector('strong').textContent,'1');assert.match(page.container.querySelector('.monitor-stat').textContent,/Needs attention/);}finally{await page.close()}
 });
 test('storage performance never replaces a missing latest sample with an old measured interval',async()=>{
- const page=await mounted('pages/StoragePerformance.tsx',{onTab:()=>{}},async()=>({...structuredClone(empty),selected:{id:'node:a',name:'a',node:'a'},sources:[{id:'node:a',name:'a',node:'a',type:'node'}],series:[{time:1000,cpu:99,memoryPercent:99,netIn:100,netOut:100},{time:2000,cpu:null,memoryPercent:null,netIn:null,netOut:null}]}));
+ const page=await mounted('pages/PerformanceReports.tsx',{onTab:()=>{}},async()=>({...structuredClone(empty),selected:{id:'node:a',name:'a',node:'a'},sources:[{id:'node:a',name:'a',node:'a',type:'node'}],series:[{time:1000,cpu:99,memoryPercent:99,netIn:100,netOut:100},{time:2000,cpu:null,memoryPercent:null,netIn:null,netOut:null}]}));
  try{assert.doesNotMatch(page.container.querySelector('.performance-stats').textContent,/99/);assert.match(page.container.querySelector('.performance-stats').textContent,/Not reported/);}finally{await page.close()}
 });
 test('traffic cards describe latest intervals and preserve a missing last measurement',async()=>{

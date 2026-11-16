@@ -1,3 +1,4 @@
+import {retainAlerts} from './alert-history-cleanup.js';
 import {notifier} from './notifications.js';
 import crypto from 'node:crypto';
 import {docker} from './connectors.js';
@@ -97,7 +98,7 @@ export function createDockerImageUpdates({persistence={get,mutate},query=docker,
      const current=s.alerts.find(a=>a.key===key&&a.status!=='resolved');if(row.status==='available'&&current)current.lastSeen=row.checkedAt;
      if(row.status==='available'&&!s.alerts.some(a=>a.key===key))s.alerts.unshift({id:crypto.randomUUID(),key,title:'Docker image update available',source:`${row.host} / ${row.name}`,provider:'docker',updateHost:row.hostId,updateContainer:row.containerId,severity:'info',status:'active',triggered:row.checkedAt,lastSeen:row.checkedAt,details:`${row.image} has a new registry digest (${row.remoteDigest}). Open Docker → Updates on ${row.host} to review, pull and install it. No update was installed automatically.`});
     }
-    s.alerts=s.alerts.slice(0,1000);
+    s.alerts=retainAlerts(s.alerts);
    });
    await notify(persistence.get().alerts);
   })().catch(()=>{}).finally(()=>{pending.delete(scope);for(const host of affected)if(valid(host))hostProgress.delete(host)});pending.set(scope,work);

@@ -48,6 +48,12 @@ function fixture(path){
   if(path==='/storage/datasets')return {...sample,resources:popupVolumes,truenasEnabled:true};
  }
 
+ if(path==='/monitoring/temperatures'){
+  const time=Date.parse(now);
+  const series=['system','drive'].map((kind,index)=>({kind,id:kind,label:index?'SSD 1':'CPU package',latest:42+index,minimum:40,maximum:45,lastSeen:time,points:[{time:time-180000,value:41,minimum:40,maximum:42},{time:time-120000,value:null,minimum:null,maximum:null},{time:time-60000,value:42+index,minimum:41,maximum:45}]}));
+  return {enabled:true,host:'thermal-node',hosts:[{id:'thermal-node',name:'Fixture host',online:true,version:11}],sensors:series,series,generatedAt:now};
+ }
+ if(path==='/monitoring/performance')return {sources:[{id:'cluster',type:'cluster',name:'Cluster overview'}],selected:{id:'cluster',type:'cluster',name:'Cluster overview'},series:process.env.LAYOUT_CHART_HISTORY==='empty'?[]:sample.metrics.map(m=>({time:Date.parse(m.time),cpu:m.cpu,memoryPercent:m.memory})),pools:[]};
  if(path==='/dashboard'&&process.env.LAYOUT_CHART_HISTORY)return {...sample,metrics:process.env.LAYOUT_CHART_HISTORY==='empty'?[]:sample.metrics.slice(-1)};
  if(process.env.LAYOUT_HOST_CARDS&&path==='/connections/health')return {connections:[
   {id:'proxmox',kind:'proxmox',provider:'proxmox',name:'Fixture cluster',method:'Proxmox API',endpoint:'https://192.0.2.10:8006',source:'saved',status:'online',checkedAt:now},
@@ -124,10 +130,10 @@ const routes=['/','/proxmox','/docker','/storage','/network','/backups','/monito
 for(const [page,tabs] of Object.entries({
  proxmox:['Overview','Nodes','Virtual Machines','LXC Containers','Storage','Networks','Tasks & Logs'],
  docker:['Images','Volumes','Compose Stacks','Events','Updates'],
- storage:['Configuration','Disks','Datasets / Volumes','Snapshots','Shares','Performance'],
- network:['Interfaces','Devices','Routing','DNS','Traffic Analysis','Docker Networks'],
+ storage:['Configuration','Disks','Datasets / Volumes','Snapshots','Shares'],
+ network:['Interfaces','Devices','Routing','DNS','Docker Networks'],
  backups:['Backup Archives','Restore Points','Schedules','Retention Policies','Destinations','Reports'],
- monitoring:['Provider Jobs','Hardware & Diagnostics'],
+ monitoring:['Performance Reports','Network Traffic','Backup Trends','Temperatures','Provider Jobs','Hardware & Diagnostics'],
  alerts:['Alert History','Alert Rules'],users:['Audit Logs'],
  settings:['General','Connections','Integrations','Appearance','About']
 }))for(const tab of tabs)routes.push(`/${page}?tab=${encodeURIComponent(tab)}`);
@@ -402,29 +408,31 @@ try{
     });
     failures.push(...painted.map(issue=>`${width}px ${route}: painted icon surface ${issue}`));
    }
+   if(process.env.LAYOUT_CHECK_CHARTS==='1'&&route==='/monitoring?tab=Temperatures'){
+    const reports=page.locator('.thermal-reports');
+    await reports.getByText('CPU package',{exact:true}).waitFor({state:'attached'});
+    assert.equal(await reports.locator('.performance-charts .card').count(),2);
+    await reports.locator('.recharts-area circle').first().waitFor({state:'attached'});
+    const downloadWait=page.waitForEvent('download');
+    await reports.getByRole('button',{name:copy('Export CSV')}).click();
+    const file=await downloadWait;
+    const csv=readFileSync(await file.path(),'utf8');
+    assert.match(csv,/CPU package/);assert.match(csv,/SSD 1/);assert.match(csv,/Average °C/);
+    assert.equal(csv.trim().split(/\r?\n/).length,5);
+   }
    if(process.env.LAYOUT_CHECK_CHARTS==='1'&&route==='/'){
-    const mode=process.env.LAYOUT_CHART_HISTORY||'normal',history=page.locator('.overview-history');
-    if(mode==='empty'){
-     assert.equal(await history.locator('.recharts-wrapper').count(),0,'No history must not produce a fake plot');
-     assert.ok((await history.innerText()).includes(copy('Waiting for CPU and memory measurements. Check Proxmox token permissions below.')));
-     assert.equal(await page.locator('.resource-history-empty').count(),2,'CPU and memory tiles explain missing history');
+    assert.equal(await page.locator('.overview-history').count(),0);
+    await page.getByRole('link',{name:copy('Performance Reports'),exact:true}).click();
+    const history=page.locator('.performance-charts');
+    await history.waitFor();
+    if(process.env.LAYOUT_CHART_HISTORY==='empty'){
+     await history.locator('.performance-empty').first().waitFor();
     }else{
-     const assertPlot=async()=>{
-      const plots=page.locator('.overview-resources .resource-tile .recharts-wrapper,.overview-history .recharts-wrapper');
-      await page.waitForFunction(()=>{const plots=[...document.querySelectorAll('.overview-resources .recharts-wrapper,.overview-history .recharts-wrapper')];return plots.length===3&&plots.every(plot=>plot.querySelector('.recharts-area-curve,.recharts-area-dot'))});
-      assert.equal(await plots.count(),3,'CPU, memory and historical resource plots render');
-      const shapes=await plots.locator('.recharts-area-curve,.recharts-area-dot').evaluateAll(elements=>elements.map(element=>({d:element.getAttribute('d'),cx:element.getAttribute('cx'),cy:element.getAttribute('cy')})));
-      assert.ok(shapes.length>=4,'Both CPU and memory series have visible geometry');for(const shape of shapes)assert.doesNotMatch(JSON.stringify(shape),/NaN|undefined/);
-      assert.ok(await history.locator('.recharts-xAxis .recharts-cartesian-axis-tick').count()>0,'Time axis renders');assert.ok(await history.locator('.recharts-yAxis .recharts-cartesian-axis-tick').count()>0,'Percent axis renders');
-     };
-     await assertPlot();
-     await history.scrollIntoViewIfNeeded();const box=await history.locator('.recharts-surface').boundingBox();await page.mouse.move(box.x+box.width*.6,box.y+box.height*.5);
-     await page.waitForFunction(()=>document.querySelector('.overview-history .recharts-tooltip-wrapper')?.textContent.includes('71'));
-     const tooltip=await history.locator('.recharts-tooltip-wrapper').innerText();assert.ok(tooltip.includes(copy('CPU %')));assert.ok(tooltip.includes(copy('Memory %')));assert.match(tooltip,/71/,'Tooltip reports the fixture memory measurement');
-     await page.getByLabel(copy('Select node'),{exact:true}).selectOption('node01');await assertPlot();await page.getByLabel(copy('History period'),{exact:true}).selectOption('1');await assertPlot();
-     await page.getByLabel(copy('History period'),{exact:true}).selectOption('24');await page.getByLabel(copy('Select node'),{exact:true}).selectOption('');await assertPlot();await page.mouse.move(0,0);
+     await history.locator('.recharts-area-curve,.recharts-area-dot').first().waitFor();
+     const shapes=await history.locator('.recharts-area-curve,.recharts-area-dot').evaluateAll(els=>els.map(e=>e.getAttribute('d')||e.getAttribute('cx')));
+     assert.doesNotMatch(JSON.stringify(shapes),/NaN|undefined/);
     }
-    assert.equal(await page.getByRole('button',{name:copy('Export overview report'),exact:true}).count(),0);
+    await page.goto(base);await page.locator('.overview-toolbar').waitFor();
    }
    if(process.env.LAYOUT_CHECK_TYPOGRAPHY==='1'){
     const findings=await page.evaluate(()=>{
@@ -893,7 +901,10 @@ try{
     await page.goto(base+'settings?tab=Appearance');await page.locator('#interface-language').waitFor();const search=page.locator('.settings-page input[type=search],.settings-search input').first();await search.fill('language');const saved=await search.elementHandle();await page.locator('#interface-language').click();const options=page.locator('.language-options [role=option]');assert.equal(await options.count(),5);assert.equal(await options.locator('img').count(),0);await page.locator(`[data-locale="${locale}"]`).click();await page.waitForFunction(locale=>document.documentElement.lang===locale,locale);assert.equal(await saved.evaluate(element=>element===document.querySelector('.settings-page input[type=search],.settings-search input')) ,true,'Language switching retains the form element');assert.equal(await search.inputValue(),'language');assert.equal(await page.locator('#interface-language').innerText(),name);assert.equal(await page.evaluate(()=>localStorage.getItem('iclusters_access_token')),'layout-fixture');assert.equal(await page.evaluate(()=>document.documentElement.dir),'ltr');
     await page.goto(base);await page.getByRole('heading',{name:title,exact:true}).waitFor();assert.equal(await page.evaluate(()=>localStorage.getItem('iclusters_language')),locale);
     if(locale==='fr-FR'){
-     assert.deepEqual(await page.locator('.overview-controls select').nth(1).locator('option').allTextContents(),['Dernière heure','6 dernières heures','24 dernières heures']);
+     await page.getByRole('link',{name:'Rapports de performances',exact:true}).click();
+     const range=page.getByRole('combobox',{name:'Durée de réalisation',exact:true});
+     await range.waitFor();
+     assert.deepEqual(await range.locator('option').allTextContents(),['Dernière heure','24 dernières heures','La semaine dernière','Le mois dernier',"L'année dernière"]);
      if(width<=800)await page.locator('.nav-toggle').click();
      await page.locator('.sidebar-account .profile-trigger').first().click();
      await page.getByRole('menuitem',{name:'Se déconnecter',exact:true}).waitFor();
