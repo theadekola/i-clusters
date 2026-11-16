@@ -19,7 +19,6 @@ import IntegrationChecks from '../components/IntegrationChecks';
 import './settings-overview.css';
 import SystemSettings from '../components/SystemSettings';
 import {TransportSettings} from '../components/SecuritySettings';
-import {MyAccountDialog} from '../components/AccountDialog';
 import EditableSettingsSection from '../components/EditableSettingsSection';
 import AppearanceSettings from '../components/AppearanceSettings';
 import AboutSettings from '../components/AboutSettings';
@@ -36,7 +35,7 @@ export default function Settings(){const [query,setQuery]=useSearchParams();cons
   if(raw==='Notifications')next.delete('section');
   return <Navigate replace to={{pathname:'/settings',search:next.toString(),hash:hash||(raw==='Backup & Restore'?'#backup-restore':'')}}/>;
  }
- if(raw==='Security')return <Navigate replace to='/settings?tab=General&account=security'/>;
+ if(raw==='Security'||query.get('account')==='security')return <Navigate replace to='/account?section=Security'/>;
  const setup=query.get('setup');
  if(setup==='ai')return <Navigate replace to="/ai?setup=ai"/>;
  if(category==='Connections'&&(setup==='notifications'||query.get('section')==='notifications')){
@@ -46,7 +45,7 @@ export default function Settings(){const [query,setQuery]=useSearchParams();cons
   next.delete('setup');
   return <Navigate replace to={'/settings?'+next.toString()}/>;
  }
- return <div className="settings-overview-page">{query.get('account')==='security'&&<MyAccountDialog initialTab="Security" onClose={()=>{const next=new URLSearchParams(query);next.delete('account');setQuery(next,{replace:true})}}/>}{category==='Connections'?<ConnectionManager navigation={<nav className="settings-overview-tabs tabs" aria-label="Settings sections">{categories.map(([name,Icon])=><button type="button" key={name} className={`tab ${category===name?'active':''}`} aria-current={category===name?'page':undefined} onClick={()=>change(name)}><Icon size={16}/>{name}</button>)}</nav>}/>:<SettingsOverview category={category} change={change}/>}</div>;
+ return <div className="settings-overview-page">{category==='Connections'?<ConnectionManager navigation={<nav className="settings-overview-tabs tabs" aria-label="Settings sections">{categories.map(([name,Icon])=><button type="button" key={name} className={`tab ${category===name?'active':''}`} aria-current={category===name?'page':undefined} onClick={()=>change(name)}><Icon size={16}/>{name}</button>)}</nav>}/>:<SettingsOverview category={category} change={change}/>}</div>;
 }
 function SettingsOverview({category,change}:{category:string;change:(tab:string)=>void}){
  const [params]=useSearchParams();

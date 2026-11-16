@@ -1,3 +1,4 @@
+import './sidebar-account.css';
 import {useEffect,useRef,useState} from 'react';
 import {CircleUserRound,LogOut,Monitor,Moon,Sun} from 'lucide-react';
 import {SavedPicture} from './ProfilePanels';
@@ -34,10 +35,10 @@ export default function SidebarAccount({labels=false,user,openAccount,signOut,th
    items[e.key==='Home'?0:e.key==='End'?items.length-1:(i+(e.key==='ArrowDown'?1:-1)+items.length)%items.length].focus();
   }
  }}>
- {!theme?<button type="button" className="nav-item profile-trigger" aria-label="User profile" title="User profile" aria-expanded={menu==='account'} aria-haspopup="menu" onClick={e=>toggle('account',e.currentTarget)}>{accountId&&version?<SavedPicture id={accountId} version={version} fallback={<CircleUserRound size={20}/>}/>:<CircleUserRound size={20}/>}
+ {!theme?<button type="button" className="nav-item profile-trigger" aria-label="User profile" title="User profile" aria-expanded={menu==='account'} aria-haspopup="menu" onClick={e=>toggle('account',e.currentTarget)}>{accountId&&version?<SavedPicture size={20} id={accountId} version={version} fallback={<CircleUserRound size={20}/>}/>:<CircleUserRound size={20}/>}
   {labels&&<span>Profile</span>}</button>:
  <button type="button" className="icon-btn" aria-label="Theme mode" title="Theme mode" aria-expanded={menu==='theme'} aria-haspopup="menu" onClick={e=>toggle('theme',e.currentTarget)}><Icon size={19}/></button>}
- {menu&&<div className="sidebar-popover" role="menu" aria-label={menu==='theme'?'Theme mode':'User profile'}>
+ {menu&&<div className="sidebar-popover" role="menu" aria-orientation="vertical" aria-label={menu==='theme'?'Theme mode':'User profile'}>
  {menu==='theme'?modes.map(([id,label,Glyph])=><button type="button" role="menuitemradio" aria-label={label} title={label} key={id} aria-checked={mode===id} onClick={()=>{try{saveAppearance({...loadAppearance(),theme:id});close()}catch(err){setError(String(err))}}}><Glyph size={19} aria-hidden="true"/></button>):<><button role="menuitem" onClick={()=>{close();openAccount?.()}}><CircleUserRound size={18}/>View account</button><button role="menuitem" onClick={()=>{close();signOut?.()}}><LogOut size={18}/>Sign out</button></>}
  {error&&<p role="alert">{error}</p>}</div>}
  </div>

@@ -1,5 +1,7 @@
-.modal:has(.account-layout){width:min(68rem,100%);background:var(--theme-surface)}
-.account-layout{display:grid;grid-template-columns:minmax(12rem, .75fr) minmax(0,2fr);align-items:start;gap:1rem}
+.account-page{display:grid;gap:1rem;min-width:0}
+.account-page>.page-header{margin:0}
+.account-page h1{scroll-margin-block-start:5rem}
+.account-layout{display:grid;grid-template-columns:minmax(14.5rem,.68fr) minmax(0,2.6fr);align-items:start;gap:clamp(.65rem,1.3vw,1.15rem)}
 .account-identity,.account-panel{border:1px solid var(--theme-border);border-radius:var(--app-radius);background:var(--theme-surface);min-width:0;padding:1rem}
 .account-identity{position:relative;overflow:hidden;text-align:center}
 .account-cover{height:5rem;margin:-1rem -1rem -2rem;background:radial-gradient(ellipse at 75% 0,var(--app-accent),transparent 70%),var(--theme-highlight)}
@@ -9,22 +11,6 @@
 .account-panel .users-facts{display:grid;grid-template-columns:minmax(6rem,1fr) minmax(0,1.5fr);gap:.7rem}.account-panel dd{margin:0;overflow-wrap:anywhere}
 .account-panel .security-settings-card{margin-bottom:.75rem}
 @media(max-width:700px){.account-layout{grid-template-columns:minmax(0,1fr)}.account-identity dl{display:none}.account-identity h2{margin:.5rem}.account-identity .btn{margin:.4rem}}
-.sidebar .nav-scroll{flex:1;min-height:0}
-.sidebar-account{position:relative;flex:none;padding:.5rem 11px max(.5rem,env(safe-area-inset-bottom));border-top:1px solid var(--theme-border)}
-.sidebar-account .profile-trigger,.sidebar-popover button{display:flex;align-items:center;justify-content:center;gap:.4rem;min-height:44px;min-width:44px;background:transparent;color:var(--theme-text);border:0;border-radius:.5rem;cursor:pointer}
-.sidebar-account .profile-trigger{width:100%;justify-content:flex-start;gap:11px;padding:9px 11px;text-align:start;font:inherit}
-.sidebar-account .profile-trigger :is(img,svg){width:20px;height:20px;flex:none}
-.sidebar-account .saved-account-picture{border-radius:50%;object-fit:cover}
-.sidebar-account .sidebar-popover{position:absolute;z-index:12;bottom:100%;left:.25rem;width:max-content;min-width:9rem;padding:.4rem;border:1px solid var(--theme-border);border-radius:.75rem;background:var(--theme-surface);box-shadow:var(--card-shadow)}
-.sidebar-popover button{justify-content:flex-start;width:100%;padding:.4rem .75rem}.sidebar-popover button[aria-checked=true]{background:var(--theme-highlight);color:var(--theme-icon)}
-
-/* Keep the two menus in the hit-testing layer of their respective navigation bars. */
-.sidebar:has(.sidebar-popover){z-index:45}
-.header-theme{position:relative;display:flex;flex:none}
-.header-theme .sidebar-popover{position:absolute;inset-block-start:calc(100% + .5rem);inset-inline-end:0;z-index:15;display:flex;gap:.25rem;padding:.35rem;background:var(--theme-surface);border:1px solid var(--theme-border);border-radius:.7rem;box-shadow:var(--card-shadow)}
-.header-theme .sidebar-popover button{justify-content:center;min-width:42px;min-height:42px;padding:0}
-.modal:has(.account-layout){width:min(79rem,100%);max-width:100%;overflow:auto;padding:clamp(.75rem,2vw,1.5rem)}
-.account-layout{grid-template-columns:minmax(12rem, .68fr) minmax(0,2.6fr);gap:clamp(.65rem,1.3vw,1.15rem)}
 .account-cover,.profile-banner{background:radial-gradient(ellipse at 85% -45%,var(--app-accent) 5%,transparent 72%),linear-gradient(155deg,var(--theme-input) 38%,var(--theme-highlight) 94%)}
 .account-cover{height:6rem;margin-bottom:-2.3rem;border-bottom:1px solid var(--theme-border)}
 .account-identity .users-avatar{width:4.7rem;height:4.7rem;border-color:var(--theme-text)}
@@ -48,5 +34,5 @@
 .profile-event,.account-panel .users-permission{padding:.65rem 0;border-bottom:1px solid var(--theme-border);overflow-wrap:anywhere}.profile-event time{margin-inline-start:auto;font-size:.8rem}.account-panel .users-permission{display:flex;align-items:center;gap:.45rem}.users-permission small{margin-inline-start:auto}
 .account-panel .security-settings-card{margin:0}
 @media(max-width:760px){.account-layout{grid-template-columns:minmax(0,1fr)}.account-cover{height:3.3rem}.account-quick{display:flex;flex-wrap:wrap;gap:.25rem}.account-quick h3{display:none}.account-quick button{width:auto;flex:1;justify-content:center;font-size:.8rem}.account-quick button svg:last-child{display:none}.profile-tabs .tab{flex:0 0 auto}.profile-fields{grid-template-columns:minmax(0,1fr)}}
-@media(max-height:530px) and (min-width:761px){.account-layout{grid-template-columns:minmax(10rem,.6fr) minmax(0,2.6fr)}.account-cover{height:3.5rem}}
+@media(max-height:530px) and (min-width:761px){.account-cover{height:3.5rem}}
 .account-panel .security-settings-card h2{font-size:1.05rem}.account-panel .security-settings-card .settings-fact{gap:1rem}
