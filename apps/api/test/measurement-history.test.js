@@ -23,7 +23,11 @@ test('temperature reports preserve gaps, sensor identity, cluster isolation and 
   execFileSync(process.execPath,['--input-type=module','-e',`import {recordMeasurements} from ${JSON.stringify(url)};
    for(const [time,value] of [[${now}-300000,40],[${now}-60000,52]])recordMeasurements('first',[{kind:'system',id:'cpu',label:'Package',value}],time);
    recordMeasurements('second',[{kind:'drive',id:'nvme',label:'NVMe',value:35}],${now});`],{env:{...process.env,DATA_DIR:dir}});
-  const {temperatureReport}=await import(url);
+  const {temperatureReport,recordMeasurements,diskHistory}=await import(url);
+  for(const time of [now-300000,now-60000])recordMeasurements('first',[{kind:'io',id:'disk',label:'Physical disks',value:512,secondary:0}],time);
+  const rates=diskHistory('first','day',now);
+  assert.deepEqual(rates.map(p=>p.diskRead),[512,null,512]);
+  assert.deepEqual(rates.map(p=>p.diskWrite),[0,null,0]);
   const report=temperatureReport([{id:'first',name:'One',online:false}],{},true,now);
   assert.equal(report.series.length,1);const [cpu]=report.series;
   assert.equal(cpu.latest,52);assert.equal(cpu.minimum,40);assert.equal(cpu.maximum,52);

@@ -43,9 +43,18 @@ export function recordMeasurements(agent,rows,time=Date.now()){
 export function diskHistory(agent,period,now){
   const duration=Math.min(periods[period]||day,30*day);
   const interval=duration>day?Math.ceil(duration/720):30000;
-  return database().prepare(`SELECT min(time) AS time,avg(value) AS diskRead,avg(secondary) AS diskWrite
+  const points=database().prepare(`SELECT CAST(time / ? AS INTEGER)*? AS time,avg(value) AS diskRead,avg(secondary) AS diskWrite
     FROM samples WHERE agent=? AND kind='io' AND time BETWEEN ? AND ?
-    GROUP BY CAST(time / ? AS INTEGER) ORDER BY time`).all(agent,now-duration,now,interval);
+    GROUP BY CAST(time / ? AS INTEGER) ORDER BY time`).all(interval,interval,agent,now-duration,now,interval);
+  const series=[];
+  for(const point of points){
+    const previous=series.at(-1);
+    if(previous && point.time-previous.time>interval){
+      series.push({time:previous.time+interval,diskRead:null,diskWrite:null});
+    }
+    series.push(point);
+  }
+  return series;
 }
 
 export function temperatureReport(agents,query,enabled,now=Date.now()){
