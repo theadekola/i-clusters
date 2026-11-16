@@ -39,6 +39,7 @@ export async function migrate(db = pool) {
     ${usageSchema}
     ${accountAccessSchema}
     ${permissionSchema}
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_picture BYTEA;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS profile JSONB NOT NULL DEFAULT '{}';
     ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS cluster_roles JSONB;
@@ -68,6 +69,7 @@ export async function migrate(db = pool) {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), expires_at TIMESTAMPTZ NOT NULL,
       revoked_at TIMESTAMPTZ, device TEXT NOT NULL DEFAULT 'Browser'
     );
+    ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
     CREATE INDEX IF NOT EXISTS auth_sessions_user ON auth_sessions(user_id);
     CREATE TABLE IF NOT EXISTS mfa_recovery_codes (
       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, code_hash TEXT NOT NULL,
@@ -101,6 +103,7 @@ export async function migrate(db = pool) {
       request_id TEXT
     );
     ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS cluster_id TEXT NOT NULL DEFAULT 'default';
+    CREATE INDEX IF NOT EXISTS audit_account_time ON audit_logs(cluster_id,user_id,created_at DESC,id DESC);
     CREATE INDEX IF NOT EXISTS audit_logs_cluster_time ON audit_logs(cluster_id,created_at DESC);
     CREATE TABLE IF NOT EXISTS action_approvals (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
