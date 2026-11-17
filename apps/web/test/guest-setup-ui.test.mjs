@@ -502,6 +502,20 @@ test('Integrations links to history and places preferences directly under events
  }finally{await page.close()}
 });
 
+test('loading AI models marks only the models button busy',async()=>{
+ let finish;
+ const page=await mounted('components/ConfigurationDialog.tsx',{service:'ai',onClose(){}},async(path)=>{
+  if(path.endsWith('/models'))return new Promise(resolve=>{finish=resolve});
+  return {name:'AI Assistant',fields:[],disabled:false};
+ });
+ try{
+  await page.click(button(page,'Load Models'));
+  assert.deepEqual([...page.container.querySelectorAll('button[aria-busy="true"]')].map(b=>b.textContent),['Loading Models…']);
+  await act(async()=>finish({result:{models:['fixture']}}));
+  assert.equal(page.container.querySelector('button[aria-busy="true"]'),null);
+ }finally{await page.close()}
+});
+
 test('retrying an earlier assistant question preserves the draft and message order',async()=>{
  const calls=[];
  const page=await mounted('pages/AI.tsx',{},async(path,init)=>{
@@ -525,6 +539,10 @@ test('retrying an earlier assistant question preserves the draft and message ord
   assert.equal(input.value,'Unsent draft');
   assert.deepEqual(Array.from(page.container.querySelectorAll('.bubble'),el=>el.textContent),['First question','Answer to First question','Second question','Answer to Second question']);
   assert.equal(button(page,'Retry'),undefined);
+  await page.click(button(page,'New chat'));
+  assert.equal(page.container.querySelectorAll('.bubble').length,0);
+  await page.click(page.container.querySelector('.assistant-history nav button'));
+  assert.equal(page.container.querySelectorAll('.bubble').length,4);
  }finally{await page.close()}
 });
 

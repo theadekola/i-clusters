@@ -38,7 +38,7 @@ import {resetGuestDiscovery} from './guest-discovery.js';
 import {notificationIds} from './notification-channels.js';
 import {buildInfo} from './build-info.js';
 import {publicDockerImage,publicDockerVolume} from './docker-public.js';
-import {queryAI,listAIModels} from './ai.js';
+import {queryAI,listAIModels,assistantContext} from './ai.js';
 import {connectorSSHAddress} from './connector-ssh-target.js';
 import {connectorUpdater} from './connector-updates.js';
 import {headerNotifications} from './header-notifications.js';
@@ -604,10 +604,16 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
  action('post','/ai/health','viewer','health.inspect',async()=>{const s=await monitor.sample(true);return {summary:`${s.services.filter(x=>x.status==='reachable').length} reachable integrations/services; ${s.services.filter(x=>x.status==='error').length} connection failures; ${s.alerts.filter(a=>a.status==='active').length} active alerts. This is an API and threshold check, not a security scan.`};});
  action('post','/ai/chat','viewer','assistant.query',async req=>{
    const message=required(req.body.message,'Message');const s=await monitor.sample();
-   const context={sampledAt:s.sampledAt,services:s.services,alerts:s.alerts.filter(a=>a.status!=='resolved'),proxmox:s.proxmox,docker:s.docker,dockerFleet:s.dockerFleet,truenas:s.truenas?{pools:s.truenas.pools}:undefined};
-   const ai=configuration.resolve('ai');if(ai.OPENAI_API_KEY)return {answer:await queryAI(ai,JSON.stringify({context,message,history:Array.isArray(req.body.history)?req.body.history.slice(-4).filter(row=>typeof row?.question==='string'&&typeof row?.answer==='string').map(row=>({question:row.question.slice(0,2000),answer:row.answer.slice(0,4000)})):[]})),mode:ai.AI_PROVIDER||'openai'};
-
-   return {answer:`Sampled ${s.sampledAt}. ${s.services.map(x=>`${x.name}: ${x.status}${x.error?` (${x.error})`:''}`).join('; ')}. ${context.alerts.length} active or acknowledged alerts. Configure the provider on the AI Assistant page for conversational analysis.`,mode:'local'};
+   const context=assistantContext(s);
+   const localSummary=`Sampled ${s.sampledAt}. ${s.services.map(x=>`${x.name}: ${x.status}${x.error?` (${x.error})`:''}`).join('; ')}. ${context.alerts?.total??0} active or acknowledged alerts.`;
+   const ai=configuration.resolve('ai');
+   if(!ai.OPENAI_API_KEY)return {answer:localSummary+' Configure the provider on the AI Assistant page for conversational analysis.',mode:'local'};
+   const history=Array.isArray(req.body.history)?req.body.history.slice(-4).filter(row=>typeof row?.question==='string'&&typeof row?.answer==='string').map(row=>({question:row.question.slice(0,2000),answer:row.answer.slice(0,4000)})):[];
+   try{return {answer:await queryAI(ai,JSON.stringify({context,message,history})),mode:ai.AI_PROVIDER||'openai'};}
+   catch(error){
+    if(error.aiError&&error.status===504)return {answer:localSummary,mode:'local',providerError:error.message};
+    throw error;
+   }
 
  });
  read('/users',async()=>({users:(await db.query(`SELECT id,name,email,username,profile,role,cluster_roles AS "clusterRoles",status,two_factor_enabled AS "twoFactor",last_login AS "lastLogin",created_at AS "createdAt" FROM users ORDER BY created_at`)).rows}),'admin');
