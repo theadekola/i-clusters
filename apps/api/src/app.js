@@ -58,7 +58,7 @@ import {targetSSHHost} from './ssh-target.js';
 import {openGuestUpdate,closeSessionAccess,writeShellInput,openShellOwner,actionTarget,consumeGrant,connectSSH,shellSession,closeShell,publicSavedSSH,savedSSH,sftpOperation,deleteSavedSSH} from './ssh-access.js';
 import {providerDiagnostics} from './diagnostics.js';
 import {notifier} from './notifications.js';
-import {temperatureReport} from './measurement-history.js';
+import {temperatureReport,physicalReportNodes} from './measurement-history.js';
 import {storagePerformance} from './storage-performance.js';
 import {shareInventory,shareWrite,detectedShare,shareProtocol} from './shares.js';
 import {snapshotInventory,guestSnapshot} from './snapshots.js';
@@ -124,7 +124,7 @@ export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:c
  app.get('/api/node-agent/install',(req,res)=>res.sendFile(fileURLToPath(new URL('./agent-assets/install-node-agent.sh',import.meta.url))));
  app.get('/api/docker-agent/install',(req,res)=>res.sendFile(fileURLToPath(new URL('./agent-assets/install-docker-agent.sh',import.meta.url))));
  app.post('/api/node-agent/pair',loginLimiter,(req,res)=>res.json(pairNode(req.body.code,req.body.name,req.body.kind)));
- app.post('/api/node-agent/poll',(req,res,next)=>{req.nodeAgent=req.nodeAgent||authenticateAgent(req.headers.authorization?.replace(/^Bearer /,''));next();},agentPollLimiter,(req,res)=>{const result=pollAgent(req.nodeAgent,req.body);res.json({...result,collectTemperatures:get().thermalCollection===true,...autoConnectorUpdates.poll(req.nodeAgent,req.body,result)})});
+ app.post('/api/node-agent/poll',(req,res,next)=>{req.nodeAgent=req.nodeAgent||authenticateAgent(req.headers.authorization?.replace(/^Bearer /,''));next();},agentPollLimiter,(req,res)=>{const result=pollAgent(req.nodeAgent,req.body);res.json({...result,collectTemperatures:req.nodeAgent.kind!=='docker'&&get().thermalCollection===true,...autoConnectorUpdates.poll(req.nodeAgent,req.body,result)})});
 
  app.post('/api/node-agent/setup-script',(req,res)=>{authenticateAgent(req.headers.authorization?.replace(/^Bearer /,''));res.json({script:readFileSync(new URL('./agent-assets/guest-docker-setup.sh',import.meta.url),'utf8')});});
  app.get('/api/auth/setup',async(req,res)=>{res.set('Cache-Control','no-store');res.json(await setupStatus(db));});
@@ -413,7 +413,9 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
 
  read('/storage/disks/:node/smart',req=>diskSmart(req.params.node,req.query.disk));
  read('/storage/snapshots/browse',async req=>{const id=required(req.query.id,'Snapshot');const list=await truenas('pool.snapshot.query',[[['id','=',id]]]);if(!list.some(s=>(s.id||s.name)===id))throw httpError('Snapshot not found',404);const split=id.lastIndexOf('@'),dataset=id.slice(0,split),name=id.slice(split+1);if(split<1||!name||/[\/\\]/.test(name)||['.','..'].includes(name))throw httpError('Invalid snapshot path');const root=await datasetRoot(dataset);return {path:`${root}/.zfs/snapshot/${name}`,entries:await truenas('filesystem.listdir',[`${root}/.zfs/snapshot/${name}`,[],{limit:200}])};});
- read('/monitoring/temperatures',req=>temperatureReport(agentNodes(),req.query,get().thermalCollection===true));
+ const sensorNodes=async()=>physicalReportNodes((await monitor.sample()).proxmox?.nodes,agentNodes());
+ read('/monitoring/temperatures',async req=>temperatureReport(await sensorNodes(),req.query,get().thermalCollection===true));
+ read('/operations/power',async req=>temperatureReport(await sensorNodes(),req.query,true,Date.now(),true),'admin');
  action('put','/monitoring/temperatures','admin','monitoring.temperature.collection',req=>{
   if(typeof req.body.enabled!=='boolean')throw httpError('Choose a collection state',400);
   mutate(state=>{state.thermalCollection=req.body.enabled});return {enabled:req.body.enabled};

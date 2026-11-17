@@ -71,7 +71,7 @@ export function permits(selection, method, url, body = {}, sub) {
       return ['cluster','vm','containers','network','backups'].every(area=>has(area+'.view'));
     if (/^\/docker(?:\/(?:hosts|events|container\/[^/]+\/logs|image\/[^/]+|volume\/[^/]+|volumes\/usage|network\/[^/]+))?$/.test(path))
       return has('containers.view') && has('network.view');
-    if(path === '/monitoring/temperatures')return has('cluster.view');
+    if(path === '/monitoring/temperatures'||path === '/operations/power')return has('cluster.view');
     if (path === '/storage/datasets/guest-layout') return has('vm.edit');
     const rule = reads.find(([pattern]) => pattern.test(path));
     return !!rule && has(rule[1] + '.view');
