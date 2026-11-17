@@ -41,15 +41,17 @@ mkdir -m 0700 -p "$recovery"
 previous=$(git rev-parse HEAD)
 printf '%s\n' "$previous" > "$recovery/revision"
 cp -a .env docker-compose.yml deployment/Caddyfile "$recovery/"
-for service in api web caddy postgres; do
+compose_services=$(docker compose config --services)
+mapfile -t services <<< "$compose_services"
+for service in "${services[@]}"; do
  image=$(docker compose images -q "$service" | head -1)
  [[ -n $image ]] || { echo "The existing $service image is required for rollback." >&2; exit 1; }
  docker tag "$image" "iclusters-rollback-$service:$stamp"
 done
-python3 - "$stamp" "$recovery/images.json" <<'IMAGES'
+python3 - "$stamp" "$recovery/images.json" "${services[@]}" <<'IMAGES'
 import json,sys
-stamp,target=sys.argv[1:]
-with open(target,'w') as output: json.dump({'services':{service:{'image':f'iclusters-rollback-{service}:{stamp}'} for service in ['api','web','caddy','postgres']}},output)
+stamp,target,*services=sys.argv[1:]
+with open(target,'w') as output: json.dump({'services':{service:{'image':f'iclusters-rollback-{service}:{stamp}'} for service in services}},output)
 IMAGES
 printf '{"operation":"software-upgrade"}\n' > runtime/maintenance.json
 paused=0

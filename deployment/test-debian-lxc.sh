@@ -50,7 +50,7 @@ verify() {
   guest sh -ec '
     cd /opt/i-clusters
     systemctl is-active --quiet i-clusters.service
-    test "$(docker compose ps --status running --services | sort | paste -sd,)" = api,caddy,postgres,web
+    test "$(docker compose ps --status running --services | sort | paste -sd,)" = api,caddy,postgres,redis,web
     origin=$(sed -n "s/^WEB_ORIGIN=//p" .env)
     curl -fsS --cacert secrets/ca/controller-ca.pem "$origin/api/health" | python3 -c "import json,sys; assert json.load(sys.stdin)[\"ok\"]"
     iclusters status

@@ -13,6 +13,7 @@ cat > "$stage/bin/docker" <<'MOCK'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$LOG"
 case "$*" in
+ 'compose config --services') printf '%s\n' api web caddy postgres; [[ $CASE != after-snapshot ]] || echo redis;;
  *'images -q'*) echo image;;
  *'check-maintenance.mjs'*) if [[ $CASE == before-pause ]]; then exit 18; fi;;
  *pg_dump*) if [[ $CASE == restart-api ]]; then exit 22; fi;echo database;;
@@ -38,6 +39,7 @@ for scenario in before-pause after-snapshot rollback-db rollback-config rollback
  result=$?
  set -e
  test "$result" -ne 0
+ if [[ $scenario == after-snapshot ]]; then grep -q iclusters-rollback-redis "$project"/recovery/upgrade-*/images.json; fi
  python3 - "$project/update-status.json" <<'CHECK'
 import json,sys,os,stat
 assert stat.S_IMODE(os.stat(sys.argv[1]).st_mode)==0o644
