@@ -244,6 +244,7 @@ try{
    if(Object.keys(visit??{}).length!==1||typeof visit?.feature!=='string'||!visit.feature.trim())failures.push('Invalid product visit payload');
    return route.fulfill({status:204});
   }
+  if(process.env.LAYOUT_ASSISTANT_CHAT&&path==='/ai/chat'&&route.request().method()==='POST')return route.fulfill({json:{result:{answer:'Fixture cluster is online.',mode:'local'}}});
   // The audit must never reach an actual provider or perform a management write.
   if(route.request().method()!=='GET'&&path!=='/ssh/fingerprint'&&!(checkRefresh&&path==='/docker/updates/check'))failures.push(`Unexpected write: ${path}`);
   return route.fulfill({json:fixture(path)});
@@ -441,6 +442,23 @@ try{
      return [...findings];
     });
     failures.push(...painted.map(issue=>`${width}px ${route}: painted icon surface ${issue}`));
+   }
+   if(process.env.LAYOUT_ASSISTANT_CHAT&&route==='/ai'){
+    const workspace=page.locator('.assistant-workspace');
+    await workspace.waitFor();
+    await workspace.getByRole('textbox',{name:'Message'}).fill('Review the cluster');
+    await workspace.getByRole('button',{name:'Send',exact:true}).click();
+    await workspace.locator('.bubble.assistant').filter({hasText:'Fixture cluster is online.'}).first().waitFor();
+    const composer=await workspace.locator('.assistant-compose').boundingBox();
+    const bounds=await workspace.boundingBox();
+    assert.ok(composer.y+composer.height>bounds.y+bounds.height-95,'Active composer stays at the bottom');
+    const history=workspace.locator('.history-toggle');
+    if(await history.isVisible())await history.click();
+    await workspace.getByRole('button',{name:'New chat',exact:true}).click();
+    await workspace.locator('.assistant-greeting').waitFor();
+    if(await history.isVisible())await history.click();
+    await workspace.locator('.assistant-history nav button').first().click();
+    await workspace.locator('.bubble.assistant').first().waitFor();
    }
    if(process.env.LAYOUT_CHECK_CHARTS==='1'&&route==='/monitoring?tab=Temperatures'){
     const reports=page.locator('.thermal-reports');
@@ -818,7 +836,7 @@ try{
     assert.ok(await install.isEnabled(),'A verified target, credentials and consent enable installation');
     await page.keyboard.press('Escape');await ssh.waitFor({state:'detached'});assert.ok(await parent.isVisible());assert.equal(await page.getByLabel(label,{exact:true}).inputValue(),host);await page.waitForFunction(()=>document.activeElement?.textContent==='Connect Automatically with SSH');assert.equal(await page.getByRole('button',{name:'Connect Automatically with SSH',exact:true}).evaluate(e=>e===document.activeElement),true);await page.getByRole('button',{name:'Connect Automatically with SSH',exact:true}).click();await ssh.waitFor();await ssh.getByLabel(copy('SSH / sudo password'),{exact:true}).waitFor();assert.equal(await ssh.getByLabel(copy('SSH / sudo password'),{exact:true}).inputValue(),'');await identity.waitFor();assert.equal(await consent.isChecked(),false);assert.ok(await install.isDisabled());if(process.env.LAYOUT_SCREENSHOTS)await ssh.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-${setup}-ssh-popup.png`});await ssh.getByRole('button',{name:copy('Close dialog'),exact:true}).click();await ssh.waitFor({state:'detached'});
    }
-   await page.goto(base+'ai');await page.getByRole('button',{name:'Configure AI Assistant',exact:true}).click();await page.getByLabel('AI provider',{exact:true}).waitFor();const beforeModels=aiModelReads,beforeTests=aiTests,beforeSaves=aiSaves;
+   await page.goto(base+'ai');await page.locator('.assistant-workspace').waitFor();if(await page.locator('.history-toggle').isVisible())await page.locator('.history-toggle').click();await page.getByRole('button',{name:'Configure AI Assistant',exact:true}).click();await page.getByLabel('AI provider',{exact:true}).waitFor();const beforeModels=aiModelReads,beforeTests=aiTests,beforeSaves=aiSaves;
    for(const id of Object.keys(aiMetadata)){
     await page.getByLabel('AI provider',{exact:true}).selectOption(id);assert.equal(await page.getByLabel('API key',{exact:true}).inputValue(),'');assert.equal(await page.getByLabel('API type',{exact:true}).inputValue(),aiMetadata[id].types[0]);assert.equal(await page.getByLabel('Model',{exact:true}).inputValue(),aiMetadata[id].defaultModel);assert.ok(await page.getByLabel('Model',{exact:true}).locator('option').count()>=3,'Provider has multiple model choices and a custom option');if(process.env.LAYOUT_SCREENSHOTS&&id==='anthropic')await page.locator('.modal').last().screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-ai-claude.png`});await page.getByLabel('API key',{exact:true}).fill('fixture-'+id);await page.getByRole('button',{name:'Load Models',exact:true}).click();await page.getByRole('option',{name:id+'-fixture-model',exact:true}).waitFor({state:'attached'});await page.getByLabel('Model',{exact:true}).selectOption(id+'-fixture-model');await page.getByRole('button',{name:'Test Connection',exact:true}).click();await page.getByRole('dialog',{name:'Confirm Action',exact:true}).getByRole('button',{name:'Confirm',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.configuration-feedback')?.textContent.includes('Connection test successful')).catch(async()=>{throw Error(id+': '+await page.locator('.configuration-dialog').innerText())});
    }

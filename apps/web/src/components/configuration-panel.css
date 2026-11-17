@@ -1,0 +1,7 @@
+.ai-configuration .configuration-fields{padding:1rem;border-radius:12px;background:var(--theme-input);border:1px solid var(--theme-border)}
+.ai-configuration .configuration-fields label{align-items:stretch;font-weight:600}
+.ai-configuration .configuration-fields :is(input,select){background:var(--theme-surface);font-weight:400}
+.ai-configuration .settings-note{display:block;color:var(--theme-muted);line-height:1.5}
+.modal .ai-configuration .configuration-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}
+.modal .ai-configuration .configuration-actions button{width:100%;min-width:0;white-space:normal}
+@media(max-width:600px){.ai-configuration .configuration-fields{grid-template-columns:minmax(0,1fr)}}

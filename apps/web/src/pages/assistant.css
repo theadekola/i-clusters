@@ -1,0 +1,37 @@
+.assistant-workspace{display:grid;grid-template-columns:minmax(170px,230px) minmax(0,1fr);height:calc(100dvh - 145px);min-height:340px;isolation:isolate;overflow:hidden;border:1px solid var(--theme-border);border-radius:16px;background:var(--theme-surface);color:var(--theme-text)}
+.assistant-history{min-height:0;min-width:0;display:flex;flex-direction:column;gap:14px;padding:16px;background:var(--theme-input);border-inline-end:1px solid var(--theme-border)}
+.assistant-history-label{font-size:.82rem;color:var(--theme-muted);margin:6px 0 0}
+.assistant-history nav{overflow:auto;flex:1;min-height:0}
+.assistant-history nav button,.assistant-starters button{display:flex;align-items:center;gap:9px;border:1px solid transparent;color:inherit;background:transparent;text-align:start;cursor:pointer}
+.assistant-history nav button{width:100%;min-height:40px;border-radius:8px}
+.assistant-history nav button[aria-current],.assistant-history nav button:hover{background:var(--theme-highlight)}
+.assistant-history nav button span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.assistant-history svg,.assistant-compose svg{flex:none}
+.assistant-history .btn,.assistant-compose .btn{display:flex;align-items:center;justify-content:center;gap:7px;white-space:normal}
+.assistant-main{display:flex;flex-direction:column;gap:14px;min-width:0;min-height:0;padding:clamp(12px,2.5vw,36px);background:radial-gradient(ellipse at 50% 20%,color-mix(in srgb,var(--app-accent) 9%,transparent),transparent 68%)}
+.assistant-main.welcome{justify-content:safe center;align-items:center;overflow:auto}
+.assistant-greeting{text-align:center}
+.assistant-symbol{display:grid;place-items:center;margin:auto;width:80px;height:80px;color:var(--app-accent);background:color-mix(in srgb,var(--app-accent) 10%,transparent);border:1px solid var(--theme-border);border-radius:24px}
+.assistant-greeting h1{font-size:clamp(1.35rem,2.4vw,2.5rem);line-height:1.2;margin:18px 0 7px}
+.assistant-greeting p,.assistant-privacy{color:var(--theme-muted)}
+.assistant-starters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.assistant-starters button{padding:12px;border-radius:10px;background:var(--theme-input);border-color:var(--theme-border)}
+.assistant-starters svg{color:var(--app-accent);flex:none}
+.assistant-main .assistant-compose,.assistant-starters,.assistant-privacy{width:min(100%,860px);margin-inline:auto}
+.assistant-main .assistant-compose{display:flex;flex-wrap:nowrap;align-items:center;background:var(--theme-input);border:1px solid var(--theme-border);border-radius:14px;padding:5px}
+.assistant-main .assistant-compose input{width:0;flex:1;min-width:0;background:transparent;color:var(--theme-text);border:0;padding:10px}
+.assistant-messages{flex:1;overflow:auto;min-height:0;display:flex;flex-direction:column;gap:12px;width:min(100%,860px);margin-inline:auto}
+.assistant-messages .bubble{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--theme-text);background:var(--theme-input);align-self:flex-start}
+.assistant-messages .bubble.user{align-self:flex-end;background:var(--theme-highlight);color:var(--theme-text)}
+.assistant-messages small{display:block;color:var(--theme-muted)}
+.assistant-privacy{font-size:.77rem}.assistant-privacy summary{cursor:pointer}
+.assistant-workspace>.history-toggle{display:none}
+@media(max-width:700px){
+ .assistant-workspace{position:relative;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);height:calc(100dvh - 135px)}
+ .assistant-workspace>.history-toggle{display:inline-flex;align-items:center;gap:8px;justify-self:start;margin:7px 10px}
+ .assistant-history{display:none}.assistant-history.expanded{display:flex;position:absolute;inset:54px auto 0 0;width:min(290px,95%);z-index:2;box-shadow:5px 0 15px #0003}
+ .assistant-main{padding:10px;gap:10px}.assistant-symbol{width:52px;height:52px}.assistant-symbol svg{width:30px}
+ .assistant-starters button{font-size:.85rem;padding:8px}
+}
+
+.assistant-thread-title{margin:0;min-height:1.4em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:1rem;color:var(--theme-text)}
