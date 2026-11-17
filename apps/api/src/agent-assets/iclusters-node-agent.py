@@ -248,6 +248,51 @@ def system_temperatures(root=pathlib.Path('/sys/class/hwmon')):
   except OSError:continue
  return readings
 
+def node_power(root=pathlib.Path('/sys/class/hwmon')):
+ readings=[]
+ for chip in sorted(root.glob('hwmon*')):
+  try:
+   driver=(chip/'name').read_text().strip()
+   device=(chip/'device').resolve() if (chip/'device').exists() else chip.resolve().parent.parent
+   for path in sorted(chip.glob('power*_*')):
+    match=re.fullmatch(r'(power[0-9]+)_(input|average)',path.name)
+    if not match:continue
+    key,mode=match.groups()
+    if mode=='average' and (chip/(key+'_input')).exists():continue
+    try:
+     watts=int(path.read_text())/1000000
+     label_path=chip/(key+'_label')
+     label=label_path.read_text().strip() if label_path.is_file() else key
+     if 0<=watts<=1000000:
+      readings.append({'id':hashlib.sha256(f'{device}/{driver}/{key}'.encode()).hexdigest(),'label':driver+' / '+label,'value':watts})
+    except (ValueError,OSError):continue
+  except OSError:continue
+ return readings[:64]
+
+PACKAGE_COUNTERS={}
+def package_power(root=pathlib.Path('/sys/class/powercap'),clock=time.monotonic):
+ readings=[]
+ current={}
+ now=clock()
+ for domain in sorted(root.glob('intel-rapl:[0-9]*')):
+  if not re.fullmatch(r'intel-rapl:[0-9]+',domain.name):continue
+  try:
+   label=(domain/'name').read_text().strip()
+   if not label.startswith('package-'):continue
+   energy=int((domain/'energy_uj').read_text())
+   previous=PACKAGE_COUNTERS.get(domain.name)
+   current[domain.name]=(now,energy)
+   if previous is None:continue
+   elapsed=now-previous[0]
+   delta=energy-previous[1]
+   # Skip gaps and counter wraps. Resume after the next increasing sample.
+   if 0<elapsed<=180 and delta>=0:
+    readings.append({'id':hashlib.sha256(('rapl/'+domain.name).encode()).hexdigest(),'label':'CPU '+label,'value':delta/1000000/elapsed})
+  except (OSError,ValueError):continue
+ PACKAGE_COUNTERS.clear()
+ PACKAGE_COUNTERS.update(current)
+ return readings
+
 def command_json(args,timeout=5):
  p=subprocess.run(args,capture_output=True,text=True,timeout=timeout)
  return json.loads(p.stdout)
@@ -255,6 +300,7 @@ def collect_operations():
  global DRIVE_OFFSET
  thermal=THERMAL_ENABLED
  report={'sampledAt':time.time(),'disks':[],'ups':[],'errors':[]}
+ if globals().get('CONFIG',{}).get('kind','proxmox')=='proxmox':report['powerSamples']=(package_power()+node_power())[:64]
  if thermal:report['thermalSamples']=system_temperatures()
  try:
   devices=command_json(['smartctl','--scan','--json']).get('devices',[])

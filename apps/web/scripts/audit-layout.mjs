@@ -48,9 +48,10 @@ function fixture(path){
   if(path==='/storage/datasets')return {...sample,resources:popupVolumes,truenasEnabled:true};
  }
 
- if(path==='/monitoring/temperatures'){
+ if(path==='/tasks')return {truenas:[],proxmox:[{upid:'fixture',node:'node01',type:'qmstart',id:101,starttime:Math.floor(Date.now()/1000),status:'OK'}],providerInventory:{proxmox:{complete:true},truenas:{configured:false}}};
+ if(path==='/monitoring/temperatures'||path==='/operations/power'){
   const time=Date.parse(now);
-  const series=['system','drive'].map((kind,index)=>({kind,id:kind,label:index?'SSD 1':'CPU package',latest:42+index,minimum:40,maximum:45,lastSeen:time,points:[{time:time-180000,value:41,minimum:40,maximum:42},{time:time-120000,value:null,minimum:null,maximum:null},{time:time-60000,value:42+index,minimum:41,maximum:45}]}));
+  const series=(path==='/operations/power'?['power']:['system','drive']).map((kind,index)=>({kind,id:kind,label:index?'SSD 1':'CPU package',latest:42+index,minimum:40,maximum:45,lastSeen:time,points:[{time:time-180000,value:41,minimum:40,maximum:42},{time:time-120000,value:null,minimum:null,maximum:null},{time:time-60000,value:42+index,minimum:41,maximum:45}]}));
   return {enabled:true,host:'thermal-node',hosts:[{id:'thermal-node',name:'Fixture host',online:true,version:11}],sensors:series,series,generatedAt:now};
  }
  if(path==='/monitoring/performance')return {sources:[{id:'cluster',type:'cluster',name:'Cluster overview'}],selected:{id:'cluster',type:'cluster',name:'Cluster overview'},series:process.env.LAYOUT_CHART_HISTORY==='empty'?[]:sample.metrics.map(m=>({time:Date.parse(m.time),cpu:m.cpu,memoryPercent:m.memory})),pools:[]};

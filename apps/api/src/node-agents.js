@@ -32,9 +32,13 @@ export function pollAgent(agent,input){
  const hosts=input.hosts.map(h=>{if((agent.kind==='docker'&&h.id!=='node')||!/^(node|qemu\/\d+|lxc\/\d+)$/.test(h.id))fail('Invalid guest identity');return {id:h.id,name:String(h.name||h.id).slice(0,100),online:h.online===true,error:String(h.error||'').slice(0,400),setup:h.setup===true,status:String(h.status||'unavailable').slice(0,40)}});
  const previous=nodes.get(agent.id);
  const operations=publicOperations(input.operations,Date.now(),previous?.operations);
- if(get().thermalCollection===true && operations && operations!==previous?.operations && Array.isArray(input.operations?.thermalSamples)){
+ if(agent.kind!=='docker' && get().thermalCollection===true && operations && operations!==previous?.operations && Array.isArray(input.operations?.thermalSamples)){
   const samples=input.operations.thermalSamples.slice(0,512).filter(s=>s&&['system','drive'].includes(s.kind)&&typeof s.id==='string'&&/^[a-f0-9]{64}$/.test(s.id)&&typeof s.label==='string'&&Number.isFinite(s.value)&&s.value>=-80&&s.value<=200);
   if(Math.abs(Date.now()/1000-operations.sampledAt)<180)recordMeasurements(agent.id,samples.map(s=>({...s,label:s.label.slice(0,160)})),operations.sampledAt*1000);
+ }
+ if(agent.kind!=='docker' && operations && operations!==previous?.operations && Math.abs(Date.now()/1000-operations.sampledAt)<180 && Array.isArray(input.operations?.powerSamples)){
+  const samples=input.operations.powerSamples.slice(0,64).filter(s=>s&&typeof s.id==='string'&&/^[a-f0-9]{64}$/.test(s.id)&&typeof s.label==='string'&&Number.isFinite(s.value)&&s.value>=0&&s.value<=1000000);
+  recordMeasurements(agent.id,samples.map(s=>({kind:'power',id:s.id,label:s.label.slice(0,160),value:s.value})),operations.sampledAt*1000);
  }
  nodes.set(agent.id,{disk:recordDiskReport(agent.id,nodes.get(agent.id)?.disk,input.disk),version:Number.isInteger(input.version)&&input.version>0&&input.version<=1000?input.version:1,revision:/^[a-f0-9]{64}$/.test(input.revision||'')?input.revision:null,time:Date.now(),lastSeen:new Date().toISOString(),hosts,updatePending:input.connectorUpdatePending===true,operations,network:input.network?acceptNetworkReport(nodes.get(agent.id)?.network,input.network):null});
  for(const p of (Array.isArray(input.progress)?input.progress:[]).slice(0,20)){const j=jobs.get(p?.id);if(!j||j.agent!==agent.id||!j.onProgress)continue;for(const e of (Array.isArray(p.events)?p.events:[]).slice(0,256))j.onProgress(e);}

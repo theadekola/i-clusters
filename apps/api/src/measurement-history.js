@@ -57,20 +57,31 @@ export function diskHistory(agent,period,now){
   return series;
 }
 
-export function temperatureReport(agents,query,enabled,now=Date.now()){
+export function physicalReportNodes(inventory,agents){
+  const nodes=agents.filter(agent=>agent.kind==='proxmox');
+  if(!inventory)return nodes.map(agent=>({...agent,name:agent.hostname}));
+  return inventory.map(({name})=>{
+    const exact=nodes.filter(agent=>agent.hostname===name);
+    const matches=exact.length?exact:nodes.filter(agent=>agent.hostname.split('.')[0]===name);
+    return matches.length===1?{...matches[0],name}:{id:'node:'+name,name,paired:false};
+  });
+}
+
+export function temperatureReport(agents,query,enabled,now=Date.now(),power=false){
   const period=query.period||'day';
   if(!['day','week','month'].includes(period))throw Object.assign(Error('Invalid temperature report period'),{status:400});
-  const hosts=agents.map(({id,name,online,version})=>({id,name,online,version}));
+  const hosts=agents.map(({id,name,online,version,paired=true})=>({id,name,online,version,paired}));
   const host=hosts.find(h=>h.id===query.host)||(query.host?null:hosts[0]);
   if(query.host&&!host)throw Object.assign(Error('Connector not found'),{status:404});
   const result={enabled,hosts,host:host?.id||null,sensors:[],series:[],period,generatedAt:new Date(now).toISOString()};
-  if(!host)return result;
+  if(!host||!host.paired)return result;
+  const kinds=power?['power']:['system','drive'];
   const from=now-periods[period],db=database();
   result.sensors=db.prepare(`SELECT kind,sensor AS id,label,min(value) AS minimum,max(value) AS maximum,
-     max(time) AS lastSeen FROM samples WHERE agent=? AND kind IN ('system','drive') AND time BETWEEN ? AND ?
-     GROUP BY kind,sensor ORDER BY kind,label,sensor`).all(host.id,from,now);
+     max(time) AS lastSeen FROM samples WHERE agent=? AND kind IN (${kinds.map(()=>'?').join(',')}) AND time BETWEEN ? AND ?
+     GROUP BY kind,sensor ORDER BY kind,label,sensor`).all(host.id,...kinds,from,now);
   const interval=period==='day'?60000:period==='week'?900000:3600000;
-  for(const kind of ['system','drive']){
+  for(const kind of kinds){
     const sensor=result.sensors.find(s=>s.kind===kind&&s.id===query[kind])||result.sensors.find(s=>s.kind===kind);
     if(!sensor)continue;
     const points=db.prepare(`SELECT CAST(time / ? AS INTEGER)*? AS time,avg(value) AS value,

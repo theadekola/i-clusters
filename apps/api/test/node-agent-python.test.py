@@ -194,6 +194,25 @@ class OperationalTests(unittest.TestCase):
    self.assertEqual(len(data['checks']),3);self.assertEqual(data['checks'][0]['dnsMilliseconds'],10)
    for call in run.call_args_list:self.assertTrue(call.args[0][-1].startswith('https://'));self.assertNotIn('untrusted',str(call))
 class OperationsCollectionTests(unittest.TestCase):
+ def test_node_power_reports_watts_per_sensor(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   root=pathlib.Path(tmp)
+   chip=root/'hwmon0'
+   chip.mkdir()
+   for name,value in {'name':'meter','power1_label':'System','power1_input':'43500000','power1_average':'42000000','power2_average':'0','power3_input':'invalid'}.items():
+    (chip/name).write_text(value)
+   self.assertEqual([(r['label'],r['value']) for r in agent.node_power(root)],[('meter / System',43.5),('meter / power2',0)])
+
+ def test_package_power_uses_elapsed_time_and_skips_resets(self):
+  with tempfile.TemporaryDirectory() as tmp,patch.object(agent,'PACKAGE_COUNTERS',{}):
+   root=pathlib.Path(tmp)
+   domain=root/'intel-rapl:0'
+   domain.mkdir()
+   (domain/'name').write_text('package-0')
+   for seconds,energy,expected in [(0,20,[]),(60,1200000020,[20]),(120,2,[]),(360,100,[])]:
+    (domain/'energy_uj').write_text(str(energy))
+    self.assertEqual([r['value'] for r in agent.package_power(root,lambda:seconds)],expected)
+
  def test_disk_health_does_not_request_or_return_temperature(self):
   from unittest.mock import patch
   def command(args,timeout=5):

@@ -23,11 +23,20 @@ test('temperature reports preserve gaps, sensor identity, cluster isolation and 
   execFileSync(process.execPath,['--input-type=module','-e',`import {recordMeasurements} from ${JSON.stringify(url)};
    for(const [time,value] of [[${now}-300000,40],[${now}-60000,52]])recordMeasurements('first',[{kind:'system',id:'cpu',label:'Package',value}],time);
    recordMeasurements('second',[{kind:'drive',id:'nvme',label:'NVMe',value:35}],${now});`],{env:{...process.env,DATA_DIR:dir}});
-  const {temperatureReport,recordMeasurements,diskHistory}=await import(url);
+  const {temperatureReport,recordMeasurements,diskHistory,physicalReportNodes}=await import(url);
   for(const time of [now-300000,now-60000])recordMeasurements('first',[{kind:'io',id:'disk',label:'Physical disks',value:512,secondary:0}],time);
   const rates=diskHistory('first','day',now);
   assert.deepEqual(rates.map(p=>p.diskRead),[512,null,512]);
   assert.deepEqual(rates.map(p=>p.diskWrite),[0,null,0]);
+  const nodes=physicalReportNodes([{name:'node01'},{name:'node02'}],[
+    {id:'first',kind:'proxmox',hostname:'node01.lab'},
+    {id:'guest',kind:'docker',hostname:'node02'}
+  ]);
+  assert.deepEqual(nodes.map(n=>n.id),['first','node:node02']);
+  recordMeasurements('first',[{kind:'power',id:'rail',label:'PSU input',value:84.5}],now);
+  const power=temperatureReport(nodes,{},true,now,true);
+  assert.deepEqual(power.series.map(s=>s.latest),[84.5]);
+  assert.equal(temperatureReport(nodes,{host:'node:node02'},true,now,true).series.length,0);
   const report=temperatureReport([{id:'first',name:'One',online:false}],{},true,now);
   assert.equal(report.series.length,1);const [cpu]=report.series;
   assert.equal(cpu.latest,52);assert.equal(cpu.minimum,40);assert.equal(cpu.maximum,52);
