@@ -448,7 +448,7 @@ try{
     const drawer=workspace.locator('.history-toggle');
     const opened=await drawer.isVisible()&&await drawer.getAttribute('aria-expanded')!=='true';
     if(opened)await drawer.click();
-    const buttons=workspace.locator('.assistant-sidebar-actions button');
+    const buttons=workspace.locator('.assistant-settings-list button');
     await buttons.nth(1).waitFor();
     const sizes=await buttons.evaluateAll(items=>items.map(item=>{
      const rect=item.getBoundingClientRect(),icon=item.querySelector('svg').getBoundingClientRect();

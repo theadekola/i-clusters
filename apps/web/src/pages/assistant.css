@@ -47,12 +47,12 @@
 .content.content .assistant-main .assistant-compose input{width:100%;min-width:0;box-sizing:border-box}
 .content.content .assistant-main .assistant-compose button{width:auto;min-height:42px;padding-inline:1rem;white-space:nowrap}
 
-.assistant-sidebar-actions {
+.assistant-settings-list {
   display: grid;
   gap: 4px;
   flex: none;
 }
-.assistant-history .assistant-sidebar-actions .btn {
+.assistant-history .assistant-settings-list .btn {
   width: 100%;
   min-width: 0;
   min-height: 44px;

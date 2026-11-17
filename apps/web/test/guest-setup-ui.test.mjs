@@ -535,7 +535,7 @@ test('assistant sidebar shows compact owner actions in configure then saved orde
  for (const role of ['owner', 'viewer']) {
   const page = await mounted('pages/AI.tsx', {}, async () => ({user: {role}}));
   try {
-   const actions = [...page.container.querySelectorAll('.assistant-sidebar-actions button')];
+   const actions = [...page.container.querySelectorAll('.assistant-settings-list button')];
    assert.deepEqual(actions.map(b => b.textContent.trim()), role === 'owner' ? ['Configure AI Assistant', 'Saved Assistant'] : []);
    assert.ok(actions.every(b => b.querySelector('svg[aria-hidden="true"]')));
    assert.equal(page.container.textContent.includes('About assistant data'), false);

@@ -105,7 +105,7 @@ function Conversation({scope,owner,name}:{scope:string;owner:boolean;name?:strin
       <button onClick={()=>void remove(t)}>Delete</button>
      </div>}</div>
    })}</nav>
-   {owner&&<div className="assistant-sidebar-actions">
+   {owner&&<div className="assistant-settings-list" role="group" aria-label="AI Assistant">
     <button type="button" className="btn secondary" onClick={()=>configure(true)}><Settings size={18} aria-hidden="true"/><span>Configure AI Assistant</span></button>
     <button type="button" className="btn secondary" onClick={()=>setSaved(true)}><Bookmark size={18} aria-hidden="true"/><span>Saved Assistant</span></button>
    </div>}
