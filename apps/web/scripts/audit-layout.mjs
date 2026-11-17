@@ -443,6 +443,23 @@ try{
     });
     failures.push(...painted.map(issue=>`${width}px ${route}: painted icon surface ${issue}`));
    }
+   if(route==='/ai'&&(!process.env.LAYOUT_ROLE||process.env.LAYOUT_ROLE==='owner')){
+    const workspace=page.locator('.assistant-workspace');
+    const drawer=workspace.locator('.history-toggle');
+    const opened=await drawer.isVisible()&&await drawer.getAttribute('aria-expanded')!=='true';
+    if(opened)await drawer.click();
+    const buttons=workspace.locator('.assistant-sidebar-actions button');
+    await buttons.nth(1).waitFor();
+    const sizes=await buttons.evaluateAll(items=>items.map(item=>{
+     const rect=item.getBoundingClientRect(),icon=item.querySelector('svg').getBoundingClientRect();
+     return {top:rect.top,bottom:rect.bottom,height:rect.height,icon:icon.left,align:getComputedStyle(item).justifyContent};
+    }));
+    assert.equal(sizes.length,2);
+    assert.ok(sizes.every(row=>row.height>=44&&row.align==='flex-start'),'Left-aligned assistant controls with touch targets');
+    assert.ok(Math.abs(sizes[1].top-sizes[0].bottom-4)<1&&Math.abs(sizes[0].icon-sizes[1].icon)<1,'Compact gap and aligned icons');
+    assert.equal(await workspace.locator('.assistant-privacy').count(),0);
+    if(opened)await drawer.click();
+   }
    if(process.env.LAYOUT_ASSISTANT_CHAT&&route==='/ai'){
     const workspace=page.locator('.assistant-workspace');
     await workspace.waitFor();

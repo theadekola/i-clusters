@@ -39,7 +39,7 @@ import {notificationIds} from './notification-channels.js';
 import {buildInfo} from './build-info.js';
 import {publicDockerImage,publicDockerVolume} from './docker-public.js';
 import {readMeasurements} from './assistant-cache.js';
-import {queryAI,listAIModels,assistantContext,inventoryAnswer,questionContext} from './ai.js';
+import {queryAI,listAIModels,assistantContext,inventoryAnswer,recentActivityAnswer,questionContext,publicWebSearch} from './ai.js';
 import {connectorSSHAddress} from './connector-ssh-target.js';
 import {connectorUpdater} from './connector-updates.js';
 import {headerNotifications} from './header-notifications.js';
@@ -603,14 +603,20 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
  action('post','/alerts/:id/acknowledge','operator','alert.acknowledge',async req=>{let result;mutate(state=>{result=changeAlertStatus(state,req.params.id,req.user)});return result;});
  action('post','/alerts/:id/resolve','operator','alert.resolve',async req=>{let result;mutate(state=>{result=changeAlertStatus(state,req.params.id,req.user,{resolve:true})});return result;});
  action('post','/ai/health','viewer','health.inspect',async()=>{const s=await monitor.sample(true);return {summary:`${s.services.filter(x=>x.status==='reachable').length} reachable integrations/services; ${s.services.filter(x=>x.status==='error').length} connection failures; ${s.alerts.filter(a=>a.status==='active').length} active alerts. This is an API and threshold check, not a security scan.`};});
- action('post','/ai/chat','viewer','assistant.query',async req=>{
-   const message=required(req.body.message,'Message');const s=await monitor.sample();
+ action('post','/ai/chat','viewer','assistant.query',async req=>{
+   const message=required(req.body.message,'Message');
+   if(/^web:/i.test(message.trim()))return publicWebSearch(configuration.resolve('ai'),message.trim());
+   const recent=(get().headerActivities||[]).filter(row=>row.audience==='shared').slice(0,12).map(({title,status,time})=>({title,status,time}));
+   const activityAnswer=recentActivityAnswer(message,recent);
+   if(activityAnswer)return {answer:activityAnswer,mode:'inventory'};
+   const s=await monitor.sample();
    const inventory=await readMeasurements(s,snapshot=>assistantContext(snapshot,Infinity));
+   inventory.alerts=assistantContext({alerts:s.alerts},Infinity).alerts;
    const direct=inventoryAnswer(inventory,message);
    if(direct)return {answer:direct,mode:'inventory'};
    const context=questionContext(inventory,message);
-   context.recentActivity=(get().headerActivities||[]).filter(row=>row.audience==='shared').slice(0,12).map(({title,status,time})=>({title,status,time}));
-   const localSummary=`Sampled ${s.sampledAt}. ${s.services.map(x=>`${x.name}: ${x.status}${x.error?` (${x.error})`:''}`).join('; ')}. ${context.alerts?.total??0} active or acknowledged alerts.`;
+   context.recentActivity=recent;
+   const localSummary=context.status==='stale'?'Current service measurements and alerts are unavailable.':`Sampled ${s.sampledAt}. ${s.services.map(x=>`${x.name}: ${x.status}${x.error?` (${x.error})`:''}`).join('; ')}. ${context.alerts ? context.alerts.total+' active or acknowledged alerts.' : 'Alert count unavailable.'}`;
    const ai=configuration.resolve('ai');
    if(!ai.OPENAI_API_KEY)return {answer:localSummary+' Configure the provider on the AI Assistant page for conversational analysis.',mode:'local'};
    const history=Array.isArray(req.body.history)?req.body.history.slice(-4).filter(row=>typeof row?.question==='string'&&typeof row?.answer==='string').map(row=>({question:row.question.slice(0,2000),answer:row.answer.slice(0,4000)})):[];
@@ -620,7 +626,7 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
     throw error;
    }
 
- });
+ });
  read('/users',async()=>({users:(await db.query(`SELECT id,name,email,username,profile,role,cluster_roles AS "clusterRoles",status,two_factor_enabled AS "twoFactor",last_login AS "lastLogin",created_at AS "createdAt" FROM users ORDER BY created_at`)).rows}),'admin');
  action('put','/users/:id/cluster-access','owner','user.cluster-access',async req=>{
    const assignments=req.body.roles;
