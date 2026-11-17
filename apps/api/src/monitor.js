@@ -1,3 +1,5 @@
+import {cacheMeasurements} from './assistant-cache.js';
+import {assistantContext} from './ai.js';
 import {retainAlerts} from './alert-history-cleanup.js';
 import {guestAvailability,reconcileGuestAlert} from './guest-availability.js';
 import {operationsView,operationalConditions,operationalRecovery} from './operations-health.js';
@@ -133,6 +135,7 @@ export function createMonitor(sources=providers,persistence={get,mutate},checkSe
       });
       snapshot.metrics=persistence.get().metrics;
       snapshot.alerts=persistence.get().alerts;
+    void cacheMeasurements(snapshot,s=>assistantContext(s,Infinity)).catch(()=>{});
     latest=snapshot;completed=Date.now();observeUpdates(snapshot);Promise.resolve().then(()=>notify(snapshot.alerts)).catch(()=>{});return snapshot;
    });
    inFlight=work;void work.finally(()=>{if(inFlight===work){inFlight=null;progress=null;}}).catch(()=>{});

@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import fs f
 process.env.DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'ai-providers-'));process.env.JWT_SECRET='a'.repeat(64);
 const {aiProviders}=await import('../src/ai-providers.js'),{queryAI,listAIModels}=await import('../src/ai.js'),{validateConfiguration,createConfigurationStore}=await import('../src/runtime-configuration.js');
 test.after(()=>fs.rmSync(process.env.DATA_DIR,{recursive:true,force:true}));
-for(const [id,provider] of Object.entries(aiProviders)){
+for(const [id,provider] of Object.entries(aiProviders).filter(([id])=>id!=='n8n')){
  test(`${provider.label} uses its own fixed endpoint, credentials and native message format`,async()=>{
   assert.ok(provider.models.length>=2,'Each provider offers multiple initial model choices');
   const previous=globalThis.fetch,calls=[],config=validateConfiguration('ai',{AI_PROVIDER:id,OPENAI_API_KEY:'provider-secret'});
@@ -39,11 +39,25 @@ test('unsupported providers and invalid model paths cannot initiate external req
  }finally{globalThis.fetch=previous}
 });
 test('provider failures are actionable without reflecting upstream bodies or credentials',async()=>{
- const previous=globalThis.fetch;try{for(const id of Object.keys(aiProviders)){globalThis.fetch=async()=>new Response(JSON.stringify({error:{message:'provider-secret https://secret.example'}}),{status:403});await assert.rejects(()=>queryAI({AI_PROVIDER:id,OPENAI_API_KEY:'provider-secret'},'x'),error=>error.aiError&&error.message.includes(aiProviders[id].label)&&!error.message.includes('provider-secret')&&!error.message.includes('secret.example'));}}finally{globalThis.fetch=previous}
+ const previous=globalThis.fetch;try{for(const id of Object.keys(aiProviders).filter(id=>id!=='n8n')){globalThis.fetch=async()=>new Response(JSON.stringify({error:{message:'provider-secret https://secret.example'}}),{status:403});await assert.rejects(()=>queryAI({AI_PROVIDER:id,OPENAI_API_KEY:'provider-secret'},'x'),error=>error.aiError&&error.message.includes(aiProviders[id].label)&&!error.message.includes('provider-secret')&&!error.message.includes('secret.example'));}}finally{globalThis.fetch=previous}
 });
 for(const id of ['anthropic','gemini'])test(`${id} follows opaque model cursors and rejects pagination loops`,async()=>{
  const previous=globalThis.fetch;let calls=0;
  const row=n=>id==='gemini'?{name:`models/gemini-${n}`,supportedGenerationMethods:['generateContent']}:{id:`claude-${n}`};
  globalThis.fetch=async url=>{calls++;if(calls===2)assert.ok(url.includes(encodeURIComponent('opaque /?&')));return Response.json(id==='gemini'?{models:[row(calls)],...(calls===1?{nextPageToken:'opaque /?&'}:{})}:{data:[row(calls)],has_more:calls===1,last_id:'opaque /?&'});};
  try{assert.equal((await listAIModels({AI_PROVIDER:id,OPENAI_API_KEY:'fixture'})).length,2);calls=0;globalThis.fetch=async()=>Response.json(id==='gemini'?{models:[row(1)],nextPageToken:'repeat'}:{data:[row(1)],has_more:true,last_id:'repeat'});await assert.rejects(()=>listAIModels({AI_PROVIDER:id,OPENAI_API_KEY:'fixture'}),/pagination/);}finally{globalThis.fetch=previous;}
+});
+
+test('n8n posts the question to the configured authenticated production workflow',async()=>{
+ const config=validateConfiguration('ai',{AI_PROVIDER:'n8n',N8N_WEBHOOK_URL:'https://workflow.test/webhook/cluster',OPENAI_API_KEY:'fixture-token'});
+ assert.throws(()=>validateConfiguration('ai',{N8N_WEBHOOK_URL:'https://other.test/webhook/chat'},config),/API key/);
+ const previous=globalThis.fetch;
+ try{
+  globalThis.fetch=async(url,options)=>{
+   assert.equal(url,config.N8N_WEBHOOK_URL);assert.equal(options.redirect,'error');
+   assert.equal(options.headers.Authorization,'Bearer fixture-token');assert.equal(JSON.parse(options.body).message,'health');
+   return Response.json({answer:'Both nodes are online.'});
+  };
+  assert.equal(await queryAI(config,JSON.stringify({message:'health',history:[],context:{}})),'Both nodes are online.');
+ }finally{globalThis.fetch=previous}
 });

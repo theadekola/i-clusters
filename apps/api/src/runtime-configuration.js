@@ -1,4 +1,4 @@
-import {aiProviders,publicAIProviders,validAIModel} from './ai-providers.js';
+import {aiProviders,publicAIProviders,validAIModel,n8nWebhook} from './ai-providers.js';
 import {notificationIds,filterKey,httpsEndpoint} from './notification-channels.js';
 import {removeRetiredConfigurations} from './retired-providers.js';
 import path from 'node:path';
@@ -11,7 +11,7 @@ export const configurationSchemas={
  telegram:{name:'Telegram',fields:[field('TELEGRAM_BOT_TOKEN','Bot token','password'),field('TELEGRAM_CHAT_ID','Chat ID')]},
  email:{name:'Email (SMTP)',fields:[field('SMTP_HOST','SMTP hostname'),field('SMTP_PORT','SMTP port','number'),field('SMTP_USER','SMTP username','text',false),field('SMTP_PASSWORD','SMTP password','password',false),field('NOTIFICATION_EMAIL_FROM','Sender email','email'),field('NOTIFICATION_EMAIL_TO','Recipient email','email'),field('SMTP_CA_PEM','Trusted CA certificate (PEM)','textarea',false)]},
  truenas:{name:'TrueNAS',fields:[field('TRUENAS_URL','HTTPS endpoint','url'),field('TRUENAS_API_KEY','API key','password'),field('TRUENAS_API_MODE','API protocol','select',true,{options:['current','legacy'],defaultValue:'current'}),field('TRUENAS_VERIFY_TLS','Verify server certificate','select',true,{options:['false','true'],defaultValue:'false',advanced:true}),field('TRUENAS_CA_PEM','Trusted CA certificate (PEM)','textarea',false,{advanced:true})]},
- ai:{name:'AI Assistant',fields:[field('AI_PROVIDER','AI provider','select',true,{options:Object.keys(aiProviders),optionLabels:Object.fromEntries(Object.entries(aiProviders).map(([id,p])=>[id,p.label])),defaultValue:'openai'}),field('OPENAI_API_TYPE','API type','select',true,{options:['responses','chat-completions','messages','generate-content'],optionLabels:{responses:'Responses API','chat-completions':'Chat Completions API',messages:'Claude Messages API','generate-content':'Gemini Generate Content API'},defaultValue:'responses'}),field('OPENAI_API_KEY','API key','password'),field('OPENAI_MODEL','Model','text',true,{defaultValue:'gpt-5-mini'})]}
+ ai:{name:'AI Assistant',fields:[field('AI_PROVIDER','AI provider','select',true,{options:Object.keys(aiProviders),optionLabels:Object.fromEntries(Object.entries(aiProviders).map(([id,p])=>[id,p.label])),defaultValue:'openai'}),field('OPENAI_API_TYPE','API type','select',true,{options:['responses','chat-completions','messages','generate-content','webhook'],optionLabels:{webhook:'Production webhook',responses:'Responses API','chat-completions':'Chat Completions API',messages:'Claude Messages API','generate-content':'Gemini Generate Content API'},defaultValue:'responses'}),field('N8N_WEBHOOK_URL','Production webhook URL','url',false),field('OPENAI_API_KEY','API key','password'),field('OPENAI_MODEL','Model','text',true,{defaultValue:'gpt-5-mini'})]}
 };
 Object.assign(configurationSchemas,{
  slack:{name:'Slack',fields:[field('SLACK_WEBHOOK_URL','Slack incoming webhook URL','password')]},
@@ -29,6 +29,7 @@ export function validateConfiguration(id,input,previous={}){
  if(id==='ai'){
   const provider=input.AI_PROVIDER??previous.AI_PROVIDER??'openai',info=Object.hasOwn(aiProviders,provider)&&aiProviders[provider];if(!info)invalid('Choose a valid AI provider');
   if(provider!==(previous.AI_PROVIDER||'openai'))previous={};
+  if(provider==='n8n'&&input.N8N_WEBHOOK_URL&&input.N8N_WEBHOOK_URL!==previous.N8N_WEBHOOK_URL)previous={...previous,OPENAI_API_KEY:''};
   previous={AI_PROVIDER:provider,OPENAI_API_TYPE:info.types[0],OPENAI_MODEL:info.defaultModel,...previous};
  }
  if(id==='truenas'&&input.TRUENAS_VERIFY_TLS===undefined&&previous.TRUENAS_VERIFY_TLS===undefined&&(previous.TRUENAS_CA_PEM||previous.TRUENAS_TLS_CA))previous={...previous,TRUENAS_VERIFY_TLS:'true'};
@@ -44,7 +45,7 @@ export function validateConfiguration(id,input,previous={}){
  }
  if(id==='pushover'&&['PUSHOVER_APP_TOKEN','PUSHOVER_USER_KEY'].some(k=>! /^[A-Za-z0-9]{30}$/.test(values[k])))invalid('Enter valid 30-character Pushover keys');
  if(id==='ifttt'&&(!/^[A-Za-z0-9_-]{1,100}$/.test(values.IFTTT_EVENT)||! /^[A-Za-z0-9_-]{1,200}$/.test(values.IFTTT_WEBHOOK_KEY)))invalid('Enter a valid IFTTT event name and Webhooks key');
- if(id==='ai'){if(!validAIModel(values.OPENAI_MODEL)||/\s/.test(values.OPENAI_API_KEY))invalid('Enter a valid model and API key');if(!aiProviders[values.AI_PROVIDER].types.includes(values.OPENAI_API_TYPE))invalid('Choose a supported API type for this AI provider');}
+ if(id==='ai'){if(values.AI_PROVIDER==='n8n')values.N8N_WEBHOOK_URL=n8nWebhook(values.N8N_WEBHOOK_URL);else delete values.N8N_WEBHOOK_URL;if(!validAIModel(values.OPENAI_MODEL)||/\s/.test(values.OPENAI_API_KEY))invalid('Enter a valid model and API key');if(!aiProviders[values.AI_PROVIDER].types.includes(values.OPENAI_API_TYPE))invalid('Choose a supported API type for this AI provider');}
  return values;
 }
 export function createConfigurationStore(directory,secret=()=>process.env.JWT_SECRET){

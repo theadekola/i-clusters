@@ -38,7 +38,8 @@ import {resetGuestDiscovery} from './guest-discovery.js';
 import {notificationIds} from './notification-channels.js';
 import {buildInfo} from './build-info.js';
 import {publicDockerImage,publicDockerVolume} from './docker-public.js';
-import {queryAI,listAIModels,assistantContext} from './ai.js';
+import {readMeasurements} from './assistant-cache.js';
+import {queryAI,listAIModels,assistantContext,inventoryAnswer,questionContext} from './ai.js';
 import {connectorSSHAddress} from './connector-ssh-target.js';
 import {connectorUpdater} from './connector-updates.js';
 import {headerNotifications} from './header-notifications.js';
@@ -604,7 +605,11 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
  action('post','/ai/health','viewer','health.inspect',async()=>{const s=await monitor.sample(true);return {summary:`${s.services.filter(x=>x.status==='reachable').length} reachable integrations/services; ${s.services.filter(x=>x.status==='error').length} connection failures; ${s.alerts.filter(a=>a.status==='active').length} active alerts. This is an API and threshold check, not a security scan.`};});
  action('post','/ai/chat','viewer','assistant.query',async req=>{
    const message=required(req.body.message,'Message');const s=await monitor.sample();
-   const context=assistantContext(s);
+   const inventory=await readMeasurements(s,snapshot=>assistantContext(snapshot,Infinity));
+   const direct=inventoryAnswer(inventory,message);
+   if(direct)return {answer:direct,mode:'inventory'};
+   const context=questionContext(inventory,message);
+   context.recentActivity=(get().headerActivities||[]).filter(row=>row.audience==='shared').slice(0,12).map(({title,status,time})=>({title,status,time}));
    const localSummary=`Sampled ${s.sampledAt}. ${s.services.map(x=>`${x.name}: ${x.status}${x.error?` (${x.error})`:''}`).join('; ')}. ${context.alerts?.total??0} active or acknowledged alerts.`;
    const ai=configuration.resolve('ai');
    if(!ai.OPENAI_API_KEY)return {answer:localSummary+' Configure the provider on the AI Assistant page for conversational analysis.',mode:'local'};

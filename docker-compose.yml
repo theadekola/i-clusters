@@ -51,6 +51,14 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  redis:
+    image: redis:7.2-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "96mb", "--maxmemory-policy", "allkeys-lru"]
+    networks: [telemetry]
+    security_opt:
+      - no-new-privileges:true
+
   api:
     build:
       context: ./apps/api
@@ -68,7 +76,9 @@ services:
     networks:
       - backend
       - edge
+      - telemetry
     environment:
+      REDIS_URL: redis://redis:6379
       DATA_DIR: /app/runtime
       PORT: "6000"
       UPDATE_STATUS_DIR: /run/iclusters/updater
@@ -110,6 +120,8 @@ services:
       - no-new-privileges:true
 
 networks:
+  telemetry:
+    internal: true
   edge:
   backend:
     internal: true
