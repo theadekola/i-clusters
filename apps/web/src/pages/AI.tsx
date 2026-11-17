@@ -1,5 +1,5 @@
 import {Fragment,useRef,useState,useEffect,type FormEvent} from 'react';
-import {Activity,Boxes,Database,History,MessageSquare,Network,MoreHorizontal,Pin,Plus,Send,Settings,Sparkles} from 'lucide-react';
+import {Activity,Bookmark,Boxes,Database,History,MessageSquare,Network,MoreHorizontal,Pin,Plus,Search,Send,Settings,Sparkles} from 'lucide-react';
 import {api} from '../api';
 import {useApi} from '../hooks';
 import {useSearchParams} from 'react-router-dom';
@@ -30,6 +30,9 @@ const starters=[
  {icon:Database,text:'Review backup activity'},
  {icon:Network,text:'Explain my cluster topology'}
 ];
+function WebAnswer({answer}:{answer:string}){
+ return <>{answer.split('\n').map((line,index)=><Fragment key={index}>{index>0&&'\n'}{/^https:\/\/[^\s]+$/i.test(line)?<a href={line} target="_blank" rel="noopener noreferrer">{line}</a>:line}</Fragment>)}</>;
+}
 export default function AI(){
  const session=useApi<any>('/auth/me',null),identity=session.data?.user;
  const scope=identity?JSON.stringify([identity.sub||identity.id,identity.sid,window.location.pathname.split('/ai')[0]]):'';
@@ -102,8 +105,10 @@ function Conversation({scope,owner,name}:{scope:string;owner:boolean;name?:strin
       <button onClick={()=>void remove(t)}>Delete</button>
      </div>}</div>
    })}</nav>
-   {owner&&<button className="btn secondary" onClick={()=>setSaved(true)}>Saved Assistant</button>}
-   {owner&&<button className="btn secondary history-config" onClick={()=>configure(true)}><Settings size={16}/>Configure AI Assistant</button>}
+   {owner&&<div className="assistant-settings-list" role="group" aria-label="AI Assistant">
+    <button type="button" className="btn secondary" onClick={()=>configure(true)}><Settings size={18} aria-hidden="true"/><span>Configure AI Assistant</span></button>
+    <button type="button" className="btn secondary" onClick={()=>setSaved(true)}><Bookmark size={18} aria-hidden="true"/><span>Saved Assistant</span></button>
+   </div>}
   </aside>
   <div className={'assistant-main '+(rows.length?'has-messages':'welcome')}>
    {rows.length>0&&<h1 className="assistant-thread-title">{thread.title||rows[0].question}</h1>}
@@ -112,11 +117,10 @@ function Conversation({scope,owner,name}:{scope:string;owner:boolean;name?:strin
     <div className="bubble user">{exchange.question}</div>
     {(exchange.error||!exchange.answer)&&busy!==exchange.id&&<div>{exchange.error&&<p role="alert">{exchange.error}</p>}<button className="btn secondary small" disabled={busy!==null} onClick={()=>void request(exchange)}>Retry</button></div>}
     {busy===exchange.id&&<p role="status">Waiting for a reply…</p>}
-    {exchange.answer&&<div className="bubble assistant">{exchange.answer}<small>{exchange.mode==='local'?'Local status summary':exchange.mode==='inventory'?'Cluster inventory':exchange.mode==='openai'?'OpenAI':exchange.mode}</small></div>}
+    {exchange.answer&&<div className="bubble assistant">{exchange.mode==='web'?<WebAnswer answer={exchange.answer}/>:exchange.answer}<small>{exchange.mode==='local'?'Local status summary':exchange.mode==='inventory'?'Cluster inventory':exchange.mode==='openai'?'OpenAI':exchange.mode==='web'?'Public web search':exchange.mode}</small></div>}
    </Fragment>)}</div>}
    <form onSubmit={send} className="composer assistant-compose"><input ref={input} aria-label="Message" value={draft} onChange={e=>setDraft(e.target.value)} required placeholder="Ask about your connected homelab"/><button className="btn primary" aria-label="Send" disabled={busy!==null||!scope||!draft.trim()}><Send size={18}/>Send</button></form>
-   {!rows.length&&<div className="assistant-starters">{starters.map(({icon:Icon,text})=><button key={text} onClick={()=>{setDraft(text);input.current?.focus()}}><Icon size={20}/>{text}</button>)}</div>}
-   <details className="assistant-privacy"><summary>About assistant data</summary><p>A configured AI provider receives the current cluster’s service health, alerts, inventory and up to four prior exchanges. Without a provider, the assistant summarizes measurements locally.</p></details>
+   {!rows.length&&<div className="assistant-starters">{starters.map(({icon:Icon,text})=><button key={text} onClick={()=>{setDraft(text);input.current?.focus()}}><Icon size={20}/>{text}</button>)}<button type="button" onClick={()=>{setDraft('web: ');input.current?.focus()}}><Search size={20} aria-hidden="true"/>Search the web</button></div>}
   </div>
   {owner&&saved&&<SavedAssistant close={()=>setSaved(false)} configure={()=>{setSaved(false);configure(true)}}/>}
   <Modal open={rename!==null} title="Rename chat" onClose={()=>setRename(null)}><form onSubmit={e=>{e.preventDefault();if(rename!==null&&title.trim()){edit(rename,{title:title.trim()});setRename(null)}}}><label>Chat name<input required maxLength={160} value={title} onChange={e=>setTitle(e.target.value)}/></label><button className="btn primary" disabled={!title.trim()}>Save</button></form></Modal>

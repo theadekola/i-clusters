@@ -13,18 +13,17 @@
 .assistant-greeting{text-align:center}
 .assistant-symbol{display:grid;place-items:center;margin:auto;width:80px;height:80px;color:var(--app-accent);background:color-mix(in srgb,var(--app-accent) 10%,transparent);border:1px solid var(--theme-border);border-radius:24px}
 .assistant-greeting h1{font-size:clamp(1.35rem,2.4vw,2.5rem);line-height:1.2;margin:18px 0 7px}
-.assistant-greeting p,.assistant-privacy{color:var(--theme-muted)}
+.assistant-greeting p{color:var(--theme-muted)}
 .assistant-starters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
 .assistant-starters button{padding:12px;border-radius:10px;background:var(--theme-input);border-color:var(--theme-border)}
 .assistant-starters svg{color:var(--app-accent);flex:none}
-.assistant-main .assistant-compose,.assistant-starters,.assistant-privacy{width:min(100%,860px);margin-inline:auto}
+.assistant-main .assistant-compose,.assistant-starters{width:min(100%,860px);margin-inline:auto}
 .assistant-main .assistant-compose{display:flex;flex-wrap:nowrap;align-items:center;background:var(--theme-input);border:1px solid var(--theme-border);border-radius:14px;padding:5px}
 .assistant-main .assistant-compose input{width:0;flex:1;min-width:0;background:transparent;color:var(--theme-text);border:0;padding:10px}
 .assistant-messages{flex:1;overflow:auto;min-height:0;display:flex;flex-direction:column;gap:12px;width:min(100%,860px);margin-inline:auto}
 .assistant-messages .bubble{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--theme-text);background:var(--theme-input);align-self:flex-start}
 .assistant-messages .bubble.user{align-self:flex-end;background:var(--theme-highlight);color:var(--theme-text)}
 .assistant-messages small{display:block;color:var(--theme-muted)}
-.assistant-privacy{font-size:.77rem}.assistant-privacy summary{cursor:pointer}
 .assistant-workspace>.history-toggle{display:none}
 @media(max-width:700px){
  .assistant-workspace{position:relative;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);height:calc(100dvh - 135px)}
@@ -47,3 +46,21 @@
 .content.content .assistant-main .composer.assistant-compose{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.55rem;padding:.45rem;align-items:center}
 .content.content .assistant-main .assistant-compose input{width:100%;min-width:0;box-sizing:border-box}
 .content.content .assistant-main .assistant-compose button{width:auto;min-height:42px;padding-inline:1rem;white-space:nowrap}
+
+.assistant-settings-list {
+  display: grid;
+  gap: 4px;
+  flex: none;
+}
+.assistant-history .assistant-settings-list .btn {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  height: auto;
+  margin: 0;
+  padding: 6px 10px;
+  box-sizing: border-box;
+  justify-content: flex-start;
+  text-align: start;
+  gap: 8px;
+}

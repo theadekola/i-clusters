@@ -531,6 +531,18 @@ test('loading AI models marks only the models button busy',async()=>{
  }finally{await page.close()}
 });
 
+test('assistant sidebar shows compact owner actions in configure then saved order', async () => {
+ for (const role of ['owner', 'viewer']) {
+  const page = await mounted('pages/AI.tsx', {}, async () => ({user: {role}}));
+  try {
+   const actions = [...page.container.querySelectorAll('.assistant-settings-list button')];
+   assert.deepEqual(actions.map(b => b.textContent.trim()), role === 'owner' ? ['Configure AI Assistant', 'Saved Assistant'] : []);
+   assert.ok(actions.every(b => b.querySelector('svg[aria-hidden="true"]')));
+   assert.equal(page.container.textContent.includes('About assistant data'), false);
+  } finally { await page.close(); }
+ }
+});
+
 test('retrying an earlier assistant question preserves the draft and message order',async()=>{
  const calls=[];
  const page=await mounted('pages/AI.tsx',{},async(path,init)=>{
