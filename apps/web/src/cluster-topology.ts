@@ -1,3 +1,10 @@
+// A name-derived hue stays with the host across filtering, reordering and polling.
+export function nodeFlowHue(name:string){
+ let hash=0;
+ for(const character of name)hash=(Math.imul(hash,31)+character.charCodeAt(0))>>>0;
+ return Math.round((hash*137.508)%360*100)/100;
+}
+
 export function topologyGuestName(guest:any){const name=String(guest.name||'').trim();return name&&name!==String(guest.id)?name:guest.kind==='lxc'?'Unnamed container':'Unnamed virtual machine';}
 export function topologyPercent(value:any){return typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=100?`${value.toFixed(0)}%`:'Unavailable';}
 export function topologyState(resource:any,parent?:string){if(parent&&parent!=='online'||resource.nodeAvailable===false)return 'unknown';if(['online','running'].includes(resource.status))return resource.status;if(['offline','stopped','paused','suspended'].includes(resource.status))return resource.status;return 'unknown';}
@@ -35,4 +42,24 @@ export function topologyStorage(nodes:any[],pools:any[],connections:any[]){
   }
   return {node:node.name,pools:[...rows.values()].sort((a,b)=>a.name.localeCompare(b.name))};
  });
+}
+
+// Repeated restore points at the same destination need only one line per guest.
+export function topologyBackups(nodes:any[],points:any[]){
+ const guests=new Set<string>(nodes.flatMap(node=>node.guests.map((guest:any)=>guest.key)));
+ const groups=new Map<string,Map<string,Set<string>>>();
+ for(const point of points){
+  const key=`${point.node}:${point.type}:${point.vmid}`;
+  if(!point.storage||!guests.has(key))continue;
+  const pools=groups.get(point.node)??new Map<string,Set<string>>();
+  const members=pools.get(point.storage)??new Set<string>();
+  members.add(key);
+  pools.set(point.storage,members);
+  groups.set(point.node,pools);
+ }
+ return nodes.map(node=>({
+  node:node.name,
+  pools:Array.from(groups.get(node.name)??[],([name,members])=>({name,guests:[...members]}))
+   .sort((a,b)=>a.name.localeCompare(b.name))
+ }));
 }

@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {build} from 'esbuild';
 const built=await build({entryPoints:[new URL('../src/cluster-topology.ts',import.meta.url).pathname],bundle:true,format:'esm',write:false});
-const {clusterTopology,topologyState,topologyPercent,topologyGuestName}=await import('data:text/javascript;base64,'+Buffer.from(built.outputFiles[0].text).toString('base64'));
+const {clusterTopology,topologyState,topologyPercent,topologyGuestName,nodeFlowHue,topologyBackups}=await import('data:text/javascript;base64,'+Buffer.from(built.outputFiles[0].text).toString('base64'));
 test('topology groups guests under reported nodes with scoped identities and no fictional resources',()=>{
  const input={clusterStatus:[{type:'cluster',name:'Example cluster'}],nodes:[{name:'two',status:'offline'},{name:'one',status:'online'}],vms:[{id:'100',name:'app',node:'one',status:'running'},{id:'200',node:'two',status:'running'}],lxc:[{id:'100',name:'service',node:'one',status:'running'}]};
  const view=clusterTopology(input);assert.equal(view.name,'Example cluster');assert.deepEqual(view.nodes.map(n=>n.name),['one','two']);assert.equal(view.nodes[0].guests.length,2);assert.notEqual(view.nodes[0].guests[0].key,view.nodes[0].guests[1].key);assert.equal(topologyState(view.nodes[1].guests[0],view.nodes[1].status),'unknown');assert.equal(topologyPercent(null),'Unavailable');assert.equal(topologyPercent(0),'0%');assert.equal(topologyPercent(101),'Unavailable');
@@ -36,4 +36,16 @@ test('storage groups per server and pool and only links guests with current atta
  const result=topologyStorage(nodes,[{node:'one',name:'local',status:'online'},{node:'one',name:'backup',status:'online'},{node:'two',name:'local',status:'online'}],[{key:'one:qemu:100',storage:['local']},{key:'one:qemu:101',storage:['local']}]);
  assert.equal(result[0].pools.length,2);assert.deepEqual(result[0].pools.find(p=>p.name==='local').guests,['one:qemu:100','one:qemu:101']);assert.deepEqual(result[1].pools[0].guests,[]);
  assert.equal(topologyGuestAddress({status:'running',addresses:['192.0.2.10','999.1.1.1','::1']},'online'),'192.0.2.10');assert.equal(topologyGuestAddress({status:'running',addresses:['192.0.2.10']},'offline'),'IP unavailable');assert.equal(topologyGuestAddress({status:'stopped',addresses:['192.0.2.10']},'online'),'IP unavailable');
+});
+
+test('archive links use visible guests and actual destinations scoped to their node and guest type',()=>{
+ const data={nodes:[{name:'east'},{name:'west'}],vms:[{node:'east',id:100,name:'alpha'},{node:'west',id:100,name:'beta'}],lxc:[{node:'east',id:130,name:'dns'}]};
+ const point=(node,type,vmid,storage)=>({node,type,vmid,storage});
+ const points=[point('east','qemu',100,'daily'),point('east','qemu',100,'daily'),point('east','qemu',100,'weekly'),point('east','lxc',130,'daily'),point('east','lxc',100,'wrong-type'),point('east','qemu',999,'absent'),point('west','qemu',100,'daily'),point('west','qemu',100,null)];
+ assert.deepEqual(topologyBackups(clusterTopology(data).nodes,points),[
+  {node:'east',pools:[{name:'daily',guests:['east:qemu:100','east:lxc:130']},{name:'weekly',guests:['east:qemu:100']}]},
+  {node:'west',pools:[{name:'daily',guests:['west:qemu:100']}]}
+ ]);
+ assert.deepEqual(topologyBackups(clusterTopology(data,'dns').nodes,points),[{node:'east',pools:[{name:'daily',guests:['east:lxc:130']}]}]);
+ assert.notEqual(nodeFlowHue('node01'),nodeFlowHue('node02'));
 });

@@ -1,14 +1,14 @@
 import './cluster-topology.css';
 import {useState,useEffect,useLayoutEffect,useRef} from 'react';
 import {Link} from 'react-router-dom';
-import {Cloud,Server,Monitor,Box,Search,Minus,Plus,HardDrive,Minimize,Maximize,CheckSquare} from 'lucide-react';
+import {Cloud,Server,Monitor,Box,Search,Minus,Plus,HardDrive,Minimize,Maximize,Archive} from 'lucide-react';
 import {Card,Modal} from './UI';
 import {useApi} from '../hooks';
 import ReportLoading from './ReportLoading';
-import {clusterTopology,topologyState,topologyPercent,topologyGuestName,topologyGuestAddress,topologyStorage} from '../cluster-topology';
-import {archiveScopeComplete} from '../backup-selection';
+import {clusterTopology,topologyState,topologyPercent,topologyGuestName,topologyGuestAddress,topologyStorage,topologyBackups,nodeFlowHue} from '../cluster-topology';
+import {archiveScopeComplete,backupArchivesLocation} from '../backup-selection';
 import {guestActivity,nodeActivity,type Flow} from '../topology-flow';
-type MapLink={id:string;path:string;target:string;label:string;active?:boolean;storage?:boolean};
+type MapLink={id:string;path:string;target:string;label:string;style:React.CSSProperties;active?:boolean;kind?:'storage'|'backup'};
 type InventoryReading={data:any;error:string;loading:boolean};
 const initialReading:InventoryReading={data:null,error:'',loading:true};
 type Point={x:number;y:number};
@@ -31,9 +31,9 @@ function mapLinks(canvas:HTMLDivElement){
   const r=el.getBoundingClientRect();
   return {left:(r.left-bounds.left)/scale,top:(r.top-bounds.top)/scale,width:r.width/scale,height:r.height/scale};
  };
- const links:MapLink[]=[],guests=new Map<string,{bounds:ReturnType<typeof box>;label:string}>();
+ const links:MapLink[]=[],guests=new Map<string,{bounds:ReturnType<typeof box>;label:string;style:React.CSSProperties}>();
  const root=canvas.querySelector<HTMLElement>('.cluster-topology-root');
- const branches=canvas.querySelectorAll('.cluster-topology-branch');
+ const branches=canvas.querySelectorAll<HTMLElement>('.cluster-topology-branch');
  const hosts=canvas.querySelectorAll('.cluster-topology-node');
  if(!root)return links;
  if(!hosts.length){root.style.removeProperty('top');return links;}
@@ -44,25 +44,27 @@ function mapLinks(canvas:HTMLDivElement){
  for(const branch of branches){
   const node=branch.querySelector<HTMLButtonElement>('.cluster-topology-node');
   if(!node)continue;
+  const style=nodeStyle(node.dataset.label!);
   const host=box(node),y=host.top+host.height/2,flow=node.dataset.flow!;
-  links.push({id:flow,target:flow,label:node.dataset.label!,active:node.dataset.active==='true',path:across(source,{x:host.left,y})});
+  links.push({id:flow,style,target:flow,label:node.dataset.label!,active:node.dataset.active==='true',path:across(source,{x:host.left,y})});
   const start={x:host.left+host.width,y};
   const cards=branch.querySelectorAll<HTMLButtonElement>('.cluster-topology-guest');
   const firstLeft=cards.length?box(cards[0]).left:0;
   for(const card of cards){
    const g=box(card),flow=card.dataset.flow!;
    const label=card.dataset.label!;
-   guests.set(flow,{bounds:g,label});
-   links.push({id:flow,target:flow,label,active:card.dataset.active==='true',path:guestLink(start,g.left,g.top,g.width,g.height,firstLeft)});
+   guests.set(flow,{bounds:g,label,style});
+   links.push({id:flow,style,target:flow,label,active:card.dataset.active==='true',path:guestLink(start,g.left,g.top,g.width,g.height,firstLeft)});
   }
  }
- for(const pool of canvas.querySelectorAll<HTMLElement>('[data-storage-guests]')){
+ for(const pool of canvas.querySelectorAll<HTMLElement>('[data-pool-guests]')){
   const p=box(pool),x=p.left+p.width/2;
-  for(const key of JSON.parse(pool.dataset.storageGuests||'[]')){
+  for(const key of JSON.parse(pool.dataset.poolGuests||'[]')){
    const guest=guests.get(key);if(!guest)continue;
    const g=guest.bounds;
-   const endX=g.left+g.width/2,endY=g.top+g.height,mid=(p.top+endY)/2;
-   links.push({id:JSON.stringify([pool.dataset.storagePool,key]),storage:true,target:key,label:guest.label,path:`M ${x} ${p.top} C ${x} ${mid}, ${endX} ${mid}, ${endX} ${endY}`});
+   const anchor=pool.dataset.poolKind==='backup' ? 0.65 : 0.4;
+   const endX=g.left+g.width*anchor,endY=g.top+g.height,mid=(p.top+endY)/2;
+   links.push({id:JSON.stringify([pool.dataset.poolKind,pool.dataset.poolId,key]),kind:pool.dataset.poolKind==='backup'?'backup':'storage',style:guest.style,target:key,label:guest.label,path:`M ${x} ${p.top} C ${x} ${mid}, ${endX} ${mid}, ${endX} ${endY}`});
   }
  }
  return links;
@@ -72,8 +74,6 @@ export default function ClusterTopology({data,loading,error,networkMap=false,int
  const [columns,setColumns]=useState(4),[drives,setDrives]=useState(false),[vlan,setVlan]=useState(false),[ipAddress,setIpAddress]=useState(false);
  const [connections,setConnections]=useState<InventoryReading>(initialReading);
  const [showBackup,setShowBackup]=useState(false),[backups,setBackups]=useState<InventoryReading>(initialReading);
- const archived=new Set<string>();
- if(showBackup&&!backups.error)for(const point of backups.data?.points||[])archived.add(`${point.node}:${point.type}:${point.vmid}`);
  const [highlighted,setHighlighted]=useState('');
  const history=useRef<ReturnType<typeof guestActivity>>({samples:new Map(),flows:new Map()});
  const [flows,setFlows]=useState(new Map<string,Flow>()),[now,setNow]=useState(Date.now);
@@ -143,25 +143,22 @@ export default function ClusterTopology({data,loading,error,networkMap=false,int
  {error&&<p role="alert" className="error">Topology inventory unavailable: {error}</p>}
  {!!data?.errors?.length&&<p role="status" className="muted">Partial inventory. Available nodes and guests remain visible. {data.errors.join(' · ')}</p>}
  <div ref={viewport} onPointerDown={event=>{if(event.pointerType==='touch'||event.button!==0||(event.target as HTMLElement).closest('button,input,select,a,[role="button"]'))return;const element=event.currentTarget;drag.current={x:event.clientX,y:event.clientY,left:element.scrollLeft,top:element.scrollTop};element.setPointerCapture(event.pointerId)}} onPointerMove={event=>{if(!drag.current)return;event.currentTarget.scrollLeft=drag.current.left-(event.clientX-drag.current.x);event.currentTarget.scrollTop=drag.current.top-(event.clientY-drag.current.y)}} onPointerUp={()=>{drag.current=null}} onPointerCancel={()=>{drag.current=null}} className="cluster-topology-viewport" role="region" aria-label="Cluster topology, scroll to explore" tabIndex={0}><div ref={canvas} className="cluster-topology-canvas" style={{zoom}}><svg className="cluster-topology-links" role="group" aria-label="Topology connections">
- {links.map(link=><path key={link.id} aria-hidden="true" className={link.storage?'storage-link':undefined} data-highlighted={link.target===highlighted} d={link.path}/>)}
+ {links.map(link=><path key={link.id} aria-hidden="true" style={link.style} className={link.kind&&`${link.kind}-link`} data-highlighted={link.target===highlighted} d={link.path}/>)}
  {networkMap&&<g aria-hidden="true">{links.filter(link=>link.active).map(link=>
-  <path key={link.id} data-target={link.target} className="map-availability" d={link.path} pathLength={100}/>
+  <path key={link.id} data-target={link.target} className="map-availability" style={link.style} d={link.path} pathLength={100}/>
  )}</g>}
  {networkMap&&links.map(link=>{
   const flow=link.active&&flows.get(link.target);if(!flow||flow.until<=now)return null;
-  return <g aria-hidden="true" key={link.id}>{flow.rx&&<path className="map-pulse rx" d={link.path}/>} {flow.tx&&<path className="map-pulse tx" d={link.path}/>}</g>
+  return <g aria-hidden="true" key={link.id} style={link.style}>{flow.rx&&<path className="map-pulse rx" d={link.path}/>} {flow.tx&&<path className="map-pulse tx" d={link.path}/>}</g>
  })}
- <g>{links.map(link=><path key={link.id} className="map-link-hit" d={link.path}
-  role="button" tabIndex={0} aria-label={link.storage?`Highlight storage connection to ${link.label}`:`Highlight connection to ${link.label}`}
+ <g>{links.map(link=><path key={link.id} className="map-link-hit" style={link.style} d={link.path}
+  role="button" tabIndex={0} aria-label={link.kind==='backup'?`Highlight backup connection to ${link.label}`:link.kind==='storage'?`Highlight storage connection to ${link.label}`:`Highlight connection to ${link.label}`}
   onClick={()=>highlight(link.target)} onKeyDown={event=>{
    if(event.key==='Enter'||event.key===' '){event.preventDefault();highlight(link.target)}
   }}/>)}</g></svg><div className="topology-flow"><div className="cluster-topology-root"><SystemIcon kind="cluster" status={rootStatus==='Online'?'online':rootStatus==='Partial availability'?'paused':rootStatus==='Nodes unavailable'?'offline':'unknown'}/><span className="topology-system-label"><strong>{all.name}</strong><small className="topology-system-state">{rootStatus}</small></span></div>
- {tree.nodes.length?<ul className="cluster-topology-nodes">{tree.nodes.map(node=><li key={node.name} className="cluster-topology-branch"><div className="topology-host-lane"><button data-flow={'node:'+node.name} data-label={node.name} data-active={node.status==='online'} data-highlighted={highlighted==='node:'+node.name} className={`cluster-topology-node topology-${topologyState(node)}`} aria-label={`Inspect node ${node.name}`} onClick={()=>setSelected(node)}><SystemIcon kind="node" status={topologyState(node)}/><span className="topology-system-label"><b>{node.name}</b><small className="cluster-topology-ip">{ipv4([node.ip]).join(' · ')||'IP unavailable'}</small><small className="topology-system-state">{topologyState(node)}</small>{node.status!=='online'&&<small className="cluster-topology-warning">Proxmox connection unconfirmed</small>}</span></button></div>
+ {tree.nodes.length?<ul className="cluster-topology-nodes">{tree.nodes.map(node=><li key={node.name} className="cluster-topology-branch" style={nodeStyle(node.name)}><div className="topology-host-lane"><button data-flow={'node:'+node.name} data-label={node.name} data-active={node.status==='online'} data-highlighted={highlighted==='node:'+node.name} className={`cluster-topology-node topology-${topologyState(node)}`} aria-label={`Inspect node ${node.name}`} onClick={()=>setSelected(node)}><SystemIcon kind="node" status={topologyState(node)}/><span className="topology-system-label"><b>{node.name}</b><small className="cluster-topology-ip">{ipv4([node.ip]).join(' · ')||'IP unavailable'}</small><small className="topology-system-state">{topologyState(node)}</small>{node.status!=='online'&&<small className="cluster-topology-warning">Proxmox connection unconfirmed</small>}</span></button></div>
  {node.guests.length?<ul className="cluster-topology-guests" style={{'--topology-columns':Math.min(columns,node.guests.length)} as React.CSSProperties}>{node.guests.map((guest:any)=>{const status=topologyState(guest,node.status),name=topologyGuestName(guest),address=topologyGuestAddress(guest,node.status);const label=`${guest.kind==='lxc'?'CT':'VM'} ${name} on ${node.name}`;
-  const hasArchive=archived.has(guest.key);
   const detailsId='topology-details-'+guest.key;
-  const backupKnown=!backups.error&&Array.isArray(backups.data?.points)&&archiveScopeComplete(backups.data,node.name);
-  const archiveLabel=backups.loading&&!backups.data?'Loading backups…':backupKnown?'No archive reported':'Backup status unknown';
   return <li key={guest.key}><button data-flow={guest.key} data-label={label} data-active={status==='running'||status==='online'} data-highlighted={highlighted===guest.key}
    title={address} className={`cluster-topology-guest kind-${guest.kind}`} aria-label={`Inspect ${label}`} aria-describedby={detailsId} onClick={()=>setSelected(guest)}>
    <SystemIcon kind={guest.kind} status={status}/><span id={detailsId} className="topology-system-label"><b>{name}</b>
@@ -170,13 +167,32 @@ export default function ClusterTopology({data,loading,error,networkMap=false,int
      {vlan&&<small className="topology-vlan-label">{connections.error?'VLAN unavailable':connections.loading&&!connections.data?'Loading VLAN…':vlanLabel(connections.data?.guests?.find((g:any)=>g.key===guest.key))}</small>}
     </span>
     {!ipAddress&&<small className="topology-guest-address">{address}</small>}
-    {showBackup&&<small className="topology-backup-mark">{hasArchive?<><CheckSquare size={13} aria-hidden="true"/>Backup archive</>:archiveLabel}</small>}
    </span></button></li>})}</ul>:<p className="cluster-topology-empty">{node.status!=='online'?'Guest inventory unavailable while node state is offline or unconfirmed.':data?.nodeCoverage?.some((r:any)=>r.node===node.name&&r.status!=='available')?'No guests reported; node inventory is incomplete.':'No guests reported for this node.'}</p>}</li>)}</ul>:<p className="cluster-topology-empty">{loading?<ReportLoading/>:search?'No nodes or guests match your search.':'No nodes reported. Connect Proxmox to discover nodes, VMs and CTs.'}</p>}</div>
 
- {drives&&<section className="topology-storage-layer" aria-label="Server storage"><h4>Storage</h4>{connections.error&&<p role="status">{connections.error}</p>}{connections.loading&&!connections.data?<ReportLoading/>:<>{topologyStorage(tree.nodes,error?[]:data?.storage||[],connections.error||error?[]:connections.data?.guests||[]).map(server=><div key={server.node} className="topology-server-storage"><h5 translate="no">{server.node}</h5><div className="topology-storage-pools">{server.pools.length?server.pools.map(pool=><div key={pool.name} className="topology-storage-pool" data-storage-pool={JSON.stringify([server.node,pool.name])} data-storage-guests={JSON.stringify(pool.guests)}><HardDrive size={24}/><b translate="no">{pool.name}</b><small>{pool.status}</small></div>):<small>No storage reported</small>}</div></div>)}<small>Lines show configured guest storage. Host bind mounts and unattached volumes are excluded.</small></>}</section>}
+ {(drives||showBackup)&&<div className="topology-resource-layers">
+ {drives&&<section className="topology-storage-layer" aria-label="Server storage"><h4>Storage</h4>{connections.error&&<p role="status">{connections.error}</p>}{connections.loading&&!connections.data?<ReportLoading/>:<>{topologyStorage(tree.nodes,error?[]:data?.storage||[],connections.error||error?[]:connections.data?.guests||[]).map(server=><div key={server.node} className="topology-server-storage" style={nodeStyle(server.node)}><h5 translate="no">{server.node}</h5><div className="topology-storage-pools">{server.pools.length?server.pools.map(pool=><div key={pool.name} className="topology-storage-pool" data-pool-kind="storage" data-pool-id={JSON.stringify([server.node,pool.name])} data-pool-guests={JSON.stringify(pool.guests)}><HardDrive size={24}/><b translate="no">{pool.name}</b><small>{pool.status}</small></div>):<small>No storage reported</small>}</div></div>)}<small>Lines show configured guest storage. Host bind mounts and unattached volumes are excluded.</small></>}</section>}
+ {showBackup&&<section className="topology-storage-layer topology-backup-layer" aria-label="Backup destinations"><h4>Backup destinations</h4>
+  {backups.loading&&!backups.data?<ReportLoading/>:backups.error?<p role="status">Backup status unknown</p>:
+   topologyBackups(tree.nodes,backups.data?.points||[]).map(server=>{
+    const complete=Array.isArray(backups.data?.points)&&archiveScopeComplete(backups.data,server.node);
+    return <div key={server.node} className="topology-server-storage" style={nodeStyle(server.node)}>
+     <h5 translate="no">{server.node}</h5><div className="topology-storage-pools">{server.pools.map(pool=>
+      <Link key={pool.name} className="topology-storage-pool topology-backup-pool" to={backupArchivesLocation(pool.name,server.node)}
+       data-pool-kind="backup" data-pool-id={JSON.stringify([server.node,pool.name])} data-pool-guests={JSON.stringify(pool.guests)}>
+       <Archive size={24}/><b translate="no">{pool.name}</b><small>Backup Archives</small>
+      </Link>
+     )}</div>
+     {!complete?<small>Backup inventory incomplete</small>:!server.pools.length&&<small>No archive reported</small>}
+    </div>;
+   })}
+ </section>}
+ </div>}
  {(drives||vlan)&&!!connections.data?.errors?.length&&<p className="muted" role="status">Some guest connections could not be read. Unavailable mappings are omitted.</p>}
  </div></div>{networkMap?<small className="muted map-flow-key"><span className="map-availability-key"/> Online connection · <i/> RX · <em/> TX · RX and TX show recent traffic. Select a line to highlight its destination.</small>:<small className="muted">Dashed lines show which node hosts each guest. Pan or zoom to explore. Lines do not represent measured network traffic. Offline nodes do not confirm guest state. Guest IPs are runtime readings, not connectivity tests; VMs need a running QEMU guest agent and API access.</small>}
  <Modal open={!!selected} title={inspect?.kind==='node'?`Node ${inspect.name}`:inspect?topologyGuestName(inspect):'Resource unavailable'} onClose={()=>setSelected(null)}>{inspect?<><dl className="network-inspector">{Object.entries({Name:inspect.name,Type:inspect.kind==='node'?'Proxmox node':inspect.kind==='lxc'?'LXC container':'Virtual machine',Node:inspect.node||inspect.name,ID:inspect.id,Status:state,'Connection evidence':inspect.kind==='node'?inspect.connectionReason:null,IP:inspect.kind==='node'?ipv4([inspect.ip]).join(', ')||'Not reported':state==='running'&&inspect.addresses?.length?ipv4(inspect.addresses).join(', ')||'Unavailable':'Unavailable', 'IP source':inspect.kind==='node'?'Proxmox node inventory':inspect.addressSource||'Runtime interfaces', 'IP reading':inspect.kind==='node'?null:inspect.addressSampledAt||inspect.addressStatus||'Not reported','CPU usage':state==='online'||state==='running'?topologyPercent(inspect.cpu):'Unavailable','Memory usage':state==='online'||state==='running'?topologyPercent(inspect.kind==='node'?inspect.memoryPercent??inspect.memory:inspect.memoryPercent):'Unavailable'}).map(([key,value])=><div key={key}><dt>{key}</dt><dd>{String(value??'Not reported')}</dd></div>)}</dl><Link className="btn secondary" to={`/proxmox?tab=${inspect.kind==='node'?'Nodes':inspect.kind==='lxc'?'LXC%20Containers':'Virtual%20Machines'}&node=${encodeURIComponent(inspect.node||inspect.name)}`}>View in Proxmox</Link></>:<p>This resource is no longer in the latest inventory. Close this panel and select a current resource.</p>}</Modal></Card></div>;
+}
+function nodeStyle(name:string){
+ return {'--node-hue':nodeFlowHue(name)} as React.CSSProperties;
 }
 function SystemIcon({kind,status}:{kind:string;status:string}){
  const Icon=kind==='cluster'?Cloud:kind==='node'?Server:kind==='lxc'?Box:Monitor;
