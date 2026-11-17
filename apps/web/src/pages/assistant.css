@@ -35,3 +35,15 @@
 }
 
 .assistant-thread-title{margin:0;min-height:1.4em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:1rem;color:var(--theme-text)}
+
+.chat-history-line{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center}
+.assistant-history nav .chat-options{width:32px;justify-content:center}
+.chat-options-list{border:1px solid var(--theme-border);border-radius:10px;background:var(--theme-surface);padding:4px}
+.chat-options-list button:hover{background:var(--theme-highlight)}
+.chat-transcript{width:100%;min-height:14rem}
+.saved-assistant-info dt{color:var(--theme-muted);font-size:.85em}.saved-assistant-info dd{margin:4px 0 14px;overflow-wrap:anywhere}
+.assistant-main .assistant-messages .bubble.assistant{display:block}
+.assistant-messages .bubble.assistant small{white-space:nowrap;word-break:normal;margin-top:.5rem}
+.content.content .assistant-main .composer.assistant-compose{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.55rem;padding:.45rem;align-items:center}
+.content.content .assistant-main .assistant-compose input{width:100%;min-width:0;box-sizing:border-box}
+.content.content .assistant-main .assistant-compose button{width:auto;min-height:42px;padding-inline:1rem;white-space:nowrap}

@@ -200,7 +200,7 @@ test('Appearance section labels persist across navigation and failed saves resto
 test('Explicit notification tests still require confirmation and do not change preferences',async()=>{const page=await settingsPage();try{await openNotifications(page);page.dom.window.confirm=()=>false;await page.click(button(page,'Test'));assert.ok(!page.calls.some(c=>c.p==='/notifications/test'));page.dom.window.confirm=()=>true;await page.click(button(page,'Test'));assert.equal(page.calls.filter(c=>c.p==='/notifications/test').length,1);assert.ok(!page.calls.some(c=>c.init?.method==='PUT'));}finally{await page.close()}});
 test('Configuration dialog saves secrets once, masks saved reads, and tests only after confirmation',async()=>{const calls=[];let saved=false,tested=0;const page=await mounted('components/ConfigurationDialog.tsx',{service:'discord',onClose:()=>{},onSaved:()=>{}},async(p,init)=>{calls.push({p,init});if(p.endsWith('/test')){tested++;return {result:{delivered:true}}}const config={id:'discord',name:'Discord',disabled:false,fields:[{key:'DISCORD_WEBHOOK_URL',label:'Webhook URL',type:'password',required:true,value:'',hasValue:saved}]};if(init?.method==='PUT'){saved=true;return {result:{...config,fields:config.fields.map(f=>({...f,hasValue:true}))}}}return config});try{assert.equal(page.container.querySelector('input').type,'password');await changeControl(page.container.querySelector('input'),webhookFixture);await page.click(button(page,'Save Configuration'));assert.equal(calls.filter(c=>c.init?.method==='PUT').length,1);assert.equal(page.container.querySelector('input'),null);assert.match(page.container.querySelector('.connection-success').textContent,/Configuration saved successfully/);await page.render({service:'',onClose(){}});await page.render({service:'discord',onClose(){}});assert.equal(page.container.querySelector('input').value,'');page.dom.window.confirm=()=>false;await page.click(button(page,'Test Connection'));assert.equal(tested,0);page.dom.window.confirm=()=>true;await page.click(button(page,'Test Connection'));assert.equal(tested,1);assert.match(page.container.textContent,/Test notification delivered/);}finally{await page.close()}});
 test('Configuration save errors preserve input and never show a successful connection',async()=>{const page=await mounted('components/ConfigurationDialog.tsx',{service:'telegram',onClose:()=>{}},async(p,init)=>{if(init?.method==='PUT')throw Error('Chat ID is required');return {name:'Telegram',fields:[{key:'TELEGRAM_BOT_TOKEN',label:'Bot token',type:'password',required:true,value:'',hasValue:false}]}});try{await changeControl(page.container.querySelector('input'),'123:test');await page.click(button(page,'Save Configuration'));assert.match(page.container.textContent,/Chat ID is required/);assert.equal(page.container.querySelector('input').value,'123:test');assert.ok(!page.container.textContent.includes('Configuration saved'));}finally{await page.close()}});
-test('All supported configuration forms expose their fields without showing saved secrets',async()=>{const {configurationSchemas}=await import('../../api/src/runtime-configuration.js');for(const [service,schema] of Object.entries(configurationSchemas)){const page=await mounted('components/ConfigurationDialog.tsx',{service,onClose:()=>{}},async()=>({id:service,name:schema.name,disabled:false,fields:schema.fields.map(f=>({...f,value:f.type==='password'?'':f.type==='select'?'current':f.key==='SMTP_PORT'?'587':'',hasValue:f.type==='password'}))}));try{for(const f of schema.fields){const control=page.container.querySelector(`[aria-label="${f.label}"]`);assert.ok(control,service+' '+f.label);if(f.type==='password')assert.equal(control.value,'');}assert.ok(button(page,'Save Configuration'));assert.ok(button(page,'Test Connection'));assert.ok(!page.container.textContent.includes('recreate the API'));}finally{await page.close()}}});
+test('All supported configuration forms expose their fields without showing saved secrets',async()=>{const {configurationSchemas}=await import('../../api/src/runtime-configuration.js');for(const [service,schema] of Object.entries(configurationSchemas)){const page=await mounted('components/ConfigurationDialog.tsx',{service,onClose:()=>{}},async()=>({id:service,name:schema.name,disabled:false,fields:schema.fields.map(f=>({...f,value:f.type==='password'?'':f.type==='select'?'current':f.key==='SMTP_PORT'?'587':'',hasValue:f.type==='password'}))}));try{for(const f of schema.fields.filter(f=>f.key!=='N8N_WEBHOOK_URL')){const control=page.container.querySelector(`[aria-label="${f.label}"]`);assert.ok(control,service+' '+f.label);if(f.type==='password')assert.equal(control.value,'');}assert.ok(button(page,'Save Configuration'));assert.ok(button(page,'Test Connection'));assert.ok(!page.container.textContent.includes('recreate the API'));}finally{await page.close()}}});
 test('Provider health Edit opens one credential dialog and closes the health guide',async()=>{const page=await mounted('components/ConnectionManager.tsx',{},async p=>{if(p==='/auth/me')return {user:{role:'owner'}};if(p==='/connections/health')return {connections:[{id:'truenas',kind:'other',provider:'truenas',name:'TrueNAS',endpoint:'https://nas.example.com',method:'Saved integration',source:'saved',status:'online',issues:[],manage:'/storage'}]};if(p==='/notifications')return {channels:[],history:[]};if(p==='/configuration/ai')return {fields:[]};if(p.startsWith('/connections/proxmox/guests'))return {guests:[]};if(p==='/connections/proxmox')return {cluster:null};if(p==='/connections/docker')return {connection:null};if(p==='/node-agents')return {nodes:[]};if(p==='/docker/hosts')return {hosts:[]};if(p==='/configuration/truenas')return {name:'TrueNAS',fields:[{key:'TRUENAS_URL',label:'HTTPS endpoint',type:'url',required:true,value:'https://nas.example.com',hasValue:true}]};return {}});try{await page.click(button(page,'Manage'));assert.ok(button(page,'Edit connection'));await page.click(button(page,'Edit connection'));assert.equal(page.container.querySelectorAll('[role=dialog]').length,1);assert.ok(page.container.querySelector('input[aria-label="HTTPS endpoint"]'));assert.ok(!button(page,'Recheck Setup'));}finally{await page.close()}});
 
 test('Delivery History has five filters, all channels and a link back to Integrations',async()=>{
@@ -414,7 +414,7 @@ test('AI provider selection changes model and API type and never reuses another 
  const configuration={id:'ai',name:'AI Assistant',disabled:false,providers,fields:configurationSchemas.ai.fields.map(f=>({...f,value:f.defaultValue||'',hasValue:f.key==='OPENAI_API_KEY'}))};
  const page=await mounted('components/ConfigurationDialog.tsx',{service:'ai',onClose(){}},async(p,init)=>{calls.push({p,init});if(p.endsWith('/models'))return {result:{models:['claude-listed']}};if(p.endsWith('/test'))return {result:{message:'Claude verified.'}};return configuration});
  try{
-  assert.equal(page.container.querySelectorAll('[aria-label="AI provider"] option').length,7);
+  assert.equal(page.container.querySelectorAll('[aria-label="AI provider"] option').length,Object.keys(providers).length+1);
   await changeControl(page.container.querySelector('[aria-label="API key"]'),testKey);
   await changeControl(page.container.querySelector('[aria-label="AI provider"]'),'anthropic');
   const key=page.container.querySelector('[aria-label="API key"]');assert.equal(key.value,'');assert.equal(key.required,true);assert.equal(key.placeholder,'');assert.equal(page.container.querySelector('[aria-label="API type"]').value,'messages');assert.equal(page.container.querySelector('[aria-label="Model"]').value,providers.anthropic.defaultModel);
@@ -502,6 +502,21 @@ test('Integrations links to history and places preferences directly under events
  }finally{await page.close()}
 });
 
+test('saved assistant tests the stored connection and revokes it without exposing the key',async()=>{
+ const config={name:'AI Assistant',disabled:false,fields:[{key:'AI_PROVIDER',value:'openai'},{key:'OPENAI_MODEL',value:'fixture-model'},{key:'OPENAI_API_KEY',hasValue:true,value:''}]};
+ const calls=[];
+ const page=await mounted('components/SavedAssistant.tsx',{close(){},configure(){}},async(path,options)=>{
+  if(!options?.method)return config;
+  calls.push(options.method);
+  return {result:options.method==='POST'?{message:'Test passed'}:{...config,disabled:true}};
+ });
+ try{
+  assert.match(page.container.textContent,/fixture-model/);await page.click(button(page,'Test Connection'));assert.match(page.container.textContent,/Test passed/);
+  await page.click(button(page,'Revoke'));assert.match(page.container.textContent,/Assistant connection revoked/);
+  assert.deepEqual(calls,['POST','DELETE']);
+ }finally{await page.close()}
+});
+
 test('loading AI models marks only the models button busy',async()=>{
  let finish;
  const page=await mounted('components/ConfigurationDialog.tsx',{service:'ai',onClose(){}},async(path)=>{
@@ -543,6 +558,16 @@ test('retrying an earlier assistant question preserves the draft and message ord
   assert.equal(page.container.querySelectorAll('.bubble').length,0);
   await page.click(page.container.querySelector('.assistant-history nav button'));
   assert.equal(page.container.querySelectorAll('.bubble').length,4);
+  const options=()=>page.click(page.container.querySelector('.chat-options'));
+  await options();await page.click(button(page,'Pin'));
+  await options();assert.ok(button(page,'Unpin'));await page.click(button(page,'Rename'));
+  await changeControl(page.container.querySelector('[role=dialog] input'),'Cluster checks');
+  await page.click(button(page,'Save'));assert.ok(button(page,'Cluster checks'));
+  await options();await page.click(button(page,'Share'));
+  assert.match(page.container.querySelector('.chat-transcript').value,/Answer to First question/);
+  await page.click(page.container.querySelector('[role=dialog] button[aria-label="Close dialog"]'));
+  await options();await page.click(button(page,'Delete'));
+  assert.equal(page.container.querySelectorAll('.bubble').length,0);
  }finally{await page.close()}
 });
 
