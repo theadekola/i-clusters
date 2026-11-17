@@ -18,7 +18,7 @@ Switching provider clears the entered key and model list. A new key is required 
 
 Assistant requests send your question and selected infrastructure measurements to the selected provider. The assistant remains read-only and has no infrastructure tool execution. Cloud requests use fixed provider HTTPS endpoints. Local n8n requests go to the production webhook configured by the owner. See [privacy](../PRIVACY.md) for processing details.
 
-For environment-based setup, use `AI_PROVIDER` (`openai`, `anthropic`, `gemini`, `deepseek`, `groq` `mistral` or `n8n`). Existing `OPENAI_API_KEY` and `OPENAI_MODEL` variable names also configure the selected provider for compatibility. Leave the model blank to use its default. UI settings override environment defaults after saving.
+For environment-based setup, use `AI_PROVIDER` (`openai`, `anthropic`, `gemini`, `deepseek`, `groq`, `mistral` or `n8n`). Existing `OPENAI_API_KEY` and `OPENAI_MODEL` variable names also configure the selected provider for compatibility. Leave the model blank to use its default. UI settings override environment defaults after saving.
 
 API references checked during implementation:
 
@@ -39,7 +39,7 @@ API references checked during implementation:
 
 ## Measured inventory
 
-The Compose deployment includes a private Redis cache for each cluster’s latest monitoring samples. The assistant can use reported node addresses, guest counts, connected Docker hosts and containers, storage, tasks and shared activities. Cache entries expire after two minutes. If Redis is unavailable, the assistant uses the monitoring sample directly. Answers depend on the readings available to that cluster’s configured integrations.
+The Compose deployment includes a private Redis cache for each cluster’s latest monitoring samples. The assistant can use reported node addresses, guest counts, connected Docker hosts and containers, storage, tasks and shared activities. Cache entries expire within two minutes of the sample timestamp. If Redis is unavailable, the assistant uses the monitoring sample directly. Answers depend on the readings available to that cluster’s configured integrations.
 
 VM and LXC count questions use the full measured inventory, including when the provider prompt would show only 24 guest rows. Use “How many VMs are running on node01?” or “How many LXC containers are stopped on node02?” with the actual node name. Totals exclude templates and report excluded templates separately. Paused and suspended VMs retain their measured power state. Unknown guest states are disclosed. Incomplete or stale measurements cannot establish an exact count. Check the timestamp beside the answer. Recent activity questions use up to 12 shared events for the selected cluster; Overview shows up to six events visible to the signed-in user.
 

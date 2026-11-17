@@ -50,6 +50,10 @@ Audit records capture submitted operations, failures and returned task identifie
 
 Snapshots on a pool are not independent off-host backups. i-Clusters does not supply a generic Docker-volume/database backup runner. Configured external notification channels (including custom webhooks/IFTTT) and AI requests can send sensitive infrastructure information outside the installation. See [PRIVACY.md](PRIVACY.md).
 
+## Web build dependencies
+
+The frontend is built with Vite and TypeScript. Its final nginx image receives the generated static assets. The Vite build tool currently resolves picomatch 4.0.7. GitHub lists a high-severity denial-of-service advisory without a patched release as of 17 November 2026. Keep build configuration and glob patterns under source control, and recheck the tooling when a fixed version becomes available. The production dependency audit covers the runtime dependency tree. Use `npm audit --include=dev --workspaces=false --prefix apps/web` to review build dependencies as well. [GitHub advisory](https://github.com/advisories/GHSA-fc5q-39xc-vjpf)
+
 ## Validation boundaries
 
 Automated regression tests use isolated provider fixtures and exercise approvals, restore safeguards, monitoring gaps, TLS and token handling. They cannot validate every real provider release, ACL, guest OS or network. Verify compatibility and restore procedures on disposable resources before relying on them in production.
