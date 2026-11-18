@@ -492,9 +492,9 @@ try{
     assert.equal(await page.locator('.shell-clipboard-help').count(),0);
     const box=await page.locator('.shell-active-view>.card').boundingBox();
     const terminal=await page.locator('.ssh-terminal').boundingBox();
-    assert.ok(terminal.width>=box.width-20,'Terminal fills panel width');
-    assert.ok(terminal.height>200&&terminal.y+terminal.height<=box.y+box.height+1,'Terminal fits panel height');
-    assert.ok(box.y+box.height-terminal.y-terminal.height<16,'No unused space below terminal');
+    assert.ok(terminal.width>=box.width-20,'Terminal fills panel width: '+JSON.stringify({box,terminal}));
+    assert.ok(terminal.height>200&&terminal.y+terminal.height<=box.y+box.height+1,'Terminal fits panel height: '+JSON.stringify({box,terminal}));
+    assert.ok(box.y+box.height-terminal.y-terminal.height<16,'No unused space below terminal: '+JSON.stringify({box,terminal}));
     const toolbar=page.locator('.shell-session-toolbar');
     assert.equal(await toolbar.getByRole('button',{name:'Copy selected text',exact:true}).count(),1);
     assert.equal(await toolbar.getByRole('button',{name:'Fullscreen terminal',exact:true}).count(),1);
