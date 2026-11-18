@@ -1,5 +1,6 @@
 export const SHELL_IDLE_MS=20*60*1000;
 export function shellExpired(session,now=Date.now()){
+ if(session.credentialsExpireAt != null && now >= session.credentialsExpireAt)return true;
  if(session.mode==='sftp')return now-session.touched>60000;
  return session.hiddenAt==null&&now-session.touched>=SHELL_IDLE_MS;
 }

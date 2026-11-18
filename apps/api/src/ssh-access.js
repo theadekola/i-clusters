@@ -6,13 +6,11 @@ export {approvalTargetForPath} from './action-approval.js';
 import {shellExpired} from './ssh-idle.js';
 import {StringDecoder} from 'node:string_decoder';
 import path from 'node:path';
-import {createClusterStore} from './cluster-config.js';
+
 import {Client} from 'ssh2';
 import crypto from 'node:crypto';
-const connectionVault=()=>createClusterStore(path.join(process.env.DATA_DIR||'runtime','ssh-connections.json'),()=>process.env.JWT_SECRET,v=>v);
-export function savedSSH(user,target){return connectionVault().read()?.[`${user}:${target}`]||null;}
-export function publicSavedSSH(user){return Object.fromEntries(Object.entries(connectionVault().read()||{}).filter(([key])=>key.startsWith(user+':')).map(([key,value])=>[key.slice(user.length+1),{host:value.host,port:value.port,username:value.username,fingerprint:value.fingerprint,hasPassword:true}]));}
-export function deleteSavedSSH(user,target){const vault=connectionVault(),all=vault.read()||{};delete all[`${user}:${target}`];vault.save(all);}
+import {savedSSH,publicSavedSSH,deleteSavedSSH,saveSSH,purgeSavedSSH} from './ssh-credentials.js';
+export {savedSSH,publicSavedSSH,deleteSavedSSH} from './ssh-credentials.js';
 const sessions=new Map(),grants=new Map();
 const failure=(message,status=400)=>Object.assign(new Error(message),{status});
 export function actionTarget(req){
@@ -34,9 +32,12 @@ export async function verifyApprovalPrivilege(client,password){
  if(await probe("/usr/bin/sudo -k -S -p '' -- /usr/bin/id -u",password+'\n')!=='0')throw failure('Protected actions require root or verified sudo access on this target',403);
 }
 export async function connectSSH(input,user,sessionId){
+ const mode=input.mode==='sftp'?'sftp':'shell';
+ let retained;
+
  if(input.mode==='authorize'&&(input.saved||input.useSavedPassword))throw failure('Action approval requires a freshly entered target password',403);
- if(input.saved){const saved=savedSSH(user,input.target);if(!saved)throw failure('No saved connection',404);input={...saved,target:input.target,mode:input.mode==='sftp'?'sftp':'shell'};}
- if(input.useSavedPassword){const existing=savedSSH(user,input.target);if(!existing||existing.host!==input.host||existing.port!==Number(input.port||22)||existing.username!==input.username)throw failure('Enter a password for the changed connection');input={...input,password:existing.password};}
+ if(input.saved){const saved=savedSSH(user,input.target,mode);if(!saved)throw failure('No saved connection',404);retained=saved;input={...saved,target:input.target,mode:input.mode==='sftp'?'sftp':'shell'};}
+ if(input.useSavedPassword){const existing=savedSSH(user,input.target,mode);if(!existing||existing.host!==input.host||existing.port!==Number(input.port||22)||existing.username!==input.username)throw failure('Enter a password for the changed connection');retained=existing;input={...input,password:existing.password};}
  if(typeof input.host!=='string'||!input.host||input.host.length>253||/[\s/]/.test(input.host))throw failure('Enter the target SSH hostname or IP address');
  if(!/^(node|vm|lxc):/.test(input.target||'')&&!/^docker:[a-f0-9-]{36}$/.test(input.target||''))throw failure('Invalid target');
  const port=Number(input.port||22);if(!Number.isInteger(port)||port<1||port>65535)throw failure('Invalid SSH port');
@@ -48,10 +49,13 @@ export async function connectSSH(input,user,sessionId){
    const approval=await resolveActionApproval(input.path,input.body,input.method,{dockerHost:input.dockerHost});if(!approval)throw failure('Invalid action path');if(approval.target!==input.target)throw failure('SSH target does not match this action');return {token:issueGrant(user,input.method,input.path,input.body,approval.scope,sessionId)};
   }finally{client.end();}
  }
+ if(retained&&retained.expiresAt<=Date.now()){client.end();throw failure('Saved credentials expired. Enter the SSH password again.',401);}
  let stream;try{stream=await new Promise((resolve,reject)=>input.mode==='sftp'?client.sftp((e,s)=>e?reject(e):resolve(s)):client.shell({term:'xterm-256color',cols:100,rows:28},(e,s)=>e?reject(e):resolve(s)));}catch(e){client.end();throw e;}
- if(input.save===false&&input.mode!=='authorize')deleteSavedSSH(user,input.target);
- if(input.save===true){const vault=connectionVault(),all=vault.read()||{};all[`${user}:${input.target}`]={host:input.host,port,username:input.username,password:input.password,fingerprint:input.fingerprint};vault.save(all);}
- const id=crypto.randomUUID(),s={user,sessionId,target:input.target,host:input.host,client,stream,mode:input.mode==='sftp'?'sftp':'shell',output:'',touched:Date.now(),closed:false};sessions.set(id,s);const decoder=new StringDecoder('utf8'),closed=()=>{if(s.closed)return;s.output=(s.output+decoder.end()).slice(-262144);s.closed=true;s.onOutput?.();};if(s.mode==='shell')stream.on('data',d=>{s.output=(s.output+decoder.write(d)).slice(-262144);s.onOutput?.();});stream.on('close',()=>{closed();client.end()});client.on('error',closed);client.on('close',closed);return {id};
+ try{
+  if(input.save===false)deleteSavedSSH(user,input.target,mode);
+  if(input.save===true)retained=saveSSH(user,input.target,mode,{host:input.host,port,username:input.username,password:input.password,fingerprint:input.fingerprint},retained);
+ }catch(error){client.end();throw error;}
+ const id=crypto.randomUUID(),s={user,sessionId,target:input.target,host:input.host,credentialsExpireAt:retained?.expiresAt,client,stream,mode:input.mode==='sftp'?'sftp':'shell',output:'',touched:Date.now(),closed:false};sessions.set(id,s);const decoder=new StringDecoder('utf8'),closed=()=>{if(s.closed)return;s.output=(s.output+decoder.end()).slice(-262144);s.closed=true;s.onOutput?.();};if(s.mode==='shell')stream.on('data',d=>{s.output=(s.output+decoder.write(d)).slice(-262144);s.onOutput?.();});stream.on('close',()=>{closed();client.end()});client.on('error',closed);client.on('close',closed);return {id};
 }
 export async function openGuestUpdate(id,user,loginId,resolveHost){
  const parent=shellSession(id,user);
@@ -64,7 +68,7 @@ export async function openGuestUpdate(id,user,loginId,resolveHost){
   const stream=await new Promise((resolve,reject)=>parent.client.exec(guestUpdateCommand,{pty:{term:'xterm-256color',cols:100,rows:28}},(err,ch)=>err?reject(err):resolve(ch)));
   const childId=crypto.randomUUID(),decoder=new StringDecoder('utf8');
   // Releasing this tab must close only its channel, never the original terminal.
-  const child={user,sessionId:loginId,mode:'shell',updateChannel:true,client:{end:()=>stream.close()},stream,output:'',closed:false,touched:Date.now()};
+  const child={user,sessionId:loginId,credentialsExpireAt:parent.credentialsExpireAt,mode:'shell',updateChannel:true,client:{end:()=>stream.close()},stream,output:'',closed:false,touched:Date.now()};
   const append=text=>{child.output=(child.output+text).slice(-262144);child.onOutput?.();};
   let tail='';
   stream.on('data',chunk=>{const text=decoder.write(chunk);tail=(tail+text).slice(-512);append(text)});
@@ -79,7 +83,7 @@ export function openShellOwner(id){
  const session=sessions.get(id);
  return session?.mode==='shell'&&!session.closed&&!shellExpired(session)?session.user:undefined;
 }
-export function shellSession(id,user){const s=sessions.get(id);if(!s||s.user!==user||shellExpired(s))throw failure('Shell session unavailable',404);if(s.mode==='sftp')s.touched=Date.now();return s;}
+export function shellSession(id,user){const s=sessions.get(id);if(!s||s.user!==user)throw failure('SSH session unavailable. Reconnect to continue.',404);if(shellExpired(s)){sessions.delete(id);endSession(s);throw failure('SSH session expired. Enter the password to reconnect.',404);}if(s.mode==='sftp')s.touched=Date.now();return s;}
 function endSession(session){
  session.releaseOutput?.();
  const finish=()=>{if(session.mode==='sftp')session.stream.end();else if(!session.updateChannel)session.stream.close();session.client.end()};
@@ -92,6 +96,8 @@ function endSession(session){
 }
 export function closeShell(id,user){const s=shellSession(id,user);sessions.delete(id);endSession(s)}
 const timer=setInterval(()=>{
+ try{purgeSavedSSH('shell');purgeSavedSSH('sftp')}catch{console.error('Saved SSH credential cleanup failed.')}
+
  for(const [id,s] of sessions){
   if(shellExpired(s)){sessions.delete(id);endSession(s);continue}
   for(const [key,row] of s.uploads||[])if(!row.busy&&Date.now()-row.touched>60000){s.uploads.delete(key);void call(s.stream,'unlink',row.temp).catch(()=>{})}

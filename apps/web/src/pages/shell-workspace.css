@@ -47,3 +47,15 @@
 }
 
 .shell-page .shell-hosts:not(.list){grid-template-columns:repeat(auto-fill,minmax(min(100%,17rem),1fr))}
+
+/* Active terminals keep compact edges even when global card density changes. */
+.content .shell-console-active>.shell-active-view>.card.card{padding:6px!important;overflow:hidden}
+.shell-console-active .ssh-terminal{padding:0;border-radius:3px;background:#07111d}
+.shell-console-active .ssh-terminal .xterm{padding:2px}
+.shell-console-active .shell-session-toolbar{padding:2px 4px 6px}
+@media(max-width:600px){
+ .shell-console-active .ssh-shell .shell-session-toolbar{flex-wrap:wrap}
+ .shell-console-active .ssh-shell .shell-session-toolbar .shell-session-heading{flex-basis:100%}
+ .shell-console-active .ssh-shell .shell-session-toolbar .header-actions{width:100%;justify-content:flex-end}
+ .shell-console-active .shell-session-toolbar .shell-update-label{margin-inline-end:auto}
+}
