@@ -105,7 +105,17 @@ function actionLayoutIssues(root){
  for(const cell of root.querySelectorAll('tbody td'))sameLine([...cell.querySelectorAll('button,a.btn')].filter(e=>e.closest('td')===cell),cell.closest('table').className+' cell');
  for(const group of root.querySelectorAll(rows)){
   if(group.matches('.top-actions'))continue;
-  sameLine([...group.querySelectorAll('button,a.btn,select')].filter(e=>e.closest(rows)===group&&!e.closest('[role="menu"]')&&(!e.closest('[role="dialog"]')||e.closest('[role="dialog"]')===root)),group.className);
+  const controls=[...group.querySelectorAll('button,a.btn,select')].filter(e=>e.closest(rows)===group&&!e.closest('[role="menu"]')&&(!e.closest('[role="dialog"]')||e.closest('[role="dialog"]')===root));
+  if(group.matches('.general-settings-grid .system-maintenance-actions')){
+   // Maintenance is deliberately a vertical list inside a settings card.
+   const boxes=controls.filter(visible).map(el=>el.getBoundingClientRect()),bounds=group.getBoundingClientRect();
+   if(group.scrollWidth>group.clientWidth+1)issues.add('Maintenance controls overflow their card');
+   for(let index=0;index<boxes.length;index++){
+    const box=boxes[index],previous=boxes[index-1];
+    if(box.left<bounds.left-1||box.right>bounds.right+1||box.top<bounds.top-1||box.bottom>bounds.bottom+1)issues.add('Maintenance control leaves its group');
+    if(previous&&(box.top<previous.bottom||Math.abs(box.left-previous.left)>1||Math.abs(box.width-previous.width)>1))issues.add('Maintenance controls must form an aligned vertical list');
+   }
+  }else sameLine(controls,group.className);
  }
  const dockerBar=root.querySelector('.docker-command-bar');
  if(dockerBar){
