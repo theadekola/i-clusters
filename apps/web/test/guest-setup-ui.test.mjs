@@ -579,7 +579,7 @@ test('profile time zone uses a dropdown and saves a selected zone',async()=>{
  const calls=[],user={id:'alice',name:'Alice',username:'alice',role:'owner',profile:{timeZone:'Europe/London'}};
  const page=await mounted('components/ProfilePanels.tsx',{user,self:true,role:'Owner',onSaved(){}},async(path,init)=>{calls.push({path,body:JSON.parse(init.body)});return {user};},true,false,'ProfileForm');
  try{
-  const select=page.container.querySelector('select');assert.ok(select);assert.equal(select.value,'Europe/London');assert.equal(select.disabled,true);
+  const select=page.container.querySelector('select');assert.ok(select);assert.equal(select.getAttribute('aria-label'),'Time zone');assert.equal(select.value,'Europe/London');assert.equal(select.disabled,true);
   await page.click(button(page,'Edit profile'));assert.equal(select.disabled,false);
   await changeControl(select,'UTC');await page.click(button(page,'Save'));
   assert.equal(calls[0].path,'/account/profile');assert.equal(calls[0].body.timeZone,'UTC');
