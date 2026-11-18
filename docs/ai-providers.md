@@ -16,7 +16,7 @@ Use **Load Models** to list text models available to your key. Suggested model I
 
 Switching provider clears the entered key and model list. A new key is required when switching; blank password fields retain a saved key only for the same provider. Existing OpenAI configurations continue to work without re-entering their key. Credentials remain encrypted and are never returned to the browser.
 
-Assistant requests send your question and selected infrastructure measurements to the selected provider. The assistant remains read-only and has no infrastructure tool execution. Cloud requests use fixed provider HTTPS endpoints. Local n8n requests go to the production webhook configured by the owner. See [privacy](../PRIVACY.md) for processing details.
+Every ordinary assistant reply uses the saved provider connection. Requests include your question, selected infrastructure measurements and up to four previous exchanges. Provider errors remain visible for retry instead of being replaced by a local summary. Without a configured provider, supported inventory questions can still receive a local measured answer. The assistant remains read-only and has no infrastructure tool execution. Cloud requests use fixed provider HTTPS endpoints. Local n8n requests go to the production webhook configured by the owner. See [privacy](../PRIVACY.md) for processing details.
 
 For environment-based setup, use `AI_PROVIDER` (`openai`, `anthropic`, `gemini`, `deepseek`, `groq`, `mistral` or `n8n`). Existing `OPENAI_API_KEY` and `OPENAI_MODEL` variable names also configure the selected provider for compatibility. Leave the model blank to use its default. UI settings override environment defaults after saving.
 
@@ -41,9 +41,31 @@ API references checked during implementation:
 
 The Compose deployment includes a private Redis cache for each cluster’s latest monitoring samples. The assistant can use reported node addresses, guest counts, connected Docker hosts and containers, storage, tasks and shared activities. Cache entries expire within two minutes of the sample timestamp. If Redis is unavailable, the assistant uses the monitoring sample directly. Answers depend on the readings available to that cluster’s configured integrations.
 
-VM and LXC count questions use the full measured inventory, including when the provider prompt would show only 24 guest rows. Use “How many VMs are running on node01?” or “How many LXC containers are stopped on node02?” with the actual node name. Totals exclude templates and report excluded templates separately. Paused and suspended VMs retain their measured power state. Unknown guest states are disclosed. Incomplete or stale measurements cannot establish an exact count. Check the timestamp beside the answer. Recent activity questions use up to 12 shared events for the selected cluster; Overview shows up to six events visible to the signed-in user.
+VM and LXC count questions use the full measured inventory, including when the provider prompt would show only 24 guest rows. Use “How many VMs are running on node01?” or “How many LXC containers are stopped on node02?” with the actual node name. Totals exclude templates and report excluded templates separately. Paused and suspended VMs retain their measured power state. Unknown guest states are disclosed. Incomplete or stale measurements cannot establish an exact count. These facts are supplied to the saved provider in `context.verifiedAnswer`, with instructions to preserve their counts, addresses, states and uncertainty. The model still writes the final reply, so compare measured claims with Proxmox and check the sample timestamp. Recent activity questions use up to 12 shared events for the selected cluster; Overview shows up to six events visible to the signed-in user.
 
 Cache entries are scoped to the installation key, selected profile, runtime directory, Proxmox connection identity and sample timestamp. Their remaining lifetime is bounded by the age of the sample. The API checks the integrity of cached measurements and falls back to the monitor snapshot after a miss or error. A previously sampled Proxmox reading more than two minutes old is withheld from current inventory answers and provider context.
+
+## Saved chat history
+
+Questions, replies, source links, errors, names and pinned status are stored encrypted on the API server for each account and cluster. They survive page reloads, sign-out and subsequent sign-in. Switching clusters loads that cluster's conversations. The browser keeps only the active chat identifier. Any matching chat still present in the old browser session is imported once. Chats already lost from that session cannot be reconstructed.
+
+Use each chat's menu to rename, pin, download or delete it. Deleting a chat also prevents an outstanding reply from recreating it. A request interrupted by an API restart is marked for manual retry. Duplicate retries of a completed exchange return the stored reply. History has a 16 MiB account-and-cluster limit with space reserved for pending replies. At the limit, new messages stop with a visible error instead of silently deleting older chats. Server backups may retain deleted records. The encrypted files depend on the deployment encryption key and persistent `DATA_DIR` storage.
+
+## Public search through the saved connection
+
+**Search the web** prefills `web: `. This sends only the public query to the saved provider, without cluster measurements or chat history. Source links are shown when supplied. Search support depends on the selected model and provider account.
+
+| Saved connection | Search behaviour |
+| --- | --- |
+| OpenAI Responses | Requests the native `web_search` tool |
+| Anthropic Messages | Offers the native `web_search_20250305` tool |
+| Google Gemini Generate Content | Enables Google Search grounding and displays its source links and search suggestions |
+| n8n | Sends the query to the saved webhook and checks its `webSearch` response marker |
+| OpenAI Chat Completions, DeepSeek, Groq, Mistral | Uses the saved model with a visible notice that this integration has no live search tool |
+
+A connection that does not confirm a search is labelled accordingly. An unsupported model or provider failure remains an actionable error. i-Clusters does not switch providers, keys, models or API formats automatically.
+
+[OpenAI web search](https://developers.openai.com/api/docs/guides/tools-web-search) · [Anthropic web search](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool) · [Gemini grounding](https://ai.google.dev/gemini-api/docs/generate-content/google-search)
 
 ## Public web search with n8n and Ollama
 
@@ -52,8 +74,8 @@ Download the [inactive n8n workflow](examples/n8n-ollama.json). The workflow has
 1. In the n8n editor, import the example. Bind a Webhook Header Auth credential with header name `Authorization` and value `Bearer YOUR_SHARED_SECRET`.
 2. In **Ask local Ollama**, set the private URL reachable from the n8n service and replace `REPLACE_WITH_INSTALLED_MODEL` with an exact installed model tag from Ollama's `GET /api/tags`. The workflow sends a non-streaming `POST /api/chat` and extracts `message.content`.
 3. In **Search public web**, bind a separate HTTP Header Auth credential with header name `X-Subscription-Token` and the Brave Search API key. Only the terms following `web:` go to Brave. Searches are subject to the configured account's usage charges.
-4. When ready, publish the workflow. Select **n8n (local AI)** in i-Clusters, use its HTTPS production URL under `/webhook/`, and enter the raw webhook secret in **API key**. The API must resolve and trust the webhook host. Redirects and test webhook URLs are rejected. A connection test sends a real request and times out after 30 seconds. Ordinary AI requests allow 90 seconds.
-5. A normal response is `{"answer":"reply text"}`. A completed public search must also return `"webSearch": true`. An older model-only workflow cannot confirm a web search. Other configured AI providers continue to answer ordinary prompts.
+4. When ready, publish the workflow. Select **n8n (local AI)** in i-Clusters, use its HTTPS production URL under `/webhook/`, and enter the raw webhook secret in **API key**. The API must resolve and trust the webhook host. Redirects and test webhook URLs are rejected. A connection test sends a real request and times out after 30 seconds. Chat and public search requests allow 90 seconds.
+5. A normal response is `{"answer":"reply text"}`. A completed public search must also return `"webSearch": true`. An older model-only workflow can still reply through the saved connection, but its answer carries a notice that a live search was not confirmed.
 
 [Ollama chat API](https://docs.ollama.com/api/chat) · [n8n Webhook](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/) · [Brave Search API](https://api-dashboard.search.brave.com/app/documentation/web-search/get-started)
 

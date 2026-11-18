@@ -48,19 +48,19 @@ test('can answer recent shared activity without a provider',()=>{
  assert.match(recentActivityAnswer('Show recent activities',[]),/No shared activities/);
  assert.equal(recentActivityAnswer('Review my backup policy',[]),null);
 });
-test('public searches require an explicit search-capable workflow and transmit only search terms',async t=>{
+test('public prompts use the saved n8n workflow and distinguish unconfirmed searches',async t=>{
  const config={AI_PROVIDER:'n8n',N8N_WEBHOOK_URL:'https://workflow.test/webhook/search',OPENAI_API_KEY:'fixture'};
  const mock=t.mock.method(globalThis,'fetch',async(url,options)=>{
   assert.equal(url,config.N8N_WEBHOOK_URL);
   assert.deepEqual(JSON.parse(options.body),{message:'web: public docs'});
   return Response.json({answer:'Public results',webSearch:true});
  });
- await assert.rejects(publicWebSearch({},'web: docs'),/requires/);
+ await assert.rejects(publicWebSearch({},'web: docs'),/API key/);
  await assert.rejects(publicWebSearch(config,'web: '),/search terms/);
  assert.equal(mock.mock.callCount(),0);
- assert.deepEqual(await publicWebSearch(config,'web: public docs'),{mode:'web',answer:'Public results'});
+ assert.deepEqual(await publicWebSearch(config,'web: public docs'),{mode:'n8n',answer:'Public results',webSearch:true});
  mock.mock.mockImplementation(()=>Response.json({answer:'A model-only reply'}));
- await assert.rejects(publicWebSearch(config,'web: docs'),/did not confirm/);
+ const reply=await publicWebSearch(config,'web: docs');assert.equal(reply.answer,'A model-only reply');assert.equal(reply.webSearch,false);assert.match(reply.notice,/not confirmed/);
 });
 
 test('Redis isolates samples, refuses copied or damaged entries and bounds expiry by sample age',{skip:!process.env.REDIS_URL},async()=>{

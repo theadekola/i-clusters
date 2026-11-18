@@ -1,6 +1,6 @@
 # Privacy and data handling
 
-Updated 11 November 2026. Developed by The Adekola Labs.
+Updated 18 November 2026. Developed by The Adekola Labs.
 
 This document describes the i-Clusters application's data flows. It is not a privacy notice for every independently operated installation. The person or organisation operating an installation decides its access, connected systems, retention, backups and any additional proxy or hosting logs. Contact that operator about data on their instance.
 
@@ -15,7 +15,8 @@ The [website Privacy Policy](https://www.i-clusters.com/privacy.html) covers inf
 | Encrypted authenticator keys, last-used counters, pending login challenges and hashed one-time recovery codes | Optional MFA authentication and recovery in PostgreSQL |
 | Provider inventory, hostnames, addresses, measurements, alerts and activity | Infrastructure management and local persisted runtime state |
 | Supported integration secrets and saved connection details | Server-side connection configuration; supported credential stores encrypt secret values using deployment key material |
-| SSH/SFTP credentials and terminal/file data | Authenticated operations against the selected target; saved SSH details are managed separately from active sessions |
+| SSH/SFTP credentials and terminal/file data | Authenticated operations against the selected target; Shell and SFTP have separate encrypted saved credentials scoped to account, cluster and target, with a fixed 48-hour deadline from saving |
+| Assistant conversation history | Questions, answers, sources, errors, titles and pinned state are encrypted in per-account, per-cluster files under the API data directory; users can download or delete individual chats |
 | Browser access tokens, session markers and preferences; HttpOnly refresh cookie | Sign-in and preferences; short-lived access tokens and preferences use local/session storage, while browser refresh credentials use a Secure, HttpOnly cookie |
 | Guest maintenance restart records | The controller stores the initiating account, cluster and guest identifiers, power state, task receipt, timestamps and progress in PostgreSQL so the operator can resume a restart. |
 | Encrypted Docker operation journal | Installation checkpoints and recovery, including configuration required to restore the original container |
@@ -28,8 +29,8 @@ Infrastructure names, IP addresses, logs, filenames and prompts may contain pers
 - Proxmox, Docker, TrueNAS and SSH targets receive the configured requests needed for their connected features.
 - Enabled Discord, Telegram, SMTP, Slack, Teams, Pushover, Gotify, custom webhook or IFTTT channels receive alert/source/details and recovery messages. Tests send a user-confirmed request to the configured destination. Custom receivers and IFTTT applets can perform downstream actions.
 - The internal Redis cache holds selected cluster measurements for up to two minutes. It contains no assistant credentials or chat transcripts.
-- An explicit public web search sends the prefixed search terms to the owner-configured n8n workflow without cluster measurements or chat history. The bundled workflow forwards those terms to Brave Search using a separate credential. Terms typed by the user can contain sensitive information.
-- When a conversational question requires a provider, the selected provider (OpenAI, Anthropic, Google Gemini, DeepSeek, Groq, Mistral or an owner-configured n8n workflow) receives the user's question and selected infrastructure measurements. OpenAI requests set `store: false`; other providers use their native APIs and processing/retention policies. No retention setting replaces the selected provider's own policy. Connection tests use a small test prompt. Model discovery uses the configured key without an assistant completion.
+- An explicit public web search sends the prefixed search terms to the saved provider without cluster measurements or chat history. Supported native search tools use the selected provider's search service. The bundled n8n workflow forwards those terms to Brave Search using a separate credential. Terms typed by the user can contain sensitive information.
+- For every ordinary assistant reply with a configured connection, the selected provider (OpenAI, Anthropic, Google Gemini, DeepSeek, Groq, Mistral or an owner-configured n8n workflow) receives the user's question, selected infrastructure measurements and up to four prior exchanges. OpenAI requests set `store: false`; other providers use their native APIs and processing/retention policies. No retention setting replaces the selected provider's own policy. Connection tests use a small test prompt. Model discovery uses the configured key without an assistant completion.
 - The optional host updater contacts the configured Git upstream, normally GitHub. Installation/build/update tooling also downloads selected packages and container images.
 - External documentation, repository, portfolio and social links open their respective sites when followed.
 
@@ -48,6 +49,10 @@ Remember this device has a fixed ten-day deadline from successful sign-in; activ
 ## Retention, access and deletion
 
 Different stores have different lifetimes. Header activity is bounded and notification previews are limited; audit/database records, exports, backups, configuration files and external deliveries can outlive those views. Expired MFA challenges are cleaned at startup; device-session rows older than 30 days past expiry are cleaned at startup. These are not universal retention rules. There is no universal automatic erasure period or complete user-data deletion workflow.
+
+Saved Shell and SFTP credentials expire 48 hours after saving. Reuse does not extend that deadline. Sessions opened with those saved credentials are rejected at expiry and disconnected by the cleanup loop. Legacy saved records without a save time require a fresh password. Credential expiry is independent of the i-Clusters account session.
+
+Assistant history remains until its user deletes it or the operator removes the server data. Sign-out does not delete it. A storage limit stops new messages without removing old ones. Generic assistant audit events record the provider and search status rather than the reply text. Existing audit records and backups follow their own retention policies.
 
 The operator should define retention, restrict administrator access, remove unused connections and accounts, and manage database/runtime/backups consistently. Disconnecting an integration stops i-Clusters's use of its saved configuration; it does not erase messages or resources already created on an external service. Browser sign-out is not deletion of server data. Requests for account information, correction or deletion must go to the installation operator, who must also consider applicable obligations and backup retention.
 

@@ -1,0 +1,38 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {createClusterStore} from '../src/cluster-config.js';
+import {saveSSH,savedSSH,publicSavedSSH,deleteSavedSSH,SSH_CREDENTIAL_LIFETIME} from '../src/ssh-credentials.js';
+import {connectSSH} from '../src/ssh-access.js';
+import {shellExpired} from '../src/ssh-idle.js';
+
+test('Shell and SFTP credentials are scoped to user, cluster and mode and expire after a fixed 48 hours',async t=>{
+ const directory=fs.mkdtempSync(path.join(os.tmpdir(),'ssh-expiry-'));
+ const before={DATA_DIR:process.env.DATA_DIR,JWT_SECRET:process.env.JWT_SECRET};
+ t.after(()=>{for(const [key,value] of Object.entries(before))if(value===undefined)delete process.env[key];else process.env[key]=value;fs.rmSync(directory,{recursive:true,force:true})});
+ process.env.DATA_DIR=directory;process.env.JWT_SECRET='fixture-ssh-key-'.repeat(4);
+ let now=Date.now();t.mock.method(Date,'now',()=>now);
+ const target='vm:node01:100',connection={host:'192.0.2.10',port:22,username:'alice',password:'secret-fixture',fingerprint:'fixture'};
+ const first=saveSSH('alice',target,'shell',connection);
+ assert.equal(first.expiresAt-first.savedAt,SSH_CREDENTIAL_LIFETIME);
+ assert.equal(savedSSH('alice',target,'sftp'),null);
+ await assert.rejects(connectSSH({saved:true,target,mode:'sftp'},'alice'),e=>e.status===404);
+ await assert.rejects(connectSSH({...connection,target,mode:'sftp',useSavedPassword:true,password:''},'alice'),/changed connection/);
+ assert.equal(savedSSH('bob',target),null);
+ process.env.DATA_DIR=path.join(directory,'other');assert.equal(savedSSH('alice',target),null);process.env.DATA_DIR=directory;
+ now+=1000;saveSSH('alice',target,'shell',connection,first);assert.equal(savedSSH('alice',target).expiresAt,first.expiresAt);
+ const sftp=saveSSH('alice',target,'sftp',{...connection,password:'sftp-fixture'});
+ assert.equal(savedSSH('alice',target,'sftp').password,'sftp-fixture');
+ deleteSavedSSH('alice',target,'sftp');assert.ok(savedSSH('alice',target));
+ assert.ok(!JSON.stringify(publicSavedSSH('alice')).includes('secret-fixture'));
+ assert.equal(shellExpired({mode:'shell',touched:now,hiddenAt:now,credentialsExpireAt:first.expiresAt},first.expiresAt),true);
+ assert.equal(shellExpired({mode:'sftp',touched:first.expiresAt,credentialsExpireAt:first.expiresAt},first.expiresAt),true);
+ now=first.expiresAt;assert.equal(savedSSH('alice',target),null);
+ assert.deepEqual(createClusterStore(path.join(directory,'ssh-connections.json'),undefined,v=>v).read(),{});
+ await assert.rejects(connectSSH({saved:true,target},'alice'),e=>e.status===404);
+ createClusterStore(path.join(directory,'ssh-connections.json'),undefined,v=>v).save({['alice:'+target]:connection});
+ assert.equal(savedSSH('alice',target),null);
+ assert.equal(sftp.expiresAt-first.expiresAt,1000);
+});

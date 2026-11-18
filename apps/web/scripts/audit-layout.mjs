@@ -168,6 +168,7 @@ try{
  const page=await context.newPage();
  await page.addInitScript(locale=>{if(!localStorage.getItem('iclusters_language'))localStorage.setItem('iclusters_language',locale);if(!sessionStorage.getItem('language-login-audit'))localStorage.setItem('iclusters_access_token','layout-fixture');localStorage.setItem('iclusters_last_activity',String(Date.now()));},auditLocale);
  await page.addInitScript(theme=>{if(theme)localStorage.setItem('iclusters_appearance',JSON.stringify({theme,preset:'midnight-cyan'}))},process.env.LAYOUT_THEME||'');
+ const assistantThreads=new Map();
  await page.context().route('**/api/**',async route=>{
   readCount++;if(checkRefresh)await new Promise(resolve=>setTimeout(resolve,150));
   const path=new URL(route.request().url()).pathname.replace('/api','');
@@ -244,7 +245,23 @@ try{
    if(Object.keys(visit??{}).length!==1||typeof visit?.feature!=='string'||!visit.feature.trim())failures.push('Invalid product visit payload');
    return route.fulfill({status:204});
   }
-  if(process.env.LAYOUT_ASSISTANT_CHAT&&path==='/ai/chat'&&route.request().method()==='POST')return route.fulfill({json:{result:{answer:'Fixture cluster is online.',mode:'local'}}});
+  if(path==='/ai/conversations')return route.fulfill({json:{threads:[...assistantThreads.values()].map(t=>({...t,question:t.rows[0]?.question,rows:[]}))}});
+  if(path.startsWith('/ai/conversations/'))return route.fulfill({json:{thread:assistantThreads.get(Number(path.split('/').at(-1)))}});
+  if(process.env.LAYOUT_ASSISTANT_CHAT&&path==='/ai/chat'&&route.request().method()==='POST'){
+   const {threadId,exchangeId,message}=route.request().postDataJSON();
+   const result={answer:'Fixture cluster is online.',mode:'openai'};
+   const thread=assistantThreads.get(threadId)||{id:threadId,title:message,rows:[]};
+   thread.rows.push({id:exchangeId,question:message,...result});assistantThreads.set(threadId,thread);
+   return route.fulfill({json:{result}});
+  }
+  if(process.env.LAYOUT_REMOTE_PANELS&&path==='/ssh/connect'){
+   assert.equal(route.request().postDataJSON().mode,'shell');
+   return route.fulfill({json:{id:'layout-terminal'}});
+  }
+  if(process.env.LAYOUT_REMOTE_PANELS&&path.startsWith('/ssh/session/layout-terminal')){
+   if(route.request().method()==='GET')return route.fulfill({contentType:'application/x-ndjson',body:JSON.stringify({output:'Fixture terminal output\r\nfixture$ ',closed:true})+'\n'});
+   return route.fulfill({json:{ok:true}});
+  }
   // The audit must never reach an actual provider or perform a management write.
   if(route.request().method()!=='GET'&&path!=='/ssh/fingerprint'&&!(checkRefresh&&path==='/docker/updates/check'))failures.push(`Unexpected write: ${path}`);
   return route.fulfill({json:fixture(path)});
@@ -460,12 +477,36 @@ try{
     assert.equal(await workspace.locator('.assistant-privacy').count(),0);
     if(opened)await drawer.click();
    }
+   if(process.env.LAYOUT_REMOTE_PANELS&&route==='/account'){
+    const zone=page.getByLabel('Time zone',{exact:true});
+    await zone.waitFor();
+    assert.equal(await zone.evaluate(element=>element.tagName),'SELECT');
+    await page.getByRole('button',{name:'Edit profile',exact:true}).click();
+    await zone.selectOption('UTC');
+    assert.equal(await zone.inputValue(),'UTC');
+   }
+   if(process.env.LAYOUT_REMOTE_PANELS&&route==='/tools/shell'){
+    await page.getByRole('button',{name:'Connect to Control-VM',exact:true}).first().click();
+    await page.locator('.ssh-terminal .xterm-screen').waitFor();
+    await page.waitForTimeout(300);
+    assert.equal(await page.locator('.shell-clipboard-help').count(),0);
+    const box=await page.locator('.shell-active-view>.card').boundingBox();
+    const terminal=await page.locator('.ssh-terminal').boundingBox();
+    assert.ok(terminal.width>=box.width-20,'Terminal fills panel width');
+    assert.ok(terminal.height>200&&terminal.y+terminal.height<=box.y+box.height+1,'Terminal fits panel height');
+    assert.ok(box.y+box.height-terminal.y-terminal.height<16,'No unused space below terminal');
+    const toolbar=page.locator('.shell-session-toolbar');
+    assert.equal(await toolbar.getByRole('button',{name:'Copy selected text',exact:true}).count(),1);
+    assert.equal(await toolbar.getByRole('button',{name:'Fullscreen terminal',exact:true}).count(),1);
+   }
    if(process.env.LAYOUT_ASSISTANT_CHAT&&route==='/ai'){
     const workspace=page.locator('.assistant-workspace');
     await workspace.waitFor();
     await workspace.getByRole('textbox',{name:'Message'}).fill('Review the cluster');
     await workspace.getByRole('button',{name:'Send',exact:true}).click();
     await workspace.locator('.bubble.assistant').filter({hasText:'Fixture cluster is online.'}).first().waitFor();
+    await page.reload();
+    await page.locator('.bubble.assistant').filter({hasText:'Fixture cluster is online.'}).first().waitFor();
     const composer=await workspace.locator('.assistant-compose').boundingBox();
     const bounds=await workspace.boundingBox();
     assert.ok(composer.y+composer.height>bounds.y+bounds.height-95,'Active composer stays at the bottom');

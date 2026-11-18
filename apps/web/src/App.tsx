@@ -42,7 +42,7 @@ export default function App(){
   checking.current=true;
   try{const session=await api('/auth/me');if(session?.user?.role==='none'){
    const {clusters}=await api('/cluster-profiles');const first=clusters?.[0];
-   if(first&&first.id!==clusterId){sessionStorage.removeItem('iclusters_ai_conversation');window.location.replace(clusterLocation(first.id));return}
+   if(first&&first.id!==clusterId){window.location.replace(clusterLocation(first.id));return}
   }setConnectionError('');setAuthenticated(!!getAccessToken())}
   catch(e:any){if(e.status===401){if(getAccessToken()===checkedAccess)clearTokens();setConnectionError('');setAuthenticated(!!getAccessToken())}else setConnectionError(e.message||'Cannot reach i-Clusters.')}
   finally{checking.current=false}

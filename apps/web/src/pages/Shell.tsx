@@ -26,7 +26,7 @@ function HostStatus({status}:{status:string}){
 export default function Shell({mode='shell',visible=true}:{mode?:'shell'|'sftp';visible?:boolean}){
  const [params,setParams]=useSearchParams(),requested=useRef('');
  const files=mode==='sftp';
- const savedConnections=useApi<any>('/ssh/connections',{});
+ const savedConnections=useApi<any>('/ssh/connections?mode='+mode,{});
  const live=useApi<any>('/proxmox',null),[search,setSearch]=useState(''),[type,setType]=useState('all'),[list,setList]=useState(false),[selected,setSelected]=useState<any>(null),[connection,setConnection]=useState<any>(null),[tabs,setTabs]=useState<any[]>([]),[active,setActive]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const sessionId=active;
  const pageRef=useRef<HTMLElement>(null);

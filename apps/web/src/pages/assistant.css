@@ -64,3 +64,7 @@
   text-align: start;
   gap: 8px;
 }
+.assistant-sources{margin:10px 0;padding-inline-start:20px;font-size:.85rem}
+.bubble.assistant a{color:var(--app-accent);text-decoration:underline;overflow-wrap:anywhere}
+.bubble.assistant iframe{width:100%;max-width:100%;border:0;height:100px;margin-block:8px}
+.assistant-search-notice{font-size:.85rem;color:var(--theme-muted)}

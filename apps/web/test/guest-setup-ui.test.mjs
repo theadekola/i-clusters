@@ -543,15 +543,94 @@ test('assistant sidebar shows compact owner actions in configure then saved orde
  }
 });
 
-test('retrying an earlier assistant question preserves the draft and message order',async()=>{
- const calls=[];
+test('assistant history loads from the account after a fresh browser session',async()=>{
+ const stored={id:42,title:'Saved chat',pinned:true,rows:[{id:1,question:'My earlier question',answer:'My saved reply',mode:'openai'}]};
+ for(const sid of ['old-session','new-session']){
+  const page=await mounted('pages/AI.tsx',{},async path=>{
+   if(path==='/auth/me')return {user:{id:'alice',sid,role:'owner'}};
+   if(path==='/ai/conversations')return {threads:[{...stored,rows:[],question:stored.rows[0].question}]};
+   if(path==='/ai/conversations/42')return {thread:stored};
+   throw Error('Unexpected '+path);
+  });
+  try{assert.match(page.container.querySelector('.bubble.assistant').textContent,/My saved reply/);assert.ok(button(page,'Saved chat'));assert.equal(page.dom.window.sessionStorage.getItem('iclusters_ai_conversation'),null);}
+  finally{await page.close()}
+ }
+});
+
+test('assistant imports browser chats separately before clearing the legacy copy',async()=>{
+ const imported=[];
  const page=await mounted('pages/AI.tsx',{},async(path,init)=>{
-  if(path==='/auth/me')return {user:{role:'owner'}};
+  if(path==='/auth/me'){
+   window.sessionStorage.setItem('iclusters_ai_conversation',JSON.stringify({scope:JSON.stringify(['alice','old-session','/']),threads:[0,1].map(id=>({id,rows:[{id:10,question:'Earlier '+id,answer:'Keep '+id}]}))}));
+   return {user:{id:'alice',sid:'new-session',role:'owner'}};
+  }
+  if(path==='/ai/conversations/import'){
+   assert.ok(window.sessionStorage.getItem('iclusters_ai_conversation'));
+   const body=JSON.parse(init.body);assert.equal(body.threads.length,1);imported.push(body.threads[0].id);return {ok:true};
+  }
+  if(path==='/ai/conversations')return {threads:[]};
+  throw Error('Unexpected '+path);
+ });
+ try{assert.deepEqual(imported,[0,1]);assert.equal(page.dom.window.sessionStorage.getItem('iclusters_ai_conversation'),null);}
+ finally{await page.close()}
+});
+
+test('profile time zone uses a dropdown and saves a selected zone',async()=>{
+ const calls=[],user={id:'alice',name:'Alice',username:'alice',role:'owner',profile:{timeZone:'Europe/London'}};
+ const page=await mounted('components/ProfilePanels.tsx',{user,self:true,role:'Owner',onSaved(){}},async(path,init)=>{calls.push({path,body:JSON.parse(init.body)});return {user};},true,false,'ProfileForm');
+ try{
+  const select=page.container.querySelector('select');assert.ok(select);assert.equal(select.value,'Europe/London');assert.equal(select.disabled,true);
+  await page.click(button(page,'Edit profile'));assert.equal(select.disabled,false);
+  await changeControl(select,'UTC');await page.click(button(page,'Save'));
+  assert.equal(calls[0].path,'/account/profile');assert.equal(calls[0].body.timeZone,'UTC');
+ }finally{await page.close()}
+});
+
+test('SFTP requests its own credentials and requires a password when only Shell details exist',async()=>{
+ const calls=[];
+ const page=await mounted('pages/Shell.tsx',{mode:'sftp'},async(path,init)=>{
+  calls.push({path,body:init?.body&&JSON.parse(init.body)});
+  if(path==='/proxmox')return {nodes:[{name:'node01',status:'online',ip:'192.0.2.10'}]};
+  if(path==='/ssh/connections?mode=sftp')return {};
+  if(path==='/ssh/fingerprint')return {fingerprint:'SHA256:fixture'};
+  if(path==='/ssh/connect')throw Object.assign(Error('No saved connection'),{status:404});
+  throw Error('Unexpected '+path);
+ });
+ try{
+  localStorage.setItem('iclusters-ssh-node:node01',JSON.stringify({host:'192.0.2.99',username:'shell-user'}));
+  await page.click(page.container.querySelector('[aria-label="Connect to node01"]'));
+  assert.equal(calls.find(c=>c.path==='/ssh/connect').body.mode,'sftp');
+  assert.equal(page.container.querySelector('input[name=host]').value,'192.0.2.10');
+  assert.equal(page.container.querySelector('input[name=username]').value,'root');
+  assert.equal(page.container.querySelector('input[name=password]').value,'');
+  assert.equal(page.container.querySelector('input[name=password]').required,true);
+  assert.equal(localStorage.getItem('iclusters-ssh-node:node01'),null);
+  assert.ok(!calls.some(c=>c.path==='/ssh/connections'));
+ }finally{await page.close()}
+});
+
+test('retrying an earlier assistant question preserves the draft and message order',async()=>{
+ const calls=[],threads=new Map();
+ const page=await mounted('pages/AI.tsx',{},async(path,init)=>{
+  if(path==='/auth/me')return {user:{id:'alice',role:'owner'}};
+  if(path==='/ai/conversations')return {threads:[]};
+  if(path.startsWith('/ai/conversations/')){
+   const id=Number(path.split('/').at(-1));
+   if(init?.method==='DELETE'){threads.delete(id);return {ok:true}}
+   const thread=threads.get(id);
+   if(init?.method==='PATCH')Object.assign(thread,JSON.parse(init.body));
+   return {thread:structuredClone(thread)};
+  }
   assert.equal(path,'/ai/chat');
-  const {message}=JSON.parse(init.body);
+  const {message,threadId,exchangeId}=JSON.parse(init.body);
+  const thread=threads.get(threadId)||{id:threadId,rows:[]};
+  threads.set(threadId,thread);
+  let exchange=thread.rows.find(r=>r.id===exchangeId);
+  if(!exchange){exchange={id:exchangeId,question:message};thread.rows.push(exchange);}
   calls.push(message);
-  if(calls.length===1)throw Error('Provider timed out');
-  return {result:{answer:'Answer to '+message}};
+  if(calls.length===1){exchange.error='Provider timed out';throw Error('Provider timed out');}
+  delete exchange.error;exchange.answer='Answer to '+message;
+  return {result:{answer:exchange.answer}};
  });
  try{
   const input=page.container.querySelector('.composer input');

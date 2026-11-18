@@ -36,6 +36,7 @@ export function ProfileForm({user,self,role,onSaved}:{user:any;self:boolean;role
   const [message,setMessage]=useState(''),[error,setError]=useState('');
   const input=useRef<HTMLInputElement>(null);
   const editing=self&&draft!==null,values=draft??current,busy=reading||saving;
+  const timeZones=[...new Set(['UTC', values.timeZone, Intl.DateTimeFormat().resolvedOptions().timeZone, ...((Intl as any).supportedValuesOf?.('timeZone')||[])].filter(Boolean))].sort();
   function edit(){setDraft({...current});setRevision(stored.revision||'');setError('');setMessage('')}
   function discard(){setDraft(null);setPicture(null);setError('');setMessage('')}
   function update(key:keyof typeof current,value:string){setDraft({...values,[key]:value});setError('')}
@@ -58,8 +59,7 @@ export function ProfileForm({user,self,role,onSaved}:{user:any;self:boolean;role
       <label>Full name<input required maxLength={200} readOnly={!editing} disabled={busy} value={values.name} onChange={e=>update('name',e.target.value)}/></label>
       <label>Contact email<input type="email" maxLength={254} readOnly={!editing} disabled={busy} value={values.contactEmail} onChange={e=>update('contactEmail',e.target.value)}/></label>
       <label>Username<input required autoCapitalize="none" autoComplete="username" pattern="[a-zA-Z0-9][a-zA-Z0-9_.\-]{2,63}" minLength={3} maxLength={64} readOnly={!editing} disabled={busy} value={values.username} onChange={e=>update('username',e.target.value)}/></label>
-      <label>Time zone<input required maxLength={100} readOnly={!editing} disabled={busy} list={editing?'profile-time-zones':undefined} value={values.timeZone} onChange={e=>update('timeZone',e.target.value)}/></label>
-      {editing&&<datalist id="profile-time-zones">{['UTC',...((Intl as any).supportedValuesOf?.('timeZone')||[])].map(zone=><option key={zone} value={zone}/>)}</datalist>}
+      <label>Time zone<select required disabled={!editing||busy} value={values.timeZone} onChange={e=>update('timeZone',e.target.value)}>{!values.timeZone&&<option value="">Choose a time zone</option>}{timeZones.map(zone=><option key={zone} value={zone}>{zone.replace(/_/g,' ')}</option>)}</select></label>
       <label>Role<input readOnly value={role}/></label>
       {self&&<div className="profile-photo-field"><span>Profile picture</span><div>
         <span className="profile-photo-preview"><UserRound/>{picture?<img src={picture.preview} alt="Selected profile picture"/>:stored.pictureVersion&&<SavedPicture id={user.id} version={stored.pictureVersion}/>}</span>

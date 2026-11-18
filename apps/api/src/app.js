@@ -1,3 +1,4 @@
+import {createAssistantHistory} from './assistant-history.js';
 import {createClusterProfiles} from './cluster-profiles.js';
 import {disconnectCluster} from './cluster-config.js';
 import {createGuestRestarts} from './guest-restarts.js';
@@ -280,10 +281,10 @@ export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:c
  const sampleView=async req=>{if(!monitor.isRefreshing)return monitor.sample(forceRead(req));if(forceRead(req))void monitor.sample(true).catch(()=>{});const s=await monitor.sample();return {...s,refreshing:!!s.refreshing||monitor.isRefreshing()};};
  const read=(path,handler,role='viewer')=>app.get(`/api${path}`,authorize(role),async(req,res)=>{res.set('Cache-Control','no-store');if(!cachedReads.has(path))return res.json(await handler(req));const url=new URL(req.originalUrl,'http://local');url.searchParams.delete('refresh');url.searchParams.sort();const key=JSON.stringify([req.user?.sub,req.user?.role,req.user?.permissionKeys,connectionScope(),selectedAgentHost(),url.pathname+url.search]);res.json(await readCache.run(key,()=>handler(req),{force:forceRead(req),background:true}));});
 
- app.get('/api/ssh/connections',authorize('admin'),(req,res)=>{try{res.json(publicSavedSSH(req.user.sub));}catch(e){res.status(500).json({error:'Saved connections unavailable'});}});
+ app.get('/api/ssh/connections',authorize('admin'),(req,res)=>{try{res.json(publicSavedSSH(req.user.sub,req.query.mode));}catch(e){res.status(500).json({error:'Saved connections unavailable'});}});
  const approvalHosts=new Map();
- app.delete('/api/ssh/connections',authorize('admin'),(req,res)=>{deleteSavedSSH(req.user.sub,req.body.target);res.json({ok:true});});
- app.post('/api/ssh/fingerprint',authorize('operator'),async(req,res)=>{try{const action=req.body.action===true;if(action){const approval=await resolveActionApproval(req.body.path,req.body.body,req.body.method,{dockerHost:req.body.dockerHost,query:pve});if(!approval||approval.target!==req.body.target)throw httpError('SSH approval does not match the actual target for this action',403);}if(!action&&!['admin','owner'].includes(req.user.role))return res.status(403).json({error:'Shell access requires admin access'});const host=action?await targetSSHHost(req.body.target,pve):req.body.host;try{await connectSSH({host,port:req.body.port,target:req.body.target,username:'host-key-probe',password:'unused'},req.user.sub);}catch(e){if(e.fingerprint){const saved=savedSSH(req.user.sub,req.body.target);const trust=trustSSHHost(host,req.body.port||22,e.fingerprint,saved&&saved.host===host&&saved.port===Number(req.body.port||22)?saved.fingerprint:undefined);for(const [key,value] of approvalHosts)if(value.expires<Date.now())approvalHosts.delete(key);if(action)approvalHosts.set(`${req.user.sub}:${req.body.target}`,{host,port:Number(req.body.port||22),fingerprint:e.fingerprint,expires:Date.now()+300000});return res.json({host,fingerprint:e.fingerprint,trust:trust.source});}throw e;}res.status(400).json({error:'Host verification unavailable'});}catch(e){res.status(e.status||400).json({error:e.message});}});
+ app.delete('/api/ssh/connections',authorize('admin'),(req,res)=>{deleteSavedSSH(req.user.sub,req.body.target,req.body.mode);res.json({ok:true});});
+ app.post('/api/ssh/fingerprint',authorize('operator'),async(req,res)=>{try{const action=req.body.action===true;if(action){const approval=await resolveActionApproval(req.body.path,req.body.body,req.body.method,{dockerHost:req.body.dockerHost,query:pve});if(!approval||approval.target!==req.body.target)throw httpError('SSH approval does not match the actual target for this action',403);}if(!action&&!['admin','owner'].includes(req.user.role))return res.status(403).json({error:'Shell access requires admin access'});const host=action?await targetSSHHost(req.body.target,pve):req.body.host;try{await connectSSH({host,port:req.body.port,target:req.body.target,username:'host-key-probe',password:'unused'},req.user.sub);}catch(e){if(e.fingerprint){const saved=savedSSH(req.user.sub,req.body.target,req.body.mode);const trust=trustSSHHost(host,req.body.port||22,e.fingerprint,saved&&saved.host===host&&saved.port===Number(req.body.port||22)?saved.fingerprint:undefined);for(const [key,value] of approvalHosts)if(value.expires<Date.now())approvalHosts.delete(key);if(action)approvalHosts.set(`${req.user.sub}:${req.body.target}`,{host,port:Number(req.body.port||22),fingerprint:e.fingerprint,expires:Date.now()+300000});return res.json({host,fingerprint:e.fingerprint,trust:trust.source});}throw e;}res.status(400).json({error:'Host verification unavailable'});}catch(e){res.status(e.status||400).json({error:e.message});}});
  app.post('/api/ssh/connect',authorize('operator'),async(req,res)=>{try{if(req.body.mode==='authorize'){const approval=await resolveActionApproval(req.body.path,req.body.body,req.body.method,{dockerHost:req.body.dockerHost,query:pve});if(!approval||approval.target!==req.body.target)throw httpError('SSH approval does not match the actual target for this action',403);const host=await targetSSHHost(req.body.target,pve),binding=approvalHosts.get(`${req.user.sub}:${req.body.target}`);if(!binding||binding.expires<Date.now()||binding.host!==host||req.body.host!==host||binding.port!==Number(req.body.port||22)||binding.fingerprint!==req.body.fingerprint)return res.status(403).json({error:'Verify the actual target SSH host before approving this action'});}else if(!['admin','owner'].includes(req.user.role))return res.status(403).json({error:'Shell access requires admin access'});res.json(await connectSSH(req.body,req.user.sub,req.user.sid));}catch(e){res.status(e.status||400).json({error:e.message,fingerprint:e.fingerprint});}});
  app.post('/api/ssh/sftp/:id',authorize('admin'),async(req,res)=>{try{res.json(await sftpOperation(req.params.id,req.user.sub,req.body));}catch(e){res.status(e.status||422).json({error:e.message});}});
  app.post('/api/ssh/session/:id/guest-update',authorize('admin'),async(req,res)=>{try{res.json(await openGuestUpdate(req.params.id,req.user.sub,req.user.sid,target=>targetSSHHost(target,pve)));}catch(e){res.status(e.status||422).json({error:e.message});}});
@@ -305,7 +306,7 @@ export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:c
    monitor.invalidate();
    const status=result?.task||result?.jobId?'queued':'success';res.locals.activityStatus=status;countAction(db,req.user.sub,label,status);
 
-   await audit(req,label,resource,{result:result??null},status);
+   await audit(req,label,resource,label==='assistant.query'?{provider:result?.mode,webSearch:result?.webSearch===true}:{result:result??null},status);
    res.json({ok:true,result,message:status==='queued'?'Task accepted. Check task history for completion.':'Operation completed.'});
  });
  action('post','/node-agents/guest/agent','owner','guest.install-agent',req=>bootstrapGuest({...req.body,purpose:'guest-agent'}));
@@ -603,30 +604,41 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
  action('post','/alerts/:id/acknowledge','operator','alert.acknowledge',async req=>{let result;mutate(state=>{result=changeAlertStatus(state,req.params.id,req.user)});return result;});
  action('post','/alerts/:id/resolve','operator','alert.resolve',async req=>{let result;mutate(state=>{result=changeAlertStatus(state,req.params.id,req.user,{resolve:true})});return result;});
  action('post','/ai/health','viewer','health.inspect',async()=>{const s=await monitor.sample(true);return {summary:`${s.services.filter(x=>x.status==='reachable').length} reachable integrations/services; ${s.services.filter(x=>x.status==='error').length} connection failures; ${s.alerts.filter(a=>a.status==='active').length} active alerts. This is an API and threshold check, not a security scan.`};});
+ const conversations=createAssistantHistory();
+ read('/ai/conversations',req=>conversations.list(req.user.sub));
+ read('/ai/conversations/:id',req=>({thread:conversations.get(req.user.sub,Number(req.params.id))}));
+ app.patch('/api/ai/conversations/:id',authorize('viewer'),(req,res)=>res.json({thread:conversations.edit(req.user.sub,Number(req.params.id),req.body)}));
+ app.delete('/api/ai/conversations/:id',authorize('viewer'),(req,res)=>{conversations.remove(req.user.sub,Number(req.params.id));res.json({ok:true})});
+ app.post('/api/ai/conversations/import',authorize('viewer'),(req,res)=>{conversations.import(req.user.sub,req.body.threads);res.json({ok:true})});
  action('post','/ai/chat','viewer','assistant.query',async req=>{
    const message=required(req.body.message,'Message');
-   if(/^web:/i.test(message.trim()))return publicWebSearch(configuration.resolve('ai'),message.trim());
+   const chat=req.body.threadId===undefined?null:conversations.begin(req.user.sub,req.body.threadId,req.body.exchangeId,message);
+   if(chat?.result)return chat.result;
+   try{
+    const result=await assistantReply(req,message,chat?.history);
+    chat?.finish(result);
+    return result;
+   }catch(error){chat?.finish({error:error.aiError?error.message:'The reply could not be completed. Retry this message.'});throw error;}
+ });
+ async function assistantReply(req,message,savedHistory){
+   const ai=configuration.resolve('ai');
+   if(/^web:/i.test(message.trim()))return publicWebSearch(ai,message.trim());
    const recent=(get().headerActivities||[]).filter(row=>row.audience==='shared').slice(0,12).map(({title,status,time})=>({title,status,time}));
    const activityAnswer=recentActivityAnswer(message,recent);
-   if(activityAnswer)return {answer:activityAnswer,mode:'inventory'};
    const s=await monitor.sample();
    const inventory=await readMeasurements(s,snapshot=>assistantContext(snapshot,Infinity));
    inventory.alerts=assistantContext({alerts:s.alerts},Infinity).alerts;
-   const direct=inventoryAnswer(inventory,message);
-   if(direct)return {answer:direct,mode:'inventory'};
+   const direct=activityAnswer||inventoryAnswer(inventory,message);
    const context=questionContext(inventory,message);
    context.recentActivity=recent;
-   const localSummary=context.status==='stale'?'Current service measurements and alerts are unavailable.':`Sampled ${s.sampledAt}. ${s.services.map(x=>`${x.name}: ${x.status}${x.error?` (${x.error})`:''}`).join('; ')}. ${context.alerts ? context.alerts.total+' active or acknowledged alerts.' : 'Alert count unavailable.'}`;
-   const ai=configuration.resolve('ai');
-   if(!ai.OPENAI_API_KEY)return {answer:localSummary+' Configure the provider on the AI Assistant page for conversational analysis.',mode:'local'};
-   const history=Array.isArray(req.body.history)?req.body.history.slice(-4).filter(row=>typeof row?.question==='string'&&typeof row?.answer==='string').map(row=>({question:row.question.slice(0,2000),answer:row.answer.slice(0,4000)})):[];
-   try{return {answer:await queryAI(ai,JSON.stringify({context,message,history})),mode:ai.AI_PROVIDER||'openai'};}
-   catch(error){
-    if(error.aiError&&error.status===504)return {answer:localSummary,mode:'local',providerError:error.message};
-    throw error;
+   if(direct)context.verifiedAnswer=direct;
+   if(!ai.OPENAI_API_KEY){
+    if(direct)return {answer:direct,mode:'inventory'};
+    throw httpError('Configure and save an AI provider to receive a reply.',400);
    }
-
- });
+   const history=savedHistory||(Array.isArray(req.body.history)?req.body.history.slice(-4).filter(row=>typeof row?.question==='string'&&typeof row?.answer==='string').map(row=>({question:row.question.slice(0,2000),answer:row.answer.slice(0,4000)})):[]);
+   return {answer:await queryAI(ai,JSON.stringify({context,message,history})),mode:ai.AI_PROVIDER||'openai'};
+ }
  read('/users',async()=>({users:(await db.query(`SELECT id,name,email,username,profile,role,cluster_roles AS "clusterRoles",status,two_factor_enabled AS "twoFactor",last_login AS "lastLogin",created_at AS "createdAt" FROM users ORDER BY created_at`)).rows}),'admin');
  action('put','/users/:id/cluster-access','owner','user.cluster-access',async req=>{
    const assignments=req.body.roles;

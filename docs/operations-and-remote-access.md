@@ -101,3 +101,12 @@ The Remote Access tab includes a local QR encoder and a responsive mobile-access
 Android offers an explicit **Install i-Clusters** action when the browser supplies its installation event. The event is used only after a user gesture and is single-use. If unavailable, the page provides browser-menu instructions. iPhone/iPad show **Share → Add to Home Screen**, with **Open as Web App** when available. Installed/standalone windows suppress the prompt. The prompt is also available before sign-in for scanned links. Installation remains subject to device/browser eligibility and trusted HTTPS.
 
 The service worker handles navigation network failures with a connection notice. It does not cache HTML, API responses, keys or credentials and does not intercept API requests. It supplies no offline authenticated dashboard.
+
+
+## Shell and SFTP saved logins
+
+Shell and SFTP use separate encrypted saved credentials for each account, cluster and selected host. Opening SFTP cannot reuse a password saved in Shell. Enter the target SSH username and password in SFTP and optionally select **Save password for 48 hours**. Saving is optional, and the dialog shows the saved credential's expiry when editing it.
+
+The deadline is 48 hours from saving with a fresh password. Reconnecting or editing while reusing the saved password does not extend it. Expired credentials are removed, and sessions based on them reject further requests at the deadline. The cleanup loop disconnects remaining sessions within 15 seconds. Hidden terminals and active SFTP sessions do not bypass expiry. Enter the password again to reconnect. Older records with no reliable save date expire on upgrade. This deadline does not sign out the user's i-Clusters account.
+
+The Shell terminal fills the available panel with a compact toolbar. Copy, paste, selection and fullscreen controls remain available. Profile time zones use a dropdown of the browser's supported IANA zones and retain an existing saved zone.
