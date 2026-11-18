@@ -105,7 +105,17 @@ function actionLayoutIssues(root){
  for(const cell of root.querySelectorAll('tbody td'))sameLine([...cell.querySelectorAll('button,a.btn')].filter(e=>e.closest('td')===cell),cell.closest('table').className+' cell');
  for(const group of root.querySelectorAll(rows)){
   if(group.matches('.top-actions'))continue;
-  sameLine([...group.querySelectorAll('button,a.btn,select')].filter(e=>e.closest(rows)===group&&!e.closest('[role="menu"]')&&(!e.closest('[role="dialog"]')||e.closest('[role="dialog"]')===root)),group.className);
+  const controls=[...group.querySelectorAll('button,a.btn,select')].filter(e=>e.closest(rows)===group&&!e.closest('[role="menu"]')&&(!e.closest('[role="dialog"]')||e.closest('[role="dialog"]')===root));
+  if(group.matches('.general-settings-grid .system-maintenance-actions')){
+   // Maintenance is deliberately a vertical list inside a settings card.
+   const boxes=controls.filter(visible).map(el=>el.getBoundingClientRect()),bounds=group.getBoundingClientRect();
+   if(group.scrollWidth>group.clientWidth+1)issues.add('Maintenance controls overflow their card');
+   for(let index=0;index<boxes.length;index++){
+    const box=boxes[index],previous=boxes[index-1];
+    if(box.left<bounds.left-1||box.right>bounds.right+1||box.top<bounds.top-1||box.bottom>bounds.bottom+1)issues.add('Maintenance control leaves its group');
+    if(previous&&(box.top<previous.bottom||Math.abs(box.left-previous.left)>1||Math.abs(box.width-previous.width)>1))issues.add('Maintenance controls must form an aligned vertical list');
+   }
+  }else sameLine(controls,group.className);
  }
  const dockerBar=root.querySelector('.docker-command-bar');
  if(dockerBar){
@@ -308,6 +318,23 @@ try{
     await grid.locator('#backup-restore').waitFor();
     const columns=await grid.evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length);
     assert.equal(columns,width>=1024?3:width>700?2:1,route+' settings columns at '+width);
+    const expected=['Site Information','System Information','Regional Settings','Dashboard Layout','Network Security','Backup & Restore','System Maintenance'];
+    if(!process.env.LAYOUT_ROLE||process.env.LAYOUT_ROLE==='owner')expected.push('Provider Compatibility Checks');
+    const cards=await grid.evaluate(el=>[...el.children].map(child=>{
+     const card=child.matches('.card')?child:child.querySelector(':scope > .card'),rect=card.getBoundingClientRect();
+     return {title:card.querySelector('h2')?.textContent,x:rect.x,y:rect.y,width:rect.width,height:rect.height};
+    }));
+    assert.deepEqual(cards.map(card=>card.title),expected.map(copy),'General card reading order');
+    for(let index=0;index<cards.length;index++){
+     const rowStart=cards[index-index%columns],card=cards[index];
+     assert.ok(Math.abs(card.width-cards[0].width)<1,'Settings card widths match: '+JSON.stringify(cards));
+     assert.ok(Math.abs(card.y-rowStart.y)<1&&Math.abs(card.height-rowStart.height)<1,'Settings card heights match within each row: '+JSON.stringify(cards));
+    }
+    const maintenance=grid.locator('.system-maintenance-actions');
+    assert.ok(await maintenance.evaluate(el=>el.scrollWidth<=el.clientWidth+1),'Maintenance actions do not require horizontal scrolling');
+    const controls=await maintenance.locator('button').evaluateAll(items=>items.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,overflow:el.scrollWidth>el.clientWidth+1}}));
+    assert.ok(controls.length>=2&&controls.every((control,index)=>!control.overflow&&(!index||control.y>=controls[index-1].y+controls[index-1].height)),'Maintenance buttons stack without clipping');
+    assert.equal(await grid.getByText('Browser Certificate Setup',{exact:true}).count(),0);
     assert.equal(await page.locator('.settings-overview-tabs').getByRole('button',{name:'System',exact:true}).count(),0);
     if(route.includes('tab=System')){
      assert.equal(new URL(page.url()).searchParams.get('tab'),'General');

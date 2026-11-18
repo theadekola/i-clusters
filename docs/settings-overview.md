@@ -5,14 +5,31 @@ Settings uses one primary location for each group of controls. Related tabs link
 | Tab | Primary responsibility |
 | --- | --- |
 | General | Instance name and description, regional display, refresh preferences, dashboard widgets, runtime information, browser maintenance, settings restore and owner-only provider compatibility checks |
-| Security | Authentication/access policy, current browser session, audit preview and audit history |
-| Connections | Provider credentials, pairing, health and verification; Notifications workspace for delivery configuration and history |
+| Connections | Provider credentials, pairing, health and verification |
+| Integrations | Notification delivery configuration and history |
 | Appearance | Theme, accent, sidebar, density, fonts, backgrounds, radius and motion preferences |
 | About | Product description, version/update controls, credits, licensing, project resources, legal information and developer details |
 
+## General layout
+
+The desktop grid has three equal-width cards per row, in this reading order:
+
+1. Site Information
+2. System Information
+3. Regional Settings
+4. Dashboard Layout
+5. Network Security
+6. Backup & Restore
+7. System Maintenance
+8. Provider Compatibility Checks (owners only)
+
+Cards stretch to the tallest card in their row without clipping content. Tablets use two columns and narrow screens use one. Refresh Preferences is inside System Maintenance; its autosave, validation and administrator permissions are unchanged. Maintenance actions stack within the card rather than requiring horizontal scrolling. Search retains this order and includes the refresh controls.
+
+Browser Certificate Setup has been removed from Settings. Certificate issuance and renewal belong to the built-in deployment setup. For users to avoid installing a device certificate, configure a hostname in a domain you control using [trusted HTTPS](../PRODUCTION.md#trusted-https-for-lan-or-vpn-users). After successful verification, installer, status and first-owner links prefer that hostname. Direct private-IP access still uses the local CA and cannot acquire browser trust automatically. Removing the card does not change existing certificates or device trust.
+
 ## Editing and persistence
 
-Site Information is read-only. Administrators and owners can edit Refresh Preferences. Valid changes to the refresh interval save on field blur (or Enter), without edit/save icons; typing alone and unchanged values do not write. Saves are serialized and merge fresh server settings so independent sections cannot overwrite each other. Rejected writes retain the draft and show an error; leaving the field again retries. Dashboard switches apply immediately.
+Site Information is read-only. Administrators and owners can edit Refresh Preferences under System Maintenance. Valid changes to the refresh interval save on field blur (or Enter), without edit/save icons; typing alone and unchanged values do not write. Saves are serialized and merge fresh server settings so independent sections cannot overwrite each other. Rejected writes retain the draft and show an error; leaving the field again retries. Dashboard switches apply immediately.
 
 General → Backup & Restore has no duplicate editable fields or edit/save icons. Import validates and previews a whitelisted general-settings file; Restore Imported Settings requires explicit confirmation. Merely choosing a file never restores it. Active Sessions saves its inactivity selection immediately and preserves the previous selection on storage failure. Accent Style and its intensity slider apply immediately without edit/save icons. Other appearance input sections and notification severity retain their scoped editors. Switches retain immediate persistence and failure rollback.
 
@@ -30,13 +47,13 @@ Provider inventory and per-provider health are owned by Connections. General run
 
 ## Security
 
-Security displays enforced policies without presenting deployment-managed protections as editable switches. It shows role policy, token lifetimes, password requirements, current transport observations and the available current-browser session. It includes optional authenticator MFA, recovery codes, password change and the current user’s revocable device-session inventory. Intrusion detection is not provided.
+Account → Security displays enforced policies without presenting deployment-managed protections as editable switches. It shows role policy, token lifetimes, password requirements, current transport observations and the available current-browser session. It includes optional authenticator MFA, recovery codes, password change and the current user’s revocable device-session inventory. Intrusion detection is not provided.
 
 Sign Out This Browser appears once, under Active Sessions. It revokes this device’s server session and removes its browser credentials. Legacy sessions without a device identity revoke all sessions. The account controls also support explicit all-device revocation. Roles allowed to read /audit can load the preview on request and open Audit Logs for the full returned history. General does not duplicate these session or audit controls.
 
 ## Delivery and integrations
 
-Connections → Notifications is the single delivery-management workspace. Owners can open secure configuration forms for all nine supported notification channels, set channel/master switches and severity/recovery preferences, send explicit tests, and inspect delivery history. Failed preference writes restore previous values. Unconfigured channels cannot be enabled.
+Settings → Integrations is the single delivery-management workspace. Owners can open secure configuration forms for all nine supported notification channels, set channel/master switches and severity/recovery preferences, send explicit tests, and inspect delivery history. Failed preference writes restore previous values. Unconfigured channels cannot be enabled.
 
 All-channel tests and individual-channel tests have distinct scopes. Test actions ask before sending real messages. The embedded delivery history includes filters, paging and details without a second channel-configuration panel, dashboard or test runner. It does not send messages on open or refresh.
 
@@ -51,4 +68,4 @@ About uses reported version facts and verified project links. Build number, UTC 
 
 All tabs retain responsive layouts, search where applicable and the existing permission checks. Removing duplicate sections does not add new provider capabilities or change live infrastructure.
 
-AI configuration lives under Connections, with the same owner-only popup linked from Assistant. Proxmox storage registration uses one shared form across storage and backup destinations. Backup and snapshot schedule shortcuts open the canonical Schedules editor.
+AI configuration lives on the AI Assistant page in its owner-only configuration popup. Proxmox storage registration uses one shared form across storage and backup destinations. Backup and snapshot schedule shortcuts open the canonical Schedules editor.

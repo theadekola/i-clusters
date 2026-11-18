@@ -79,7 +79,7 @@ curl -fsSL https://raw.githubusercontent.com/theadekola/i-clusters/main/install.
 sudo bash /tmp/iclusters-install.sh
 ```
 
-The installer creates `/opt/i-clusters`, generates deployment secrets, installs Docker if absent and starts the service at boot. At successful completion, it displays a clearly labelled **Open i-Clusters** link using the detected VM IP and configured port, normally **https://VM-IP:6002**. The same address is shown by `sudo iclusters status` and after successful start, restart or first-owner setup. Port **6003** is the auxiliary HTTP port. API port 6000 is internal to Docker and must not be used as the browser URL. Existing public-domain deployments retain their selected configuration.
+The installer creates `/opt/i-clusters`, generates deployment secrets, installs Docker if absent and starts the service at boot. At successful completion, it displays a clearly labelled **Open i-Clusters** link using the verified browser hostname when configured, otherwise the detected VM IP and configured port, normally **https://VM-IP:6002**. The same address is shown by `sudo iclusters status` and after successful start, restart or first-owner setup. Port **6003** is the auxiliary HTTP port. API port 6000 is internal to Docker and must not be used as the browser URL. Existing public-domain deployments retain their selected configuration.
 
 For a dashboard that users can open without a device profile, enter a hostname
 from your Cloudflare-managed domain at the installer's prompt. The installer

@@ -294,15 +294,22 @@ Allow outbound HTTPS and DNS queries from Caddy to its public propagation resolv
 4. Share the verified hostname and port with users. On the default installation
    this is `https://dashboard.your-domain.com:6002`. The first visit at this new
    address may require signing in again. Certificate trust needs no device profile.
-   The original LAN address and connector configuration continue to work.
+   The original LAN address and connector configuration continue to work. After
+   successful setup, installer, `iclusters status` and `iclusters setup-link` output
+   prefer the verified hostname. Certificate setup is not presented as a per-user
+   task on the Settings page.
 
 The installer checks the certificate hostname, trust chain and API health against
 the local controller. Confirm that the URL also resolves and opens from a client
 on your LAN or VPN. If issuance is pending, Caddy will retry. Check
-`sudo iclusters trusted-https dashboard.your-domain.com --check` and
+`sudo iclusters trusted-https dashboard.your-domain.com --check` (read-only) and
 `sudo docker compose logs --tail=50 caddy` in `/opt/i-clusters`. To rotate a token,
 rerun the setup for the same hostname. The token resides in a restricted file
 mounted only into Caddy and is included in encrypted controller backups.
+
+If the initial verification timed out, the previous browser link stays selected.
+Once issuance succeeds, rerun the setup command to select the trusted hostname.
+The read-only check does not alter the selected address.
 
 Other DNS providers can continue to use the existing public ACME installation
 with reachable HTTP or TLS validation as described above. Direct LAN IP access

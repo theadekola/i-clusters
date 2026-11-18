@@ -5,7 +5,8 @@ import stat
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, mock_open
+from browser_origin import dashboard_origin, remember_hostname
 
 spec = importlib.util.spec_from_file_location("trusted_https", Path(__file__).with_name("trusted-https.py"))
 tls = importlib.util.module_from_spec(spec)
@@ -13,6 +14,44 @@ spec.loader.exec_module(tls)
 
 
 class TrustedHTTPSTests(unittest.TestCase):
+    def test_setup_selects_hostname_only_after_success_and_check_is_read_only(self):
+        for success, check in [(False, False), (True, False), (True, True)]:
+            args = ['trusted-https.py', 'dashboard.example.org']
+            args += ['--check'] if check else ['--token-file', '/private/token']
+            with self.subTest(success=success, check=check), \
+                    patch.object(tls.sys, 'argv', args), \
+                    patch.object(tls.Path, 'read_text', return_value='CADDY_TLS=tls internal\nHTTPS_PORT=6002\n'), \
+                    patch.object(tls, 'open', mock_open(), create=True), \
+                    patch.object(tls.fcntl, 'flock'), \
+                    patch.object(tls, 'configure') as configure, \
+                    patch.object(tls, 'verify', return_value=success), \
+                    patch.object(tls, 'remember_hostname') as remember:
+                self.assertEqual(tls.main(), 0 if success else 1)
+                self.assertEqual(configure.call_count, 0 if check else 1)
+                self.assertEqual(remember.call_count, 1 if success and not check else 0)
+
+    def test_browser_links_use_verified_hostname_and_retain_lan_fallback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            env = root / '.env'
+            env.write_text('WEB_ORIGIN=https://192.168.20.104:6002,https://old.example.org\nHTTPS_PORT=6002\n')
+            original = env.read_text()
+            self.assertEqual(dashboard_origin(root), 'https://192.168.20.104:6002')
+            directory = root / 'secrets/trusted-https'
+            (directory / 'dashboard.example.org').mkdir(parents=True)
+            site = directory / 'dashboard.example.org/browser.caddy'
+            site.write_text('fixture configured site')
+            remember_hostname(directory, 'dashboard.example.org')
+            self.assertEqual(dashboard_origin(root), 'https://dashboard.example.org:6002')
+            self.assertEqual(env.read_text(), original, 'Connector and API origins remain unchanged')
+            self.assertEqual(stat.S_IMODE((directory / 'selected-hostname').stat().st_mode), 0o600)
+            env.write_text(original.replace('HTTPS_PORT=6002', 'HTTPS_PORT=443'))
+            self.assertEqual(dashboard_origin(root), 'https://dashboard.example.org')
+            site.unlink()
+            self.assertEqual(dashboard_origin(root), 'https://192.168.20.104:6002')
+            (directory / 'selected-hostname').write_text('../untrusted')
+            self.assertEqual(dashboard_origin(root), 'https://192.168.20.104:6002')
+
     def test_hostnames_are_validated_before_use_in_caddyfile(self):
         self.assertEqual(tls.hostname("Cloud.My-Org.NET"), "cloud.my-org.net")
         for bad in ["domain", "192.168.1.1", "my.internal", "a.home.arpa", "*.zone.com", "-a.com", "abc..com",
