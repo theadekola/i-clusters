@@ -73,6 +73,8 @@ jobs:
           ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_CONNECTION_CHOICES=1 LAYOUT_ROUTES=/settings LAYOUT_WIDTHS=1280,390,320 LAYOUT_HTTPS_KEY="$RUNNER_TEMP/pairing.key" LAYOUT_HTTPS_CERT="$RUNNER_TEMP/pairing.crt" node apps/web/scripts/audit-layout.mjs
       - name: Check saved chats, terminal panels and profile time zones
         run: ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_ASSISTANT_CHAT=1 LAYOUT_REMOTE_PANELS=1 LAYOUT_ROUTES=/ai,/account,/tools/shell LAYOUT_WIDTHS=1280,390,320 node apps/web/scripts/audit-layout.mjs
+      - name: Check aligned General settings cards
+        run: ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_ROUTES=/settings LAYOUT_WIDTHS=1800,1280,1024,768,390,320 node apps/web/scripts/audit-layout.mjs
       - name: Check host cards, sidebar layouts and restart notifications
         run: |
           ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_HOST_CARDS=1 LAYOUT_ROUTES='/proxmox,/tools/shell,/tools/sftp,/settings?tab=Connections' LAYOUT_WIDTHS=1440,1024,390,320 node apps/web/scripts/audit-layout.mjs

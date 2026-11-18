@@ -65,3 +65,16 @@
 .notification-settings-preferences form > .settings-toggle { display: flex; }
 .notification-quiet-times { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
 .notification-quiet-times input { width: 100%; min-width: 0; }
+
+/* General cards follow DOM order and share the height of their own row. */
+.content.content .general-settings-grid.general-settings-grid { align-items: stretch; }
+.content.content .general-settings-grid > .card { align-self: stretch; height: auto; }
+.general-settings-grid > :is(#backup-restore,#provider-compatibility) { display: flex; min-width: 0; }
+.general-settings-grid > :is(#backup-restore,#provider-compatibility) > .card { flex: 1; height: auto; min-width: 0; }
+.content.content .general-settings-grid .system-maintenance-actions { display: grid; grid-template-columns: minmax(0,1fr); overflow: visible; }
+.content.content .general-settings-grid .system-maintenance-actions > .btn { width: 100%; max-width: 100%; white-space: normal; overflow-wrap: anywhere; justify-content: flex-start; }
+.settings-subsection { border-top: 1px solid var(--theme-border); margin-top: 16px; padding-top: 16px; min-width: 0; }
+.settings-subsection .settings-card-heading h3 { font-size: 14px; line-height: 1.4; margin: 0 0 5px; }
+.settings-subsection .settings-card-heading > span { width: 32px; height: 32px; }
+.general-settings-grid #provider-compatibility > .card > .btn { margin-top: 12px; white-space: normal; }
+.general-settings-grid #provider-compatibility .table-wrap { min-width: 0; max-width: 100%; overflow: auto; }

@@ -10,21 +10,12 @@ import subprocess
 import sys
 import tempfile
 import time
+from browser_origin import hostname, remember_hostname
 
 DIRECTORY = Path("secrets/trusted-https")
 MOUNT = "/etc/iclusters/trusted-https"
 RELOAD = ["docker", "compose", "exec", "-T", "caddy", "caddy", "reload",
           "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile", "--force"]
-
-
-def hostname(value):
-    value = value.lower()
-    labels = value.split(".")
-    if (len(value) > 253 or len(labels) < 2 or not re.fullmatch(r"[a-z][a-z0-9-]*", labels[-1])
-            or any(not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", label) for label in labels)
-            or labels[-1] in {"arpa", "internal", "invalid", "lan", "local", "localhost", "onion", "test"}):
-        raise argparse.ArgumentTypeError("Use a hostname in a public DNS zone you own.")
-    return value
 
 
 def temporary_file(directory, prefix, text):
@@ -128,7 +119,10 @@ def main():
             raise ValueError("Controller maintenance is running. Try again when it finishes.") from None
         configure(DIRECTORY, args.hostname, token)
         print("Hostname configured. Waiting for certificate issuance and the dashboard health check.", flush=True)
-        return 0 if verify(args.hostname, port, 120) else 1
+        if not verify(args.hostname, port, 120):
+            return 1
+        remember_hostname(DIRECTORY, args.hostname)
+        return 0
 
 
 if __name__ == "__main__":

@@ -55,7 +55,8 @@ docker_error() {
 [[ -z $cloudflare_token_file || -n $trusted_host ]] || fail '--cloudflare-token-file requires --trusted-hostname.'
 [[ -z $trusted_host || -z $url ]] || fail 'Use --trusted-hostname with the default LAN installation, or --url for a custom site.'
 if [[ -z $trusted_host && -z $url && -t 0 && -t 1 ]]; then
-  echo 'To give users trusted HTTPS, enter a hostname in a Cloudflare DNS zone you control.'
+  echo 'Recommended: enter a hostname in a Cloudflare DNS zone you control. i-Clusters manages its certificate and renewal; users install nothing.'
+  echo 'LAN IP only still requires device certificate trust. A web application cannot install trust on users’ devices.'
   read -r -p 'Dashboard hostname (press Enter for LAN IP only): ' trusted_host
 fi
 if [[ -n $trusted_host && -z $cloudflare_token_file && ! -t 0 ]]; then
@@ -146,8 +147,12 @@ elif grep -qx 'CADDY_TLS=tls internal' .env; then
   fi
   echo 'Install the profile in Settings, then enable the matching root in General > About > Certificate Trust Settings.'
 fi
-# Read the final URL after optional trusted HTTPS updates the configuration.
-installed_url=$(sed -n 's/^WEB_ORIGIN=//p' .env)
+# Prefer the verified browser hostname while retaining the LAN connector origin.
+if [[ -f deployment/browser_origin.py ]]; then
+  installed_url=$(python3 deployment/browser_origin.py)
+else
+  installed_url=$(sed -n 's/^WEB_ORIGIN=//p' .env)
+fi
 echo "Open guided connection setup after signing in: ${installed_url%/}/settings?tab=Connections&setup=choose"
 echo 'Configure notification channels under Settings > Integrations, and AI providers on the AI Assistant page.'
 printf '\n%s\n\n  Open i-Clusters: %s\n\n' 'i-Clusters installation completed successfully.' "$installed_url"
