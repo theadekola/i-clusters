@@ -1,9 +1,12 @@
+import {proxmoxAvailability} from './proxmox-availability';
 import {archiveScopeComplete,distinctBackupPoints,jobIncludesNode} from './backup-selection';
 const measured=(rows:any[],key:string)=>{const values=rows.map(r=>r[key]).filter(v=>typeof v==='number'&&Number.isFinite(v));return values.length?values.reduce((sum,v)=>sum+v,0)/values.length:null;};
 export function overviewData(data:any,backup:any,node:string,search:string){
  const nodes=(data.nodes||[]).filter((n:any)=>!node||n.name===node);
  const guests=(data.guests||[]).filter((g:any)=>!node||g.node===node);
  const storage=(data.storage||[]).filter((s:any)=>!node||s.node===node);
+ const capacity=proxmoxAvailability({nodes,storage});
+ const storagePercent=capacity.totalStorage && capacity.usedStorage!=null ? 100*capacity.usedStorage/capacity.totalStorage : null;
  const inventory=(data.resources||[]).filter((r:any)=>!node||r.host===node||r.node===node);
  const resources=inventory.filter((r:any)=>(r.name+' '+r.host+' '+r.kind).toLowerCase().includes(search.toLowerCase()));
  const belongs=(a:any)=>a.node===node||a.source===node||[...(data.storage||[]),...(data.nodes||[]),...(data.guests||[]),...(data.resources||[])].some((r:any)=>String(r.id)===String(a.resourceId)&&(r.node===node||r.name===node||r.host===node));
@@ -35,5 +38,5 @@ export function overviewData(data:any,backup:any,node:string,search:string){
  const points=distinctBackupPoints((backup?.points||[]).filter((p:any)=>!node||p.node===node));
  const backupCount=backupKnown||points.length>0?points.length:null;
  const jobs=(backup?.jobs||[]).filter((j:any)=>jobIncludesNode(j,node));
- return {nodes,guests,storage,inventory,resources,alerts,cpu:measured(reporting,'cpu'),memory:measured(reporting,'memoryPercent'),disk:measured(storage.filter((s:any)=>s.status==='online'),'usage'),inventoryKnown,dockerKnown,dockerCount,dockerRunning,dockerHost,points,jobs,backupErrors,backupKnown,backupDetail,backupCount,backupIssue,backupProblems,backupOtherErrors,jobsKnown};
+ return {nodes,guests,storage,inventory,resources,alerts,cpu:measured(reporting,'cpu'),memory:measured(reporting,'memoryPercent'),disk:storagePercent,inventoryKnown,dockerKnown,dockerCount,dockerRunning,dockerHost,points,jobs,backupErrors,backupKnown,backupDetail,backupCount,backupIssue,backupProblems,backupOtherErrors,jobsKnown};
 }

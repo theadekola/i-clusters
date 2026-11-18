@@ -98,7 +98,8 @@ export default function Retention({navigation}:{navigation?:import('react').Reac
    {jobs.map(job=><option key={job.id} value={job.id}>{title(job)===String(job.id)?job.id:[title(job),job.id].join(' · ')}</option>)}
   </select></label>
   {editingJob&&<>
-   <dl className="retention-facts">
+   <dl className="retention-facts retention-config-grid">
+    {[['Schedule',editingJob.schedule],['Compression',editingJob.compress],['Mode',editingJob.mode],['Enabled',editingJob.enabled == null ? null : active(editingJob) ? 'Yes' : 'No'],['Guest selection',editingJob.pool || editingJob.vmid || (editingJob.exclude ? 'Except '+editingJob.exclude : Number(editingJob.all)===1 ? 'All guests' : null)],['Job comment',editingJob.comment]].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value || 'Not reported'}</dd></div>)}
     <div><dt>Job ID</dt><dd>{editingJob.id}</dd></div>
     <div><dt>Assigned nodes</dt><dd>{jobNodes(editingJob).join(', ')||'Applies to all nodes'}</dd></div>
     <div><dt>Destination</dt><dd>{editingJob.storage||'Default'}</dd></div>
