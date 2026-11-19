@@ -35,7 +35,7 @@ export default function SidebarAccount({labels=false,user,openAccount,signOut,th
    items[e.key==='Home'?0:e.key==='End'?items.length-1:(i+(e.key==='ArrowDown'?1:-1)+items.length)%items.length].focus();
   }
  }}>
- {!theme?<button type="button" className="nav-item profile-trigger" aria-label="User profile" title="User profile" aria-expanded={menu==='account'} aria-haspopup="menu" onClick={e=>toggle('account',e.currentTarget)}>{accountId&&version?<SavedPicture size={20} id={accountId} version={version} fallback={<CircleUserRound size={20}/>}/>:<CircleUserRound size={20}/>}
+ {!theme?<button type="button" className="nav-item profile-trigger" aria-label="User profile" title="User profile" aria-expanded={menu==='account'} aria-haspopup="menu" onClick={e=>toggle('account',e.currentTarget)}>{accountId&&version?<SavedPicture size={36} id={accountId} version={version} fallback={<CircleUserRound size={36}/>}/>:<CircleUserRound size={36}/>}
   {labels&&<span>Profile</span>}</button>:
  <button type="button" className="icon-btn" aria-label="Theme mode" title="Theme mode" aria-expanded={menu==='theme'} aria-haspopup="menu" onClick={e=>toggle('theme',e.currentTarget)}><Icon size={19}/></button>}
  {menu&&<div className="sidebar-popover" role="menu" aria-orientation="vertical" aria-label={menu==='theme'?'Theme mode':'User profile'}>

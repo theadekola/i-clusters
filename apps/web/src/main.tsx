@@ -60,3 +60,4 @@ import './alert-layout.css';
 import './typography.css';
 
 import './action-buttons.css';
+import './sidebar-palette.css';
