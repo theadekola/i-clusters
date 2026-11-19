@@ -1,0 +1,35 @@
+/* Keep navigation consistent across presets when light mode is active. */
+:root[data-theme="light"] #primary-navigation {
+  background: #0b1731 !important;
+  color: #f7f9ff !important;
+  border-color: #25334e !important;
+}
+:root[data-theme="light"] #primary-navigation :is(.brand, .brand b, .nav-item, .nav-close) {
+  color: #f7f9ff !important;
+  background: transparent !important;
+}
+:root[data-theme="light"] #primary-navigation .nav-title {
+  color: #b7c4da !important;
+}
+:root[data-theme="light"] #primary-navigation .nav-item:is(:hover, [aria-expanded="true"]) {
+  background: #213353 !important;
+}
+:root[data-theme="light"] #primary-navigation .nav-item.active {
+  background: #145bec !important;
+  border-color: #3579ff !important;
+  color: white !important;
+}
+:root[data-theme="light"] #primary-navigation .nav-item:focus-visible {
+  outline: 2px solid #92caff;
+  outline-offset: -2px;
+}
+#primary-navigation .sidebar-account .profile-trigger > :is(img, svg) {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 50%;
+}
+#primary-navigation.collapsed .sidebar-account .profile-trigger {
+  justify-content: center;
+  padding-inline: 0;
+}
