@@ -272,23 +272,28 @@ to create and remove certificate-validation TXT records and renew the certificat
 Allow outbound HTTPS and DNS queries from Caddy to its public propagation resolvers
 (1.1.1.1 and 1.0.0.1).
 
-1. Add a LAN or VPN DNS record for the chosen hostname pointing to the controller's private
-   address. Keep inbound access restricted to the intended users. No public A record,
-   Cloudflare proxy or inbound port forwarding is required for DNS validation.
-2. At the interactive installer prompt, enter the hostname. For a scripted installation:
+1. Choose how clients resolve the hostname. The installer can create a DNS-only
+   Cloudflare A record for you if you opt in. This publishes the controller's
+   private IPv4 address in public DNS. If your resolver blocks public DNS answers
+   containing private IPs, or you want private DNS records, use your LAN or VPN
+   DNS to point the hostname to the controller instead. Inbound port forwarding
+   is unnecessary for DNS validation.
+2. At the interactive installer prompt, enter the hostname and choose whether to
+   create the Cloudflare A record. For a scripted installation with automatic DNS:
 
    ```sh
    sudo bash /tmp/iclusters-install.sh --trusted-hostname dashboard.your-domain.com \
-     --cloudflare-token-file /root/iclusters-cloudflare.token
+     --cloudflare-token-file /root/iclusters-cloudflare.token --cloudflare-dns
    ```
 
    Use an absolute path to a private file containing only the scoped token. For
    interactive setup, omit the token file and enter the token when prompted.
+   Omit `--cloudflare-dns` if you manage the address through LAN or VPN DNS.
 3. On an existing LAN installation, update first and run the same setup directly:
 
    ```sh
    sudo iclusters update
-   sudo iclusters trusted-https dashboard.your-domain.com
+   sudo iclusters trusted-https dashboard.your-domain.com --cloudflare-dns
    ```
 
 4. Share the verified hostname and port with users. On the default installation
@@ -299,17 +304,19 @@ Allow outbound HTTPS and DNS queries from Caddy to its public propagation resolv
    prefer the verified hostname. Certificate setup is not presented as a per-user
    task on the Settings page.
 
-The installer checks the certificate hostname, trust chain and API health against
-the local controller. Confirm that the URL also resolves and opens from a client
-on your LAN or VPN. If issuance is pending, Caddy will retry. Check
+Automatic DNS reuses a matching DNS-only A record. If the hostname already
+points elsewhere, choose a different hostname. Setup verifies the certificate
+and API locally, then checks the HTTPS URL through the controller's configured
+DNS. Confirm that the URL also opens from a client on your LAN or VPN. If issuance is pending, Caddy will retry. Check
 `sudo iclusters trusted-https dashboard.your-domain.com --check` (read-only) and
 `sudo docker compose logs --tail=50 caddy` in `/opt/i-clusters`. To rotate a token,
 rerun the setup for the same hostname. The token resides in a restricted file
 mounted only into Caddy and is included in encrypted controller backups.
 
 If the initial verification timed out, the previous browser link stays selected.
-Once issuance succeeds, rerun the setup command to select the trusted hostname.
-The read-only check does not alter the selected address.
+Once issuance and DNS are ready, run
+`sudo iclusters trusted-https dashboard.your-domain.com --activate` to select the
+verified hostname without re-entering the token.
 
 Other DNS providers can continue to use the existing public ACME installation
 with reachable HTTP or TLS validation as described above. Direct LAN IP access

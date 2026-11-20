@@ -84,7 +84,8 @@ The installer creates `/opt/i-clusters`, generates deployment secrets, installs 
 For a dashboard that users can open without a device profile, enter a hostname
 from your Cloudflare-managed domain at the installer's prompt. The installer
 requests a publicly trusted certificate using DNS validation and Caddy renews it.
-The same setup is available on existing installations. See
+You can opt in to automatic DNS, which publishes your controller's private IPv4
+address in a DNS-only Cloudflare record. The same setup is available on existing installations. See
 [Trusted HTTPS for LAN or VPN users](PRODUCTION.md#trusted-https-for-lan-or-vpn-users).
 
 Direct access by LAN IP uses Caddy's local certificate authority. Install its public root certificate in your browsers and paired nodes' trust stores. Do not disable certificate verification. For public-domain HTTPS, port overrides, pinned refs and manual installation, follow [PRODUCTION.md](PRODUCTION.md).

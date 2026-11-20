@@ -30,6 +30,51 @@ class TrustedHTTPSTests(unittest.TestCase):
                 self.assertEqual(configure.call_count, 0 if check else 1)
                 self.assertEqual(remember.call_count, 1 if success and not check else 0)
 
+    def test_automatic_dns_creates_only_a_missing_dns_only_private_record(self):
+        token, host, address = "A" * 40, "console.example.org", "192.168.20.104"
+        zone = [{"id": "zone"}]
+        matching = {"type": "A", "content": address, "proxied": False}
+        for records in [[], [matching], [dict(matching, proxied=True)], [dict(matching, content="192.168.20.105")],
+                        [matching, {"type": "AAAA", "content": "::1"}], [{"type": "CNAME", "content": "old.example.org"}]]:
+            with self.subTest(records=records), patch.object(
+                    tls, "cloudflare_request", side_effect=[[], zone, records, matching]) as api:
+                if records not in ([], [matching]):
+                    with self.assertRaisesRegex(ValueError, "conflicts"):
+                        tls.ensure_dns_record(host, address, token)
+                else:
+                    tls.ensure_dns_record(host, address, token)
+                self.assertEqual(api.call_count, 3 if records else 4)
+                self.assertEqual(api.call_args_list[1].args[2]["name"], "example.org")
+                self.assertEqual(api.call_args_list[2].args[2]["name.exact"], host)
+                if not records:
+                    self.assertEqual(api.call_args.kwargs["record"], {
+                        "type": "A", "name": host, "content": address, "proxied": False, "ttl": 1,
+                    })
+
+    def test_automatic_dns_requires_an_rfc1918_controller_address(self):
+        self.assertEqual(tls.private_lan_address("https://192.168.20.104:6002"), "192.168.20.104")
+        for origin in ("", "https://127.0.0.1", "https://1.1.1.1", "https://controller.example.org"):
+            with self.subTest(origin=origin), self.assertRaises(ValueError):
+                tls.private_lan_address(origin)
+
+    def test_pending_issuance_can_be_activated_without_the_token(self):
+        host = "console.example.org"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / host).mkdir()
+            (root / host / "browser.caddy").touch()
+            for ready in (False, True):
+                with patch.object(tls.sys, "argv", ["trusted-https.py", host, "--activate"]), \
+                        patch.object(tls, "DIRECTORY", root), \
+                        patch.object(tls.Path, "read_text", return_value="CADDY_TLS=tls internal"), \
+                        patch.object(tls, "open", mock_open(), create=True), \
+                        patch.object(tls.fcntl, "flock"), \
+                        patch.object(tls, "configure") as configure, \
+                        patch.object(tls, "verify", return_value=ready):
+                    self.assertEqual(tls.main(), 0 if ready else 1)
+                    configure.assert_not_called()
+                self.assertEqual((root / "selected-hostname").exists(), ready)
+
     def test_browser_links_use_verified_hostname_and_retain_lan_fallback(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -99,11 +144,19 @@ class TrustedHTTPSTests(unittest.TestCase):
                 result = subprocess.CompletedProcess([], code, stdout=body)
                 with patch.object(tls.subprocess, "run", return_value=result) as curl:
                     self.assertEqual(tls.verify("controller.example.org", 6002, 0), expected)
-                args = curl.call_args.args[0]
+                args = curl.call_args_list[0].args[0]
                 self.assertIn("controller.example.org:6002:127.0.0.1", args)
                 self.assertIn("https://controller.example.org:6002/api/health", args)
                 self.assertNotIn("--insecure", args)
                 self.assertNotIn("-k", args)
+                self.assertEqual(curl.call_count, 2 if expected else 1)
+                if expected:
+                    self.assertNotIn("--resolve", curl.call_args.args[0])
+
+    def test_local_certificate_alone_is_insufficient_when_dns_fails(self):
+        with patch.object(tls, "healthy_https", side_effect=[True, False]) as health:
+            self.assertFalse(tls.verify("controller.example.org", 6002, 0))
+        self.assertEqual(health.call_count, 2)
 
 
 if __name__ == "__main__":

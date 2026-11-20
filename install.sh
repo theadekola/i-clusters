@@ -4,15 +4,16 @@ umask 077
 fail() { echo "Error: $*" >&2; exit 1; }
 usage() {
   echo 'Install i-Clusters on an Ubuntu server/VM or a Debian 12/13 Proxmox LXC container.'
-  echo 'Usage: sudo bash install.sh [--repo https://github.com/OWNER/REPO.git] [--ref BRANCH_OR_TAG] [--url https://SERVER-IP] [--port 6003] [--https-port 6002] [--trusted-hostname HOST [--cloudflare-token-file FILE]]'
+  echo 'Usage: sudo bash install.sh [--repo https://github.com/OWNER/REPO.git] [--ref BRANCH_OR_TAG] [--url https://SERVER-IP] [--port 6003] [--https-port 6002] [--trusted-hostname HOST [--cloudflare-token-file FILE] [--cloudflare-dns]]'
 }
-repo='https://github.com/theadekola/i-clusters.git' ref='' url='' web_port=6003 https_port=6002 trusted_host='' cloudflare_token_file=''
+repo='https://github.com/theadekola/i-clusters.git' ref='' url='' web_port=6003 https_port=6002 trusted_host='' cloudflare_token_file='' cloudflare_dns=false
 while (($#)); do
   case "$1" in
     --repo|--ref|--url|--port|--https-port|--trusted-hostname|--cloudflare-token-file)
       (($# >= 2)) || fail "Missing value for $1"
       case "$1" in --repo) repo=$2;; --ref) ref=$2;; --url) url=$2;; --port) web_port=$2;; --https-port) https_port=$2;; --trusted-hostname) trusted_host=$2;; --cloudflare-token-file) cloudflare_token_file=$2;; esac
       shift 2;;
+    --cloudflare-dns) cloudflare_dns=true; shift;;
     -h|--help) usage; exit 0;;
     *) usage; fail "Unknown option: $1";;
   esac
@@ -58,7 +59,13 @@ if [[ -z $trusted_host && -z $url && -t 0 && -t 1 ]]; then
   echo 'Recommended: enter a hostname in a Cloudflare DNS zone you control. i-Clusters manages its certificate and renewal; users install nothing.'
   echo 'LAN IP only still requires device certificate trust. A web application cannot install trust on users’ devices.'
   read -r -p 'Dashboard hostname (press Enter for LAN IP only): ' trusted_host
+  if [[ -n $trusted_host && $cloudflare_dns == false ]]; then
+    echo 'Automatic DNS publishes the controller’s private IPv4 address in a public, DNS-only Cloudflare record.'
+    read -r -p 'Create that record? Press Enter to use your LAN DNS instead [y/N]: ' publish_dns
+    if [[ $publish_dns == [yY] || $publish_dns == [yY][eE][sS] ]]; then cloudflare_dns=true; fi
+  fi
 fi
+[[ $cloudflare_dns == false || -n $trusted_host ]] || fail '--cloudflare-dns requires --trusted-hostname.'
 if [[ -n $trusted_host && -z $cloudflare_token_file && ! -t 0 ]]; then
   fail 'Noninteractive trusted HTTPS requires --cloudflare-token-file FILE.'
 fi
@@ -137,7 +144,8 @@ sh deployment/export-controller-ca.sh
 if [[ -n $trusted_host ]]; then
   trusted_args=("$trusted_host")
   if [[ -n $cloudflare_token_file ]]; then trusted_args+=(--token-file "$cloudflare_token_file"); fi
-  /usr/local/bin/iclusters trusted-https "${trusted_args[@]}" || fail 'The LAN controller is installed. Retry trusted HTTPS with sudo iclusters trusted-https HOST, or use --check if issuance is pending.'
+  if [[ $cloudflare_dns == true ]]; then trusted_args+=(--cloudflare-dns); fi
+  /usr/local/bin/iclusters trusted-https "${trusted_args[@]}" || fail 'The LAN controller is installed. Retry trusted HTTPS with sudo iclusters trusted-https HOST, or use --activate if configuration succeeded and verification was pending.'
 elif grep -qx 'CADDY_TLS=tls internal' .env; then
   if [[ -f secrets/ca/i-clusters.mobileconfig ]]; then
     echo 'Your iPhone/iPad trust profile is ready: /opt/i-clusters/secrets/ca/i-clusters.mobileconfig'
