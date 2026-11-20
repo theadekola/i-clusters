@@ -31,7 +31,7 @@ test('Shell and SFTP credentials are scoped to user, cluster and mode and expire
  assert.equal(shellExpired({mode:'sftp',touched:first.expiresAt,credentialsExpireAt:first.expiresAt},first.expiresAt),true);
  now=first.expiresAt;assert.equal(savedSSH('alice',target),null);
  assert.deepEqual(createClusterStore(path.join(directory,'ssh-connections.json'),undefined,v=>v).read(),{});
- await assert.rejects(connectSSH({saved:true,target},'alice'),e=>e.status===404);
+ await assert.rejects(connectSSH({saved:true,target},'alice'),e=>e.status===403);
  createClusterStore(path.join(directory,'ssh-connections.json'),undefined,v=>v).save({['alice:'+target]:connection});
  assert.equal(savedSSH('alice',target),null);
  assert.equal(sftp.expiresAt-first.expiresAt,1000);
