@@ -50,8 +50,8 @@ test('SFTP retry UI excludes completed uploads and keeps destination after folde
  }finally{await page.close();}
 });
 
-test('Shell target links open an inline login for the exact node VM or CT',async()=>{
- for(const target of ['node:pve','vm:pve:100','lxc:pve:130']){const calls=[];const page=await mounted('pages/Shell.tsx',{},async(p,init)=>{calls.push({p,init});if(p==='/proxmox')return {nodes:[{name:'pve',ip:'192.0.2.10'}],vms:[{id:'100',name:'vm-fixture',node:'pve'}],lxc:[{id:'130',name:'ct-fixture',node:'pve'}]};if(p==='/ssh/connect')return {id:'session-'+target};if(p.startsWith('/ssh/session/'))return {output:'',closed:false};return {}},true,false,['/tools/shell?target='+encodeURIComponent(target)]);try{await act(async()=>{await tick()});const connections=calls.filter(c=>c.p==='/ssh/connect');assert.equal(connections.length,0);assert.ok(page.container.querySelector('.shell-login-console')?.textContent.includes(target));assert.equal(page.container.querySelector('[name=save]'),null);}finally{await page.close();}}
+test('Shell target links open a login dialog for the exact node VM or CT',async()=>{
+ for(const target of ['node:pve','vm:pve:100','lxc:pve:130']){const calls=[];const page=await mounted('pages/Shell.tsx',{},async(p,init)=>{calls.push({p,init});if(p==='/proxmox')return {nodes:[{name:'pve',ip:'192.0.2.10'}],vms:[{id:'100',name:'vm-fixture',node:'pve'}],lxc:[{id:'130',name:'ct-fixture',node:'pve'}]};if(p==='/ssh/connect')return {id:'session-'+target};if(p.startsWith('/ssh/session/'))return {output:'',closed:false};return {}},true,false,['/tools/shell?target='+encodeURIComponent(target)]);try{await act(async()=>{await tick()});const connections=calls.filter(c=>c.p==='/ssh/connect');assert.equal(connections.length,0);assert.ok(page.container.querySelector('[role=dialog]')?.textContent.includes(target));assert.equal(page.container.querySelector('[name=save]'),null);}finally{await page.close();}}
 });
 
 test('node VM and CT terminal views render streamed output immediately and abort readers on unmount',async()=>{
@@ -247,9 +247,9 @@ test('SSH approval appears while saved connection lookup is pending and cancella
  }finally{finishLookup({});await page.close()}
 });
 
-async function loginInConsole(page) {
+async function loginInDialog(page) {
  await act(async()=>{await new Promise(resolve=>setTimeout(resolve,320))});
- const form=page.container.querySelector('form.shell-login-prompt');
+ const form=page.container.querySelector('[role=dialog] form.ssh-connection-form');
  form.elements.username.value='fixture';
  form.elements.password.value='test-password';
  await page.click(form.querySelector('[type=submit]'));
@@ -257,7 +257,7 @@ async function loginInConsole(page) {
 test('shell survives route navigation with its existing terminal and disconnect releases exactly once',async()=>{
  const calls=[];const page=await mounted('components/PersistentShell.tsx',{authorized:true},async(p,init)=>{calls.push({p,init});if(p==='/proxmox')return {nodes:[{name:'pve',ip:'192.0.2.10',status:'online'}]};if(p==='/ssh/fingerprint')return {fingerprint:'fixture'};if(p==='/ssh/connect')return {id:'persistent-fixture'};return {output:'',closed:false}},true,false,['/tools/shell?target=node:pve']);
  try{
- await act(async()=>{await tick()});await loginInConsole(page);const terminal=page.container.querySelector('.ssh-terminal');assert.ok(terminal);assert.ok(document.documentElement.classList.contains('shell-scroll-locked'));
+ await act(async()=>{await tick()});await loginInDialog(page);const terminal=page.container.querySelector('.ssh-terminal');assert.ok(terminal);assert.ok(document.documentElement.classList.contains('shell-scroll-locked'));
  await page.click([...page.container.querySelectorAll('a')].find(a=>a.textContent==='Test dashboard'));assert.equal(page.container.querySelector('.ssh-terminal'),terminal);assert.equal(page.container.querySelector('[hidden]').hidden,true);assert.equal(document.documentElement.classList.contains('shell-scroll-locked'),false);assert.equal(calls.filter(c=>c.init?.method==='DELETE').length,0);
  await page.click([...page.container.querySelectorAll('a')].find(a=>a.textContent==='Test shell'));assert.equal(page.container.querySelector('.ssh-terminal'),terminal);assert.equal(calls.filter(c=>c.p==='/ssh/connect').length,1);
  await page.click(page.container.querySelector('.shell-tab button[aria-label^="Close "]'));await tick();assert.equal(calls.filter(c=>c.init?.method==='DELETE').length,1);assert.equal(page.container.querySelector('.ssh-terminal'),null);
@@ -267,7 +267,7 @@ test('shell survives route navigation with its existing terminal and disconnect 
 
 test('persistent shell is lazy and loss of authorization releases its sessions',async()=>{
  const calls=[];const page=await mounted('components/PersistentShell.tsx',{authorized:true},async(p,init)=>{calls.push({p,init});if(p==='/proxmox')return {nodes:[{name:'pve',ip:'192.0.2.10'}]};if(p==='/ssh/fingerprint')return {fingerprint:'fixture'};if(p==='/ssh/connect')return {id:'revoked-fixture'};return {output:'',closed:false}},true,false,['/']);
- try{assert.equal(page.container.querySelector('.shell-page'),null);assert.equal(calls.length,0);await page.click([...page.container.querySelectorAll('a')].find(a=>a.textContent==='Test shell'));await act(async()=>{await tick()});await page.click(page.container.querySelector('[aria-label="Connect to pve"]'));await loginInConsole(page);assert.ok(page.container.querySelector('.ssh-terminal'));await page.render({authorized:false});await tick();assert.equal(page.container.querySelector('.shell-page'),null);assert.equal(calls.filter(c=>c.init?.method==='DELETE').length,1)}finally{await page.close()}
+ try{assert.equal(page.container.querySelector('.shell-page'),null);assert.equal(calls.length,0);await page.click([...page.container.querySelectorAll('a')].find(a=>a.textContent==='Test shell'));await act(async()=>{await tick()});await page.click(page.container.querySelector('[aria-label="Connect to pve"]'));await loginInDialog(page);assert.ok(page.container.querySelector('.ssh-terminal'));await page.render({authorized:false});await tick();assert.equal(page.container.querySelector('.shell-page'),null);assert.equal(calls.filter(c=>c.init?.method==='DELETE').length,1)}finally{await page.close()}
 });
 
 test('SSH action popup pairs host/port and username/password with Confirm after host verification',async()=>{

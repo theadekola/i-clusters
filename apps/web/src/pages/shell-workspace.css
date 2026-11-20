@@ -60,12 +60,3 @@
  .shell-console-active .ssh-shell .shell-session-toolbar .header-actions{width:100%;justify-content:flex-end}
  .shell-console-active .shell-session-toolbar .shell-update-label{margin-inline-end:auto}
 }
-
-.shell-login-console { background:#07111d; color:#edf2f8; min-height:55vh; border-radius:8px; padding:1rem; font-family:ui-monospace,monospace; }
-.shell-login-console header { display:flex; align-items:center; justify-content:space-between; }
-.shell-login-console .ssh-connection-form { max-width:36rem; }
-.shell-login-console :is(.muted,label) { color:#b9cade; }
-.shell-login-prompt { display:grid; gap:.8rem; max-width:32rem; }
-.shell-login-prompt label { display:grid; grid-template-columns:8rem minmax(0,1fr); align-items:center; gap:.5rem; }
-.shell-login-prompt input { min-width:0; font:inherit; }
-.shell-login-prompt button { justify-self:start; }

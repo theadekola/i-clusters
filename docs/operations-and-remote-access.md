@@ -105,7 +105,7 @@ The service worker handles navigation network failures with a connection notice.
 
 ## Shell and SFTP saved logins
 
-Select a Shell host and enter its SSH username and password in the console panel. Expand Connection Settings to change its address or port. Each new Shell session requires fresh credentials. In SFTP, select **Save password** to retain encrypted credentials for the current account, cluster and host.
+Select a Shell host and enter its SSH username and password in the Connection Settings popup. Check the address and port, then select Connect. Each new Shell session requires fresh credentials. In SFTP, select **Save password** to retain encrypted credentials for the current account, cluster and host.
 
 The deadline is 48 hours from saving with a fresh password. Reconnecting or editing while reusing the saved password does not extend it. Expired credentials are removed, and sessions based on them reject further requests at the deadline. The cleanup loop disconnects remaining sessions within 15 seconds. The deadline also applies to active SFTP sessions opened with saved credentials. Enter the password again to reconnect. Older records with no reliable save date expire on upgrade. This deadline does not sign out the user's i-Clusters account.
 
