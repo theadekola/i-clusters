@@ -137,5 +137,5 @@ bash deployment/setup-updater.sh
 systemctl daemon-reload
 rm -f runtime/maintenance.json
 trap - ERR
-echo "Dashboard: $(sed -n 's/^WEB_ORIGIN=//p' .env)"
+echo "Dashboard: $(python3 deployment/browser_origin.py)"
 echo "Upgrade completed and health checks passed. Local recovery point: $recovery"
