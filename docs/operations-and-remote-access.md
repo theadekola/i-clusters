@@ -105,8 +105,8 @@ The service worker handles navigation network failures with a connection notice.
 
 ## Shell and SFTP saved logins
 
-Shell and SFTP use separate encrypted saved credentials for each account, cluster and selected host. Opening SFTP cannot reuse a password saved in Shell. Enter the target SSH username and password in SFTP and optionally select **Save password for 48 hours**. Saving is optional, and the dialog shows the saved credential's expiry when editing it.
+Select a Shell host and enter its SSH username and password in the console panel. Expand Connection Settings to change its address or port. Each new Shell session requires fresh credentials. In SFTP, select **Save password** to retain encrypted credentials for the current account, cluster and host.
 
-The deadline is 48 hours from saving with a fresh password. Reconnecting or editing while reusing the saved password does not extend it. Expired credentials are removed, and sessions based on them reject further requests at the deadline. The cleanup loop disconnects remaining sessions within 15 seconds. Hidden terminals and active SFTP sessions do not bypass expiry. Enter the password again to reconnect. Older records with no reliable save date expire on upgrade. This deadline does not sign out the user's i-Clusters account.
+The deadline is 48 hours from saving with a fresh password. Reconnecting or editing while reusing the saved password does not extend it. Expired credentials are removed, and sessions based on them reject further requests at the deadline. The cleanup loop disconnects remaining sessions within 15 seconds. The deadline also applies to active SFTP sessions opened with saved credentials. Enter the password again to reconnect. Older records with no reliable save date expire on upgrade. This deadline does not sign out the user's i-Clusters account.
 
 The Shell terminal fills the available panel with a compact toolbar. Copy, paste, selection and fullscreen controls remain available. Profile time zones use a dropdown of the browser's supported IANA zones and retain an existing saved zone.

@@ -36,6 +36,7 @@ export async function connectSSH(input,user,sessionId){
  let retained;
 
  if(input.mode==='authorize'&&(input.saved||input.useSavedPassword))throw failure('Action approval requires a freshly entered target password',403);
+ if(mode==='shell' && input.mode!=='authorize' && (input.saved || input.useSavedPassword || input.save===true))throw failure('SSH username and password are required',403);
  if(input.saved){const saved=savedSSH(user,input.target,mode);if(!saved)throw failure('No saved connection',404);retained=saved;input={...saved,target:input.target,mode:input.mode==='sftp'?'sftp':'shell'};}
  if(input.useSavedPassword){const existing=savedSSH(user,input.target,mode);if(!existing||existing.host!==input.host||existing.port!==Number(input.port||22)||existing.username!==input.username)throw failure('Enter a password for the changed connection');retained=existing;input={...input,password:existing.password};}
  if(typeof input.host!=='string'||!input.host||input.host.length>253||/[\s/]/.test(input.host))throw failure('Enter the target SSH hostname or IP address');
