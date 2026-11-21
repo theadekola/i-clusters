@@ -74,9 +74,30 @@ try{
    assert.deepEqual(await (await status()).json(),{state:'running'});
   }
 
+  const warned=await create('ct',ct);
+  task={status:'stopped',exitstatus:'WARNINGS: 1'};
+  guests=[{node:'pve1',vmid:321,type:'lxc',status:'stopped'}];
+  assert.deepEqual(await (await warned.status()).json(),{state:'starting'});
+  guests[0].status='running';
+  assert.deepEqual(await (await warned.status()).json(),{state:'running'});
+
+  const startupFailed=await create('ct',ct);
+  task={status:'stopped',exitstatus:'startup for container failed'};
+  guests=[{node:'pve1',vmid:321,type:'lxc',status:'stopped'}];
+  assert.deepEqual(await (await startupFailed.status()).json(),{state:'stopped'});
+  guests[0].status='running';
+  assert.deepEqual(await (await startupFailed.status()).json(),{state:'running'});
+
   const failed=await create('vm',vm);
   task={status:'stopped',exitstatus:'ERROR'};
-  assert.equal((await failed.status()).status,409);
+  guests.push({node:'other-node',vmid:321,type:'qemu',status:'running'});
+  guests.push({node:'pve1',vmid:322,type:'qemu',status:'running'});
+  guests.push({node:'pve1',vmid:321,type:'qemu',status:'stopped',lock:'create'});
+  const writes=calls.filter(c=>c.method!=='GET').length;
+  const failure=await failed.status();
+  assert.equal(failure.status,409);
+  assert.equal((await failure.json()).error,'Guest creation failed. Check the Proxmox task history.');
+  assert.equal(calls.filter(c=>c.method!=='GET').length,writes);
 
   task={status:'stopped',exitstatus:'OK'};
   guests=[{node:'pve1',vmid:321,type:'qemu',status:'stopped'}];
