@@ -22,6 +22,14 @@
   --provider-background: url("/assets/brands/monitoring-background.webp");
 }
 
+[data-provider-background="alerts"] {
+  --provider-background: url("/assets/brands/alerts-background.webp");
+}
+
+[data-provider-background="ai"] {
+  --provider-background: url("/assets/brands/ai-background.webp");
+}
+
 [data-provider-background],
 [data-provider-background] > .content {
   position: relative;
