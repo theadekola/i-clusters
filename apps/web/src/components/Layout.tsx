@@ -1,5 +1,5 @@
 import SidebarAccount from './SidebarAccount';
-import './proxmox-background.css';
+import './provider-background.css';
 import {PageRefreshContext,usePageRefreshController} from './PageRefresh';
 import RefreshButton from './RefreshButton';
 import ClusterSwitcher from './ClusterSwitcher';
@@ -56,6 +56,8 @@ export default function Layout() {
   },[]);
   const navigate=useNavigate();
   const location = useLocation();
+  const provider = location.pathname.replace(/\/$/, '').toLowerCase().slice(1);
+  const background = provider === 'proxmox' || provider === 'docker' ? provider : undefined;
   const pageRefresh=usePageRefreshController();
   const {data:session}=useApi<any>('/auth/me',null);
   const {data:configuration}=useApi<any>('/settings',null);
@@ -95,7 +97,7 @@ export default function Layout() {
       </nav>
       <SidebarAccount key={String(mobile&&menuOpen)} labels={showLabels} user={session?.user} signOut={signOut} openAccount={()=>{if(mobile)closeMenu();navigate('/account')}}/>
     </aside>
-    <div className={location.pathname.replace(/\/$/, '').toLowerCase() === '/proxmox' ? 'main-shell proxmox-background' : 'main-shell'} inert={mobile&&menuOpen}>
+    <div className="main-shell" data-provider-background={background} inert={mobile&&menuOpen}>
       <header className="topbar">
         <button ref={toggleRef} className="icon-btn nav-toggle" aria-label={navigationOpen?'Close navigation':'Open navigation'} aria-controls="primary-navigation" aria-expanded={navigationOpen} onClick={()=>mobile?setMenuOpen(v=>!v):toggleDesktop()}><NavIcon size={19} aria-hidden="true"/></button>
         <ClusterSwitcher owner={session?.user?.role==='owner'}/>
