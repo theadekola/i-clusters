@@ -59,7 +59,7 @@
 :root[data-preset] .recharts-cartesian-axis-tick text{fill:var(--theme-muted)}
 :root[data-preset] .recharts-cartesian-grid line{stroke:var(--theme-border)}
 
-:root[data-preset][data-theme="light"] .login-page{background:radial-gradient(ellipse at 80% 0%,var(--theme-highlight),transparent 65%),#f3f6fb}
+:root[data-preset][data-theme="light"] .login-page:not(.sign-in-background){background:radial-gradient(ellipse at 80% 0%,var(--theme-highlight),transparent 65%),#f3f6fb}
 :root[data-preset] .profile-dropdown button{color:var(--theme-text)}
 :root[data-preset] .profile-dropdown button:hover{background:var(--theme-highlight)}
 :root[data-preset] .profile-dropdown small{color:var(--theme-muted)}

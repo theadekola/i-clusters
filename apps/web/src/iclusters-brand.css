@@ -4,24 +4,17 @@
 .brand b{font-size:19px;letter-spacing:-.6px;overflow:hidden;text-overflow:ellipsis}
 .about-logo{background:radial-gradient(circle,color-mix(in srgb,var(--app-accent) 20%,transparent),transparent 70%)!important;border:0!important}
 .about-logo img{width:94px;height:94px;object-fit:contain}
-:root{--iclusters-wave:url("/assets/brands/iclusters-wave-background.webp")}
 .login-page {
   min-height:100dvh;
   padding:36px 20px;
-  background:var(--iclusters-wave) center / 100% 100% no-repeat, var(--app-theme-background);
+  background:var(--app-theme-background);
   color:var(--theme-text);
 }
-.main-shell {
-  --wave-scrim:color-mix(in srgb, var(--theme-input) 86%, transparent);
-  background:linear-gradient(var(--wave-scrim), var(--wave-scrim)), var(--iclusters-wave);
-  background-size:100% 100svh;
-  background-repeat:no-repeat;
-}
-:root[data-theme="light"] .main-shell {
-  --wave-scrim:color-mix(in srgb, var(--theme-raised) 62%, transparent);
+.login-page.sign-in-background {
+  background:url("/assets/brands/iclusters-wave-background.webp") center / 100% 100% no-repeat, var(--app-theme-background);
 }
 @media (forced-colors:active) {
-  .login-page,.main-shell{background:Canvas}
+  .login-page.sign-in-background{background:Canvas}
 }
 .login-page .login-card{width:min(480px,100%);padding:34px 40px 26px;gap:20px;background:var(--theme-surface);border:1px solid var(--theme-border);border-radius:26px;box-shadow:0 0 0 1px color-mix(in srgb,var(--app-accent) 5%,transparent),0 30px 90px #0006;backdrop-filter:blur(16px)}
 .login-page .login-logo{display:flex;flex-direction:column;justify-content:center;gap:6px;margin:0;text-align:center}
