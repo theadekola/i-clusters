@@ -21,14 +21,22 @@ test('SFTP retains its existing keepalive policy',()=>{
  assert.equal(shellExpired({mode:'sftp',touched:0},60001),true);
 });
 
-test('open connections expire at 24 hours for SFTP and 48 hours for Shell despite ongoing activity',()=>{
- const opened=1000;
- for(const [mode,hours] of [['sftp',24],['shell',48]]){
-  const expiresAt=shellDeadline(mode,opened);
-  assert.equal(expiresAt,opened+hours*60*60*1000);
-  const session={mode,expiresAt,touched:expiresAt-1};
-  assert.equal(shellExpired(session,expiresAt-1),false);
-  updateShellPresence(session,'hidden',expiresAt-1);
-  assert.equal(shellExpired(session,expiresAt),true);
- }
+test('SFTP keeps a 24 hour deadline during activity and suspension',()=>{
+ const opened=1000,expiresAt=shellDeadline('sftp',opened);
+ assert.equal(expiresAt,opened+24*60*60*1000);
+ const session={mode:'sftp',expiresAt,touched:expiresAt-1};
+ assert.equal(shellExpired(session,expiresAt-1),false);
+ updateShellPresence(session,'hidden',expiresAt-1);
+ assert.equal(shellExpired(session,expiresAt),true);
+});
+
+test('active and suspended Shell sessions can continue past 48 hours',()=>{
+ const opened=1000,later=opened+49*60*60*1000;
+ const session={mode:'shell',expiresAt:shellDeadline('shell',opened),touched:opened};
+ assert.equal(session.expiresAt,undefined);
+ updateShellPresence(session,'hidden',opened);
+ assert.equal(shellExpired(session,later),false);
+ updateShellPresence(session,'active',later);
+ assert.equal(shellExpired(session,later),false);
+ assert.equal(shellExpired(session,later+SHELL_IDLE_MS),true);
 });

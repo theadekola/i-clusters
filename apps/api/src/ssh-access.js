@@ -36,9 +36,14 @@ export async function connectSSH(input,user,sessionId){
  let retained;
 
  if(input.mode==='authorize'&&(input.saved||input.useSavedPassword))throw failure('Action approval requires a freshly entered target password',403);
- if(mode==='shell' && input.mode!=='authorize' && (input.saved || input.useSavedPassword || input.save===true))throw failure('SSH username and password are required',403);
  if(input.saved){const saved=savedSSH(user,input.target,mode);if(!saved)throw failure('No saved connection',404);retained=saved;input={...saved,target:input.target,mode:input.mode==='sftp'?'sftp':'shell'};}
- if(input.useSavedPassword){const existing=savedSSH(user,input.target,mode);if(!existing||existing.host!==input.host||existing.port!==Number(input.port||22)||existing.username!==input.username)throw failure('Enter a password for the changed connection');retained=existing;input={...input,password:existing.password};}
+ if(input.useSavedPassword){
+  const existing=savedSSH(user,input.target,mode);
+  if(!existing||existing.host!==input.host||existing.port!==Number(input.port||22)||existing.username!==input.username)
+   throw failure('Enter a password for the changed connection');
+  if(existing.fingerprint!==input.fingerprint)throw failure('Enter a password for the changed connection',409);
+  retained=existing;input={...input,password:existing.password};
+ }
  if(typeof input.host!=='string'||!input.host||input.host.length>253||/[\s/]/.test(input.host))throw failure('Enter the target SSH hostname or IP address');
  if(!/^(node|vm|lxc):/.test(input.target||'')&&!/^docker:[a-f0-9-]{36}$/.test(input.target||''))throw failure('Invalid target');
  const port=Number(input.port||22);if(!Number.isInteger(port)||port<1||port>65535)throw failure('Invalid SSH port');
@@ -50,14 +55,14 @@ export async function connectSSH(input,user,sessionId){
    const approval=await resolveActionApproval(input.path,input.body,input.method,{dockerHost:input.dockerHost});if(!approval)throw failure('Invalid action path');if(approval.target!==input.target)throw failure('SSH target does not match this action');return {token:issueGrant(user,input.method,input.path,input.body,approval.scope,sessionId)};
   }finally{client.end();}
  }
- if(retained&&retained.expiresAt<=Date.now()){client.end();throw failure('Saved credentials expired. Enter the SSH password again.',401);}
+ if(retained?.expiresAt!=null&&retained.expiresAt<=Date.now()){client.end();throw failure('Saved credentials expired. Enter the SSH password again.',401);}
  let stream;try{stream=await new Promise((resolve,reject)=>input.mode==='sftp'?client.sftp((e,s)=>e?reject(e):resolve(s)):client.shell({term:'xterm-256color',cols:100,rows:28},(e,s)=>e?reject(e):resolve(s)));}catch(e){client.end();throw e;}
  try{
   if(input.save===false)deleteSavedSSH(user,input.target,mode);
-  if(input.save===true)retained=saveSSH(user,input.target,mode,{host:input.host,port,username:input.username,password:input.password,fingerprint:input.fingerprint},retained);
+  if(input.save===true&&(mode==='sftp'||!retained))retained=saveSSH(user,input.target,mode,{host:input.host,port,username:input.username,password:input.password,fingerprint:input.fingerprint},retained);
  }catch(error){client.end();throw error;}
  const openedAt=Date.now();
- const id=crypto.randomUUID(),s={user,sessionId,target:input.target,host:input.host,expiresAt:shellDeadline(mode,openedAt),credentialsExpireAt:retained?.expiresAt,client,stream,mode,output:'',touched:openedAt,closed:false};sessions.set(id,s);const decoder=new StringDecoder('utf8'),closed=()=>{if(s.closed)return;s.output=(s.output+decoder.end()).slice(-262144);s.closed=true;s.onOutput?.();};if(s.mode==='shell')stream.on('data',d=>{s.output=(s.output+decoder.write(d)).slice(-262144);s.onOutput?.();});stream.on('close',()=>{closed();client.end()});client.on('error',closed);client.on('close',closed);return {id};
+ const id=crypto.randomUUID(),s={user,sessionId,target:input.target,host:input.host,expiresAt:shellDeadline(mode,openedAt),credentialsExpireAt:mode==='sftp'?retained?.expiresAt:undefined,client,stream,mode,output:'',touched:openedAt,closed:false};sessions.set(id,s);const decoder=new StringDecoder('utf8'),closed=()=>{if(s.closed)return;s.output=(s.output+decoder.end()).slice(-262144);s.closed=true;s.onOutput?.();};if(s.mode==='shell')stream.on('data',d=>{s.output=(s.output+decoder.write(d)).slice(-262144);s.onOutput?.();});stream.on('close',()=>{closed();client.end()});client.on('error',closed);client.on('close',closed);return {id};
 }
 export async function openGuestUpdate(id,user,loginId,resolveHost){
  const parent=shellSession(id,user);
@@ -70,7 +75,7 @@ export async function openGuestUpdate(id,user,loginId,resolveHost){
   const stream=await new Promise((resolve,reject)=>parent.client.exec(guestUpdateCommand,{pty:{term:'xterm-256color',cols:100,rows:28}},(err,ch)=>err?reject(err):resolve(ch)));
   const childId=crypto.randomUUID(),decoder=new StringDecoder('utf8');
   // Releasing this tab must close only its channel, never the original terminal.
-  const child={user,sessionId:loginId,expiresAt:parent.expiresAt,credentialsExpireAt:parent.credentialsExpireAt,mode:'shell',updateChannel:true,client:{end:()=>stream.close()},stream,output:'',closed:false,touched:Date.now()};
+  const child={user,sessionId:loginId,mode:'shell',updateChannel:true,client:{end:()=>stream.close()},stream,output:'',closed:false,touched:Date.now()};
   const append=text=>{child.output=(child.output+text).slice(-262144);child.onOutput?.();};
   let tail='';
   stream.on('data',chunk=>{const text=decoder.write(chunk);tail=(tail+text).slice(-512);append(text)});
