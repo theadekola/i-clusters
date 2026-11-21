@@ -10,6 +10,10 @@
   --provider-background: url("/assets/brands/storage-background.webp");
 }
 
+[data-provider-background="network"] {
+  --provider-background: url("/assets/brands/network-background.webp");
+}
+
 [data-provider-background],
 [data-provider-background] > .content {
   position: relative;
