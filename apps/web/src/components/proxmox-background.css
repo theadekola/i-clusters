@@ -1,0 +1,26 @@
+.proxmox-background,
+.proxmox-background > .content {
+  position: relative;
+}
+
+.proxmox-background::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 100svh;
+  pointer-events: none;
+  background-color: #fff;
+  opacity: 0.13;
+  mask: url("/assets/brands/proxmox-background.webp") left bottom / max(100%, 480px) auto no-repeat;
+}
+
+:root[data-theme="light"] .proxmox-background::before {
+  background-color: #000;
+  opacity: 0.09;
+}
+
+@media (forced-colors: active) {
+  .proxmox-background::before {
+    display: none;
+  }
+}
