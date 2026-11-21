@@ -17,7 +17,7 @@ async function listen(server, t) {
 
 test('guest console connects with cluster credentials and confines the relay to one signed-in browser', async t => {
   const calls = [];
-  let failure = 0, status = 'running';
+  let failure = 0, status = 'running', portOverride;
   const password = 'vnc-pass';
   const ticket = password + ':PVEVNC:fixture+/=';
   const authorization = 'PVEAPIToken=console@pve!test=fixture-secret';
@@ -35,7 +35,9 @@ test('guest console connects with cluster credentials and confines the relay to 
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
     assert.equal(Buffer.concat(chunks).toString(), 'websocket=1');
-    res.end(JSON.stringify({data: {ticket, port: 5901, ...(req.url.includes('/qemu/') ? {password} : {})}}));
+    const isVm = req.url.includes('/qemu/');
+    const port = portOverride ?? (isVm ? '5901' : 5901);
+    res.end(JSON.stringify({data: {ticket, port, ...(isVm ? {password} : {})}}));
   });
   const upstream = new WebSocketServer({noServer: true});
   provider.on('upgrade', (req, socket, head) => {
@@ -95,14 +97,24 @@ test('guest console connects with cluster credentials and confines the relay to 
   assert.equal((await create()).status, 409);
   status = 'running';
   failure = 401;
-  const expiredToken = await create();
+  const expiredToken = await create('lxc', 'node02', 101);
   assert.equal(expiredToken.status, 502);
   assert.match((await expiredToken.json()).error, /API token/);
   failure = 403;
-  const denied = await create();
+  const denied = await create('lxc', 'node02', 101);
   assert.equal(denied.status, 403);
   assert.match((await denied.json()).error, /VM\.Console/);
   failure = 0;
+
+  for (const invalidPort of [true, '', ' 5901 ', '5901.0', '5901\n', 5901.5, 5899, '6000']) {
+    portOverride = invalidPort;
+    const callCount = calls.length;
+    const response = await create();
+    assert.equal(response.status, 502);
+    assert.equal((await response.json()).error, 'Proxmox returned an invalid console ticket.');
+    assert.equal(calls.slice(callCount).some(url => url.includes('/vncwebsocket')), false);
+  }
+  portOverride = undefined;
 
   for (const target of [['qemu', 'node01', 100], ['lxc', 'node02', 101]]) {
     const response = await create(...target);
