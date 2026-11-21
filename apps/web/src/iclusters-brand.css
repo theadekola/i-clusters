@@ -4,8 +4,25 @@
 .brand b{font-size:19px;letter-spacing:-.6px;overflow:hidden;text-overflow:ellipsis}
 .about-logo{background:radial-gradient(circle,color-mix(in srgb,var(--app-accent) 20%,transparent),transparent 70%)!important;border:0!important}
 .about-logo img{width:94px;height:94px;object-fit:contain}
-.login-page{position:relative;isolation:isolate;overflow:hidden;min-height:100dvh;padding:36px 20px;background:var(--app-theme-background);color:var(--theme-text)}
-.login-page::before{content:"";position:absolute;z-index:-1;inset:40% -70% -65%;background-image:linear-gradient(color-mix(in srgb,var(--app-accent) 8%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--app-accent) 8%,transparent) 1px,transparent 1px);background-size:64px 64px;transform:perspective(500px) rotateX(58deg);pointer-events:none;mask-image:linear-gradient(transparent,#0008)}
+:root{--iclusters-wave:url("/assets/brands/iclusters-wave-background.webp")}
+.login-page {
+  min-height:100dvh;
+  padding:36px 20px;
+  background:var(--iclusters-wave) center / 100% 100% no-repeat, var(--app-theme-background);
+  color:var(--theme-text);
+}
+.main-shell {
+  --wave-scrim:color-mix(in srgb, var(--theme-input) 86%, transparent);
+  background:linear-gradient(var(--wave-scrim), var(--wave-scrim)), var(--iclusters-wave);
+  background-size:100% 100svh;
+  background-repeat:no-repeat;
+}
+:root[data-theme="light"] .main-shell {
+  --wave-scrim:color-mix(in srgb, var(--theme-raised) 62%, transparent);
+}
+@media (forced-colors:active) {
+  .login-page,.main-shell{background:Canvas}
+}
 .login-page .login-card{width:min(480px,100%);padding:34px 40px 26px;gap:20px;background:var(--theme-surface);border:1px solid var(--theme-border);border-radius:26px;box-shadow:0 0 0 1px color-mix(in srgb,var(--app-accent) 5%,transparent),0 30px 90px #0006;backdrop-filter:blur(16px)}
 .login-page .login-logo{display:flex;flex-direction:column;justify-content:center;gap:6px;margin:0;text-align:center}
 .login-page .login-logo img{width:100px;height:100px;object-fit:contain;filter:drop-shadow(0 7px 15px color-mix(in srgb,var(--app-accent) 15%,transparent))}
@@ -31,7 +48,23 @@
 .login-support a,.brand-links a{color:var(--theme-icon);text-decoration:none}
 .login-support a:hover,.brand-links a:hover{text-decoration:underline}
 .login-support span{color:var(--theme-muted);line-height:1.5}
-.brand-links{display:flex;align-items:center;justify-content:center;gap:22px;flex-wrap:wrap;font-size:11px;padding-top:4px}
+.brand-links {
+  display:grid;
+  grid-template-columns:repeat(4,auto);
+  justify-content:center;
+  align-items:center;
+  font-size:12px;
+}
+.brand-links a {
+  padding:8px 10px;
+  text-align:center;
+  white-space:nowrap;
+}
+.brand-links a + a {border-inline-start:1px solid var(--theme-border)}
+@media (max-width:360px) {
+  .brand-links {grid-template-columns:repeat(2,auto)}
+  .brand-links a:nth-child(3) {border-inline-start:0}
+}
 .login-page .login-error{background:#3d182a;border-color:#a34b68;color:#ffccda;font-size:14px;line-height:1.5}
 @media(max-width:520px){.login-page{padding:24px 16px}.login-page .login-card{padding:27px 24px 22px;border-radius:22px;gap:18px}.login-page .login-logo img{width:86px;height:86px}.login-page .login-logo strong{font-size:34px}.login-page .login-card h1{font-size:19px}}
 @media(prefers-reduced-transparency:reduce){.login-page .login-card{backdrop-filter:none;background:var(--theme-surface)}}

@@ -53,6 +53,11 @@ export default function Login({onLogin}:{onLogin:()=>void}){
   {needsOwner&&<label><span><Lock size={15}/> Confirm password</span><input id="registration-confirm-password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} type={showPassword?'text':'password'} autoComplete="new-password" minLength={12} maxLength={72} disabled={loading} required/></label>}
   {challenge&&<><label><span>Authenticator or recovery code</span><input value={factor} onChange={e=>setFactor(e.target.value)} autoComplete="one-time-code" autoFocus maxLength={40} required/></label><button type="button" className="btn secondary" onClick={()=>{setChallenge('');setFactor('');setMessage('');setError('')}}>Back to sign in</button></>}
   {!needsOwner&&!challenge&&<label className="login-remember"><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/><span>Remember this device</span></label>}
-  <button className="btn primary" disabled={loading} aria-busy={loading}>{loading?'Please wait…':needsOwner?'Create owner account':challenge?'Verify & Sign in':'Sign in'}<ArrowRight size={18}/></button><footer className="brand-links"><a href="https://www.i-clusters.com" target="_blank" rel="noopener noreferrer">www.i-clusters.com</a><a href="https://support.i-clusters.com" target="_blank" rel="noopener noreferrer">Support</a></footer>
+  <button className="btn primary" disabled={loading} aria-busy={loading}>{loading?'Please wait…':needsOwner?'Create owner account':challenge?'Verify & Sign in':'Sign in'}<ArrowRight size={18}/></button><footer><nav className="brand-links" aria-label="i-Clusters links">
+   <a href="https://www.i-clusters.com" target="_blank" rel="noopener noreferrer">i-Clusters</a>
+   <a href="https://github.com/theadekola/i-clusters" target="_blank" rel="noopener noreferrer">GitHub</a>
+   <a href="https://www.i-clusters.com/docs.html" target="_blank" rel="noopener noreferrer">Documentation</a>
+   <a href="https://www.i-clusters.com/donate.html" target="_blank" rel="noopener noreferrer">Donate</a>
+  </nav></footer>
  </form></div>;
 }
