@@ -30,6 +30,22 @@
   --provider-background: url("/assets/brands/ai-background.webp");
 }
 
+[data-provider-background="shell"] {
+  --provider-background: url("/assets/brands/shell-background.webp");
+}
+
+[data-provider-background="sftp"] {
+  --provider-background: url("/assets/brands/sftp-background.webp");
+}
+
+[data-provider-background="users"] {
+  --provider-background: url("/assets/brands/users-background.webp");
+}
+
+[data-provider-background="settings"] {
+  --provider-background: url("/assets/brands/settings-background.webp");
+}
+
 [data-provider-background],
 [data-provider-background] > .content {
   position: relative;

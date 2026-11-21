@@ -26,7 +26,7 @@ import UpdateButton from './UpdateButton';
 import { useApi,configureRefresh,refreshResources } from '../hooks';
 import { api,clearTokens } from '../api';
 
-const backgroundPages = new Set(['proxmox', 'docker', 'storage', 'network', 'backups', 'monitoring', 'alerts', 'ai']);
+const backgroundPages = new Set(['proxmox', 'docker', 'storage', 'network', 'backups', 'monitoring', 'alerts', 'ai', 'users', 'settings', 'tools/shell', 'tools/sftp']);
 
 const sections = [
   { title: 'OVERVIEW', items: [['Dashboard','/',LayoutDashboard]] },
@@ -59,7 +59,7 @@ export default function Layout() {
   const navigate=useNavigate();
   const location = useLocation();
   const provider = location.pathname.replace(/\/$/, '').toLowerCase().slice(1);
-  const background = backgroundPages.has(provider) ? provider : undefined;
+  const background = backgroundPages.has(provider) ? provider.replace(/^tools\//, '') : undefined;
   const pageRefresh=usePageRefreshController();
   const {data:session}=useApi<any>('/auth/me',null);
   const {data:configuration}=useApi<any>('/settings',null);
