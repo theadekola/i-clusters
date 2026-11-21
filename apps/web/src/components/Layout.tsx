@@ -57,7 +57,7 @@ export default function Layout() {
   const navigate=useNavigate();
   const location = useLocation();
   const provider = location.pathname.replace(/\/$/, '').toLowerCase().slice(1);
-  const background = provider === 'proxmox' || provider === 'docker' || provider === 'storage' || provider === 'network' || provider === 'backups' ? provider : undefined;
+  const background = provider === 'proxmox' || provider === 'docker' || provider === 'storage' || provider === 'network' || provider === 'backups' || provider === 'monitoring' ? provider : undefined;
   const pageRefresh=usePageRefreshController();
   const {data:session}=useApi<any>('/auth/me',null);
   const {data:configuration}=useApi<any>('/settings',null);
