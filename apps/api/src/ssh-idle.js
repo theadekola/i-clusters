@@ -1,14 +1,13 @@
 export const SHELL_IDLE_MS=20*60*1000;
-export const SHELL_SESSION_MS=48*60*60*1000;
 export const SFTP_SESSION_MS=24*60*60*1000;
 
 export function shellDeadline(mode, now=Date.now()){
- return now+(mode==='sftp'?SFTP_SESSION_MS:SHELL_SESSION_MS);
+ return mode==='sftp'?now+SFTP_SESSION_MS:undefined;
 }
 export function shellExpired(session,now=Date.now()){
- if(now>=session.expiresAt)return true;
- if(session.credentialsExpireAt != null && now >= session.credentialsExpireAt)return true;
- if(session.mode==='sftp')return now-session.touched>60000;
+ if(session.mode==='sftp'){
+  return now>=session.expiresAt || (session.credentialsExpireAt!=null && now>=session.credentialsExpireAt) || now-session.touched>60000;
+ }
  return session.hiddenAt==null&&now-session.touched>=SHELL_IDLE_MS;
 }
 export function updateShellPresence(session,presence,now=Date.now()){

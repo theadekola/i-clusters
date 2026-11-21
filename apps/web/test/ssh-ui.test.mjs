@@ -51,7 +51,68 @@ test('SFTP retry UI excludes completed uploads and keeps destination after folde
 });
 
 test('Shell target links open a login dialog for the exact node VM or CT',async()=>{
- for(const target of ['node:pve','vm:pve:100','lxc:pve:130']){const calls=[];const page=await mounted('pages/Shell.tsx',{},async(p,init)=>{calls.push({p,init});if(p==='/proxmox')return {nodes:[{name:'pve',ip:'192.0.2.10'}],vms:[{id:'100',name:'vm-fixture',node:'pve'}],lxc:[{id:'130',name:'ct-fixture',node:'pve'}]};if(p==='/ssh/connect')return {id:'session-'+target};if(p.startsWith('/ssh/session/'))return {output:'',closed:false};return {}},true,false,['/tools/shell?target='+encodeURIComponent(target)]);try{await act(async()=>{await tick()});const connections=calls.filter(c=>c.p==='/ssh/connect');assert.equal(connections.length,0);assert.ok(page.container.querySelector('[role=dialog]')?.textContent.includes(target));assert.equal(page.container.querySelector('[name=save]'),null);}finally{await page.close();}}
+ for(const target of ['node:pve','vm:pve:100','lxc:pve:130']){const calls=[];const page=await mounted('pages/Shell.tsx',{},async(p,init)=>{calls.push({p,init});if(p==='/proxmox')return {nodes:[{name:'pve',ip:'192.0.2.10'}],vms:[{id:'100',name:'vm-fixture',node:'pve'}],lxc:[{id:'130',name:'ct-fixture',node:'pve'}]};if(p==='/ssh/connect')return {id:'session-'+target};if(p.startsWith('/ssh/session/'))return {output:'',closed:false};return {}},true,false,['/tools/shell?target='+encodeURIComponent(target)]);try{await act(async()=>{await tick()});const connections=calls.filter(c=>c.p==='/ssh/connect');assert.equal(connections.length,0);assert.ok(page.container.querySelector('[role=dialog]')?.textContent.includes(target));assert.equal(page.container.querySelector('[name=save]').checked,false);}finally{await page.close();}}
+});
+
+test('Shell popup saves and reuses a password without filling it in, and can forget it',async()=>{
+ let metadata={},serial=0;
+ const requests=[];
+ const target='node:pve',host='192.0.2.10',fingerprint='SHA256:fixture';
+ const page=await mounted('pages/Shell.tsx',{},async(path,options)=>{
+  if(path==='/proxmox')return {nodes:[{name:'pve',status:'online',ip:host}]};
+  if(path==='/ssh/connections?mode=shell')return metadata;
+  if(path==='/ssh/fingerprint')return {fingerprint};
+  if(path==='/ssh/connect'){
+   const body=JSON.parse(options.body);
+   requests.push(body);
+   if(body.save)metadata={[target]:{host,port:22,username:'root',hasPassword:true,fingerprint}};
+   return {id:'fixture-'+ ++serial};
+  }
+  if(path==='/ssh/connections'&&options?.method==='DELETE'){
+   assert.deepEqual(JSON.parse(options.body),{target,mode:'shell'});
+   metadata={};return {};
+  }
+  if(path.startsWith('/ssh/session/'))return {output:'',closed:false};
+  throw Error('Unexpected '+path);
+ });
+ const form=()=>page.container.querySelector('form[aria-label="SSH"]');
+ const control=name=>form().querySelector(`input[name="${name}"]`);
+ const button=name=>[...page.container.querySelectorAll('button')].find(b=>b.textContent.trim()===name);
+ const open=async()=>{
+  await page.click(page.container.querySelector('[aria-label="Connect to pve"]'));
+  await act(async()=>{await new Promise(resolve=>setTimeout(resolve,300))});
+ };
+ const submit=()=>page.click(button('Connect'));
+ const close=()=>page.click(page.container.querySelector('[aria-label="Close pve session"]'));
+ try{
+  await open();
+  assert.equal(control('save').checked,false);
+  assert.equal(control('password').required,true);
+  control('password').value='fixture-secret';
+  await page.click(control('save'));
+  await submit();
+  assert.equal(requests[0].password,'fixture-secret');
+  assert.equal(requests[0].save,true);
+  assert.equal(requests[0].useSavedPassword,false);
+  assert.ok(page.container.querySelector('[role=tab]'));
+  await close();
+  await open();
+  assert.equal(control('password').value,'');
+  assert.equal(control('password').required,false);
+  await change(page,control('username'),'someone-else');
+  assert.equal(control('password').required,true);
+  await change(page,control('username'),'root');
+  await submit();
+  assert.equal(requests[1].password,'');
+  assert.equal(requests[1].useSavedPassword,true);
+  await close();
+  await open();
+  await page.click(button('Forget saved connection'));
+  assert.equal(control('password').required,true);
+  assert.equal(control('save').checked,false);
+  assert.equal(button('Forget saved connection'),undefined);
+  assert.deepEqual(metadata,{});
+ }finally{await page.close();}
 });
 
 test('node VM and CT terminal views render streamed output immediately and abort readers on unmount',async()=>{

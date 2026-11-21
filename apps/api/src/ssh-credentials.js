@@ -8,7 +8,9 @@ export function purgeSavedSSH(mode = 'shell', now = Date.now()) {
   const store = vault(mode), saved = store.read() || {};
   let changed = false;
   for (const [key, value] of Object.entries(saved)) {
-    if (!Number.isFinite(value?.savedAt) || !Number.isFinite(value?.expiresAt) || value.savedAt > now || value.expiresAt <= now || value.expiresAt > value.savedAt + SSH_CREDENTIAL_LIFETIME) {
+    const timed = mode === 'sftp' || Object.hasOwn(value ?? {}, 'expiresAt');
+    if (!Number.isFinite(value?.savedAt) || value.savedAt > now || (timed &&
+      (!Number.isFinite(value.expiresAt) || value.expiresAt <= now || value.expiresAt > value.savedAt + SSH_CREDENTIAL_LIFETIME))) {
       delete saved[key]; changed = true;
     }
   }
@@ -31,9 +33,11 @@ export function deleteSavedSSH(user, target, mode = 'shell') {
 }
 export function saveSSH(user, target, mode, connection, previous) {
   const saved = purgeSavedSSH(mode), now = Date.now();
-  const times = previous ? {savedAt: previous.savedAt, expiresAt: previous.expiresAt} : {savedAt: now, expiresAt: now + SSH_CREDENTIAL_LIFETIME};
-  if (times.expiresAt <= now) throw Object.assign(Error('Saved credentials expired. Enter the SSH password again.'), {status: 401});
-  const value = {...connection, ...times};
+  const value = {...connection, savedAt: previous?.savedAt ?? now};
+  if (mode === 'sftp') {
+    value.expiresAt = previous?.expiresAt ?? now + SSH_CREDENTIAL_LIFETIME;
+    if (value.expiresAt <= now) throw Object.assign(Error('Saved credentials expired. Enter the SSH password again.'), {status: 401});
+  }
   saved[`${user}:${target}`] = value; vault(mode).save(saved);
   return value;
 }

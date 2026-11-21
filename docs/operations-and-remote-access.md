@@ -105,9 +105,9 @@ The service worker handles navigation network failures with a connection notice.
 
 ## Shell and SFTP saved logins
 
-Select a Shell host and enter its SSH username and password in the Connection Settings popup. Check the address and port, then select Connect. Each new Shell session requires fresh credentials. In SFTP, select **Save password** to retain encrypted credentials for the current account, cluster and host.
+Select a Shell host to open Connection Settings. Enter the SSH username and password, check the address and port, and select **Connect**. Select **Save password** to store the credentials encrypted for your i-Clusters account, cluster and host. On the next connection, leave the password blank to use the saved one. Enter a fresh password if you change the address, port or username. Use **Forget saved connection** to remove the saved password. Shell passwords saved with this version have no fixed expiry. Older saved passwords keep their original expiry until saved again with a fresh password.
 
-Each open SFTP session expires after 24 hours and each Shell session after 48 hours, measured from the successful connection to the node, VM or container. Closing a connection, a network interruption or loss of browser activity can end it sooner. The three-dot button below the host status opens its Connection Settings.
+Shell sessions have no fixed duration limit. Inactivity, signing out of i-Clusters, or a remote disconnect can end a session. SFTP sessions expire after 24 hours from the successful connection. The three-dot button below the host status opens Connection Settings for Shell and SFTP.
 
 Saved SFTP passwords have a separate deadline of 48 hours from saving with a fresh password. Reconnecting or editing while reusing the saved password does not extend it. Expired credentials are removed, and sessions based on them reject further requests at the deadline. The cleanup loop disconnects remaining sessions within 15 seconds. The deadline also applies to active SFTP sessions opened with saved credentials. Enter the password again to reconnect. Older records with no reliable save date expire on upgrade. This deadline does not sign out the user's i-Clusters account.
 
