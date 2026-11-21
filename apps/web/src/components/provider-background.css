@@ -14,6 +14,10 @@
   --provider-background: url("/assets/brands/network-background.webp");
 }
 
+[data-provider-background="backups"] {
+  --provider-background: url("/assets/brands/backups-background.webp");
+}
+
 [data-provider-background],
 [data-provider-background] > .content {
   position: relative;
