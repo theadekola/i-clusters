@@ -4,7 +4,7 @@ import {clusterApiPath} from '../cluster-context';
 import {Modal} from './UI';
 import './guest-console.css';
 
-export type ConsoleGuest = {id: string; node: string; name?: string};
+export type ConsoleGuest = {id: string; node: string; name?: string; creationReceipt?: string};
 
 export default function GuestConsole({guest, kind, onClose}: {
   guest: ConsoleGuest; kind: 'qemu' | 'lxc'; onClose: () => void;
@@ -13,6 +13,7 @@ export default function GuestConsole({guest, kind, onClose}: {
   const [attempt, setAttempt] = useState(0);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState('');
+  const [progress, setProgress] = useState('Connecting to Proxmox…');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -27,6 +28,22 @@ export default function GuestConsole({guest, kind, onClose}: {
 
     async function connect() {
       if (!window.isSecureContext) throw new Error('Open i-Clusters over trusted HTTPS to use the guest console.');
+      if (guest.creationReceipt) {
+        setProgress('Creating guest…');
+        while (!controller.signal.aborted) {
+          const {state} = await api<{state: 'creating' | 'starting' | 'ha' | 'stopped' | 'running'}>(
+            `/proxmox/creation/${encodeURIComponent(guest.creationReceipt)}/status`, {signal: controller.signal}
+          );
+          if (controller.signal.aborted) return;
+          if (state === 'running') break;
+          if (state === 'ha') throw new Error('Complete HA setup before starting the new guest.');
+          if (state === 'stopped') throw new Error('Start this guest before opening its Proxmox console.');
+          setProgress(state === 'creating' ? 'Creating guest…' : 'Starting guest…');
+          await new Promise(resolve => window.setTimeout(resolve, 1500));
+        }
+      }
+      if (controller.signal.aborted) return;
+      setProgress('Connecting to Proxmox…');
       const {default: RFB} = await import('@novnc/novnc');
       if (controller.signal.aborted) return;
       const {key, password} = await api<{key: string; password: string}>(
@@ -58,14 +75,14 @@ export default function GuestConsole({guest, kind, onClose}: {
       window.clearTimeout(timeout);
       rfb?.disconnect();
     };
-  }, [kind, guest.node, guest.id, attempt]);
+  }, [kind, guest.node, guest.id, guest.creationReceipt, attempt]);
 
   return <Modal open portal title={guest.name ? `${guest.name} · Proxmox Console` : 'Proxmox Console'} onClose={onClose}>
     <div className="guest-console">
       <div className="guest-console-status">
         <span className="muted">{kind === 'qemu' ? 'VM' : 'CT'} {guest.id} · {guest.node}</span>
         {error ? <p className="login-error" role="alert">{error}</p> :
-          <span role="status">{connected ? 'Connected' : 'Connecting to Proxmox…'}</span>}
+          <span role="status">{connected ? 'Connected' : progress}</span>}
         {error && <button type="button" className="btn secondary" onClick={() => {
           setError('');
           setAttempt(value => value + 1);

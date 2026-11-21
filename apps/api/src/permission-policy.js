@@ -55,6 +55,9 @@ const writes = [
   ['POST', /^\/users$/, 'users.create'], ['POST', /^\/users\/[^/]+\/toggle$/, 'users.manage'],
   ['PUT', /^\/settings$/, 'settings.edit']
 ];
+export function canManageGuest(selection, kind) {
+  return selection == null || selection.includes(kind === 'qemu' ? 'vm.manage' : 'containers.manage');
+}
 // Unclassified routes, interactive shells and cross-area reports must never
 // provide an alternate way around a narrowed account's permissions.
 export function permits(selection, method, url, body = {}, sub) {
@@ -65,6 +68,7 @@ export function permits(selection, method, url, body = {}, sub) {
   if (method === 'GET' || method === 'HEAD') {
     if (path === '/cluster-profiles' || path === '/product/preferences') return true;
     if (path === '/proxmox') return ['cluster','vm','containers'].some(group => has(group + '.view'));
+    if (/^\/proxmox\/creation\/[^/]+\/status$/.test(path)) return has('vm.create') || has('containers.create');
     if (/^\/proxmox\/create-options\/[^/]+$/.test(path)) return has('vm.create') || has('containers.create');
     if (/^\/users\/[^/]+\/(permissions|permission-history)$/.test(path)) return path.split('/')[2] === sub || has('users.view');
     if (['/dashboard','/monitoring','/monitoring/performance','/storage/performance','/discovery','/proxmox/topology-connections','/tasks','/proxmox/tasks'].includes(path))
@@ -86,7 +90,7 @@ export function permits(selection, method, url, body = {}, sub) {
   if (method === 'POST' && /^\/restore\/[^/]+\/run$/.test(path))
     return has('backups.manage') && has('vm.create') && has('containers.create');
   const console = /^\/proxmox\/console\/(qemu|lxc)\/[^/]+\/[^/]+$/.exec(path);
-  if (method === 'POST' && console) return has((console[1] === 'qemu' ? 'vm' : 'containers') + '.manage');
+  if (method === 'POST' && console) return canManageGuest(selection, console[1]);
   const docker = /^\/actions\/docker\/container\/[^/]+\/(start|stop|restart|pause|unpause|remove)$/.exec(path);
   if (method === 'POST' && docker) return has('containers.' + (docker[1]==='remove' ? 'delete' : 'manage'));
   const guest = /^\/actions\/proxmox\/(vm|lxc)\/[^/]+\/(start|stop|shutdown|reboot|reset|suspend|resume|snapshot|clone|delete|delete-snapshot)$/.exec(path);
