@@ -39,12 +39,16 @@ export function request(url, init={}, tls={}) {
   });
 }
 
+export function pveConnectionOptions(config) {
+  const {url,tokenId,tokenSecret,verifyTls,ca}=config;
+  if(!url||!tokenId||!tokenSecret)throw Object.assign(new Error('Proxmox is not configured'),{status:503});
+  return {headers:{Authorization:`PVEAPIToken=${tokenId}=${tokenSecret}`},rejectUnauthorized:verifyTls,...(ca?{ca}:{})};
+}
+
 export async function pve(path, init={}, config=clusterConfig()){
   if(config.accessMode==='monitoring'&&!['GET','HEAD'].includes(String(init.method||'GET').toUpperCase()))throw Object.assign(Error('This Proxmox connection is monitoring-only. Edit the cluster connection to enable management.'),{status:403});
-  const {url:pveUrl,tokenId:pveTokenId,tokenSecret:pveSecret}=config;
-  if(!pveUrl||!pveTokenId||!pveSecret) throw Object.assign(new Error('Proxmox is not configured'),{status:503});
-  const headers={Authorization:`PVEAPIToken=${pveTokenId}=${pveSecret}`,...(init.headers||{})};
-  const res=await request(`${pveUrl}/api2/json${path}`,{...init,headers},{rejectUnauthorized:config.verifyTls, ...(config.ca?{ca:config.ca}:{})});
+  const {headers,...tls}=pveConnectionOptions(config);
+  const res=await request(`${config.url}/api2/json${path}`,{...init,headers:{...headers,...init.headers}},tls);
   const body=await res.json().catch(()=>({}));
   if(!res.ok) throw Object.assign(new Error(body?.errors?JSON.stringify(body.errors):`Proxmox HTTP ${res.status}: ${res.statusText||'Request failed'}`),{status:502,providerStatus:res.status});
   return body.data;

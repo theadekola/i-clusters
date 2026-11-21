@@ -1,3 +1,4 @@
+import {createProxmoxConsole} from './proxmox-console.js';
 import {createAssistantHistory} from './assistant-history.js';
 import {createClusterProfiles} from './cluster-profiles.js';
 import {disconnectCluster} from './cluster-config.js';
@@ -97,7 +98,7 @@ import { request,pve,docker,dockerSnapshot,proxmoxVmAction,proxmoxLxcAction,prox
 import { encode,required,integer,httpError,retention,pveWrite,backupJobs,createBackupJob,runBackupJob,toggleBackupJob,backupArchives,restoreArchive,truenas } from './infrastructure.js';
 
 
-export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:createClusterProfiles(),onClusterAdded=()=>{},onSessionRevoked=closeSessionAccess,authenticate=auth,authorize=requireRole,audit=writeAudit,monitor=liveMonitor,db=pool,configuration=configurationStore,activity=headerNotifications,notificationService=notifier,connectorUpdates=connectorUpdater,autoConnectorUpdates=automaticConnectorUpdates,connectionService=connectionActions,connectorAddress=connectorSSHAddress,guestPermissions=guestPermissionRepair,powerPermissions=powerPermissionSetup,guestConnectionReader=createGuestConnectionReader({config:clusterConfig}),imageUpdates=dockerImageUpdates,imageUpdateInstaller=installDockerImageUpdate,dockerUpdateQuery=docker,operationJournalFile,nodePairing=automaticNodePairing,storageEditor=storageResourceEditor,guestStorageService=guestStorage,storageConfigurationManager=storageConfigurationService}={}){
+export function createApp({guestConsole=createProxmoxConsole(),profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:createClusterProfiles(),onClusterAdded=()=>{},onSessionRevoked=closeSessionAccess,authenticate=auth,authorize=requireRole,audit=writeAudit,monitor=liveMonitor,db=pool,configuration=configurationStore,activity=headerNotifications,notificationService=notifier,connectorUpdates=connectorUpdater,autoConnectorUpdates=automaticConnectorUpdates,connectionService=connectionActions,connectorAddress=connectorSSHAddress,guestPermissions=guestPermissionRepair,powerPermissions=powerPermissionSetup,guestConnectionReader=createGuestConnectionReader({config:clusterConfig}),imageUpdates=dockerImageUpdates,imageUpdateInstaller=installDockerImageUpdate,dockerUpdateQuery=docker,operationJournalFile,nodePairing=automaticNodePairing,storageEditor=storageResourceEditor,guestStorageService=guestStorage,storageConfigurationManager=storageConfigurationService}={}){
 
  const app=express(),readCache=createReadCache(),reportPerformance=createReportPerformance();
  app.use((req,res,next)=>{const started=performance.now();res.on('finish',()=>{if(req.method==='GET'&&req.route?.path)reportPerformance.record(req.route.path,performance.now()-started,res.statusCode)});next()});
@@ -169,6 +170,11 @@ export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:c
  app.use('/api',(req,res,next)=>{if(!['GET','HEAD'].includes(req.method)&&(process.env.ICLUSTERS_CONTROLLER_DATA||process.env.DATA_DIR)&&existsSync((process.env.ICLUSTERS_CONTROLLER_DATA||process.env.DATA_DIR)+'/maintenance.json'))return res.status(503).json({error:'Controller maintenance is in progress. Retry after it completes.'});next();});
  app.use('/api',(req,res,next)=>permits(req.user.permissionKeys,req.method,req.path,req.body,req.user.sub)
    ?next():res.status(403).json({error:'This action is restricted by your account permissions.'}));
+ for(const kind of ['qemu','lxc']){
+  app.post(`/api/proxmox/console/${kind}/:node/:id`,authorize('operator'),(req,res)=>{
+   return guestConsole.start(req,res,audit,kind);
+  });
+ }
  accountPermissionRoutes(app,db,authorize,onSessionRevoked);
  app.use('/api/product',productRouter(db));
  app.use('/api/account',accountSecurityRouter({db,audit,limiter:loginLimiter,onSessionRevoked}));
@@ -261,7 +267,7 @@ export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:c
    const current=clusterConfig(),bound=current.url||current.previousUrl;
    if(process.env.ICLUSTERS_CLUSTER_PROFILE&&!current.url)throw httpError('This cluster connection was removed.',410);
    if(bound&&new URL(bound).origin!==new URL(config.url).origin)throw httpError('Add a separate cluster to connect a different Proxmox endpoint.',409);
-   profiles?.check(config,'default');clusterStore.save(config);await monitor.invalidate();
+   profiles?.check(config,'default');clusterStore.save(config);guestConsole.close();await monitor.invalidate();
    await audit(req,'connection.proxmox.save',config.name,{host:config.host,nodeCount:nodes.length},'success');
    res.json({ok:true,cluster:publicCluster(config),nodes,...(management?{management}:{})});
  });
@@ -272,7 +278,7 @@ export function createApp({profiles=process.env.ICLUSTERS_CLUSTER_PROFILE?null:c
      if(error.status===401)throw httpError('Invalid credentials',403);
      throw error;
    }finally{if(req.body)delete req.body.password}
-   disconnectCluster();await monitor.invalidate();await audit(req,'connection.proxmox.remove','proxmox',{},'success');
+   disconnectCluster();guestConsole.close();await monitor.invalidate();await audit(req,'connection.proxmox.remove','proxmox',{},'success');
    res.json({ok:true,cluster:publicCluster(clusterConfig())});
  });
  const connectionScope=()=>crypto.createHash('sha256').update(JSON.stringify([clusterConfig(),dockerConfig(),['truenas'].map(id=>configuration.resolve(id))])).digest('hex');

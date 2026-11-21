@@ -1,0 +1,23 @@
+.modal.modal:has(.guest-console) {
+  width: min(1080px, 100%);
+}
+.guest-console-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-bottom: 12px;
+}
+.guest-console-status > :first-child {
+  margin-inline-end: auto;
+}
+.guest-console-status p {
+  margin: 0;
+}
+.guest-console-display {
+  height: min(66dvh, 700px);
+  min-height: 180px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #0a1017;
+}

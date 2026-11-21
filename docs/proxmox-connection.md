@@ -31,3 +31,9 @@ Accounts use their installation role by default. An owner can select a non-owner
 The controller must be able to reach each Proxmox endpoint and any SSH targets used for management. Connectors must be able to reach the controller over HTTPS. Back up the entire controller runtime, PostgreSQL database and original encryption secrets together. Additional profiles live under the runtime's `clusters/` directory. The original connection keeps its existing files, URLs and connector addresses.
 
 See the [multi-cluster reporting audit](audits/2026-11-12-multi-cluster-reporting.md) for the page coverage, fixes and steps to compare two endpoints.
+
+### Guest console
+
+Open **Console** on a running VM or LXC container to access its Proxmox display inside i-Clusters. The controller opens the display using the selected cluster's management connection. The Proxmox user and its privilege-separated API token need **VM.Console** on that guest. The console is available before guest networking or SSH is configured. **Shell** opens an SSH session.
+
+The embedded viewer uses [noVNC 1.7.0](https://github.com/novnc/noVNC/tree/v1.7.0), distributed under the [Mozilla Public License 2.0](https://www.mozilla.org/MPL/2.0/).

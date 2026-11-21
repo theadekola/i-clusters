@@ -3,6 +3,7 @@ import http from 'node:http';
 import {randomBytes} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {configurationSchemas} from './runtime-configuration.js';
+import {readConsoleKey,consoleSocketPath,rejectConsoleUpgrade} from './proxmox-console.js';
 import {profilePattern} from './cluster-profiles.js';
 
 const controllerRoute=/^\/(?:auth|account|users|product|updates|cluster-profiles)(?:\/|$)/i;
@@ -87,9 +88,47 @@ export function createClusterWorkers(profiles,controllerDirectory){
       if(!res.headersSent&&!res.destroyed)res.status(error.status||503).json({error:error.message});
     }
   }
+  async function upgrade(id,req,socket,head){
+    if(!profilePattern.test(id)||!profiles.exists(id)||!readConsoleKey(req))
+      return rejectConsoleUpgrade(socket);
+    try{
+      const {port,key}=await ensure(id);
+      if(socket.destroyed)return;
+      const entry=workers.get(id);
+      if(!entry||entry.stopping||!profiles.exists(id))return rejectConsoleUpgrade(socket);
+      entry.requests++;
+      socket.once('close',()=>{
+        entry.requests--;
+        if(!profiles.exists(id))stopWhenIdle(entry);
+      });
+      // Forward only the console handshake to the selected, private cluster worker.
+      const headers={'x-iclusters-worker-key':key,Connection:'Upgrade'};
+      for(const name of ['upgrade','origin','sec-websocket-key','sec-websocket-version','sec-websocket-protocol'])
+        if(req.headers[name])headers[name]=req.headers[name];
+      const upstream=http.request({host:'127.0.0.1',port,path:consoleSocketPath,headers,timeout:5000});
+      upstream.on('upgrade',(response,tunnel,firstBytes)=>{
+        if(socket.destroyed)return tunnel.destroy();
+        tunnel.on('error',()=>socket.destroy());
+        tunnel.once('close',()=>socket.destroy());
+        socket.once('close',()=>tunnel.destroy());
+        socket.write(['HTTP/1.1',response.statusCode,response.statusMessage].join(' ')+'\r\n'+
+          response.rawHeaders.map((value,index)=>value+(index%2?'\r\n':': ')).join('')+'\r\n');
+        if(firstBytes.length)socket.write(firstBytes);
+        if(head.length)tunnel.write(head);
+        tunnel.pipe(socket).pipe(tunnel);
+      });
+      upstream.on('response',reply=>{reply.resume();rejectConsoleUpgrade(socket,reply.statusCode)});
+      upstream.on('timeout',()=>upstream.destroy());
+      upstream.on('error',()=>{if(!socket.destroyed)rejectConsoleUpgrade(socket,502)});
+      socket.once('close',()=>upstream.destroy());
+      upstream.end();
+    }catch{
+      if(!socket.destroyed)rejectConsoleUpgrade(socket,503);
+    }
+  }
   function revoke(user,sessionId){
     for(const {child} of workers.values())if(child.connected)child.send({type:'revoke',user,sessionId},()=>{});
   }
   function close(){closed=true;for(const {child} of workers.values())child.kill()}
-  return {route,sync,revoke,close};
+  return {route,upgrade,sync,revoke,close};
 }

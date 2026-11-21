@@ -3,7 +3,11 @@ import react from '@vitejs/plugin-react';
 import {fileURLToPath} from 'node:url';
 import {localizeSource} from './scripts/i18n-source.mjs';
 
+const apiTarget=process.env.ICLUSTERS_DEV_API_URL||process.env.HOMECLOUD_DEV_API_URL||'http://127.0.0.1:6000';
+
 export default defineConfig({
+ // noVNC checks browser video support when its optional console chunk loads.
+ esbuild:{supported:{'top-level-await':true}},
  resolve:{alias:{'@iclusters/i18n':fileURLToPath(new URL('./src/i18n',import.meta.url))}},
  optimizeDeps:{exclude:['@iclusters/i18n/jsx-runtime','@iclusters/i18n/jsx-dev-runtime']},
  plugins:[{name:'serve-icons-on-demand',apply:'build',enforce:'pre',transform(code,id){
@@ -17,5 +21,8 @@ export default defineConfig({
   configResolved(config){config.optimizeDeps.include=(config.optimizeDeps.include||[]).filter(id=>!id.startsWith('@iclusters/i18n/'))}
  },react({jsxImportSource:'@iclusters/i18n'})],
  build:{rollupOptions:{output:{manualChunks(id){if(id.endsWith('/bundled-icon-images.ts'))return 'system-icons';}}}},
- server:{proxy:{'/api':{target:process.env.ICLUSTERS_DEV_API_URL||process.env.HOMECLOUD_DEV_API_URL||'http://127.0.0.1:6000',changeOrigin:true}}}
+ server:{proxy:{
+  '^/api/(?:cluster-profiles/[^/]+/api/)?proxmox/console/':{target:apiTarget,ws:true},
+  '/api':{target:apiTarget,changeOrigin:true}
+ }}
 });

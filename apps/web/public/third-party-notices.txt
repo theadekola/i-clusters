@@ -1,0 +1,7 @@
+The guest console includes noVNC 1.7.0, copyright The noVNC authors.
+
+The noVNC core is distributed under the Mozilla Public License 2.0.
+License text: https://www.mozilla.org/MPL/2.0/
+Corresponding source and third-party license notices:
+https://github.com/novnc/noVNC/tree/v1.7.0
+https://github.com/novnc/noVNC/blob/v1.7.0/LICENSE.txt
