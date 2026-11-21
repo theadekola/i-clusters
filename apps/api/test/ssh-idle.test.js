@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {shellExpired,updateShellPresence,SHELL_IDLE_MS} from '../src/ssh-idle.js';
+import {shellDeadline,shellExpired,updateShellPresence,SHELL_IDLE_MS} from '../src/ssh-idle.js';
 test('shell expires after twenty minutes of visible inactivity',()=>{
  const s={mode:'shell',touched:0};
  assert.equal(shellExpired(s,SHELL_IDLE_MS-1),false);
@@ -19,4 +19,16 @@ test('screen suspension preserves remaining idle time across mobile or desktop s
 });
 test('SFTP retains its existing keepalive policy',()=>{
  assert.equal(shellExpired({mode:'sftp',touched:0},60001),true);
+});
+
+test('open connections expire at 24 hours for SFTP and 48 hours for Shell despite ongoing activity',()=>{
+ const opened=1000;
+ for(const [mode,hours] of [['sftp',24],['shell',48]]){
+  const expiresAt=shellDeadline(mode,opened);
+  assert.equal(expiresAt,opened+hours*60*60*1000);
+  const session={mode,expiresAt,touched:expiresAt-1};
+  assert.equal(shellExpired(session,expiresAt-1),false);
+  updateShellPresence(session,'hidden',expiresAt-1);
+  assert.equal(shellExpired(session,expiresAt),true);
+ }
 });
