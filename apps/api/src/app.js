@@ -51,11 +51,11 @@ import {apiPolicy} from './api-policy.js';
 import {connectionHealth} from './connection-health.js';
 import {createReadCache} from './read-cache.js';
 import {accountPermissionRoutes} from './account-permissions.js';
-import {permits,permittedInventory} from './permission-policy.js';
+import {canManageGuest,permits,permittedInventory} from './permission-policy.js';
 import {resolveActionApproval} from './action-approval.js';
 import {updateShellPresence} from './ssh-idle.js';
 import {streamShellOutput} from './ssh-stream.js';
-import {flag,creationOptions,registerCreation,completeCreationHa} from './guest-create-options.js';
+import {flag,creationOptions,registerCreation,readCreationStatus,completeCreationHa} from './guest-create-options.js';
 import {bootstrapGuest} from './guest-bootstrap.js';
 import {targetSSHHost} from './ssh-target.js';
 import {openGuestUpdate,closeSessionAccess,writeShellInput,openShellOwner,actionTarget,consumeGrant,connectSSH,shellSession,closeShell,publicSavedSSH,savedSSH,sftpOperation,deleteSavedSSH} from './ssh-access.js';
@@ -480,18 +480,26 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
    if(provider==='docker'&&resourceType==='container')return dockerAction(resourceId,operation,body);
    throw httpError('Unsupported provider/resource');
  },req=>{if(req.params.provider==='docker'&&req.params.resourceType==='container'&&req.params.action==='remove'&&!['admin','owner'].includes(req.user.role))throw httpError('Container removal requires admin access',403);return (req.params.provider==='docker'&&req.params.resourceType==='container'&&['stop','restart','pause','unpause','remove'].includes(req.params.action))||['stop','shutdown','reboot','reset','suspend','delete','delete-snapshot','remove','kill'].includes(req.params.action);});
+ const queueGuestCreation=async(req,kind)=>{
+  const ha=flag(req.body.addHa),openConsole=flag(req.body.openConsole);
+  const start=openConsole&&!ha&&canManageGuest(req.user.permissionKeys,kind==='vm'?'qemu':'lxc');
+  const create=kind==='vm'?proxmoxCreateVm:proxmoxCreateCt;
+  const result=await create(req.body,pve,{start});
+  return ha||openConsole?registerCreation(result,kind,req.user.sub,{ha,openConsole,start}):result;
+ };
+ read('/proxmox/creation/:receipt/status',req=>readCreationStatus(req.params.receipt,req.user.sub,req.user.permissionKeys,pve),'operator');
  read('/proxmox/create-options/:node',req=>creationOptions(req.params.node,pve),'operator');
  action('post','/proxmox/creation/:receipt/ha','admin','proxmox.creation.ha',req=>completeCreationHa(req.params.receipt,req.user.sub,pve),true);
  read('/proxmox/ct-templates/:node',req=>proxmoxCtTemplates(req.params.node),'operator');
  read('/proxmox/installation-media/:node',req=>proxmoxInstallationMedia(req.params.node),'operator');
  action('post','/proxmox/vm','operator','proxmox.vm.create',async req=>{
-   required(req.body.name,'Name');integer(req.body.cores||2,'Cores',1,128);integer(req.body.memory||4096,'Memory MB',128,1048576);integer(req.body.disk||40,'Disk GB',1,65536);if(flag(req.body.addHa)&&!['admin','owner'].includes(req.user.role))throw httpError('HA setup requires admin access',403);const result=await proxmoxCreateVm(req.body);return flag(req.body.addHa)?registerCreation(result,'vm',req.user.sub):result;
+   required(req.body.name,'Name');integer(req.body.cores||2,'Cores',1,128);integer(req.body.memory||4096,'Memory MB',128,1048576);integer(req.body.disk||40,'Disk GB',1,65536);if(flag(req.body.addHa)&&!['admin','owner'].includes(req.user.role))throw httpError('HA setup requires admin access',403);return queueGuestCreation(req,'vm');
  });
  action('post','/proxmox/backup','operator','proxmox.backup',async req=>{required(req.body.storage,'Backup storage');integer(req.body.vmid,'VM ID',100);return {node:req.body.node,task:await proxmoxBackup(req.body)};});
  action('post','/proxmox/ct','operator','proxmox.ct.create',async req=>{
    for(const key of ['name','node','ostemplate','storage'])required(req.body[key],key);
    integer(req.body.cores||2,'Cores',1,128);integer(req.body.memory||1024,'Memory MB',128,1048576);integer(req.body.disk||8,'Disk GB',1,65536);
-   if((flag(req.body.addHa)||!flag(req.body.unprivileged,true))&&!['admin','owner'].includes(req.user.role))throw httpError('HA and privileged containers require admin access',403);const result=await proxmoxCreateCt(req.body);return flag(req.body.addHa)?registerCreation(result,'ct',req.user.sub):result;
+   if((flag(req.body.addHa)||!flag(req.body.unprivileged,true))&&!['admin','owner'].includes(req.user.role))throw httpError('HA and privileged containers require admin access',403);return queueGuestCreation(req,'ct');
  },req=>{const privileged=!flag(req.body.unprivileged,true);if(privileged&&!['admin','owner'].includes(req.user.role))throw httpError('Privileged containers require admin access',403);return privileged;});
  read('/docker/updates',()=>({...imageUpdates.status(selectedAgentHost()),refreshing:!!imageUpdates.status(selectedAgentHost()).checking}));
  action('put','/docker/updates/settings','owner','docker.updates.settings',req=>imageUpdates.settings(req.body));

@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {proxmoxCreateCt} from '../src/connectors.js';
 test('CT creation validates template/root storage, allocates a fresh ID and provisions a stopped unprivileged guest',async()=>{
- const calls=[];const password='fixture-root-password';
+ const calls=[];const password='fixture8';
  const result=await proxmoxCreateCt({name:'test-ct',node:'pve1',ostemplate:'local:vztmpl/debian.tar.zst',storage:'local-lvm',cores:2,memory:1024,disk:8,bridge:'vmbr0',password,sshKey:'ssh-ed25519 TEST'},async(path,init)=>{
   calls.push({path,init});if(path.endsWith('/storage'))return [{storage:'local-lvm',active:1,enabled:1,content:'rootdir'},{storage:'local',active:1,enabled:1,content:'vztmpl'}];
   if(path.includes('/content'))return [{content:'vztmpl',volid:'local:vztmpl/debian.tar.zst'}];return init?'UPID:pve1:create:':123;

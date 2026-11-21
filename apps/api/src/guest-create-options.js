@@ -41,9 +41,40 @@ export async function creationOptions(node,call){
  await Promise.all([['pools','/pools'],['bridges',`/nodes/${encodeURIComponent(node)}/network`],['nextId','/cluster/nextid']].map(async([key,path])=>{try{const value=await call(path);if(key==='nextId'){if(!Number.isInteger(Number(value))||Number(value)<100)throw Error();result.nextId=Number(value);}else if(!Array.isArray(value))throw Error();else result[key]=key==='pools'?value.map(p=>({id:p.poolid})):value.filter(r=>['bridge','OVSBridge'].includes(r.type)).map(r=>({name:r.iface}));}catch{result.errors.push(key+' discovery unavailable. Check Proxmox permissions.');}}));return result;
 }
 const receipts=new Map();
-export function registerCreation(result,kind,user){for(const [id,r]of receipts)if(r.expires<Date.now())receipts.delete(id);const id=crypto.randomUUID();receipts.set(id,{...result,kind,user,expires:Date.now()+1800000,state:'pending',busy:false});return {...result,ha:{state:'pending',receipt:id,message:'Creation is queued. Recheck HA after the creation task completes.'}};}
+export function registerCreation(result,kind,user,{ha=true,openConsole=false,start=false}={}){
+ for(const [id,row] of receipts)if(row.expires<Date.now())receipts.delete(id);
+ const id=crypto.randomUUID();
+ receipts.set(id,{...result,kind,user,ha,openConsole,start,expires:Date.now()+1800000,state:'pending',busy:false});
+ return {...result,
+  ...(openConsole?{creationReceipt:id}:{}),
+  ...(ha?{ha:{state:'pending',receipt:id,message:'Creation is queued. Recheck HA after the creation task completes.'}}:{})
+ };
+}
+function creationReceipt(id,user){
+ const receipt=receipts.get(id);
+ if(!receipt||receipt.expires<=Date.now()||receipt.user!==user)fail('Creation receipt expired or unavailable',404);
+ return receipt;
+}
+export async function readCreationStatus(id,user,permissions,call){
+ const r=creationReceipt(id,user),kind=r.kind==='vm'?'qemu':'lxc';
+ if(!r.openConsole || permissions&&!permissions.includes(r.kind==='vm'?'vm.create':'containers.create'))
+  fail('Creation receipt expired or unavailable',404);
+ if(!r.taskCompleted){
+  const task=await call(`/nodes/${encodeURIComponent(r.node)}/tasks/${encodeURIComponent(r.task)}/status`);
+  if(task?.status==='running')return {state:'creating'};
+  if(task?.status!=='stopped'||task.exitstatus!=='OK')fail('Guest creation failed. Check the Proxmox task history.',409);
+  r.taskCompleted=true;
+  r.startDeadline=Date.now()+60000;
+ }
+ const resources=await call('/cluster/resources');
+ const guest=Array.isArray(resources)&&resources.find(g=>g.node===r.node&&String(g.vmid)===r.vmid&&g.type===kind);
+ if(guest?.status==='running')return {state:'running'};
+ if(guest?.status==='stopped'&&!r.start)return {state:r.ha?'ha':'stopped'};
+ if(Date.now()>=r.startDeadline)fail('The new guest is still unavailable. Check the Proxmox task history.',409);
+ return {state:'starting'};
+}
 export async function completeCreationHa(id,user,call){
- const r=receipts.get(id);if(!r||r.expires<Date.now()||r.user!==user)fail('Creation receipt expired or unavailable',404);if(r.state==='configured')return {state:'configured',message:'HA configured with desired state stopped.'};if(r.busy)fail('HA configuration is already running',409);r.busy=true;
+ const r=creationReceipt(id,user);if(!r.ha)fail('Creation receipt expired or unavailable',404);if(r.state==='configured')return {state:'configured',message:'HA configured with desired state stopped.'};if(r.busy)fail('HA configuration is already running',409);r.busy=true;
  try{const base=`/nodes/${encodeURIComponent(r.node)}`;const task=await call(`${base}/tasks/${encodeURIComponent(r.task)}/status`);if(task.status==='running')return {state:'pending',message:'Creation is still running. Recheck after it completes.'};if(task.status!=='stopped'||task.exitstatus!=='OK')fail('Creation did not complete successfully. Inspect its task; HA was not configured.',409);
   const resources=await call('/cluster/resources');if(!Array.isArray(resources)||!resources.some(g=>g.node===r.node&&String(g.vmid)===String(r.vmid)&&g.type===(r.kind==='vm'?'qemu':'lxc')))fail('New guest placement could not be verified',409);
   const runtime=await call(`${base}/${r.kind==='vm'?'qemu':'lxc'}/${r.vmid}/status/current`);if(runtime.status!=='stopped')fail('The new guest must remain stopped before adding HA. No power action was performed.',409);

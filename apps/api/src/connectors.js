@@ -153,7 +153,7 @@ export async function proxmoxInstallationMedia(node,call=pve){
   }
   return {node,isos,errors};
 }
-export async function proxmoxCreateVm(payload,call=pve){
+export async function proxmoxCreateVm(payload,call=pve,{start=false}={}){
   const node=vmIdentifier(payload.node,'node');
   const storage=vmIdentifier(payload.storage||process.env.PROXMOX_DEFAULT_STORAGE||'local-lvm','disk storage');
   const net0=guestNetwork(payload,'vm'),general=await guestGeneral(payload,call);
@@ -183,7 +183,7 @@ export async function proxmoxCreateVm(payload,call=pve){
     ...hardware.properties,[diskDevice]:[`${storage}:${diskGB}`,...hardware.diskOptions].join(','),
     ide2:iso?`${iso},media=cdrom`:undefined,
     boot:`order=${iso?(bootOrder==='cdrom-first'?`ide2;${diskDevice}`:`${diskDevice};ide2`):diskDevice}`,
-    net0,...general,onboot:0,start:0
+    net0,...general,onboot:0,start:start?1:0
   });
   const task=await call(`/nodes/${encodeURIComponent(node)}/qemu`,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
   return {vmid:String(vmid),node,task,installationReady:Boolean(iso)};
@@ -206,12 +206,12 @@ export async function proxmoxCtTemplates(node,call=pve){
  }catch(e){errors.push(`${store.storage}: ${e.message}`)}
  return {node,templates,errors};
 }
-export async function proxmoxCreateCt(payload,call=pve){
+export async function proxmoxCreateCt(payload,call=pve,{start=false}={}){
  const node=vmIdentifier(payload.node,'node'),storage=vmIdentifier(payload.storage,'root storage');
  const net0=guestNetwork(payload,'ct'),extra=ctExtra(payload),general=await guestGeneral(payload,call);
  const disk=Number(payload.disk??8),cores=Number(payload.cores??2),memory=Number(payload.memory??1024);
  for(const [label,value,min,max] of [['Disk GB',disk,1,65536],['Cores',cores,1,128],['Memory MB',memory,128,1048576]])if(!Number.isInteger(value)||value<min||value>max)throw vmInputError(`Invalid ${label}`);
- if(typeof payload.password!=='string'||payload.password.length<12||payload.password.length>128)throw vmInputError('Initial root password must contain 12 to 128 characters');
+ if(typeof payload.password!=='string'||!payload.password)throw vmInputError('Initial root password is required');
  const template=payload.ostemplate;
  if(typeof template!=='string'||!/^[A-Za-z0-9][A-Za-z0-9_.-]*:vztmpl\/[^,;\s\x00-\x1f]+$/.test(template)||template.split('/').includes('..'))throw vmInputError('Invalid template volume');
  const stores=await call(`/nodes/${encodeURIComponent(node)}/storage`),target=Array.isArray(stores)&&stores.find(s=>s.storage===storage),templateStore=Array.isArray(stores)&&stores.find(s=>s.storage===template.split(':')[0]);
@@ -221,7 +221,7 @@ export async function proxmoxCreateCt(payload,call=pve){
  const files=await call(`/nodes/${encodeURIComponent(node)}/storage/${encodeURIComponent(templateStore.storage)}/content?content=vztmpl`);
  if(!Array.isArray(files)||!files.some(f=>f.content==='vztmpl'&&f.volid===template))throw vmInputError('Template is not available on the selected node');
  const vmid=await allocateGuestId(payload,call);
- const body=form({vmid,hostname:payload.name,ostemplate:template,cores,memory,rootfs:`${storage}:${disk}`,net0,password:payload.password,...extra,...general,start:0,onboot:0,'ssh-public-keys':payload.sshKey||undefined});
+ const body=form({vmid,hostname:payload.name,ostemplate:template,cores,memory,rootfs:`${storage}:${disk}`,net0,password:payload.password,...extra,...general,start:start?1:0,onboot:0,'ssh-public-keys':payload.sshKey||undefined});
  return {vmid:String(vmid),node,task:await call(`/nodes/${encodeURIComponent(node)}/lxc`,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body})};
 }
 export function dockerConfigured(){return !!dockerConfig().url}
