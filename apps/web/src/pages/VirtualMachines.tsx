@@ -1,3 +1,4 @@
+import {useProxmoxTaskNotice} from '../proxmox-task-notice';
 import GuestConsole, {type ConsoleGuest} from '../components/GuestConsole';
 import {vmReadingIssues} from '../vm-reading-issues';
 import {Link} from 'react-router-dom';
@@ -40,8 +41,11 @@ export default function VirtualMachines({navigation,data,role,clusterUrl,refresh
  const {listRef,openShell,selected,setSelected,node,setNode,search,setSearch,status,setStatus,layout,setLayout,page,setPage,rowsPerPage,setRowsPerPage}=useGuestInventory('vm',!!data);
  const [createNode,setCreateNode]=useState(''),[iso,setIso]=useState(''),[media,setMedia]=useState<any>(null),[mediaError,setMediaError]=useState(''),[mediaLoading,setMediaLoading]=useState(false),[mediaRevision,setMediaRevision]=useState(0),[created,setCreated]=useState<any>(null);
  const [operationTarget,setOperationTarget]=useState<any>(null);
- const [modal,setModal]=useState<'create'|'snapshot'|'backup'|null>(null),[pending,setPending]=useState(''),[message,setMessage]=useState(''),[failure,setFailure]=useState('');
+ const [modal,setModal]=useState<'create'|'snapshot'|'backup'|null>(null),[pending,setPending]=useState(''),[failure,setFailure]=useState('');
  useEffect(()=>{if(operator&&params.get('action')==='Create VM'){setModal('create');const next=new URLSearchParams(params);next.delete('action');next.set('tab','Virtual Machines');setParams(next, {replace:true});}},[params.get('action'),operator]);
+ const {notice,report,clear}=useProxmoxTaskNotice(refresh);
+ const message=notice?.message;
+ const noticeFailed=!!(failure||notice?.failed);
  const filtered=useMemo(()=>vms.filter((vm:any)=>(node==='all'||vm.node===node)&&(status==='all'||(vm.powerStatus||vm.status)===status)&&`${vm.id} ${vm.name} ${vm.node}`.toLowerCase().includes(search.toLowerCase())).sort((a:any,b:any)=>Number(a.id)-Number(b.id)),[vms,node,status,search]);
  const pages=Math.max(1,Math.ceil(filtered.length/rowsPerPage)),activePage=selected&&!params.has('page')?Math.floor(Math.max(0,filtered.findIndex((guest:any)=>String(guest.id)===selected))/rowsPerPage)+1:Math.min(page,pages);
  const visible=filtered.slice((activePage-1)*rowsPerPage,activePage*rowsPerPage);
@@ -51,16 +55,16 @@ export default function VirtualMachines({navigation,data,role,clusterUrl,refresh
  const eligibleStorage=storage.filter((s:any)=>s.node===(modal==='backup'?operationTarget?.node:destination)&&s.status==='online'&&String(s.content||'').split(',').includes(modal==='backup'?'backup':'images')&&(modal==='backup'||!['iscsi','iscsidirect'].includes(s.type)));
  const available=guestAvailability(vms),usedMemory=available.memory,totalMemory=available.memoryTotal,usedDisk=available.disk,totalDisk=available.diskTotal;
  const measuredCpu=vms.filter((vm:any)=>vm.nodeAvailable!==false&&vm.status!=='unknown'&&typeof vm.cpu==='number'&&Number.isFinite(vm.cpu)&&vm.cpu>=0),averageCpu=measuredCpu.length?Math.round(measuredCpu.reduce((total:number,vm:any)=>total+vm.cpu,0)/measuredCpu.length):null;
- const run=async(operation:string)=>{if(!current)return;setPending(operation);setFailure('');setMessage('');try{const result:any=await confirmedApi(`/actions/proxmox/vm/${encodeURIComponent(current.id)}/${operation}`,{method:'POST',body:JSON.stringify({node:current.node})});setMessage(result.message||`${operation} submitted.`);await refresh();}catch(e:any){if(isActionCancelled(e))return;setFailure(e.message);}finally{setPending('');}};
- const submit=async(event:any)=>{event.preventDefault();if(modal!=='create'&&(!operationTarget||!vms.some((r:any)=>r.id===operationTarget.id&&r.node===operationTarget.node))){setFailure('The selected guest is no longer available on this node. Close the dialog and select it again.');return;}const form=event.currentTarget,values=Object.fromEntries(new FormData(form));setPending(modal||'');setFailure('');setMessage('');try{let result:any;if(modal==='create'){result=await confirmedApi('/proxmox/vm',{method:'POST',body:JSON.stringify({...values,openConsole:true})});
+ const run=async(operation:string)=>{if(!current)return;setPending(operation);setFailure('');clear();try{const result:any=await confirmedApi(`/actions/proxmox/vm/${encodeURIComponent(current.id)}/${operation}`,{method:'POST',body:JSON.stringify({node:current.node})});report(result,`${operation} submitted.`);await refresh();}catch(e:any){if(isActionCancelled(e))return;setFailure(e.message);}finally{setPending('');}};
+ const submit=async(event:any)=>{event.preventDefault();if(modal!=='create'&&(!operationTarget||!vms.some((r:any)=>r.id===operationTarget.id&&r.node===operationTarget.node))){setFailure('The selected guest is no longer available on this node. Close the dialog and select it again.');return;}const form=event.currentTarget,values=Object.fromEntries(new FormData(form));setPending(modal||'');setFailure('');clear();try{let result:any;if(modal==='create'){result=await confirmedApi('/proxmox/vm',{method:'POST',body:JSON.stringify({...values,openConsole:true})});
  const guest={...result.result,name:values.name};setCreated(guest);setSelected('');
  setConsoleGuest({id:String(guest.vmid),node:guest.node,name:guest.name,creationReceipt:guest.creationReceipt});
- }else if(modal==='snapshot')result=await confirmedApi(`/actions/proxmox/vm/${encodeURIComponent(operationTarget.id)}/snapshot`,{method:'POST',body:JSON.stringify({node:operationTarget.node,name:values.name})});else result=await api('/proxmox/backup',{method:'POST',body:JSON.stringify({node:operationTarget.node,vmid:operationTarget.id,storage:values.storage})});setMessage(result.message||'Task accepted.');setModal(null);await refresh();}catch(e:any){if(isActionCancelled(e))return;setFailure(e.message);}finally{for(const name of ['password','confirmPassword']){const input=form.querySelector(`input[name=${name}]`);if(input)input.value='';}setPending('');}};
+ }else if(modal==='snapshot')result=await confirmedApi(`/actions/proxmox/vm/${encodeURIComponent(operationTarget.id)}/snapshot`,{method:'POST',body:JSON.stringify({node:operationTarget.node,name:values.name})});else result=await api('/proxmox/backup',{method:'POST',body:JSON.stringify({node:operationTarget.node,vmid:operationTarget.id,storage:values.storage})});report(result,'Task accepted.');setModal(null);await refresh();}catch(e:any){if(isActionCancelled(e))return;setFailure(e.message);}finally{for(const name of ['password','confirmPassword']){const input=form.querySelector(`input[name=${name}]`);if(input)input.value='';}setPending('');}};
  const [consoleGuest,setConsoleGuest]=useState<ConsoleGuest|null>(null);
  return <section className="vm-manager guest-inventory">
   <ProxmoxSectionHeader title={<><BrandIcon brand="proxmox" size={24}/>Virtual Machines</>} description="Create, monitor and manage VMs reported by the connected Proxmox cluster." actions={<>{!navigation&&<RefreshButton className="btn secondary" onClick={refresh}><RefreshCw size={14}/>Refresh</RefreshButton>}{operator&&<button className="btn primary" onClick={()=>setModal('create')}>+ Create VM</button>}</>}/>
-  {!current&&(failure||message)&&<p className={failure?'login-error':'vm-message'} role={failure?'alert':'status'}>{failure||message}</p>}
-  {created&&<Card><p role="status">Creation submitted for VM {created.vmid} on {created.node}. Check the console or task history for progress.</p>
+  {!current&&(failure||message)&&<p className={noticeFailed?'login-error':'vm-message'} role={noticeFailed?'alert':'status'}>{failure||message}</p>}
+  {created&&<Card><p>VM {created.vmid} · {created.node}</p>
   <button className="btn secondary" disabled={!operator||!clusterUrl} onClick={()=>setConsoleGuest({id:String(created.vmid),node:created.node,name:created.name,creationReceipt:vms.some((row:any)=>String(row.id)===created.vmid&&row.node===created.node&&row.status==='running')?undefined:created.creationReceipt})}><Monitor size={14}/>Open installation console</button>
   <CreationHa created={created} onUpdate={setCreated}/>
   {created.installationReady&&<p className="muted">After installation, eject the ISO or set disk-first boot in Proxmox.</p>}
@@ -85,7 +89,7 @@ export default function VirtualMachines({navigation,data,role,clusterUrl,refresh
     <Pagination className="vm-pagination" label="VMs" total={filtered.length} page={activePage-1} pageSize={rowsPerPage} onPageChange={next=>setPage(next+1)} onPageSizeChange={setRowsPerPage}/>
    </Card>
    {current&&<Modal open title={current.name} onClose={()=>setSelected('')} closeDisabled={!!pending}>
-    {(failure||message)&&<p className={failure?'login-error':'vm-message'} role={failure?'alert':'status'}>{failure||message}</p>}
+    {(failure||message)&&<p className={noticeFailed?'login-error':'vm-message'} role={noticeFailed?'alert':'status'}>{failure||message}</p>}
     <VmDetails key={`${current.node}:${current.id}`} vm={current} role={role} clusterUrl={clusterUrl} busy={pending} shell={()=>openShell(current)} run={run} console={()=>setConsoleGuest(current)} snapshot={()=>{setOperationTarget({...current});setModal('snapshot')}} backup={()=>{setOperationTarget({...current});setModal('backup')}}/>
    </Modal>}
   </div>
