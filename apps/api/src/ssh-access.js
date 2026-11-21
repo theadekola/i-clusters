@@ -3,7 +3,7 @@ import {verifySSHHostKey} from './ssh-host-trust.js';
 import {passwordAuthentication} from './ssh-password.js';
 import {approvalTargetForPath,resolveActionApproval} from './action-approval.js';
 export {approvalTargetForPath} from './action-approval.js';
-import {shellExpired} from './ssh-idle.js';
+import {shellDeadline,shellExpired} from './ssh-idle.js';
 import {StringDecoder} from 'node:string_decoder';
 import path from 'node:path';
 
@@ -56,7 +56,8 @@ export async function connectSSH(input,user,sessionId){
   if(input.save===false)deleteSavedSSH(user,input.target,mode);
   if(input.save===true)retained=saveSSH(user,input.target,mode,{host:input.host,port,username:input.username,password:input.password,fingerprint:input.fingerprint},retained);
  }catch(error){client.end();throw error;}
- const id=crypto.randomUUID(),s={user,sessionId,target:input.target,host:input.host,credentialsExpireAt:retained?.expiresAt,client,stream,mode:input.mode==='sftp'?'sftp':'shell',output:'',touched:Date.now(),closed:false};sessions.set(id,s);const decoder=new StringDecoder('utf8'),closed=()=>{if(s.closed)return;s.output=(s.output+decoder.end()).slice(-262144);s.closed=true;s.onOutput?.();};if(s.mode==='shell')stream.on('data',d=>{s.output=(s.output+decoder.write(d)).slice(-262144);s.onOutput?.();});stream.on('close',()=>{closed();client.end()});client.on('error',closed);client.on('close',closed);return {id};
+ const openedAt=Date.now();
+ const id=crypto.randomUUID(),s={user,sessionId,target:input.target,host:input.host,expiresAt:shellDeadline(mode,openedAt),credentialsExpireAt:retained?.expiresAt,client,stream,mode,output:'',touched:openedAt,closed:false};sessions.set(id,s);const decoder=new StringDecoder('utf8'),closed=()=>{if(s.closed)return;s.output=(s.output+decoder.end()).slice(-262144);s.closed=true;s.onOutput?.();};if(s.mode==='shell')stream.on('data',d=>{s.output=(s.output+decoder.write(d)).slice(-262144);s.onOutput?.();});stream.on('close',()=>{closed();client.end()});client.on('error',closed);client.on('close',closed);return {id};
 }
 export async function openGuestUpdate(id,user,loginId,resolveHost){
  const parent=shellSession(id,user);
@@ -69,7 +70,7 @@ export async function openGuestUpdate(id,user,loginId,resolveHost){
   const stream=await new Promise((resolve,reject)=>parent.client.exec(guestUpdateCommand,{pty:{term:'xterm-256color',cols:100,rows:28}},(err,ch)=>err?reject(err):resolve(ch)));
   const childId=crypto.randomUUID(),decoder=new StringDecoder('utf8');
   // Releasing this tab must close only its channel, never the original terminal.
-  const child={user,sessionId:loginId,credentialsExpireAt:parent.credentialsExpireAt,mode:'shell',updateChannel:true,client:{end:()=>stream.close()},stream,output:'',closed:false,touched:Date.now()};
+  const child={user,sessionId:loginId,expiresAt:parent.expiresAt,credentialsExpireAt:parent.credentialsExpireAt,mode:'shell',updateChannel:true,client:{end:()=>stream.close()},stream,output:'',closed:false,touched:Date.now()};
   const append=text=>{child.output=(child.output+text).slice(-262144);child.onOutput?.();};
   let tail='';
   stream.on('data',chunk=>{const text=decoder.write(chunk);tail=(tail+text).slice(-512);append(text)});
@@ -84,7 +85,7 @@ export function openShellOwner(id){
  const session=sessions.get(id);
  return session?.mode==='shell'&&!session.closed&&!shellExpired(session)?session.user:undefined;
 }
-export function shellSession(id,user){const s=sessions.get(id);if(!s||s.user!==user)throw failure('SSH session unavailable. Reconnect to continue.',404);if(shellExpired(s)){sessions.delete(id);endSession(s);throw failure('SSH session expired. Enter the password to reconnect.',404);}if(s.mode==='sftp')s.touched=Date.now();return s;}
+export function shellSession(id,user){const s=sessions.get(id);if(!s||s.user!==user)throw failure('SSH session unavailable. Reconnect to continue.',404);if(shellExpired(s)){sessions.delete(id);endSession(s);throw failure('SSH session expired. Enter the password to reconnect.',404);}if(s.mode==='sftp'&&!s.closed)s.touched=Date.now();return s;}
 function endSession(session){
  session.releaseOutput?.();
  const finish=()=>{if(session.mode==='sftp')session.stream.end();else if(!session.updateChannel)session.stream.close();session.client.end()};
@@ -150,7 +151,7 @@ async function stagedWrite(session,destination,input,buffer,offset){
  }finally{row.busy=false;row.touched=Date.now()}
 }
 export async function sftpOperation(id,user,input){
- const session=shellSession(id,user);if(session.mode!=='sftp')throw failure('Not an SFTP session');if(input.action==='keepalive')return {ok:true};const s=session.stream,p=remotePath(input.path||'/');
+ const session=shellSession(id,user);if(session.mode!=='sftp')throw failure('Not an SFTP session');if(session.closed)throw failure('SSH session unavailable. Reconnect to continue.',404);if(input.action==='keepalive')return {ok:true};const s=session.stream,p=remotePath(input.path||'/');
  if(input.action==='list'){const entries=await call(s,'readdir',p);return {path:p,entries:entries.map(e=>({name:e.filename,directory:e.attrs.isDirectory(),link:e.attrs.isSymbolicLink(),size:e.attrs.size,modified:e.attrs.mtime,mode:e.attrs.mode})).sort((a,b)=>Number(b.directory)-Number(a.directory)||a.name.localeCompare(b.name))};}
  if(input.action==='stat'){const stat=await call(s,'lstat',p);return {size:stat.size,file:stat.isFile(),link:stat.isSymbolicLink()};}
  if(input.action==='mkdir'){await call(s,'mkdir',p);return {ok:true};}
