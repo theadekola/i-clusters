@@ -19,6 +19,46 @@ const button=(container,label)=>[...container.querySelectorAll('button')].find(b
 test('VM detail controls are available and Shell routes to the selected target',async()=>{
  const data={errors:[],vms:[{id:'101',node:'pve1',name:'fixture-vm',status:'running'}],nodes:[{name:'pve1'}],storage:[]};const page=await mounted('pages/VirtualMachines.tsx',{data,role:'owner',refresh:async()=>{}},async()=>({config:{},history:[],errors:[]}));try{await page.click(button(page.container,'Details'));for(const label of ['Console','Snapshot','Backup'])assert.ok(button(page.container,label));assert.equal(button(page.container,'Console').disabled,true);await page.click(button(page.container.querySelector('[role=dialog]'),'Shell'));assert.equal(page.container.querySelector('[data-location]').getAttribute('data-location'),'/tools/shell?target=vm%3Apve1%3A101');}finally{await page.close();}
 });
+test('guest task banners clear on completion and show a failure when the exact task fails',async()=>{
+ const accepted='Task accepted. Check task history for completion.';
+ for(const [file,key,kind,exitstatus] of [
+  ['VirtualMachines','vms','vm','OK'],
+  ['LxcContainers','lxc','lxc','WARNINGS: 1'],
+  ['LxcContainers','lxc','lxc','start failed']
+ ]){
+  const id='UPID:pve1:fixture:',taskPath='/tasks/pve1/'+encodeURIComponent(id);
+  const data={errors:[],[key]:[{id:'101',node:'pve1',name:'guest',status:'stopped'}],nodes:[{name:'pve1'}],storage:[]};
+  let reads=0,refreshes=0,poll;
+  const page=await mounted('pages/'+file+'.tsx',{data,role:'owner',refresh:async()=>{refreshes++}},async(path,init)=>{
+   if(path.endsWith('/start')){
+    assert.equal(path,`/actions/proxmox/${kind}/101/start`);
+    assert.equal(init.method,'POST');
+    return {message:accepted,result:{node:'pve1',task:id}};
+   }
+   if(path.startsWith('/tasks/')){
+    assert.equal(path,taskPath);
+    return ++reads===1?{status:'running'}:{status:'stopped',exitstatus};
+   }
+   return {config:{},errors:[]};
+  });
+  const schedule=page.dom.window.setTimeout.bind(page.dom.window);
+  page.dom.window.setTimeout=(callback,delay,...args)=>{
+   if(delay===3000){poll=callback;return 0;}
+   return schedule(callback,delay,...args);
+  };
+  try{
+   await page.click(button(page.container,'Details'));
+   await page.click(button(page.container,'Start'));
+   assert.equal(page.container.querySelector('.vm-message').textContent,accepted);
+   assert.equal(reads,1);
+   await act(async()=>poll());
+   assert.equal(page.container.querySelector('.vm-message'),null);
+   assert.equal(refreshes,2);
+   const alert=page.container.querySelector('[role=dialog] [role=alert]');
+   assert.equal(alert?.textContent,exitstatus==='start failed'?'Proxmox task failed. Check Tasks & Logs.':undefined);
+  }finally{await page.close();}
+ }
+});
 test('CT creation requires an initial password and clears node-dependent root storage',async()=>{
  const data={lxc:[],nodes:[{name:'pve1'},{name:'pve2'}],storage:[{id:'a',node:'pve1',name:'disk-a',status:'online',content:'rootdir'},{id:'b',node:'pve2',name:'disk-b',status:'online',content:'rootdir'}]};
  const page=await mounted('pages/LxcContainers.tsx',{data,role:'operator',refresh:async()=>{}},async()=>({templates:[{volid:'local:vztmpl/debian.tar.zst',storage:'local',name:'debian.tar.zst'}],errors:[]}));
@@ -949,12 +989,13 @@ test('host picker retains the active filter, search and layout when guest status
   });
   await repairField(page, 'Search shell hosts', 'Jelly');
   await page.click(page.container.querySelector('[aria-label="Grid view"]'));
-  const row = page.container.querySelector('[aria-label="Connect to Jellyfin"]');
-  assert.match(row.textContent, /stopped/);
+  const connect = page.container.querySelector('[aria-label="Connect to Jellyfin"]');
+  const row = connect.closest('.shell-host');
+  assert.equal(row.querySelector('.host-status').textContent.trim(), 'stopped');
   status='running';
   await act(async () => { window.dispatchEvent(new Event('iclusters-settings')); await Promise.resolve(); });
-  assert.equal(page.container.querySelector('[aria-label="Connect to Jellyfin"]'),row);
-  assert.match(row.textContent,/running/);
+  assert.equal(page.container.querySelector('[aria-label="Connect to Jellyfin"]'),connect);
+  assert.equal(row.querySelector('.host-status').textContent.trim(), 'running');
   assert.equal(select.value,'Virtual Machines');
   assert.equal(search.value,'Jelly');
   assert.equal(page.container.querySelector('[aria-label="Grid view"]').getAttribute('aria-pressed'),'true');
