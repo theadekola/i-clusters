@@ -27,7 +27,11 @@ async function openProviderConsole({node, id, kind}) {
   const result = await query(base + '/vncproxy', {
     method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body
   });
-  const {ticket, port, password} = result || {};
+  const {ticket, port: proxyPort, password} = result || {};
+  // Proxmox may return the console port as a JSON string.
+  const port = typeof proxyPort === 'string' && proxyPort.length === 4 && /^[0-9]{4}$/.test(proxyPort)
+    ? Number(proxyPort)
+    : proxyPort;
   const legacyPassword = typeof ticket === 'string' && /^(.{8}):PVEVNC:/.exec(ticket)?.[1];
   if (typeof ticket !== 'string' || !ticket || !Number.isInteger(port) || port < 5900 || port > 5999)
     throw problem('Proxmox returned an invalid console ticket.', 502);
