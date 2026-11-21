@@ -55,27 +55,35 @@ function creationReceipt(id,user){
  if(!receipt||receipt.expires<=Date.now()||receipt.user!==user)fail('Creation receipt expired or unavailable',404);
  return receipt;
 }
+const creationSucceeded=task=>task?.status==='stopped'&&
+ (task.exitstatus==='OK'||/^WARNINGS:\s*\d+$/.test(task.exitstatus??''));
+
 export async function readCreationStatus(id,user,permissions,call){
  const r=creationReceipt(id,user),kind=r.kind==='vm'?'qemu':'lxc';
  if(!r.openConsole || permissions&&!permissions.includes(r.kind==='vm'?'vm.create':'containers.create'))
   fail('Creation receipt expired or unavailable',404);
- if(!r.taskCompleted){
+ if(!r.completedTask){
   const task=await call(`/nodes/${encodeURIComponent(r.node)}/tasks/${encodeURIComponent(r.task)}/status`);
   if(task?.status==='running')return {state:'creating'};
-  if(task?.status!=='stopped'||task.exitstatus!=='OK')fail('Guest creation failed. Check the Proxmox task history.',409);
-  r.taskCompleted=true;
-  r.startDeadline=Date.now()+60000;
+  if(task?.status!=='stopped')fail('The new guest is still unavailable. Check the Proxmox task history.',502);
+  r.completedTask??={succeeded:creationSucceeded(task),startDeadline:Date.now()+60000};
  }
  const resources=await call('/cluster/resources');
- const guest=Array.isArray(resources)&&resources.find(g=>g.node===r.node&&String(g.vmid)===r.vmid&&g.type===kind);
+ if(!Array.isArray(resources))fail('The new guest is still unavailable. Check the Proxmox task history.',502);
+ const guest=resources.find(g=>g.node===r.node&&String(g.vmid)===r.vmid&&g.type===kind&&g.lock!=='create');
+ const {succeeded,startDeadline}=r.completedTask;
+ const startupTimedOut=Date.now()>=startDeadline;
+ // Proxmox can create the guest successfully before its automatic start reports an error.
  if(guest?.status==='running')return {state:'running'};
- if(guest?.status==='stopped'&&!r.start)return {state:r.ha?'ha':'stopped'};
- if(Date.now()>=r.startDeadline)fail('The new guest is still unavailable. Check the Proxmox task history.',409);
+ if(guest?.status==='stopped'&&(!r.start||!succeeded||startupTimedOut))
+  return {state:r.ha&&succeeded?'ha':'stopped'};
+ if(!succeeded)fail('Guest creation failed. Check the Proxmox task history.',409);
+ if(startupTimedOut)fail('The new guest is still unavailable. Check the Proxmox task history.',409);
  return {state:'starting'};
 }
 export async function completeCreationHa(id,user,call){
  const r=creationReceipt(id,user);if(!r.ha)fail('Creation receipt expired or unavailable',404);if(r.state==='configured')return {state:'configured',message:'HA configured with desired state stopped.'};if(r.busy)fail('HA configuration is already running',409);r.busy=true;
- try{const base=`/nodes/${encodeURIComponent(r.node)}`;const task=await call(`${base}/tasks/${encodeURIComponent(r.task)}/status`);if(task.status==='running')return {state:'pending',message:'Creation is still running. Recheck after it completes.'};if(task.status!=='stopped'||task.exitstatus!=='OK')fail('Creation did not complete successfully. Inspect its task; HA was not configured.',409);
+ try{const base=`/nodes/${encodeURIComponent(r.node)}`;const task=await call(`${base}/tasks/${encodeURIComponent(r.task)}/status`);if(task?.status==='running')return {state:'pending',message:'Creation is still running. Recheck after it completes.'};if(!creationSucceeded(task))fail('Creation did not complete successfully. Inspect its task; HA was not configured.',409);
   const resources=await call('/cluster/resources');if(!Array.isArray(resources)||!resources.some(g=>g.node===r.node&&String(g.vmid)===String(r.vmid)&&g.type===(r.kind==='vm'?'qemu':'lxc')))fail('New guest placement could not be verified',409);
   const runtime=await call(`${base}/${r.kind==='vm'?'qemu':'lxc'}/${r.vmid}/status/current`);if(runtime.status!=='stopped')fail('The new guest must remain stopped before adding HA. No power action was performed.',409);
   await call('/cluster/ha/resources',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({sid:`${r.kind==='vm'?'vm':'ct'}:${r.vmid}`,state:'stopped'}).toString()});r.state='configured';return {state:'configured',message:'HA configured with desired state stopped. Start the guest through Proxmox HA when ready.'};
