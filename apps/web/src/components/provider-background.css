@@ -6,6 +6,10 @@
   --provider-background: url("/assets/brands/docker-background.webp");
 }
 
+[data-provider-background="storage"] {
+  --provider-background: url("/assets/brands/storage-background.webp");
+}
+
 [data-provider-background],
 [data-provider-background] > .content {
   position: relative;
