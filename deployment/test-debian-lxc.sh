@@ -3,7 +3,9 @@
 set -Eeuo pipefail
 release=${1:?Supply a Debian release}
 case "$release" in 12|13) ;; *) exit 2;; esac
-ct="iclusters-debian-$release"
+snapshotter=${2:-default}
+case "$snapshotter" in default|native) ;; *) exit 2;; esac
+ct="iclusters-debian-$release-$snapshotter"
 work=$(mktemp -d)
 cleanup() {
   local rc=$?
@@ -40,10 +42,18 @@ sudo lxc file push "$work/source.bundle" "$ct/root/source.bundle"
 guest git --version >/dev/null 2>&1 || guest sh -ec 'apt-get update && apt-get install -y git ca-certificates'
 guest git clone --bare /root/source.bundle /root/source.git
 guest git config --system url.file:///root/source.git.insteadOf https://github.com/theadekola/i-clusters.git
+if [[ $snapshotter == native ]]; then
+  guest install -d -m 0755 /etc/docker
+  guest sh -c 'umask 077; printf "%s\n" "$1" > /etc/docker/daemon.json' sh \
+    '{"features":{"containerd-snapshotter":true},"storage-driver":"native"}'
+fi
 guest env DEBIAN_FRONTEND=noninteractive bash /root/install.sh </dev/null
 guest git -C /opt/i-clusters rev-parse HEAD | grep -Fx "$(git rev-parse HEAD)"
 guest grep -Fx 'URIs: https://download.docker.com/linux/debian' /etc/apt/sources.list.d/docker.sources
 guest docker compose version
+if [[ $snapshotter == native ]]; then
+  guest docker info --format '{{.Driver}}' | grep -Fx native
+fi
 guest systemctl is-enabled i-clusters.service iclusters-updater.timer iclusters-updater.path
 
 verify() {
