@@ -133,12 +133,12 @@
   min-inline-size: 0;
 }
 
-/* Confirmations share a centred, scrollable action row across dialog forms. */
+/* Keep dialog actions compact and let longer labels move to another row. */
 :root[data-preset] .modal.modal :is(.modal-actions,.confirmation-actions,.header-actions,
   .ssh-dialog-footer,.vm-create-footer,.storage-edit-actions,.storage-allocation-actions,
   .configuration-actions,.rule-form-actions,.image-popup-actions,.action-row,.cluster-switch-actions) {
   display: flex;
-  flex-flow: row nowrap;
+  flex-flow: row wrap;
   align-items: center;
   justify-content: safe center;
   grid-column: 1 / -1;
@@ -156,11 +156,18 @@
   flex: none;
   width: auto;
   min-height: 44px;
+  padding-inline: 12px;
   background: var(--app-accent-fill) !important;
   color: var(--app-accent-text) !important;
   border-color: var(--app-accent-fill) !important;
   border-radius: var(--app-radius,10px);
   margin-inline: 0;
+}
+:root .modal.modal :is(.modal-actions,.confirmation-actions,.header-actions,.ssh-dialog-footer,
+  .vm-create-footer,.storage-edit-actions,.storage-allocation-actions,.configuration-actions,
+  .rule-form-actions,.image-popup-actions,.action-row,.cluster-switch-actions) > :is(button,a.btn) {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 :root[data-preset][data-theme][data-appearance] :is(.modal button.btn.danger, .content .header-actions > .btn.danger) {
   background: #aa2637 !important;

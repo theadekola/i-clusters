@@ -48,7 +48,7 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
  .modal.modal :is(.btn,input:not([type=checkbox]):not([type=radio]):not([type=hidden]),select){min-block-size:44px}
  .content.content :is(.page-header,.volume-header,.vm-heading,.overview-toolbar) :is(h1,h2){white-space:normal;overflow-wrap:anywhere}
  .content.content .header-actions>.btn{flex:0 1 auto}
- .modal.modal .modal-actions>.btn{flex:1 1 120px}
+ .modal.modal .modal-actions>.btn{flex:0 0 auto}
  .modal.modal .vm-create-review>div{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}
 }
 .content.content .network-container-addresses div{min-inline-size:0;flex-wrap:wrap;white-space:normal}
@@ -310,7 +310,7 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
 
 /* Keep a short prompt compact and let longer SSH forms scroll inside their dialog. */
 .modal.modal:has(.pairing-picker,.ssh-dialog-row,.ssh-connection-form,.confirmation-actions,.guest-restart-sheet,.guest-permission-form,.cluster-switch-target) {
-  width:min(34rem,100%);
+  width:min(32rem,100%);
   max-height:min(44rem,calc(100dvh - 32px));
   scroll-padding-block:12px;
 }
@@ -345,7 +345,7 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
 }
 
 .modal.modal:has(.docker-update-review),
-.modal.modal:has(>p + .modal-actions) {width:min(34rem,100%);max-height:min(44rem,calc(100dvh - 32px))}
+.modal.modal:has(>p + .modal-actions) {width:min(30rem,100%);max-height:min(44rem,calc(100dvh - 32px))}
 .modal.modal .guest-permission-form fieldset {max-block-size:12rem;overflow:auto}
 .modal.modal .docker-update-review > p {margin-block:8px}
 .modal.modal .docker-update-review details > p {margin-block:6px}
