@@ -111,3 +111,57 @@ test('PAM password login approves exact VM and CT power actions without requirin
  try{for(const kind of ['vm','lxc'])for(const action of ['start','shutdown','reboot']){const path=`/actions/proxmox/${kind}/101/${action}`,body={node:'pve'};const result=await connectSSH({host:'127.0.0.1',port:server.address().port,username:'root',password:'correct',fingerprint,target:'node:pve',mode:'authorize',path,method:'POST',body},'alice');assert.ok(result.token);assert.equal(consumeGrant(result.token,'alice','POST',path,body),true);assert.equal(consumeGrant(result.token,'alice','POST',path,body),false);}}
  finally{for(const client of clients)client.end();await new Promise(r=>server.close(r))}
 });
+
+test('Shell diagnoses key-only LXC SSH and uses an authorized key without saving secrets',async()=>{
+ const hostKey=crypto.generateKeyPairSync('rsa',{modulusLength:2048}).privateKey.export({type:'pkcs1',format:'pem'});
+ const passphrase='fixture-key-passphrase';
+ const guestKey=crypto.generateKeyPairSync('rsa',{modulusLength:2048}).privateKey.export({type:'pkcs1',format:'pem',cipher:'aes-128-cbc',passphrase});
+ const publicKey=ssh2.utils.parseKey(guestKey,passphrase).getPublicSSH();
+ const clients=new Set(),attempts=[];
+ const server=new Server({hostKeys:[hostKey]},client=>{
+  clients.add(client);
+  client.on('close',()=>clients.delete(client)).on('error',()=>{});
+  client.on('authentication',ctx=>{
+   attempts.push(ctx.method);
+   if(ctx.method!=='publickey'||ctx.username!=='root'||!ctx.key.data.equals(publicKey))
+    return ctx.reject(['publickey']);
+   if(ctx.signature&&ssh2.utils.parseKey(ctx.key.data).verify(ctx.blob,ctx.signature,ctx.hashAlgo)!==true)
+    return ctx.reject(['publickey']);
+   ctx.accept();
+  });
+  client.on('ready',()=>client.on('session',accept=>{
+   const session=accept();
+   session.on('pty',accept=>accept());
+   session.on('shell',accept=>accept().write('fixture guest shell\n'));
+  }));
+ });
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const fingerprint='SHA256:'+crypto.createHash('sha256').update(ssh2.utils.parseKey(hostKey).getPublicSSH()).digest('base64').replace(/=+$/,'');
+ const directory=fs.mkdtempSync(path.join(os.tmpdir(),'ssh-key-only-'));
+ const originalDirectory=process.env.DATA_DIR;
+ process.env.DATA_DIR=directory;
+ const input={host:'127.0.0.1',port:server.address().port,username:'root',fingerprint,target:'lxc:pve:210',mode:'shell'};
+ try{
+  await assert.rejects(()=>connectSSH({...input,password:'ignored-password'},'alice'),{
+   code:'ssh_authentication_failed',message:/did not offer password login/
+  });
+  assert.deepEqual(attempts,['none']);
+  await assert.rejects(()=>connectSSH({...input,privateKey:guestKey,keyPassphrase:'wrong'},'alice'),/could not be read/);
+  const keyLogin={...input,privateKey:guestKey,keyPassphrase:passphrase};
+  for(const changes of [{save:true},{saved:true},{mode:'sftp'},{mode:'authorize'}])
+   await assert.rejects(()=>connectSSH({...keyLogin,...changes},'alice'),/unsaved Shell login/);
+  const attemptsBeforeKey=attempts.length;
+  await assert.rejects(()=>connectSSH({...keyLogin,fingerprint:'wrong'},'alice'),{status:409});
+  assert.equal(attempts.length,attemptsBeforeKey);
+  const session=await connectSSH(keyLogin,'alice');
+  assert.ok(attempts.includes('publickey'));
+  closeShell(session.id,'alice');
+  assert.equal(savedSSH('alice',input.target),null);
+  assert.ok(!fs.existsSync(path.join(directory,'ssh-connections.json')));
+ }finally{
+  for(const client of clients)client.end();
+  await new Promise(resolve=>server.close(resolve));
+  if(originalDirectory===undefined)delete process.env.DATA_DIR;else process.env.DATA_DIR=originalDirectory;
+  fs.rmSync(directory,{recursive:true,force:true});
+ }
+});

@@ -55,7 +55,9 @@
 .pve-layout-switch {display:inline-flex;flex:none;overflow:hidden;border:1px solid var(--theme-border);border-radius:8px}
 .pve-layout-switch button {min-height:34px;width:38px}
 .pve-layout-switch button[aria-pressed=true] {--filled-action:1;background:var(--app-accent-fill);color:var(--app-accent-text)}
-.modal.modal:has(.node-details,.vm-detail-stack) {width:min(62rem,100%);background:var(--theme-surface,#132439);}
+.modal.modal:has(.node-details,.vm-detail-stack) {background:var(--theme-surface,#132439)}
+.modal.modal:has(.node-details) {width:min(50rem,100%)}
+.modal.modal:has(.vm-detail-stack) {width:min(46rem,100%)}
 .guest-inventory .modal .vm-detail-stack {display:grid;grid-template-columns:minmax(0,1fr)}
 .guest-inventory .vm-workspace {display:block}
 @media (max-width:700px) {

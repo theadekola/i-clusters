@@ -1,23 +1,30 @@
 .mobile-guest-list{display:none}
 .guest-status{border-radius:5px;outline:2px solid transparent}
 .guest-inventory .vm-detail-stack { container: guest-details / inline-size; }
-.guest-inventory .vm-detail-actions,
 .guest-inventory .vm-resource-cards {
  display: grid;
  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
-.guest-inventory .vm-power-actions {
- grid-column: 1 / -1;
- display: grid;
- grid-template-columns: repeat(3, minmax(0, 1fr));
+.guest-inventory .modal :is(.vm-detail-actions,.vm-power-actions) {
+ display: flex;
+ flex-wrap: wrap;
+ align-items: center;
  gap: 7px;
 }
-.content .guest-inventory .vm-detail-actions button {
+.content .guest-inventory .modal .vm-detail-actions > .vm-power-actions { flex: 0 0 100%; }
+.content .guest-inventory .modal .vm-detail-actions button {
  min-inline-size: 0;
- padding-inline: 4px;
- gap: 4px;
+ min-block-size: 40px;
+ padding: 6px 12px;
+ gap: 5px;
  white-space: normal;
  overflow-wrap: anywhere;
+}
+.guest-inventory .modal :is(.vm-detail,.vm-resource) {margin:0}
+.guest-inventory .modal .vm-summary {align-items:start}
+.guest-inventory .modal .vm-os-preview {min-block-size:0;padding:9px;gap:5px}
+@media(pointer:coarse) {
+ .content .guest-inventory .modal .vm-detail-actions button {min-block-size:44px}
 }
 .guest-inventory .vm-detail-actions svg { flex: none; }
 .guest-inventory .vm-resource-cards small {

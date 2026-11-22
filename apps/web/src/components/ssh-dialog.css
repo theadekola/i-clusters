@@ -9,8 +9,10 @@
 .ssh-dialog-row .ssh-password{display:flex;gap:5px}
 .ssh-dialog-row .ssh-password .icon-btn{flex:none;width:38px;min-width:38px}
 .ssh-dialog-footer{grid-column:1/-1;display:flex;justify-content:flex-end;padding-top:4px;border-top:1px solid var(--theme-border)}
-.ssh-dialog-footer .btn{min-height:44px;min-width:130px}
+.ssh-dialog-footer .btn{min-height:44px}
+.ssh-auth-method{display:grid;gap:6px;max-inline-size:15rem}
+.ssh-dialog-row input[type=file]{font-size:inherit;max-inline-size:100%}
 .ssh-target-label{overflow-wrap:anywhere}
 .ssh-fingerprint{background:var(--theme-input);color:var(--theme-text)}
 .ssh-fingerprint code{white-space:normal;word-break:break-all}
-@media(max-width:480px){.modal.modal .ssh-dialog-row.ssh-dialog-row{gap:8px}.ssh-dialog-row>label{font-size:12px}.ssh-dialog-row input:not([type=checkbox]){font-size:16px;padding:9px 8px}.ssh-dialog-footer .btn{width:100%}}
+@media(max-width:480px){.modal.modal .ssh-dialog-row.ssh-dialog-row{gap:8px}.ssh-dialog-row>label{font-size:12px}.ssh-dialog-row input:not([type=checkbox]){font-size:16px;padding:9px 8px}}
