@@ -50,6 +50,54 @@ docker_error() {
   fi
   fail "$1"
 }
+probe_lxc_docker() {
+  docker run --rm --pull=missing --security-opt no-new-privileges busybox:1.37 true
+}
+try_lxc_native_snapshotter() {
+  local config=$1 inventory images candidate
+  if [[ -e $config || -L $config || -n ${DOCKER_HOST:-} || -n ${DOCKER_CONTEXT:-} ]] ||
+     [[ $(docker context show) != default ]]; then
+    echo 'The installer can only change the snapshotter on a fresh local Docker Engine without a daemon.json.' >&2
+    return 1
+  fi
+  inventory=$(docker info --format '{{.Driver}} {{.Containers}} {{.Swarm.LocalNodeState}} {{.DockerRootDir}}') || return 1
+  if [[ $inventory != 'overlayfs 0 inactive /var/lib/docker' ]]; then
+    echo 'The installer can only change the default OverlayFS setup on a Docker Engine with no containers or Swarm membership.' >&2
+    return 1
+  fi
+  inventory=$(docker volume ls --quiet) || return 1
+  images=$(docker image ls --format '{{.Repository}}:{{.Tag}}') || return 1
+  if [[ -n $inventory || ( -n $images && $images != 'busybox:1.37' ) ]]; then
+    echo 'Docker already has volumes or images. Review its storage configuration before retrying.' >&2
+    return 1
+  fi
+
+  install -d -m 0755 -- "$(dirname -- "$config")" || return 1
+  candidate=$(mktemp -- "$config.iclusters.XXXXXXXX") || return 1
+  if ! printf '%s\n' '{"features":{"containerd-snapshotter":true},"storage-driver":"native"}' >"$candidate" ||
+     ! dockerd --validate --config-file "$candidate" ||
+     ! ln -- "$candidate" "$config"; then
+    rm -f -- "$candidate"
+    return 1
+  fi
+
+  echo 'OverlayFS mounts are blocked in this CT. Retrying the Docker check with the native snapshotter, which uses more disk space.'
+  if systemctl restart docker &&
+     [[ $(docker info --format '{{.Driver}}') == native ]] &&
+     probe_lxc_docker; then
+    rm -f -- "$candidate"
+    echo 'Docker started the test container with the native snapshotter.'
+    return 0
+  fi
+
+  # Restore startup defaults only while the file still belongs to this attempt.
+  if [[ $config -ef $candidate ]]; then
+    rm -f -- "$config"
+    systemctl restart docker || echo 'Could not restart Docker after restoring its previous configuration.' >&2
+  fi
+  rm -f -- "$candidate"
+  return 1
+}
 [[ ! -e /opt/homecloud-hub ]] || fail 'An existing installation must be upgraded, not reinstalled.'
 [[ ! -e /opt/i-clusters ]] || fail '/opt/i-clusters already exists. Use sudo iclusters update for an existing installation.'
 [[ ! -e /usr/local/bin/iclusters && ! -e /etc/systemd/system/i-clusters.service ]] || fail 'i-Clusters command or service already exists.'
@@ -102,8 +150,14 @@ systemctl start docker || docker_error 'Docker service failed to start.'
 docker info >/dev/null || docker_error 'Docker Engine is unavailable.'
 if [[ $guest_type == lxc ]]; then
   # A running daemon alone does not verify nested mounts and container startup.
-  docker run --rm --pull=missing --security-opt no-new-privileges busybox:1.37 true ||
-    docker_error 'The nested Docker container check failed. Review the Docker error above before retrying the installer.'
+  if ! probe_output=$(probe_lxc_docker 2>&1); then
+    printf '%s\n' "$probe_output" >&2
+    if [[ $probe_output != *'/tmp/containerd-mount'* || $probe_output != *'fstype: overlay'* ||
+          ( $probe_output != *'permission denied'* && $probe_output != *'operation not permitted'* ) ]] ||
+       ! try_lxc_native_snapshotter /etc/docker/daemon.json; then
+      docker_error 'The nested Docker container check failed. Review the Docker error above before retrying the installer.'
+    fi
+  fi
 fi
 install -d -m 0755 /opt
 stage=$(mktemp -d /opt/iclusters-install.XXXXXXXX)
