@@ -19,6 +19,8 @@ const upstream=http.createServer(async(req,res)=>{
   '/api2/json/nodes/pve1/storage/local/content?content=vztmpl':[{content:'vztmpl',volid:'local:vztmpl/debian.tar.zst'}],
   '/api2/json/nodes/pve1/qemu':'UPID:fixture',
   '/api2/json/nodes/pve1/lxc':'UPID:fixture',
+  '/api2/json/nodes/pve1/lxc/210/interfaces':[{name:'lo',inet:'127.0.0.1/8'},{name:'docker0',inet:'172.17.0.1/16'},{name:'eth0',inet:'192.0.2.210/24'}],
+  '/api2/json/nodes/pve1/qemu/100/agent/network-get-interfaces':{result:[{name:'eth0','ip-addresses':[{'ip-address':'192.0.2.100'}]}]},
   '/api2/json/nodes/pve1/tasks/UPID%3Afixture/status':task,
   '/api2/json/cluster/resources':guests
  };res.end(JSON.stringify({data:responses[req.url]}));
@@ -109,6 +111,20 @@ try{
   assert.equal(limited.form.get('start'),'0');
   assert.deepEqual(await (await limited.status()).json(),{state:'stopped'});
   assert.equal((await limited.status({'x-test-permissions':'containers.view,containers.create'})).status,404);
+ });
+
+ await test('Shell discovers a guest SSH address from Proxmox runtime interfaces alone',async()=>{
+  const previous=calls.length;
+  const headers={'x-test-role':'admin','x-iclusters-docker-host':'unavailable-fixture'};
+  for(const [kind,id,host] of [['vm',100,'192.0.2.100'],['lxc',210,'192.0.2.210']]){
+   const response=await fetch(base+`/proxmox/${kind}/pve1/${id}/details?view=ssh`,{headers});
+   assert.equal(response.status,200);
+   assert.deepEqual(await response.json(),{host});
+  }
+  assert.deepEqual(calls.slice(previous).map(r=>r.url),[
+   '/api2/json/nodes/pve1/qemu/100/agent/network-get-interfaces',
+   '/api2/json/nodes/pve1/lxc/210/interfaces'
+  ]);
  });
 
 }finally{await Promise.all([new Promise(resolve=>server.close(resolve)),new Promise(resolve=>upstream.close(resolve))]);fs.rmSync(process.env.DATA_DIR,{recursive:true,force:true});}

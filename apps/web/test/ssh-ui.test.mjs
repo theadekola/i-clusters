@@ -51,10 +51,35 @@ test('SFTP retry UI excludes completed uploads and keeps destination after folde
 });
 
 test('Shell target links open a login dialog for the exact node VM or CT',async()=>{
- for(const target of ['node:pve','vm:pve:100','lxc:pve:130']){const calls=[];const page=await mounted('pages/Shell.tsx',{},async(p,init)=>{calls.push({p,init});if(p==='/proxmox')return {nodes:[{name:'pve',ip:'192.0.2.10'}],vms:[{id:'100',name:'vm-fixture',node:'pve'}],lxc:[{id:'130',name:'ct-fixture',node:'pve'}]};if(p==='/ssh/connect')return {id:'session-'+target};if(p.startsWith('/ssh/session/'))return {output:'',closed:false};return {}},true,false,['/tools/shell?target='+encodeURIComponent(target)]);try{await act(async()=>{await tick()});const connections=calls.filter(c=>c.p==='/ssh/connect');assert.equal(connections.length,0);assert.ok(page.container.querySelector('[role=dialog]')?.textContent.includes(target));assert.equal(page.container.querySelector('[name=save]').checked,false);}finally{await page.close();}}
+ for(const [target,lookup,host] of [
+  ['node:pve',null,'192.0.2.10'],
+  ['vm:pve:100','/proxmox/vm/pve/100/details?view=ssh','192.0.2.100'],
+  ['lxc:pve:130','/proxmox/lxc/pve/130/details?view=ssh','192.0.2.130']
+ ]){
+  const calls=[];
+  const page=await mounted('pages/Shell.tsx',{},async path=>{
+   calls.push(path);
+   if(path==='/proxmox')return {
+    nodes:[{name:'pve',ip:'192.0.2.10'}],
+    vms:[{id:'100',name:'vm-fixture',node:'pve'}],
+    lxc:[{id:'130',name:'ct-fixture',node:'pve'}]
+   };
+   if(path===lookup)return {host};
+   return {};
+  },true,false,['/tools/shell?target='+encodeURIComponent(target)]);
+  try{
+   assert.equal(calls.includes('/ssh/connect'),false);
+   assert.equal(calls.some(path=>path.startsWith('/docker')),false);
+   if(lookup)assert.ok(calls.includes(lookup));
+   const dialog=page.container.querySelector('[role=dialog]');
+   assert.match(dialog.textContent,new RegExp(target));
+   assert.equal(dialog.querySelector('[name=save]').checked,false);
+   assert.equal(dialog.querySelector('[name=host]').value,host);
+  }finally{await page.close();}
+ }
 });
 
-test('Shell popup saves and reuses a password without filling it in, and can forget it',async()=>{
+test('Shell saves a password, reconnects without a popup, and keeps settings editable',async()=>{
  let metadata={},serial=0;
  const requests=[];
  const target='node:pve',host='192.0.2.10',fingerprint='SHA256:fixture';
@@ -66,7 +91,7 @@ test('Shell popup saves and reuses a password without filling it in, and can for
    const body=JSON.parse(options.body);
    requests.push(body);
    if(body.save)metadata={[target]:{host,port:22,username:'root',hasPassword:true,fingerprint}};
-   return {id:'fixture-'+ ++serial};
+   return {id:'fixture-'+ ++serial,host};
   }
   if(path==='/ssh/connections'&&options?.method==='DELETE'){
    assert.deepEqual(JSON.parse(options.body),{target,mode:'shell'});
@@ -84,6 +109,7 @@ test('Shell popup saves and reuses a password without filling it in, and can for
  };
  const submit=()=>page.click(button('Connect'));
  const close=()=>page.click(page.container.querySelector('[aria-label="Close pve session"]'));
+ const settings=()=>page.click(page.container.querySelector('[aria-label="Connection settings for pve"]'));
  try{
   await open();
   assert.equal(control('save').checked,false);
@@ -97,22 +123,59 @@ test('Shell popup saves and reuses a password without filling it in, and can for
   assert.ok(page.container.querySelector('[role=tab]'));
   await close();
   await open();
+  assert.ok(page.container.querySelector('[role=tab]'));
+  assert.equal(form(),null);
+  assert.deepEqual(requests[1],{saved:true,mode:'shell',target});
+  await close();
+  await settings();
   assert.equal(control('password').value,'');
   assert.equal(control('password').required,false);
   await change(page,control('username'),'someone-else');
   assert.equal(control('password').required,true);
   await change(page,control('username'),'root');
-  await submit();
-  assert.equal(requests[1].password,'');
-  assert.equal(requests[1].useSavedPassword,true);
-  await close();
-  await open();
+  assert.equal(control('password').required,false);
   await page.click(button('Forget saved connection'));
   assert.equal(control('password').required,true);
   assert.equal(control('save').checked,false);
   assert.equal(button('Forget saved connection'),undefined);
   assert.deepEqual(metadata,{});
+  assert.equal(requests.length,2);
  }finally{await page.close();}
+});
+
+test('saved VM and LXC connections use direct SSH and rejected LXC credentials reopen the popup',async()=>{
+ for(const fail of [false,true]){
+  const target=fail?'lxc:pve:210':'vm:pve:100',host='192.0.2.21';
+  const requests=[];
+  const page=await mounted('pages/Shell.tsx',{},async(path,options)=>{
+   requests.push({path,body:options?.body&&JSON.parse(options.body)});
+   if(path==='/proxmox')return {vms:[{id:'100',name:'vm',node:'pve',status:'running'}],lxc:[{id:'210',name:'ct',node:'pve',status:'running'}]};
+   if(path==='/ssh/connections?mode=shell')return {[target]:{host,port:22,username:'root',hasPassword:true}};
+   if(path==='/ssh/connect'){
+    if(fail)throw Object.assign(Error('SSH login failed.'),{status:422,body:{code:'ssh_authentication_failed'}});
+    return {id:'saved-guest',host};
+   }
+   if(path==='/ssh/fingerprint')return {fingerprint:'SHA256:fixture'};
+   if(path.startsWith('/ssh/session/'))return {output:'',closed:false};
+   assert.fail('Unexpected lookup: '+path);
+  });
+  try{
+   await page.click(page.container.querySelector('[aria-label="Connect to '+(fail?'ct':'vm')+'"]'));
+   assert.deepEqual(requests.filter(r=>r.path==='/ssh/connect').map(r=>r.body),[{saved:true,mode:'shell',target}]);
+   if(fail){
+    const dialog=page.container.querySelector('[role=dialog]');
+    assert.match(dialog.textContent,/SSH login failed/);
+    assert.match(dialog.textContent,/Open Proxmox Console/);
+    assert.equal(dialog.querySelector('[name=host]').value,host);
+    assert.equal(dialog.querySelector('[name=password]').value,'');
+    assert.equal(dialog.querySelector('[name=password]').required,true);
+   }else{
+    assert.ok(page.container.querySelector('[role=tab]'));
+    assert.equal(page.container.querySelector('[role=dialog]'),null);
+    assert.equal(requests.some(r=>r.path==='/ssh/fingerprint'),false);
+   }
+  }finally{await page.close();}
+ }
 });
 
 test('node VM and CT terminal views render streamed output immediately and abort readers on unmount',async()=>{
@@ -197,7 +260,7 @@ test('late password response from a cancelled dialog cannot approve the next ide
 
 test('SSH login failures stay visible beside the submit control and allow retry',async()=>{
  const page=await mounted('components/SSHAccess.tsx',{target:'vm:pve:106',host:'192.0.2.106',onConnected(){assert.fail('Failed login cannot connect')}},async(p)=>{if(p==='/ssh/fingerprint')return {fingerprint:'SHA256:fixture'};throw Error('SSH login failed. Check the username and password for this target. The account must allow SSH password login.');},true,false,['/'],'SSHLogin');
- try{await act(async()=>{await new Promise(r=>setTimeout(r,300))});const form=page.container.querySelector('form');form.querySelector('[name=username]').value='ubuntu';form.querySelector('[name=password]').value='fixture-secret';await act(async()=>{form.dispatchEvent(new page.dom.window.Event('submit',{bubbles:true,cancelable:true}));await tick()});const error=form.querySelector('[role=alert]');assert.match(error.textContent,/Check the username and password/);assert.ok(form.querySelector('.ssh-host-status').compareDocumentPosition(error)&page.dom.window.Node.DOCUMENT_POSITION_FOLLOWING);assert.ok(error.compareDocumentPosition(form.querySelector('.ssh-dialog-footer'))&page.dom.window.Node.DOCUMENT_POSITION_FOLLOWING);assert.equal(form.querySelector('button.btn').disabled,false);assert.ok(form.textContent.includes('sudo account'));
+ try{await act(async()=>{await new Promise(r=>setTimeout(r,300))});const form=page.container.querySelector('form');form.querySelector('[name=username]').value='ubuntu';form.querySelector('[name=password]').value='fixture-secret';await act(async()=>{form.dispatchEvent(new page.dom.window.Event('submit',{bubbles:true,cancelable:true}));await tick()});const error=form.querySelector('[role=alert]');assert.match(error.textContent,/Check the username and password/);assert.ok(form.querySelector('.ssh-host-status').compareDocumentPosition(error)&page.dom.window.Node.DOCUMENT_POSITION_FOLLOWING);assert.ok(error.compareDocumentPosition(form.querySelector('.ssh-dialog-footer'))&page.dom.window.Node.DOCUMENT_POSITION_FOLLOWING);assert.equal(form.querySelector('button.btn').disabled,false);assert.match(form.textContent,/Linux account with SSH access/);
  }finally{await page.close()}
 });
 
