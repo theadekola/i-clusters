@@ -18,16 +18,24 @@ async function openProviderConsole({node, id, kind}) {
     throw problem('Enable management on this Proxmox connection to open a console.', 403);
   const connection = pveConnectionOptions(config);
   const query = (path, init) => pve(path, init, config);
-  const guest = await assertGuestPlacement(node, id, kind, query);
-  if (guest.status !== 'running')
-    throw problem('Start this guest before opening its Proxmox console.', 409);
+  const nodeConsole = kind === 'node';
+  if (nodeConsole) {
+    const nodes = await query('/nodes');
+    const target = Array.isArray(nodes) && nodes.find(row => row.node === node);
+    if (!target) throw problem('The requested host is not present in the connected cluster.', 404);
+    if (target.status !== 'online') throw problem('The Proxmox node is offline.', 409);
+  } else {
+    const guest = await assertGuestPlacement(node, id, kind, query);
+    if (guest.status !== 'running')
+      throw problem('Start this guest before opening its Proxmox console.', 409);
+  }
 
-  const base = `/nodes/${encodeURIComponent(node)}/${kind}/${encodeURIComponent(id)}`;
-  const body = new URLSearchParams({websocket: '1'});
-  const result = await query(base + '/vncproxy', {
+  const base = `/nodes/${encodeURIComponent(node)}` + (nodeConsole ? '' : `/${kind}/${encodeURIComponent(id)}`);
+  const body = new URLSearchParams(nodeConsole ? {cmd: 'login'} : {websocket: '1'});
+  const result = await query(base + (nodeConsole ? '/termproxy' : '/vncproxy'), {
     method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body
   });
-  const {ticket, port: proxyPort, password} = result || {};
+  const {ticket, port: proxyPort, password, user} = result || {};
   // Proxmox may return the console port as a JSON string.
   const port = typeof proxyPort === 'string' && proxyPort.length === 4 && /^[0-9]{4}$/.test(proxyPort)
     ? Number(proxyPort)
@@ -35,12 +43,14 @@ async function openProviderConsole({node, id, kind}) {
   const legacyPassword = typeof ticket === 'string' && /^(.{8}):PVEVNC:/.exec(ticket)?.[1];
   if (typeof ticket !== 'string' || !ticket || !Number.isInteger(port) || port < 5900 || port > 5999)
     throw problem('Proxmox returned an invalid console ticket.', 502);
+  if (nodeConsole && (typeof user !== 'string' || !user || /[:\r\n]/.test(user) || /[\r\n]/.test(ticket)))
+    throw problem('Proxmox returned an invalid console ticket.', 502);
   const url = new URL(config.url + '/api2/json' + base + '/vncwebsocket');
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
   url.search = new URLSearchParams({port, vncticket: ticket});
 
   return new Promise((resolve, reject) => {
-    const upstream = new WebSocket(url, {
+    const upstream = new WebSocket(url, nodeConsole ? ['binary'] : [], {
       ...connection, handshakeTimeout: 8000, perMessageDeflate: false, maxPayload
     });
     upstream.on('error', reject);
@@ -50,17 +60,30 @@ async function openProviderConsole({node, id, kind}) {
     });
     upstream.once('open', () => {
       upstream.pause();
+      if (nodeConsole) {
+        // Proxmox termproxy expects its ticket before the terminal protocol begins.
+        upstream.send(`${user}:${ticket}\n`, error => {
+          if (error) {
+            upstream.terminate();
+            reject(error);
+          } else resolve({upstream});
+        });
+        return;
+      }
       resolve({upstream, password: typeof password === 'string' ? password : legacyPassword || ticket});
     });
   });
 }
 
-function publicError(error) {
+function publicError(error, kind) {
   if (error.providerStatus === 401) return problem('Proxmox rejected the cluster API token. Check the connection credentials in Settings and try again.', 502);
-  if (error.providerStatus === 403) return problem('Proxmox denied console access. Check that the connected user and API token have VM.Console on this guest.', 403);
+  if (error.providerStatus === 403) return problem(kind === 'node'
+    ? 'Proxmox denied console access. Check that the connected user and API token have Sys.Console on this node.'
+    : 'Proxmox denied console access. Check that the connected user and API token have VM.Console on this guest.', 403);
   if (/CERT|TLS/.test(error.code || '')) return problem('The controller could not verify the Proxmox certificate. Check the cluster connection’s TLS settings.', 502);
   if (error.status && !error.providerStatus) return error;
-  return problem('The controller could not open the Proxmox console. Check the guest and cluster connection, then try again.', 502);
+  return problem(kind === 'node' ? 'The controller could not open the Proxmox node console. Check the cluster connection, then try again.'
+    : 'The controller could not open the Proxmox console. Check the guest and cluster connection, then try again.', 502);
 }
 
 export function rejectConsoleUpgrade(socket, status = 404) {
@@ -104,13 +127,13 @@ export function createProxmoxConsole({connect = openProviderConsole} = {}) {
       upstream.once('error', () => close(entry));
       upstream.once('close', () => close(entry));
       entry.timer = setTimeout(() => close(entry), 8000).unref();
-      await audit(req, 'proxmox.console.open', `${kind}:${node}:${id}`, {}, 'success');
+      await audit(req, 'proxmox.console.open', id === undefined ? `${kind}:${node}` : `${kind}:${node}:${id}`, {}, 'success');
       if (res.destroyed) return close(entry);
       if (!sessions.has(key)) throw problem('The console session ended before it could open. Try again.', 409);
       res.set('Cache-Control', 'no-store').json({key, password});
     } catch (error) {
       close(entry);
-      throw publicError(error);
+      throw publicError(error, kind);
     }
   }
 

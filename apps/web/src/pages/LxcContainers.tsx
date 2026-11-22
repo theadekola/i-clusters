@@ -1,5 +1,4 @@
 import {useProxmoxTaskNotice} from '../proxmox-task-notice';
-import GuestConsole, {type ConsoleGuest} from '../components/GuestConsole';
 import {Link} from 'react-router-dom';
 import {ProxmoxResourceCard, LayoutSwitch} from '../components/ProxmoxResourceCard';
 import {MobileGuestList,GuestStatus,useGuestInventory} from '../components/GuestInventory';
@@ -14,7 +13,6 @@ import {cardValue} from '../components/ReportLoading';
 import ReportLoading from '../components/ReportLoading';
 import Pagination from '../components/Pagination';
 import {OSIcon} from '../components/BrandIcon';
-import {CreationHa} from '../components/GuestCreateFields';
 import {inventoryComplete} from '../proxmox-state';
 import {useEffect,useMemo,useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
@@ -33,10 +31,10 @@ export default function LxcContainers({navigation,data,role,clusterUrl,refresh,l
 
  const [params,setParams]=useSearchParams();
  const containers=data?.lxc||[],nodes=data?.nodes||[],storage=data?.storage||[],operator=['operator','admin','owner'].includes(role||'');
- const {listRef,openShell,selected,setSelected,node,setNode,search,setSearch,status,setStatus,layout,setLayout,page,setPage,rowsPerPage,setRowsPerPage}=useGuestInventory('lxc',!!data);
+ const {listRef,openShell,openConsole,selected,setSelected,node,setNode,search,setSearch,status,setStatus,layout,setLayout,page,setPage,rowsPerPage,setRowsPerPage}=useGuestInventory('lxc',!!data);
  const [createNode,setCreateNode]=useState(''),[templates,setTemplates]=useState<any>(null),[templateError,setTemplateError]=useState(''),[templateLoading,setTemplateLoading]=useState(false),[templateRevision,setTemplateRevision]=useState(0);
  const [operationTarget,setOperationTarget]=useState<any>(null);
- const [modal,setModal]=useState<'create'|'snapshot'|'backup'|null>(null),[pending,setPending]=useState(''),[failure,setFailure]=useState(''),[created,setCreated]=useState<any>(null);
+ const [modal,setModal]=useState<'create'|'snapshot'|'backup'|null>(null),[pending,setPending]=useState(''),[failure,setFailure]=useState('');
  useEffect(()=>{if(operator&&params.get('action')==='Create CT'){setModal('create');const next=new URLSearchParams(params);next.delete('action');next.set('tab','LXC Containers');setParams(next, {replace:true});}},[params.get('action'),operator]);
  const {notice,report,clear}=useProxmoxTaskNotice(refresh);
  const message=notice?.message;
@@ -52,17 +50,14 @@ export default function LxcContainers({navigation,data,role,clusterUrl,refresh,l
  const measuredCpu=containers.filter((ct:any)=>ct.nodeAvailable!==false&&ct.status!=='unknown'&&typeof ct.cpu==='number'&&Number.isFinite(ct.cpu)&&ct.cpu>=0),averageCpu=measuredCpu.length?Math.round(measuredCpu.reduce((total:number,ct:any)=>total+ct.cpu,0)/measuredCpu.length):null;
  const run=async(operation:string)=>{if(!current)return;setPending(operation);setFailure('');clear();try{const result:any=await confirmedApi(`/actions/proxmox/lxc/${encodeURIComponent(current.id)}/${operation}`,{method:'POST',body:JSON.stringify({node:current.node})});report(result,`${operation} submitted.`);await refresh();}catch(e:any){if(isActionCancelled(e))return;setFailure(e.message);}finally{setPending('');}};
  const submit=async(event:any)=>{event.preventDefault();if(modal!=='create'&&(!operationTarget||!containers.some((r:any)=>r.id===operationTarget.id&&r.node===operationTarget.node))){setFailure('The selected guest is no longer available on this node. Close the dialog and select it again.');return;}const form=event.currentTarget,values=Object.fromEntries(new FormData(form));setPending(modal||'');setFailure('');clear();try{let result:any;if(modal==='create'){result=await confirmedApi('/proxmox/ct',{method:'POST',body:JSON.stringify({...values,openConsole:true})});
- const guest={...result.result,name:values.name};setCreated(guest);setSelected('');
- setConsoleGuest({id:String(guest.vmid),node:guest.node,name:guest.name,creationReceipt:guest.creationReceipt});
+ const guest=result.result;
+ setModal(null);
+ openConsole({id:String(guest.vmid),node:guest.node,name:String(values.name)},guest);
+ return;
  }else if(modal==='snapshot')result=await confirmedApi(`/actions/proxmox/lxc/${encodeURIComponent(operationTarget.id)}/snapshot`,{method:'POST',body:JSON.stringify({node:operationTarget.node,name:values.name})});else result=await api('/proxmox/backup',{method:'POST',body:JSON.stringify({node:operationTarget.node,vmid:operationTarget.id,storage:values.storage})});report(result,'Task accepted.');setModal(null);await refresh();}catch(e:any){if(isActionCancelled(e))return;setFailure(e.message);}finally{for(const name of ['password','confirmPassword']){const input=form.querySelector(`input[name=${name}]`);if(input)input.value='';}setPending('');}};
- const [consoleGuest,setConsoleGuest]=useState<ConsoleGuest|null>(null);
  return <section className="vm-manager guest-inventory">
   <ProxmoxSectionHeader title={<><BrandIcon brand="proxmox" size={24}/>LXC Containers</>} description="Create, monitor and manage containers reported by the connected Proxmox cluster." actions={<>{!navigation&&<RefreshButton className="btn secondary" onClick={refresh}><RefreshCw size={14}/>Refresh</RefreshButton>}{operator&&<button className="btn primary" onClick={()=>setModal('create')}>+ Create Container</button>}</>}/>
   {!current&&(failure||message)&&<p className={noticeFailed?'login-error':'vm-message'} role={noticeFailed?'alert':'status'}>{failure||message}</p>}
-  {created&&<Card><p>CT {created.vmid} · {created.node}</p>
-  <button className="btn secondary" disabled={!operator||!clusterUrl} onClick={()=>setConsoleGuest({id:String(created.vmid),node:created.node,name:created.name,creationReceipt:containers.some((row:any)=>String(row.id)===created.vmid&&row.node===created.node&&row.status==='running')?undefined:created.creationReceipt})}><Monitor size={14}/>Open console</button>
-  <CreationHa created={created} onUpdate={setCreated}/>
-  </Card>}
   <div className="vm-stats metric-grid">
    <CtStat reading={{loading,data:loading&&!data?.sampledAt?null:data}} icon={Box} label="Total Containers" value={(data?.resourceInventoryComplete===true||inventoryComplete(data))?containers.length:loading||data?.refreshing?'Loading…':'Unknown'} detail={`${containers.filter((ct:any)=>ct.status==='running').length} running · ${containers.filter((ct:any)=>ct.status==='stopped').length} stopped`}/>
    <CtStat reading={{loading,data:loading&&!data?.sampledAt?null:data}} icon={Cpu} label="Average CPU" value={averageCpu==null?'Unavailable':`${averageCpu}%`} detail={`${measuredCpu.length}/${containers.length} containers reporting`}/>
@@ -84,14 +79,13 @@ export default function LxcContainers({navigation,data,role,clusterUrl,refresh,l
    </Card>
    {current&&<Modal open title={current.name} onClose={()=>setSelected('')} closeDisabled={!!pending}>
     {(failure||message)&&<p className={noticeFailed?'login-error':'vm-message'} role={noticeFailed?'alert':'status'}>{failure||message}</p>}
-    <CtDetails key={`${current.node}:${current.id}`} ct={current} role={role} clusterUrl={clusterUrl} busy={pending} shell={()=>openShell(current)} run={run} console={()=>setConsoleGuest(current)} snapshot={()=>{setOperationTarget({...current});setModal('snapshot')}} backup={()=>{setOperationTarget({...current});setModal('backup')}}/>
+    <CtDetails key={`${current.node}:${current.id}`} ct={current} role={role} clusterUrl={clusterUrl} busy={pending} shell={()=>openShell(current)} run={run} console={()=>openConsole(current)} snapshot={()=>{setOperationTarget({...current});setModal('snapshot')}} backup={()=>{setOperationTarget({...current});setModal('backup')}}/>
    </Modal>}
   </div>
   <Modal open={!!modal} title={modal==='create'?'Create LXC Container':modal==='snapshot'?'Create Snapshot':'Back Up Container'} onClose={()=>!pending&&setModal(null)}>{modal==='create'?<CtCreateWizard nodes={nodes} node={destination} onNode={setCreateNode} storage={eligibleStorage} templates={templates} templateLoading={templateLoading} templateError={templateError} templateRevision={templateRevision} onRefreshTemplates={()=>setTemplateRevision(v=>v+1)} role={role} clusterUrl={clusterUrl} busy={pending} error={failure} onCancel={()=>setModal(null)} onSubmit={submit}/>:<form className="form-grid vm-form" onSubmit={submit}>{<p>Target: {operationTarget?.name} ({operationTarget?.id}) on {operationTarget?.node}</p>}
    {modal==='snapshot'?<label className="cluster-wide">Snapshot name<input name="name" pattern="[A-Za-z0-9][A-Za-z0-9_-]*" required placeholder="before-upgrade"/></label>:<label className="cluster-wide">Backup storage<select name="storage" required key={`${destination}:${modal}`}><option value="">Select eligible storage</option>{eligibleStorage.map((item:any)=><option key={item.id} value={item.name}>{item.node} / {item.name}</option>)}</select></label>}
    {failure&&<p className="login-error cluster-wide">{failure}</p>}<div className="modal-actions"><button type="button" className="btn secondary" aria-busy={!!(pending)} disabled={!!pending} onClick={()=>setModal(null)}>Cancel</button><button className="btn primary" aria-busy={!!(pending)} disabled={!!pending}>{pending?'Submitting…':'Submit'}</button></div>
   </form>}</Modal>
-  {consoleGuest&&<GuestConsole guest={consoleGuest} kind="lxc" onClose={()=>setConsoleGuest(null)}/>}
  </section>;
 }
 

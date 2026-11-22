@@ -1,5 +1,4 @@
 import {useProxmoxTaskNotice} from '../proxmox-task-notice';
-import GuestConsole, {type ConsoleGuest} from '../components/GuestConsole';
 import {vmReadingIssues} from '../vm-reading-issues';
 import {Link} from 'react-router-dom';
 import {ProxmoxResourceCard, LayoutSwitch} from '../components/ProxmoxResourceCard';
@@ -15,7 +14,6 @@ import {cardValue} from '../components/ReportLoading';
 import ReportLoading from '../components/ReportLoading';
 import Pagination from '../components/Pagination';
 import {OSIcon} from '../components/BrandIcon';
-import {CreationHa} from '../components/GuestCreateFields';
 import {inventoryComplete} from '../proxmox-state';
 import {useEffect,useMemo,useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
@@ -38,8 +36,8 @@ export default function VirtualMachines({navigation,data,role,clusterUrl,refresh
 
  const [params,setParams]=useSearchParams();
  const vms=data?.vms||[],nodes=data?.nodes||[],storage=data?.storage||[],operator=['operator','admin','owner'].includes(role||'');
- const {listRef,openShell,selected,setSelected,node,setNode,search,setSearch,status,setStatus,layout,setLayout,page,setPage,rowsPerPage,setRowsPerPage}=useGuestInventory('vm',!!data);
- const [createNode,setCreateNode]=useState(''),[iso,setIso]=useState(''),[media,setMedia]=useState<any>(null),[mediaError,setMediaError]=useState(''),[mediaLoading,setMediaLoading]=useState(false),[mediaRevision,setMediaRevision]=useState(0),[created,setCreated]=useState<any>(null);
+ const {listRef,openShell,openConsole,selected,setSelected,node,setNode,search,setSearch,status,setStatus,layout,setLayout,page,setPage,rowsPerPage,setRowsPerPage}=useGuestInventory('vm',!!data);
+ const [createNode,setCreateNode]=useState(''),[iso,setIso]=useState(''),[media,setMedia]=useState<any>(null),[mediaError,setMediaError]=useState(''),[mediaLoading,setMediaLoading]=useState(false),[mediaRevision,setMediaRevision]=useState(0);
  const [operationTarget,setOperationTarget]=useState<any>(null);
  const [modal,setModal]=useState<'create'|'snapshot'|'backup'|null>(null),[pending,setPending]=useState(''),[failure,setFailure]=useState('');
  useEffect(()=>{if(operator&&params.get('action')==='Create VM'){setModal('create');const next=new URLSearchParams(params);next.delete('action');next.set('tab','Virtual Machines');setParams(next, {replace:true});}},[params.get('action'),operator]);
@@ -57,18 +55,14 @@ export default function VirtualMachines({navigation,data,role,clusterUrl,refresh
  const measuredCpu=vms.filter((vm:any)=>vm.nodeAvailable!==false&&vm.status!=='unknown'&&typeof vm.cpu==='number'&&Number.isFinite(vm.cpu)&&vm.cpu>=0),averageCpu=measuredCpu.length?Math.round(measuredCpu.reduce((total:number,vm:any)=>total+vm.cpu,0)/measuredCpu.length):null;
  const run=async(operation:string)=>{if(!current)return;setPending(operation);setFailure('');clear();try{const result:any=await confirmedApi(`/actions/proxmox/vm/${encodeURIComponent(current.id)}/${operation}`,{method:'POST',body:JSON.stringify({node:current.node})});report(result,`${operation} submitted.`);await refresh();}catch(e:any){if(isActionCancelled(e))return;setFailure(e.message);}finally{setPending('');}};
  const submit=async(event:any)=>{event.preventDefault();if(modal!=='create'&&(!operationTarget||!vms.some((r:any)=>r.id===operationTarget.id&&r.node===operationTarget.node))){setFailure('The selected guest is no longer available on this node. Close the dialog and select it again.');return;}const form=event.currentTarget,values=Object.fromEntries(new FormData(form));setPending(modal||'');setFailure('');clear();try{let result:any;if(modal==='create'){result=await confirmedApi('/proxmox/vm',{method:'POST',body:JSON.stringify({...values,openConsole:true})});
- const guest={...result.result,name:values.name};setCreated(guest);setSelected('');
- setConsoleGuest({id:String(guest.vmid),node:guest.node,name:guest.name,creationReceipt:guest.creationReceipt});
+ const guest=result.result;
+ setModal(null);
+ openConsole({id:String(guest.vmid),node:guest.node,name:String(values.name)},guest);
+ return;
  }else if(modal==='snapshot')result=await confirmedApi(`/actions/proxmox/vm/${encodeURIComponent(operationTarget.id)}/snapshot`,{method:'POST',body:JSON.stringify({node:operationTarget.node,name:values.name})});else result=await api('/proxmox/backup',{method:'POST',body:JSON.stringify({node:operationTarget.node,vmid:operationTarget.id,storage:values.storage})});report(result,'Task accepted.');setModal(null);await refresh();}catch(e:any){if(isActionCancelled(e))return;setFailure(e.message);}finally{for(const name of ['password','confirmPassword']){const input=form.querySelector(`input[name=${name}]`);if(input)input.value='';}setPending('');}};
- const [consoleGuest,setConsoleGuest]=useState<ConsoleGuest|null>(null);
  return <section className="vm-manager guest-inventory">
   <ProxmoxSectionHeader title={<><BrandIcon brand="proxmox" size={24}/>Virtual Machines</>} description="Create, monitor and manage VMs reported by the connected Proxmox cluster." actions={<>{!navigation&&<RefreshButton className="btn secondary" onClick={refresh}><RefreshCw size={14}/>Refresh</RefreshButton>}{operator&&<button className="btn primary" onClick={()=>setModal('create')}>+ Create VM</button>}</>}/>
   {!current&&(failure||message)&&<p className={noticeFailed?'login-error':'vm-message'} role={noticeFailed?'alert':'status'}>{failure||message}</p>}
-  {created&&<Card><p>VM {created.vmid} · {created.node}</p>
-  <button className="btn secondary" disabled={!operator||!clusterUrl} onClick={()=>setConsoleGuest({id:String(created.vmid),node:created.node,name:created.name,creationReceipt:vms.some((row:any)=>String(row.id)===created.vmid&&row.node===created.node&&row.status==='running')?undefined:created.creationReceipt})}><Monitor size={14}/>Open installation console</button>
-  <CreationHa created={created} onUpdate={setCreated}/>
-  {created.installationReady&&<p className="muted">After installation, eject the ISO or set disk-first boot in Proxmox.</p>}
-  </Card>}
   <div className="vm-stats metric-grid">
    <VmStat reading={{loading,data:loading&&!data?.sampledAt?null:data}} icon={Box} label="Total VMs" value={(data?.resourceInventoryComplete===true||inventoryComplete(data))?vms.length:loading||data?.refreshing?'Loading…':'Unknown'} detail={`${vms.filter((vm:any)=>(vm.powerStatus||vm.status)==='running').length} running · ${vms.filter((vm:any)=>vm.status==='stopped').length} stopped`}/>
    <VmStat reading={{loading,data:loading&&!data?.sampledAt?null:data}} icon={Cpu} label="Average CPU" value={averageCpu==null?'Unavailable':`${averageCpu}%`} detail={`${measuredCpu.length}/${vms.length} VMs reporting`}/>
@@ -90,14 +84,13 @@ export default function VirtualMachines({navigation,data,role,clusterUrl,refresh
    </Card>
    {current&&<Modal open title={current.name} onClose={()=>setSelected('')} closeDisabled={!!pending}>
     {(failure||message)&&<p className={noticeFailed?'login-error':'vm-message'} role={noticeFailed?'alert':'status'}>{failure||message}</p>}
-    <VmDetails key={`${current.node}:${current.id}`} vm={current} role={role} clusterUrl={clusterUrl} busy={pending} shell={()=>openShell(current)} run={run} console={()=>setConsoleGuest(current)} snapshot={()=>{setOperationTarget({...current});setModal('snapshot')}} backup={()=>{setOperationTarget({...current});setModal('backup')}}/>
+    <VmDetails key={`${current.node}:${current.id}`} vm={current} role={role} clusterUrl={clusterUrl} busy={pending} shell={()=>openShell(current)} run={run} console={()=>openConsole(current)} snapshot={()=>{setOperationTarget({...current});setModal('snapshot')}} backup={()=>{setOperationTarget({...current});setModal('backup')}}/>
    </Modal>}
   </div>
   <Modal open={!!modal} title={modal==='create'?'Create Virtual Machine':modal==='snapshot'?'Create Snapshot':'Back Up Virtual Machine'} onClose={()=>!pending&&setModal(null)}>{modal==='create'?<VmCreateWizard nodes={nodes} node={destination} onNode={setCreateNode} storage={eligibleStorage} iso={iso} onIso={setIso} media={media} mediaLoading={mediaLoading} mediaError={mediaError} onRefreshMedia={()=>setMediaRevision(v=>v+1)} role={role} clusterUrl={clusterUrl} busy={pending} error={failure} onCancel={()=>setModal(null)} onSubmit={submit}/>:<form className="form-grid vm-form" onSubmit={submit}>{<p>Target: {operationTarget?.name} ({operationTarget?.id}) on {operationTarget?.node}</p>}
    {modal==='snapshot'?<label className="cluster-wide">Snapshot name<input name="name" pattern="[A-Za-z0-9][A-Za-z0-9_-]*" required placeholder="before-upgrade"/></label>:<label className="cluster-wide">Backup storage<select name="storage" required key={`${destination}:${modal}`}><option value="">Select eligible storage</option>{eligibleStorage.map((item:any)=><option key={item.id} value={item.name}>{item.node} / {item.name}</option>)}</select></label>}
    {failure&&<p className="login-error cluster-wide">{failure}</p>}<div className="modal-actions"><button type="button" className="btn secondary" aria-busy={!!(pending)} disabled={!!pending} onClick={()=>setModal(null)}>Cancel</button><button className="btn primary" aria-busy={!!(pending)} disabled={!!pending}>{pending?'Submitting…':'Submit'}</button></div>
   </form>}</Modal>
-  {consoleGuest&&<GuestConsole guest={consoleGuest} kind="qemu" onClose={()=>setConsoleGuest(null)}/>}
  </section>;
 }
 

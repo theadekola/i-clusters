@@ -171,6 +171,7 @@ export function createApp({guestConsole=createProxmoxConsole(),profiles=process.
  app.use('/api',(req,res,next)=>{if(!['GET','HEAD'].includes(req.method)&&(process.env.ICLUSTERS_CONTROLLER_DATA||process.env.DATA_DIR)&&existsSync((process.env.ICLUSTERS_CONTROLLER_DATA||process.env.DATA_DIR)+'/maintenance.json'))return res.status(503).json({error:'Controller maintenance is in progress. Retry after it completes.'});next();});
  app.use('/api',(req,res,next)=>permits(req.user.permissionKeys,req.method,req.path,req.body,req.user.sub)
    ?next():res.status(403).json({error:'This action is restricted by your account permissions.'}));
+ app.post('/api/proxmox/console/node/:node',authorize('admin'),(req,res)=>guestConsole.start(req,res,audit,'node'));
  for(const kind of ['qemu','lxc']){
   app.post(`/api/proxmox/console/${kind}/:node/:id`,authorize('operator'),(req,res)=>{
    return guestConsole.start(req,res,audit,kind);

@@ -178,6 +178,55 @@ test('saved VM and LXC connections use direct SSH and rejected LXC credentials r
  }
 });
 
+test('Shell switches to a console picker with inline tabs for nodes, VMs and containers',async()=>{
+ const calls=[];
+ const page=await mounted('pages/Shell.tsx',{},async path=>{
+  calls.push(path);
+  if(path==='/proxmox')return {
+   nodes:[{name:'node',status:'online'}],
+   vms:[{id:'100',node:'node',name:'VM',status:'running'}],
+   lxc:[{id:'210',node:'node',name:'LXC',status:'running'}]
+  };
+  return {};
+ });
+ const button=name=>Array.from(page.container.querySelectorAll('button')).find(b=>b.textContent.trim()===name&&!b.closest('[hidden]'));
+ try{
+  await page.click(button('Switch to Proxmox Console'));
+  assert.equal(page.container.querySelector('h1').textContent,'Proxmox Console');
+  assert.equal(page.container.querySelectorAll('.shell-saved').length,0);
+  for(const name of ['node','VM','LXC']){
+   await page.click(page.container.querySelector(`[aria-label="Open console for ${name}"]`));
+   assert.equal(page.container.querySelector('[role=tab][aria-selected=true]').textContent,name);
+   assert.equal(page.container.querySelector('[role=dialog]'),null);
+   assert.match(page.container.querySelector('[role=tabpanel][style="display: block;"]').textContent,/Proxmox|VM 100|CT 210/);
+   await page.click(page.container.querySelector('[aria-label="Open new connection tab"]'));
+  }
+  assert.equal(page.container.querySelectorAll('[role=tab]').length,3);
+  await page.click(button('Switch to SSH'));
+  assert.equal(page.container.querySelector('h1').textContent,'Shell');
+  assert.ok(page.container.querySelector('[aria-label="Connect to node"]'));
+  await page.click(button('Switch to Proxmox Console'));
+  assert.equal(page.container.querySelectorAll('[role=tab]').length,3);
+  assert.deepEqual(calls.filter(path=>path.startsWith('/ssh/')),['/ssh/connections?mode=shell']);
+ }finally{await page.close();}
+});
+
+test('operator console deep links never open SSH or request saved credentials',async()=>{
+ const calls=[];
+ const page=await mounted('pages/Shell.tsx',{consoleOnly:true},async path=>{
+  calls.push(path);
+  return {nodes:[{name:'node',status:'online'}],vms:[{id:'100',node:'node',name:'VM',status:'running'}]};
+ },true,false,['/tools/shell?mode=console&target=vm%3Anode%3A100']);
+ try{
+  assert.equal(page.container.querySelector('[role=tab][aria-selected=true]').textContent,'VM');
+  assert.equal(page.container.querySelector('[role=dialog]'),null);
+  await page.click(page.container.querySelector('[aria-label="Open new connection tab"]'));
+  assert.equal(page.container.querySelector('[aria-label="Open console for node"]').disabled,true);
+  assert.equal(page.container.textContent.includes('Switch to SSH'),false);
+  assert.ok(calls.every(path=>!path.startsWith('/ssh/')));
+ }finally{await page.close();}
+});
+
 test('node VM and CT terminal views render streamed output immediately and abort readers on unmount',async()=>{
  for(const target of ['node:a','vm:a:100','lxc:a:101']){
   const calls=[];let controller,aborted=false;globalThis.__terminalWrites=[];

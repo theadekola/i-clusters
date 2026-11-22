@@ -102,7 +102,7 @@ export default function Layout() {
         <RefreshButton local indicator className="icon-btn global-refresh" aria-label="Refresh" title="Refresh" onClick={()=>pageRefresh.refresh(()=>refreshResources(['']))}/>
         <div className="top-actions">{session?.user?.role==='owner' && <UpdateButton/>}<HeaderNotifications/><LanguageSelector compact/><SidebarAccount theme/></div>
       </header>
-      <PageRefreshContext.Provider value={pageRefresh}><main className="content"><PageBreadcrumbs/>{['operator','admin','owner'].includes(session?.user?.role)&&<GuestRestartActivity key={session.user.sub||session.user.id}/>}<ProductVisit path={location.pathname} search={location.search}/><PersistentShell authorized={['admin','owner'].includes(session?.user?.role)}/><div key={location.pathname}><Outlet/></div></main></PageRefreshContext.Provider>
+      <PageRefreshContext.Provider value={pageRefresh}><main className="content"><PageBreadcrumbs/>{['operator','admin','owner'].includes(session?.user?.role)&&<GuestRestartActivity key={session.user.sub||session.user.id}/>}<ProductVisit path={location.pathname} search={location.search}/><PersistentShell authorized={['operator','admin','owner'].includes(session?.user?.role)} consoleOnly={session?.user?.role==='operator'}/><div key={location.pathname}><Outlet/></div></main></PageRefreshContext.Provider>
     </div>
   </div>
 }

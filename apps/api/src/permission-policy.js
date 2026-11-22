@@ -91,6 +91,7 @@ export function permits(selection, method, url, body = {}, sub) {
     return has('backups.manage') && has('vm.create') && has('containers.create');
   const console = /^\/proxmox\/console\/(qemu|lxc)\/[^/]+\/[^/]+$/.exec(path);
   if (method === 'POST' && console) return canManageGuest(selection, console[1]);
+  if (method === 'POST' && /^\/proxmox\/console\/node\/[^/]+$/.test(path)) return has('cluster.manage');
   const docker = /^\/actions\/docker\/container\/[^/]+\/(start|stop|restart|pause|unpause|remove)$/.exec(path);
   if (method === 'POST' && docker) return has('containers.' + (docker[1]==='remove' ? 'delete' : 'manage'));
   const guest = /^\/actions\/proxmox\/(vm|lxc)\/[^/]+\/(start|stop|shutdown|reboot|reset|suspend|resume|snapshot|clone|delete|delete-snapshot)$/.exec(path);
