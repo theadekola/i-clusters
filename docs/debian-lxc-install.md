@@ -37,7 +37,7 @@ systemctl is-active docker i-clusters
 iclusters status
 ```
 
-Look for `active` twice and four running services: `api`, `web`, `postgres` and `caddy`. To check the database-backed API over HTTPS on the default LAN installation, run the following inside the CT. A working controller returns `"ok":true`.
+Look for `active` twice and five running services: `api`, `web`, `postgres`, `redis` and `caddy`. To check the database-backed API over HTTPS on the default LAN installation, run the following inside the CT. A working controller returns `"ok":true`.
 
 ```sh
 cd /opt/i-clusters
@@ -53,6 +53,7 @@ Use `iclusters update`, `iclusters status` and the [controller backup and recove
 
 - **Docker key, package or image download fails.** Check DNS, outbound HTTPS, available disk space and the CT clock. The download error identifies the repository or registry involved.
 - **Docker or the test container reports a mount, sysctl, AppArmor or cgroup permission error.** Check `journalctl -u docker -u containerd -b` inside the CT. On the host, check the features above, current Proxmox kernel and LXC packages, and the host's AppArmor logs. Keep the CT unprivileged and its confinement enabled.
-- **An overlay or snapshotter error persists.** Check the storage backing the CT root disk and Docker data directory. Use storage compatible with the selected Docker driver, or use the [Ubuntu VM installation](../README.md#install-on-ubuntu) if your host policy or storage does not support nested Docker.
+- **Docker reports an OverlayFS mount permission error.** Re-download `install.sh` before retrying. On a fresh CT with no existing Docker daemon configuration or workloads, the installer retries with containerd’s `native` snapshotter. It keeps that setting if the test container starts and restores the previous configuration if the retry fails. The native snapshotter copies layers and can require more disk space. Check the active backend with `docker info --format '{{.Driver}}'`.
+- **The retry still fails.** Check the storage backing the CT root disk and Docker data directory. Use storage compatible with the selected Docker driver, or use the [Ubuntu VM installation](../README.md#install-on-ubuntu) if your host policy or storage does not support nested Docker.
 
 [Proxmox container features](https://pve.proxmox.com/pve-docs/pct.conf.5.html) · [Docker Engine on Debian](https://docs.docker.com/engine/install/debian/)
