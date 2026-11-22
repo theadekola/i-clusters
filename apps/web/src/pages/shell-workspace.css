@@ -72,3 +72,7 @@
  .shell-console-active .ssh-shell .shell-session-toolbar .header-actions{width:100%;justify-content:flex-end}
  .shell-console-active .shell-session-toolbar .shell-update-label{margin-inline-end:auto}
 }
+.shell-mode-switch{margin-inline-start:auto}
+.shell-page .shell-hosts .console-host{grid-template-rows:auto}
+.shell-page .console-host .host-connect{grid-area:1/1}
+.shell-tabs .shell-mode-switch{align-self:center;flex:none}

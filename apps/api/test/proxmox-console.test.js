@@ -15,40 +15,52 @@ async function listen(server, t) {
   return `http://127.0.0.1:${server.address().port}`;
 }
 
-test('guest console connects with cluster credentials and confines the relay to one signed-in browser', async t => {
+test('Proxmox consoles use the configured cluster and bind each relay to one signed-in browser', async t => {
   const calls = [];
-  let failure = 0, status = 'running', portOverride;
+  let failure = 0, status = 'running', portOverride, nodeStatus = 'online';
   const password = 'vnc-pass';
   const ticket = password + ':PVEVNC:fixture+/=';
   const authorization = 'PVEAPIToken=console@pve!test=fixture-secret';
   const provider = http.createServer(async (req, res) => {
     calls.push(req.url);
     assert.equal(req.headers.authorization, authorization);
+    if (req.url === '/api2/json/nodes') return res.end(JSON.stringify({data: [{node: 'node01', status: nodeStatus}]}));
     if (req.url.endsWith('/cluster/resources')) {
       return res.end(JSON.stringify({data: [
         {node: 'node01', vmid: 100, type: 'qemu', status},
         {node: 'node02', vmid: 101, type: 'lxc', status}
       ]}));
     }
-    assert.match(req.url, /^\/api2\/json\/nodes\/node0[12]\/(qemu\/100|lxc\/101)\/vncproxy$/);
+    const isNode = req.url === '/api2/json/nodes/node01/termproxy';
+    if (!isNode) assert.match(req.url, /^\/api2\/json\/nodes\/node0[12]\/(qemu\/100|lxc\/101)\/vncproxy$/);
     assert.equal(req.method, 'POST');
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
-    assert.equal(Buffer.concat(chunks).toString(), 'websocket=1');
+    assert.equal(Buffer.concat(chunks).toString(), isNode ? 'cmd=login' : 'websocket=1');
     const isVm = req.url.includes('/qemu/');
     const port = portOverride ?? (isVm ? '5901' : 5901);
-    res.end(JSON.stringify({data: {ticket, port, ...(isVm ? {password} : {})}}));
+    res.end(JSON.stringify({data: {ticket, port, ...(isVm ? {password} : {}), ...(isNode ? {user:'console@pve!test'} : {})}}));
   });
   const upstream = new WebSocketServer({noServer: true});
   provider.on('upgrade', (req, socket, head) => {
     calls.push(req.url);
     const url = new URL(req.url, 'http://fixture');
     assert.equal(req.headers.authorization, authorization);
-    assert.match(url.pathname, /\/(qemu\/100|lxc\/101)\/vncwebsocket$/);
+    const isNode = url.pathname === '/api2/json/nodes/node01/vncwebsocket';
+    if (!isNode) assert.match(url.pathname, /\/(qemu\/100|lxc\/101)\/vncwebsocket$/);
     assert.equal(url.searchParams.get('port'), '5901');
     assert.equal(url.searchParams.get('vncticket'), ticket);
     if (failure) return socket.end(`HTTP/1.1 ${failure} Failed\r\nContent-Length: 0\r\n\r\n`);
     upstream.handleUpgrade(req, socket, head, client => {
+      if (isNode) {
+        assert.equal(req.headers['sec-websocket-protocol'], 'binary');
+        client.once('message', frame => {
+          assert.equal(frame.toString(), `console@pve!test:${ticket}\n`);
+          client.send(Buffer.from('OKnode login: '));
+          client.on('message', (data, binary) => client.send(data, {binary}));
+        });
+        return;
+      }
       client.send(Buffer.from('RFB 003.008\n'));
       client.on('message', (frame, binary) => client.send(frame, {binary}));
     });
@@ -66,9 +78,12 @@ test('guest console connects with cluster credentials and confines the relay to 
     profiles: null, guestConsole,
     authenticate(req, res, next) {
       if (!req.headers.authorization) return res.sendStatus(401);
-      const role = req.headers.authorization === 'Bearer viewer' ? 'viewer' : 'operator';
+      const token = req.headers.authorization.split(' ')[1];
+      const role = token === 'viewer' ? 'viewer' : token.endsWith('admin') ? 'admin' : 'operator';
       req.user = {role, sub: 'test-user', sid: 'test-session'};
       if (req.headers.authorization === 'Bearer restricted') req.user.permissionKeys = ['vm.view'];
+      if (token === 'restricted-admin') req.user.permissionKeys = ['cluster.view'];
+      if (token === 'allowed-admin') req.user.permissionKeys = ['cluster.view','cluster.manage'];
       next();
     },
     audit: async (_req, ...entry) => audit.push(entry)
@@ -77,7 +92,7 @@ test('guest console connects with cluster credentials and confines the relay to 
   controller.on('upgrade', guestConsole.upgrade);
   const origin = await listen(controller, t);
   const create = (kind = 'qemu', node = 'node01', id = 100, token = 'operator', browserOrigin = origin) =>
-    fetch(`${origin}/api/proxmox/console/${kind}/${node}/${id}`, {
+    fetch(`${origin}/api/proxmox/console/${kind}/${node}` + (kind === 'node' ? '' : `/${id}`), {
       method: 'POST', headers: {origin: browserOrigin, ...(token ? {authorization: 'Bearer ' + token} : {})}
     });
   const connect = (key, browserOrigin = origin) => new WebSocket(origin.replace('http:', 'ws:') + consoleSocketPath, ['binary', key], {origin: browserOrigin});
@@ -136,5 +151,27 @@ test('guest console connects with cluster credentials and confines the relay to 
     await closed;
     await rejected(connect(session.key));
   }
-  assert.deepEqual(audit.map(entry => entry[1]), ['qemu:node01:100', 'lxc:node02:101']);
+  assert.equal((await create('node')).status,403);
+  assert.equal((await create('node','node01',null,'restricted-admin')).status,403);
+  assert.equal((await create('node','unknown',null,'allowed-admin')).status,404);
+  nodeStatus='offline';
+  assert.equal((await create('node','node01',null,'allowed-admin')).status,409);
+  nodeStatus='online';
+  failure=403;
+  const forbiddenNode=await create('node','node01',null,'allowed-admin');
+  assert.equal(forbiddenNode.status,403);
+  assert.match((await forbiddenNode.json()).error,/Sys\.Console/);
+  failure=0;
+  const nodeResponse=await create('node','node01',null,'allowed-admin');
+  assert.equal(nodeResponse.status,200);
+  const nodeSession=await nodeResponse.json();
+  assert.deepEqual(Object.keys(nodeSession),['key']);
+  const nodeBrowser=connect(nodeSession.key);
+  assert.equal((await once(nodeBrowser,'message'))[0].toString(),'OKnode login: ');
+  nodeBrowser.send('1:90:24:');
+  assert.equal((await once(nodeBrowser,'message'))[0].toString(),'1:90:24:');
+  const nodeClosed=once(nodeBrowser,'close');
+  guestConsole.revoke('test-user','test-session');
+  await nodeClosed;
+  assert.deepEqual(audit.map(entry => entry[1]), ['qemu:node01:100', 'lxc:node02:101', 'node:node01']);
 });

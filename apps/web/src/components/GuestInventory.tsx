@@ -1,5 +1,6 @@
 import {useLayoutEffect,useRef} from 'react';
 import {useLocation,useNavigate,useSearchParams} from 'react-router-dom';
+import type {ConsoleCreation} from './ProxmoxConsole';
 import {Badge} from './UI';
 import './guest-inventory.css';
 
@@ -24,15 +25,21 @@ export function useGuestInventory(kind:Kind,ready:boolean){
   if(listRef.current)listRef.current.scrollTop=restored.tableTop;
   window.scrollTo(0,restored.top);
  },[ready,restored]);
- const openShell=(guest:Guest)=>{
+ const openTerminal=(guest:Pick<Guest,'id'|'name'|'node'>,consoleMode=false,creation?:ConsoleCreation)=>{
   lastInventory={entry:location.key,kind,top:window.scrollY,tableTop:listRef.current?.scrollTop||0};
-  navigate('/tools/shell?target='+encodeURIComponent(kind+':'+guest.node+':'+guest.id));
+  const target=encodeURIComponent(kind+':'+guest.node+':'+guest.id);
+  navigate('/tools/shell?'+(consoleMode?'mode=console&':'')+'target='+target,{
+   state:consoleMode?{consoleSelection:{name:guest.name,creation}}:null
+  });
  };
  const requestedPage=Number(params.get('page'));
  const page=Number.isSafeInteger(requestedPage)&&requestedPage>0?requestedPage:1;
  const size=Number(params.get('perPage'));
  const pageSize=[10,25,50].includes(size)?size:12;
- return {listRef,openShell,selected,setSelected:(id:string)=>update({guest:String(id)}),
+ return {listRef,
+  openShell:(guest:Guest)=>openTerminal(guest),
+  openConsole:(guest:Pick<Guest,'id'|'name'|'node'>,creation?:ConsoleCreation)=>openTerminal(guest,true,creation),
+  selected,setSelected:(id:string)=>update({guest:String(id)}),
   search:params.get('search')||'',setSearch:(search:string)=>update({guest:'',search,page:''}),
   node:params.get('inventoryNode')||'all',setNode:(node:string)=>update({inventoryNode:node==='all'?'':node,page:'',guest:''}),
   status:params.get('status')||'all',setStatus:(status:string)=>update({guest:'',status:status==='all'?'':status,page:''}),
