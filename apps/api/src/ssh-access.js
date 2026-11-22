@@ -1,5 +1,5 @@
 import {guestUpdateCommand,assertGuestUpdateSession,completedGuestUpdate} from './guest-package-update.js';
-import {verifySSHHostKey} from './ssh-host-trust.js';
+import {sshKeyFingerprint,verifySSHHostKey} from './ssh-host-trust.js';
 import {passwordAuthentication} from './ssh-password.js';
 import {approvalTargetForPath,resolveActionApproval} from './action-approval.js';
 export {approvalTargetForPath} from './action-approval.js';
@@ -48,8 +48,32 @@ export async function connectSSH(input,user,sessionId){
  if(!/^(node|vm|lxc):/.test(input.target||'')&&!/^docker:[a-f0-9-]{36}$/.test(input.target||''))throw failure('Invalid target');
  const port=Number(input.port||22);if(!Number.isInteger(port)||port<1||port>65535)throw failure('Invalid SSH port');
  if(typeof input.username!=='string'||!input.username||typeof input.password!=='string'||!input.password)throw failure('SSH username and password are required');
- const client=new Client();let fingerprint='';
- await new Promise((resolve,reject)=>{client.once('ready',resolve);client.once('error',e=>{client.end();reject(fingerprint&&input.fingerprint!==fingerprint?Object.assign(failure('Verify the target SSH host fingerprint before connecting',409),{fingerprint}):failure(e.level==='client-authentication'?'SSH login failed. Check the username and password for this target. Use a Linux SSH account on the displayed host, such as root or a sudo user. An i-Clusters login or a Proxmox @pve account does not automatically grant SSH access.':'SSH connection failed: '+e.message,422))});client.connect({host:input.host,port,username:input.username,...passwordAuthentication(client,input.password),readyTimeout:12000,keepaliveInterval:10000,hostVerifier:key=>{fingerprint='SHA256:'+crypto.createHash('sha256').update(key).digest('base64').replace(/=+$/,'');return verifySSHHostKey(input,key);}})});
+ const authenticationError=()=>{
+  const message=input.target.startsWith('lxc:')&&input.mode==='shell'&&input.username==='root'
+   ? 'SSH login failed. Check the username and password. The container may allow root on its console while blocking root login over SSH.'
+   : 'SSH login failed. Check the username and password for this target. Use a Linux SSH account on the displayed host, such as root or a sudo user. An i-Clusters login or a Proxmox @pve account does not automatically grant SSH access.';
+  return Object.assign(failure(message,422),{code:'ssh_authentication_failed'});
+ };
+ const client=new Client();
+ let fingerprint='';
+ await new Promise((resolve,reject)=>{
+  client.once('ready',resolve);
+  client.once('error',error=>{
+   client.end();
+   if(fingerprint&&input.fingerprint!==fingerprint){
+    reject(Object.assign(failure('Verify the target SSH host fingerprint before connecting',409),{fingerprint}));
+    return;
+   }
+   reject(error.level==='client-authentication'?authenticationError():failure('SSH connection failed: '+error.message,422));
+  });
+  client.connect({
+   host:input.host,port,username:input.username,...passwordAuthentication(client,input.password),
+   readyTimeout:12000,keepaliveInterval:10000,hostVerifier:key=>{
+    fingerprint=sshKeyFingerprint(key);
+    return verifySSHHostKey(input,key);
+   }
+  });
+ });
  if(input.mode==='authorize'){
   try{await verifyApprovalPrivilege(client,input.password);
    const approval=await resolveActionApproval(input.path,input.body,input.method,{dockerHost:input.dockerHost});if(!approval)throw failure('Invalid action path');if(approval.target!==input.target)throw failure('SSH target does not match this action');return {token:issueGrant(user,input.method,input.path,input.body,approval.scope,sessionId)};
@@ -62,7 +86,7 @@ export async function connectSSH(input,user,sessionId){
   if(input.save===true&&(mode==='sftp'||!retained))retained=saveSSH(user,input.target,mode,{host:input.host,port,username:input.username,password:input.password,fingerprint:input.fingerprint},retained);
  }catch(error){client.end();throw error;}
  const openedAt=Date.now();
- const id=crypto.randomUUID(),s={user,sessionId,target:input.target,host:input.host,expiresAt:shellDeadline(mode,openedAt),credentialsExpireAt:mode==='sftp'?retained?.expiresAt:undefined,client,stream,mode,output:'',touched:openedAt,closed:false};sessions.set(id,s);const decoder=new StringDecoder('utf8'),closed=()=>{if(s.closed)return;s.output=(s.output+decoder.end()).slice(-262144);s.closed=true;s.onOutput?.();};if(s.mode==='shell')stream.on('data',d=>{s.output=(s.output+decoder.write(d)).slice(-262144);s.onOutput?.();});stream.on('close',()=>{closed();client.end()});client.on('error',closed);client.on('close',closed);return {id};
+ const id=crypto.randomUUID(),s={user,sessionId,target:input.target,host:input.host,expiresAt:shellDeadline(mode,openedAt),credentialsExpireAt:mode==='sftp'?retained?.expiresAt:undefined,client,stream,mode,output:'',touched:openedAt,closed:false};sessions.set(id,s);const decoder=new StringDecoder('utf8'),closed=()=>{if(s.closed)return;s.output=(s.output+decoder.end()).slice(-262144);s.closed=true;s.onOutput?.();};if(s.mode==='shell')stream.on('data',d=>{s.output=(s.output+decoder.write(d)).slice(-262144);s.onOutput?.();});stream.on('close',()=>{closed();client.end()});client.on('error',closed);client.on('close',closed);return {id,host:s.host};
 }
 export async function openGuestUpdate(id,user,loginId,resolveHost){
  const parent=shellSession(id,user);

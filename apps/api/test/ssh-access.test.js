@@ -30,6 +30,12 @@ test('SSH authorization rejects unknown host keys and wrong passwords then issue
   closeShell(fresh.id,'alice');
   assert.equal(savedSSH('alice',input.target),null);
   await assert.rejects(()=>connectSSH({...shellInput,password:'wrong',save:true},'alice'),/Check the username and password/);
+  await assert.rejects(()=>connectSSH({...shellInput,target:'lxc:pve:210',password:'wrong',save:true},'alice'),error=>{
+   assert.equal(error.code,'ssh_authentication_failed');
+   assert.match(error.message,/container may allow root on its console/);
+   return true;
+  });
+  assert.equal(savedSSH('alice','lxc:pve:210'),null);
   assert.equal(savedSSH('alice',input.target),null);
 
   const shell=await connectSSH({...shellInput,save:true},'alice');
@@ -40,6 +46,11 @@ test('SSH authorization rejects unknown host keys and wrong passwords then issue
   assert.equal(JSON.stringify(publicSavedSSH('alice')).includes('correct'),false);
   assert.deepEqual(publicSavedSSH('bob'),{});
   assert.equal(savedSSH('alice',input.target,'sftp'),null);
+  const direct=await connectSSH({saved:true,mode:'shell',target:input.target},'alice','login');
+  assert.equal(direct.host,input.host);
+  assert.equal(shellSession(direct.id,'alice').target,input.target);
+  closeShell(direct.id,'alice');
+  await assert.rejects(()=>connectSSH({saved:true,mode:'shell',target:input.target},'bob'),{status:404});
   const reuse={...shellInput,password:'',useSavedPassword:true,save:true};
   const reconnect=await connectSSH(reuse,'alice');
   assert.equal(shellSession(reconnect.id,'alice').credentialsExpireAt,undefined);

@@ -1,3 +1,4 @@
+import GuestConsole,{type ConsoleGuest} from '../components/GuestConsole';
 import {tabKeys} from '../components/UI';
 import './shell-workspace.css';
 import PageIcon from '../components/PageIcon';
@@ -26,6 +27,9 @@ function HostStatus({status}:{status:string}){
 export default function Shell({mode='shell',visible=true}:{mode?:'shell'|'sftp';visible?:boolean}){
  const [params,setParams]=useSearchParams(),requested=useRef('');
  const files=mode==='sftp';
+ const connectionAttempt=useRef<symbol|null>(null);
+ const [consoleGuest,setConsoleGuest]=useState<ConsoleGuest|null>(null);
+ useEffect(()=>()=>{connectionAttempt.current=null},[]);
  const savedConnections=useApi<any>('/ssh/connections?mode='+mode,{});
  const live=useApi<any>('/proxmox',null),[search,setSearch]=useState(''),[type,setType]=useState('all'),[list,setList]=useState(false),[selected,setSelected]=useState<any>(null),[connection,setConnection]=useState<any>(null),[tabs,setTabs]=useState<any[]>([]),[activeId,setActive]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const active=activeId?(tabs.find(t=>t.id===activeId)||tabs[0])?.id||'':'';
@@ -59,10 +63,52 @@ export default function Shell({mode='shell',visible=true}:{mode?:'shell'|'sftp';
  const rows=[...(live.data?.nodes||[]).map((r:any)=>({...r,target:`node:${r.name}`,kind:'Nodes',icon:Server,address:r.ip})),...(live.data?.vms||[]).map((r:any)=>({...r,target:`vm:${r.node}:${r.vmid||r.id}`,kind:'Virtual Machines',icon:Monitor})),...(live.data?.lxc||[]).map((r:any)=>({...r,target:`lxc:${r.node}:${r.vmid||r.id}`,kind:'Containers',icon:Box}))];
  const filtered=rows.filter(r=>(type==='all'||r.kind===type)&&`${r.name} ${r.node||''} ${r.address||''} ${r.vmid||r.id||''}`.toLowerCase().includes(search.toLowerCase()));
  const connect=async(r:any,configure=false)=>{
-  const saved=savedConnections.data?.[r.target];
-  if(saved&&(!files||configure)){setError('');setConnection({...r,address:saved.host,editing:configure});return}
-  setBusy(true);setError('');let address=r.address;try{if(files&&!configure)try{const session=await api('/ssh/connect',{method:'POST',body:JSON.stringify({saved:true,mode,target:r.target})});openSession(r,session.id);return}catch(e:any){if(e.status!==404)setError(`Saved SSH connection failed: ${e.message}. Check the connection username and password.`);}if(!address&&r.kind!=='Nodes'){const d=await api(`/proxmox/${r.kind==='Containers'?'lxc':'vm'}/${encodeURIComponent(r.node)}/${encodeURIComponent(r.vmid||r.id)}/details`);const items=d.interfaces?.result||d.interfaces||[];const addresses=Array.isArray(items)?items.flatMap((i:any)=>[i.inet?.split('/')[0],...(i['ip-addresses']||[]).map((a:any)=>a['ip-address'])]).filter((a:any)=>a&&a!=='127.0.0.1'&&!a.includes(':')):[];address=addresses[0];}setConnection({...r,address:address||''})}catch(e:any){setError('Guest address discovery unavailable. Enter its SSH address in the connection form.');setConnection({...r,address:''})}finally{setBusy(false)}};
- useEffect(()=>{const target=params.get('target');if(!target){requested.current='';return}if(!visible||files||live.loading||!live.data||requested.current===target)return;requested.current=target;const next=new URLSearchParams(params);next.delete('target');setParams(next,{replace:true});const host=rows.find(r=>r.target===target);if(!host){setError('The requested host is not present in the connected cluster.');return}const existing=tabs.find(t=>t.target===target);if(existing)setActive(existing.id);else connect(host);},[params.get('target'),live.data,live.loading,files,visible]);
+  if(connectionAttempt.current)return;
+  const attempt=Symbol();
+  connectionAttempt.current=attempt;
+  setBusy(true);
+  setError('');
+  let saved=savedConnections.data?.[r.target],notice='',requirePassword=false;
+  try{
+   if(!configure&&(files||saved?.hasPassword)){
+    try{
+     const session=await api('/ssh/connect',{method:'POST',body:JSON.stringify({saved:true,mode,target:r.target})});
+     if(connectionAttempt.current!==attempt){
+      void api('/ssh/session/'+encodeURIComponent(session.id),{method:'DELETE'}).catch(()=>{});
+      return;
+     }
+     openSession({...r,address:session.host||saved?.host||r.address},session.id);
+     return;
+    }catch(error:any){
+     if(connectionAttempt.current!==attempt)return;
+     if(error.status===404){
+      if(saved)void savedConnections.refresh();
+      saved=undefined;
+     }else{
+      notice=files?`Saved SSH connection failed: ${error.message}. Check the connection username and password.`:error.message;
+      requirePassword=error.body?.code==='ssh_authentication_failed';
+     }
+    }
+   }
+   let address=saved?.host||r.address;
+   if(!address&&r.kind!=='Nodes'){
+    try{
+     const kind=r.kind==='Containers'?'lxc':'vm';
+     const result=await api(`/proxmox/${kind}/${encodeURIComponent(r.node)}/${encodeURIComponent(r.vmid||r.id)}/details?view=ssh`);
+     address=result.host;
+    }catch{
+     notice||='Guest address discovery unavailable. Enter its SSH address in the connection form.';
+    }
+   }
+   if(connectionAttempt.current===attempt)setConnection({...r,address:address||'',saved,editing:configure,notice,requirePassword});
+  }finally{
+   if(connectionAttempt.current===attempt){
+    connectionAttempt.current=null;
+    setBusy(false);
+   }
+  }
+ };
+ useEffect(()=>{const target=params.get('target');if(!target){requested.current='';return}if(!visible||files||busy||live.loading||savedConnections.loading||!live.data||requested.current===target)return;requested.current=target;const next=new URLSearchParams(params);next.delete('target');setParams(next,{replace:true});const host=rows.find(r=>r.target===target);if(!host){setError('The requested host is not present in the connected cluster.');return}const existing=tabs.find(t=>t.target===target);if(existing)setActive(existing.id);else connect(host);},[params.get('target'),live.data,live.loading,savedConnections.loading,busy,files,visible]);
  return <section ref={pageRef} className={`shell-page ${consoleActive?'shell-console-active':''}`}><div className="page-header"><div><h1 title={files?'Browse, upload and manage files on your nodes, virtual machines and containers.':'Open multiple SSH tabs for your nodes, virtual machines and containers.'}><PageIcon name={files?'files':'shell'} className="page-title-icon"/>{files?'SFTP Files':'Shell'}</h1>{!sessionId&&<p>Select a host</p>}</div></div>
  {tabs.length>0&&<div className="shell-tabs" role="tablist" onKeyDown={tabKeys} aria-label="SSH sessions">{tabs.map(t=><div key={t.id} className={`shell-tab ${active===t.id?'active':''}`}><button role="tab" tabIndex={active===t.id?0:-1} aria-selected={active===t.id} aria-controls={`panel-${t.id}`} id={`tab-${t.id}`} onClick={()=>setActive(t.id)}><t.icon size={19}/><span><b>{t.name}</b></span></button><button className="icon-btn" aria-label={`Close ${t.name} session`} onClick={()=>closeTab(t.id)}><X size={15}/></button></div>)}<button className="icon-btn shell-new-tab" aria-label="Open new connection tab" onClick={()=>setActive('')}><Plus size={20}/></button></div>}
  {!sessionId&&tabs.length>0&&<h3 className="shell-picker-title"><Plus size={17}/> New connection <small className="muted">Choose a host below. Your other sessions remain open.</small></h3>}
@@ -71,14 +117,33 @@ export default function Shell({mode='shell',visible=true}:{mode?:'shell'|'sftp';
  {!sessionId&&['Nodes','Virtual Machines','Containers'].map(group=>{const hosts=filtered.filter(r=>r.kind===group);return hosts.length?<div key={group} className="shell-group"><h3>{group} <small className="muted">{hosts.length}</small></h3><div className={list?'shell-hosts list':'shell-hosts'}>{list&&<div className="host-columns" aria-hidden="true"><span>Host</span><span>Node</span><span>Actions</span></div>}
  {hosts.sort((a,b)=>a.target.localeCompare(b.target,undefined,{numeric:true})).map(r=>{
   return <div className={`shell-host ${selected?.target===r.target?'selected':''}`} key={r.target}>
-   <button type="button" className="host-connect" disabled={busy} aria-label={`Connect to ${r.name}`} onClick={()=>connect(r)}>
+   <button type="button" className="host-connect" disabled={busy||!files&&savedConnections.loading} aria-label={`Connect to ${r.name}`} onClick={()=>connect(r)}>
     <span className="host-identity"><span className={`shell-host-icon ${r.kind==='Containers'?'ct':r.kind==='Nodes'?'node':'vm'}`}><r.icon size={22}/></span><b title={r.name}>{r.name}</b></span>
     <small className="host-node">{r.kind==='Nodes'?'Proxmox Node':r.node}</small>
    </button>
    <HostStatus status={r.status||'Unknown'}/>
-   <button type="button" className="icon-btn shell-saved" title="Connection Settings" aria-label={`Connection settings for ${r.name}`} disabled={busy} onClick={()=>connect(r,true)}><Ellipsis size={20} aria-hidden="true"/></button>
+   <button type="button" className="icon-btn shell-saved" title="Connection Settings" aria-label={`Connection settings for ${r.name}`} disabled={busy||!files&&savedConnections.loading} onClick={()=>connect(r,true)}><Ellipsis size={20} aria-hidden="true"/></button>
   </div>})}</div></div>:null})}
  {!sessionId&&!filtered.length&&<Card><p>{live.loading?'Discovering hosts…':'No matching hosts reported by the connected cluster.'}</p></Card>}
  {tabs.map(t=><div key={t.id} id={`panel-${t.id}`} role="tabpanel" aria-labelledby={`tab-${t.id}`} style={{display:active===t.id?'block':'none'}} className="shell-active-view"><Card>{files?<SFTPBrowser sessionId={t.id} name={t.name} active={visible&&active===t.id} onDisconnect={message=>{closeTab(t.id);if(message)setError(message)}}/>:<SSHTerminal updateTab={!!t.updateTab} onUpdateSession={t.updateTab?undefined:(id:string)=>openSession({...t,name:t.name+' · OS updates',parentId:t.id,updateTab:true},id)} target={t.target} host={t.address} sessionId={t.id} active={visible&&active===t.id} name={t.name} onDisconnect={()=>t.updateTab?closeUpdate(t.id,t.parentId):closeTab(t.id)}/>}</Card></div>)}
- <Modal open={visible&&!!connection} title="Connection Settings" onClose={()=>setConnection(null)}>{connection&&<>{error&&<p role="alert" className="error">{error}</p>}<SSHLogin openImmediately={!files} key={connection.target} target={connection.target} host={connection.address} connection={savedConnections.data?.[connection.target]} editing={connection.editing} mode={mode} onConnected={r=>{savedConnections.refresh();if(connection.editing){api(`/ssh/session/${r.id}`,{method:'DELETE'}).catch(()=>{});setConnection(null);return}openSession(connection,r.id);setConnection(null)}}/></>}</Modal></section>;
+ <Modal open={visible&&!!connection} title="Connection Settings" onClose={()=>setConnection(null)}>
+  {connection&&<>
+   {connection.notice&&<p role="alert" className="error">{connection.notice}</p>}
+   <SSHLogin openImmediately={!files} key={connection.target} target={connection.target} host={connection.address}
+    connection={connection.saved} editing={connection.editing} mode={mode} requirePassword={connection.requirePassword}
+    onConnected={r=>{
+     void savedConnections.refresh();
+     if(connection.editing)void api(`/ssh/session/${encodeURIComponent(r.id)}`,{method:'DELETE'}).catch(()=>{});
+     else openSession({...connection,address:r.host||connection.address},r.id);
+     setConnection(null);
+    }}/>
+   {!files&&connection.kind==='Containers'&&connection.status==='running'&&live.data?.cluster?.accessMode!=='monitoring'&&
+    <button type="button" className="btn secondary" onClick={()=>{
+     setConsoleGuest({id:String(connection.vmid||connection.id),node:connection.node,name:connection.name});
+     setConnection(null);
+    }}>Open Proxmox Console</button>}
+  </>}
+ </Modal>
+ {visible&&consoleGuest&&<GuestConsole guest={consoleGuest} kind="lxc" onClose={()=>setConsoleGuest(null)}/>}
+ </section>;
 }
