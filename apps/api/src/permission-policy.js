@@ -68,7 +68,6 @@ export function permits(selection, method, url, body = {}, sub) {
   if (method === 'GET' || method === 'HEAD') {
     if (path === '/cluster-profiles' || path === '/product/preferences') return true;
     if (path === '/proxmox') return ['cluster','vm','containers'].some(group => has(group + '.view'));
-    if (path === '/proxmox/console/update-command') return has('vm.manage') || has('containers.manage');
     if (/^\/proxmox\/creation\/[^/]+\/status$/.test(path)) return has('vm.create') || has('containers.create');
     if (/^\/proxmox\/create-options\/[^/]+$/.test(path)) return has('vm.create') || has('containers.create');
     if (/^\/users\/[^/]+\/(permissions|permission-history)$/.test(path)) return path.split('/')[2] === sub || has('users.view');

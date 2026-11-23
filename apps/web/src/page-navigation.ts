@@ -16,7 +16,7 @@ const sections:Record<string,{name:string;tabs?:string[]}>= {
  '/alerts':{name:'Alerts',tabs:['Active Alerts','Alert History','Alert Rules']},
  '/users':{name:'Users',tabs:['Accounts','Audit Logs']},
  '/settings':{name:'Settings',tabs:settingsTabs},
- '/ai':{name:'AI Assistant'},'/tools/console':{name:'Console'},'/tools/shell':{name:'Shell'},'/tools/sftp':{name:'SFTP Files'}
+ '/ai':{name:'AI Assistant'},'/tools/shell':{name:'Shell'},'/tools/sftp':{name:'SFTP Files'}
 };
 export type PageCrumb={label:string;to?:string};
 export function pageTrail(pathname:string,search:string,host?:string,role?:string):PageCrumb[]{
@@ -30,8 +30,7 @@ export function pageTrail(pathname:string,search:string,host?:string,role?:strin
  if(pathname==='/settings')tab=settingsCategory(requested);
  if(pathname==='/users'&&['operator','auditor'].includes(role||''))tab='Audit Logs';
  if(pathname==='/proxmox'){if(params.get('action')==='Create VM')tab='Virtual Machines';if(params.get('action')==='Create CT')tab='LXC Containers';}
- const label=pathname==='/tools/shell'&&params.get('mode')==='console'?'Console':section.name;
- const trail:PageCrumb[]=[{label,to:tab?pathname:undefined}];
+ const trail:PageCrumb[]=[{label:section.name,to:tab?pathname:undefined}];
  if(pathname==='/docker'&&host)trail.push({label:host,to:'/docker'});
  if(tab)trail.push({label:tab});
  if(pathname==='/settings'&&tab==='Connections'){

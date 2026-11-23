@@ -178,7 +178,7 @@ test('saved VM and LXC connections use direct SSH and rejected LXC credentials r
  }
 });
 
-test('Console opens by default with inline tabs for nodes, VMs and containers',async()=>{
+test('Shell switches to a console picker with inline tabs for nodes, VMs and containers',async()=>{
  const calls=[];
  const page=await mounted('pages/Shell.tsx',{},async path=>{
   calls.push(path);
@@ -188,11 +188,11 @@ test('Console opens by default with inline tabs for nodes, VMs and containers',a
    lxc:[{id:'210',node:'node',name:'LXC',status:'running'}]
   };
   return {};
- },true,false,['/tools/console']);
+ });
  const button=name=>Array.from(page.container.querySelectorAll('button')).find(b=>b.textContent.trim()===name&&!b.closest('[hidden]'));
  try{
+  await page.click(button('Switch to Proxmox Console'));
   assert.equal(page.container.querySelector('h1').textContent,'Proxmox Console');
-  assert.ok(calls.every(path=>!path.startsWith('/ssh/')));
   assert.equal(page.container.querySelectorAll('.shell-saved').length,0);
   for(const name of ['node','VM','LXC']){
    await page.click(page.container.querySelector(`[aria-label="Open console for ${name}"]`));
@@ -202,7 +202,7 @@ test('Console opens by default with inline tabs for nodes, VMs and containers',a
    await page.click(page.container.querySelector('[aria-label="Open new connection tab"]'));
   }
   assert.equal(page.container.querySelectorAll('[role=tab]').length,3);
-  await page.click(button('Switch to Shell'));
+  await page.click(button('Switch to SSH'));
   assert.equal(page.container.querySelector('h1').textContent,'Shell');
   assert.ok(page.container.querySelector('[aria-label="Connect to node"]'));
   await page.click(button('Switch to Proxmox Console'));
@@ -222,63 +222,9 @@ test('operator console deep links never open SSH or request saved credentials',a
   assert.equal(page.container.querySelector('[role=dialog]'),null);
   await page.click(page.container.querySelector('[aria-label="Open new connection tab"]'));
   assert.equal(page.container.querySelector('[aria-label="Open console for node"]').disabled,true);
-  assert.equal(page.container.textContent.includes('Switch to Shell'),false);
+  assert.equal(page.container.textContent.includes('Switch to SSH'),false);
   assert.ok(calls.every(path=>!path.startsWith('/ssh/')));
  }finally{await page.close();}
-});
-
-test('Proxmox text consoles provide the shared terminal controls on nodes, containers and serial VMs',async()=>{
- const previousWebSocket=globalThis.WebSocket, packets=[], calls=[], copied=[];
- globalThis.WebSocket=class {
-  static OPEN=1;
-  readyState=1;
-  constructor(){queueMicrotask(()=>this.onmessage?.({data:'OK\x1b[32mlogin: '}));}
-  send(packet){packets.push(packet);}
-  close(){this.readyState=3;}
- };
- try{
-  for(const kind of ['node','lxc','qemu']){
-   const output=[];
-   globalThis.__terminalWrites=output;
-   const page=await mounted('components/ProxmoxConsole.tsx',{target:{kind,node:'node01',id:'109',name:'Fixture'},active:true,canUpdate:true},async(path,options)=>{
-    calls.push(path);
-    if(path==='/proxmox/console/update-command')return {command:'printf %s preview'};
-    assert.equal(JSON.parse(options.body).display,'auto');
-    return {key:'fixture',display:'text'};
-   },true,false,['/tools/console'],'default',window=>{
-    Object.defineProperty(window,'isSecureContext',{value:true});
-    Object.defineProperty(window.navigator,'clipboard',{value:{writeText:async text=>copied.push(text),readText:async()=>'ä€'}});
-   });
-   try{
-    await act(tick);
-    const labelled=label=>page.container.querySelector(`[aria-label="${label}"]`);
-    assert.match(Buffer.from(output[0]).toString(),/\x1b\[32m/);
-    assert.ok(labelled('Font size'));
-    const display=page.container.querySelector('.guest-console-display');
-    await act(async()=>{display.dispatchEvent(new page.dom.window.MouseEvent('contextmenu',{bubbles:true,cancelable:true}));});
-    await page.click([...page.container.querySelectorAll('[role=dialog] button')].find(button=>button.textContent==='Select All'));
-    await page.click(labelled('Copy selected text'));
-    assert.equal(copied.at(-1),'all terminal output');
-    await page.click(labelled('Paste text'));
-    assert.equal(packets.at(-1),'0:5:ä€');
-    await page.click(labelled('Fullscreen terminal'));
-    assert.ok(labelled('Exit fullscreen terminal'));
-    await page.click(labelled('Exit fullscreen terminal'));
-    assert.equal(page.container.querySelector('.terminal-expanded'),null);
-    if(kind==='node')assert.equal(labelled('Guest OS updates'),null);
-    else{
-     await page.click(labelled('Guest OS updates'));
-     assert.ok(!packets.includes('0:17:printf %s preview'));
-     await page.click([...page.container.querySelectorAll('[role=dialog] button')].find(button=>button.textContent==='Insert command at prompt'));
-     assert.equal(packets.pop(),'0:17:printf %s preview');
-    }
-   }finally{await page.close();}
-  }
-  assert.ok(calls.every(path=>path.startsWith('/proxmox/console/')));
- }finally{
-  globalThis.WebSocket=previousWebSocket;
-  for(const key of ['__terminalWrites','__terminalInput','__terminalKey','__terminalSelection'])delete globalThis[key];
- }
 });
 
 test('node VM and CT terminal views render streamed output immediately and abort readers on unmount',async()=>{
