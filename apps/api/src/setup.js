@@ -36,7 +36,7 @@ export function issueOwnerSetupToken(db) {
  return whileUnclaimed(db, async client => {
   const token = randomBytes(32).toString('hex');
   await client.query(`INSERT INTO owner_setup_link (singleton, token_digest, expires_at)
-    VALUES (true, $1, clock_timestamp() + interval '30 minutes')
+    VALUES (true, $1, clock_timestamp() + interval '2 hours')
     ON CONFLICT (singleton) DO UPDATE SET token_digest = EXCLUDED.token_digest, expires_at = EXCLUDED.expires_at`, [digest(token)]);
   return token;
  });

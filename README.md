@@ -123,7 +123,7 @@ trust before opening the dashboard. From the controller console or a verified SS
 session, run `sudo iclusters certificate --apple-profile > i-clusters.mobileconfig`.
 Follow the [one-time device trust instructions](PRODUCTION.md#automatic-lan-https-on-port-6002).
 
-1. Open the private HTTPS setup link printed in the installer terminal. It expires after 30 minutes. Keep the link private until registration is complete.
+1. Open the private HTTPS setup link printed in the installer terminal. Click it in a terminal that supports hyperlinks, or copy the full URL into your browser. It expires after 2 hours. Keep the link private until registration is complete.
 2. Enter your full name, username, password and password confirmation, then choose **Create owner account**.
 3. Sign in. Administrators create subsequent users from **Users**.
 4. Use the eye icon to show or hide the entered password. **Remember this device** controls persistent browser sign-in; it does not save the password.

@@ -14,10 +14,13 @@ function claim(user){
   child.stdin.end([user.name,user.username,user.email,user.password,''].join('\n'));
  });
 }
-const localLink=()=>promisify(execFile)('docker',['compose','exec','-T','api','node','scripts/owner-setup-link.mjs']);
+const localLink=(...args)=>promisify(execFile)('docker',['compose','exec','-T','api','node','scripts/owner-setup-link.mjs',...args]);
 assert.equal((await request('/auth/register',account)).status,403);
-const link=await localLink();
-const setupUrl=new URL(link.stdout.trim());
+const link=await localLink('https://localhost:6002','--terminal-link');
+const hyperlink='\x1b]8;;', terminator='\x1b\\';
+const target=link.stdout.slice(hyperlink.length).split(terminator,1)[0];
+assert.ok(link.stdout===`${hyperlink}${target}${terminator}${target}${hyperlink}${terminator}\n`, 'The terminal hyperlink displays its full target for copying');
+const setupUrl=new URL(target);
 assert.equal(setupUrl.origin,'https://localhost:6002');
 account.setupToken=setupUrl.hash.slice('#owner-setup='.length);
 assert.ok(/^[a-f0-9]{64}$/.test(account.setupToken));

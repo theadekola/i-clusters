@@ -8,7 +8,9 @@ try {
   throw Error('Configure an HTTPS dashboard origin before requesting a setup link.');
  }
  url.hash = 'owner-setup=' + await issueOwnerSetupToken(pool);
- console.log(url.href);
+ const href = url.href;
+ // Use OSC 8 on the private terminal and keep the full address visible for copying.
+ console.log(process.argv[3] === '--terminal-link' ? `\x1b]8;;${href}\x1b\\${href}\x1b]8;;\x1b\\` : href);
 } catch (error) {
  console.error(error.message);
  // A fresh installation can attach an existing database volume.
