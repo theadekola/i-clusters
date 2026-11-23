@@ -12,7 +12,7 @@ export function readConsoleKey(req) {
 const maxPayload = 16 * 1024 * 1024;
 const problem = (message, status) => Object.assign(new Error(message), {status});
 
-async function openProviderConsole({node, id, kind}) {
+async function openProviderConsole({node, id, kind, display}) {
   const config = clusterConfig();
   if (config.accessMode === 'monitoring')
     throw problem('Enable management on this Proxmox connection to open a console.', 403);
@@ -31,8 +31,21 @@ async function openProviderConsole({node, id, kind}) {
   }
 
   const base = `/nodes/${encodeURIComponent(node)}` + (nodeConsole ? '' : `/${kind}/${encodeURIComponent(id)}`);
-  const body = new URLSearchParams(nodeConsole ? {cmd: 'login'} : {websocket: '1'});
-  const result = await query(base + (nodeConsole ? '/termproxy' : '/vncproxy'), {
+  let serial;
+  if (kind === 'qemu' && display !== 'graphical') {
+    const guestConfig = await query(base + '/config?current=1').catch(error => {
+      if (display === 'auto' && error.providerStatus === 403) return {};
+      throw error;
+    });
+    const preferred = /(?:^|,)(?:type=)?(serial[0-3])(?:,|$)/.exec(guestConfig?.vga || '')?.[1];
+    serial = [preferred, 'serial0', 'serial1', 'serial2', 'serial3']
+      .find(port => port && guestConfig?.[port] === 'socket');
+    if (!serial && display === 'text')
+      throw problem('This VM needs a socket serial port and a guest serial terminal. Open the graphical console to continue.', 409);
+  }
+  const isText = nodeConsole || kind === 'lxc' && display !== 'graphical' || Boolean(serial);
+  const body = new URLSearchParams(isText ? nodeConsole ? {cmd: 'login'} : serial ? {serial} : {} : {websocket: '1'});
+  const result = await query(base + (isText ? '/termproxy' : '/vncproxy'), {
     method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body
   });
   const {ticket, port: proxyPort, password, user} = result || {};
@@ -43,14 +56,14 @@ async function openProviderConsole({node, id, kind}) {
   const legacyPassword = typeof ticket === 'string' && /^(.{8}):PVEVNC:/.exec(ticket)?.[1];
   if (typeof ticket !== 'string' || !ticket || !Number.isInteger(port) || port < 5900 || port > 5999)
     throw problem('Proxmox returned an invalid console ticket.', 502);
-  if (nodeConsole && (typeof user !== 'string' || !user || /[:\r\n]/.test(user) || /[\r\n]/.test(ticket)))
+  if (isText && (typeof user !== 'string' || !user || /[:\r\n]/.test(user) || /[\r\n]/.test(ticket)))
     throw problem('Proxmox returned an invalid console ticket.', 502);
   const url = new URL(config.url + '/api2/json' + base + '/vncwebsocket');
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
   url.search = new URLSearchParams({port, vncticket: ticket});
 
   return new Promise((resolve, reject) => {
-    const upstream = new WebSocket(url, nodeConsole ? ['binary'] : [], {
+    const upstream = new WebSocket(url, isText ? ['binary'] : [], {
       ...connection, handshakeTimeout: 8000, perMessageDeflate: false, maxPayload
     });
     upstream.on('error', reject);
@@ -60,17 +73,17 @@ async function openProviderConsole({node, id, kind}) {
     });
     upstream.once('open', () => {
       upstream.pause();
-      if (nodeConsole) {
+      if (isText) {
         // Proxmox termproxy expects its ticket before the terminal protocol begins.
         upstream.send(`${user}:${ticket}\n`, error => {
           if (error) {
             upstream.terminate();
             reject(error);
-          } else resolve({upstream});
+          } else resolve({upstream, display: 'text'});
         });
         return;
       }
-      resolve({upstream, password: typeof password === 'string' ? password : legacyPassword || ticket});
+      resolve({upstream, display: 'graphical', password: typeof password === 'string' ? password : legacyPassword || ticket});
     });
   });
 }
@@ -103,6 +116,9 @@ export function createProxmoxConsole({connect = openProviderConsole} = {}) {
 
   async function start(req, res, audit, kind) {
     const {node, id} = req.params;
+    // Older clients expect a VNC stream for guests unless they request a display.
+    const requested = req.body?.display;
+    const display = requested === undefined ? (kind === 'node' ? 'text' : 'graphical') : requested;
     const {sub, sid, sessionExp} = req.user;
     const origin = req.get('origin');
     let sameOrigin = false;
@@ -111,6 +127,8 @@ export function createProxmoxConsole({connect = openProviderConsole} = {}) {
       sameOrigin = ['https:', 'http:'].includes(url.protocol) && url.host === req.get('host');
     } catch { /* A console is opened from the controller UI. */ }
     if (!sid || !sameOrigin) throw problem('Open the console from a signed-in i-Clusters browser.', 403);
+    if (!['auto', 'text', 'graphical'].includes(display) || kind === 'node' && display === 'graphical')
+      throw problem('Choose a supported Proxmox console display.', 400);
 
     if (sessions.size >= 32 || [...sessions.values()].filter(entry => entry.sub === sub).length >= 4)
       throw problem('Too many open guest consoles. Close an existing console and retry.', 429);
@@ -121,7 +139,7 @@ export function createProxmoxConsole({connect = openProviderConsole} = {}) {
     const abandoned = () => { if (!res.writableFinished) close(entry); };
     res.once('close', abandoned);
     try {
-      const {upstream, password} = await connect({kind, node, id});
+      const {upstream, password, display: actualDisplay} = await connect({kind, node, id, display});
       entry.upstream = upstream;
       if (!sessions.has(key)) { close(entry); throw problem('The console session ended before it could open. Try again.', 409); }
       upstream.once('error', () => close(entry));
@@ -130,7 +148,7 @@ export function createProxmoxConsole({connect = openProviderConsole} = {}) {
       await audit(req, 'proxmox.console.open', id === undefined ? `${kind}:${node}` : `${kind}:${node}:${id}`, {}, 'success');
       if (res.destroyed) return close(entry);
       if (!sessions.has(key)) throw problem('The console session ended before it could open. Try again.', 409);
-      res.set('Cache-Control', 'no-store').json({key, password});
+      res.set('Cache-Control', 'no-store').json({key, password, ...(requested !== undefined ? {display: actualDisplay} : {})});
     } catch (error) {
       close(entry);
       throw publicError(error, kind);

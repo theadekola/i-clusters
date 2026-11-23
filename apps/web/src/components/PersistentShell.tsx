@@ -5,8 +5,8 @@ const Shell=lazy(()=>import('../pages/Shell'));
 /** Navigation hides the workspace without releasing its open sessions. */
 export default function PersistentShell({authorized,consoleOnly=false}:{authorized:boolean;consoleOnly?:boolean}){
  const location=useLocation(),visited=useRef(false);
- const visible=location.pathname==='/tools/shell';
+ const visible=['/tools/console','/tools/shell'].includes(location.pathname);
  if(visible&&authorized)visited.current=true;
  if(!authorized){visited.current=false;return null;}
- return visited.current?<div hidden={!visible} aria-hidden={!visible}><Suspense fallback={<p>Loading Shell…</p>}><Shell key={String(consoleOnly)} visible={visible} consoleOnly={consoleOnly}/></Suspense></div>:null;
+ return visited.current?<div hidden={!visible} aria-hidden={!visible}><Suspense fallback={<p>Loading console…</p>}><Shell key={String(consoleOnly)} visible={visible} consoleOnly={consoleOnly}/></Suspense></div>:null;
 }

@@ -24,7 +24,7 @@ test('all other pages show their current section and reject unknown tabs',()=>{
   assert.equal(labels('/'+route,`?tab=${encodeURIComponent(tab)}`).at(-1),tab);
   assert.ok(!labels('/'+route,'?tab=Unknown').includes('Unknown'));
  }
- for(const route of ['/ai','/tools/shell','/tools/sftp'])assert.equal(labels(route).length,1);
+ for(const route of ['/ai','/tools/console','/tools/shell','/tools/sftp'])assert.equal(labels(route).length,1);
 });
 test('effective action and role overrides agree with the displayed page',()=>{
  assert.equal(labels('/proxmox','?tab=Overview&action=Create%20VM').at(-1),'Virtual Machines');

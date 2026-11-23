@@ -2,7 +2,7 @@ import ProxmoxConsole,{type ConsoleCreation,type ConsoleTarget} from '../compone
 import {tabKeys} from '../components/UI';
 import './shell-workspace.css';
 import PageIcon from '../components/PageIcon';
-import {useLocation,useSearchParams} from 'react-router-dom';
+import {useLocation,useNavigate,useSearchParams} from 'react-router-dom';
 import SFTPBrowser from '../components/SFTPBrowser';
 import {useState,useEffect,useRef} from 'react';
 import {Server,Monitor,Box,Search,LayoutGrid,List,Ellipsis,Plus,X} from 'lucide-react';
@@ -27,8 +27,8 @@ function HostStatus({status}:{status:string}){
 export default function Shell({mode='shell',visible=true,consoleOnly=false}:{mode?:'shell'|'sftp';visible?:boolean;consoleOnly?:boolean}){
  const [params,setParams]=useSearchParams(),requested=useRef('');
  const files=mode==='sftp';
- const location=useLocation();
- const consoleMode=!files&&(consoleOnly||params.get('mode')==='console');
+ const location=useLocation(),navigate=useNavigate();
+ const consoleMode=!files&&(consoleOnly||location.pathname==='/tools/console'||params.get('mode')==='console');
  const [consoleId,setConsoleId]=useState('');
  const connectionAttempt=useRef<symbol|null>(null);
  useEffect(()=>()=>{connectionAttempt.current=null},[]);
@@ -41,13 +41,13 @@ export default function Shell({mode='shell',visible=true,consoleOnly=false}:{mod
  const switchMode=()=>{
   const next=new URLSearchParams(params);
   next.delete('target');
-  if(consoleMode)next.delete('mode');else next.set('mode','console');
+  next.delete('mode');
   setError('');
   setConnection(null);
-  setParams(next,{state:null});
+  navigate({pathname:consoleMode?'/tools/shell':'/tools/console',search:next.toString()});
  };
  const modeSwitch=!files&&!consoleOnly&&<button type="button" className="btn secondary shell-mode-switch" onClick={switchMode} disabled={busy}>
-  {consoleMode?'Switch to SSH':'Switch to Proxmox Console'}
+  {consoleMode?'Switch to Shell':'Switch to Proxmox Console'}
  </button>;
  const sessionId=active;
  const pageRef=useRef<HTMLElement>(null);
@@ -188,7 +188,7 @@ export default function Shell({mode='shell',visible=true,consoleOnly=false}:{mod
    {!consoleMode&&<button type="button" className="icon-btn shell-saved" title="Connection Settings" aria-label={`Connection settings for ${r.name}`} disabled={busy||!files&&savedConnections.loading} onClick={()=>connect(r,true)}><Ellipsis size={20} aria-hidden="true"/></button>}
   </div>})}</div></div>:null})}
  {!sessionId&&!filtered.length&&<Card><p>{live.loading?'Discovering hosts…':'No matching hosts reported by the connected cluster.'}</p></Card>}
- {tabs.map(t=><div key={t.id} id={`panel-${t.id}`} role="tabpanel" aria-labelledby={`tab-${t.id}`} style={{display:active===t.id?'block':'none'}} className="shell-active-view"><Card>{t.console?<ProxmoxConsole key={t.console.creation?.creationReceipt||t.id} target={t.console} active={visible&&active===t.id}/>:files?<SFTPBrowser sessionId={t.id} name={t.name} active={visible&&active===t.id} onDisconnect={message=>{closeTab(t.id);if(message)setError(message)}}/>:<SSHTerminal updateTab={!!t.updateTab} onUpdateSession={t.updateTab?undefined:(id:string)=>openSession({...t,name:t.name+' · OS updates',parentId:t.id,updateTab:true},id)} target={t.target} host={t.address} sessionId={t.id} active={visible&&active===t.id} name={t.name} onDisconnect={()=>t.updateTab?closeUpdate(t.id,t.parentId):closeTab(t.id)}/>}</Card></div>)}
+ {tabs.map(t=><div key={t.id} id={`panel-${t.id}`} role="tabpanel" aria-labelledby={`tab-${t.id}`} style={{display:active===t.id?'block':'none'}} className="shell-active-view"><Card>{t.console?<ProxmoxConsole key={t.console.creation?.creationReceipt||t.id} target={t.console} active={visible&&active===t.id} canUpdate={!consoleOnly}/>:files?<SFTPBrowser sessionId={t.id} name={t.name} active={visible&&active===t.id} onDisconnect={message=>{closeTab(t.id);if(message)setError(message)}}/>:<SSHTerminal updateTab={!!t.updateTab} onUpdateSession={t.updateTab?undefined:(id:string)=>openSession({...t,name:t.name+' · OS updates',parentId:t.id,updateTab:true},id)} target={t.target} host={t.address} sessionId={t.id} active={visible&&active===t.id} name={t.name} onDisconnect={()=>t.updateTab?closeUpdate(t.id,t.parentId):closeTab(t.id)}/>}</Card></div>)}
  <Modal open={visible&&!consoleMode&&!!connection} title="Connection Settings" onClose={()=>setConnection(null)}>
   {connection&&<>
    {connection.notice&&<p role="alert" className="error">{connection.notice}</p>}
