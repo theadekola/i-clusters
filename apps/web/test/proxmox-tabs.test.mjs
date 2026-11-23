@@ -69,6 +69,20 @@ const reviewFixture={nodes:[{name:'n1',status:'online',cores:2,cpu:1},{name:'n2'
 const reviewApi=async p=>p==='/auth/me'?{user:{role:'owner'}}:p.startsWith('/proxmox/tasks')?{tasks:[],nodes:[]}:p.startsWith('/proxmox/node/')?{node:p.split('/')[3],errors:[]}:p==='/proxmox/storage'?{resources:[],errors:[]}:p==='/proxmox/network'?{nodes:[],interfaces:[],errors:[]}:p.startsWith('/proxmox')?reviewFixture:{metrics:[],interfaces:[]};
 const route=page=>page.container.querySelector('[data-location]').getAttribute('data-location');
 
+test('Proxmox documentation opens the official guide section for each tab',async()=>{
+ const page=await mounted('pages/Proxmox.tsx',{management:()=>null},reviewApi);
+ try{
+  const base='https://www.i-clusters.com/docs.html#manual-docs-proxmox-connection-md';
+  const link=()=>[...page.container.querySelectorAll('a')].find(a=>a.textContent.trim()==='Documentation');
+  assert.equal(link()?.href,base);
+  for(const [tab,section] of [['Nodes','nodes-and-services'],['Virtual Machines','virtual-machines'],['LXC Containers','lxc-containers'],['Storage','proxmox-storage'],['Networks','proxmox-networks'],['Tasks & Logs','tasks-and-logs']]){
+   await page.click(button(page,tab));
+   assert.equal(link()?.href,base+'~'+section);
+   assert.equal(link()?.target,'_blank');
+  }
+ }finally{await page.close();}
+});
+
 test('Proxmox tabs preserve URL context, reload selection and browser history',async()=>{
  let page=await mounted('pages/Proxmox.tsx',{management:()=>null},reviewApi,true,false,'/proxmox?keep=1');let saved;
  try{await page.click(button(page,'Networks'));assert.equal(new URLSearchParams(route(page).split('?')[1]).get('keep'),'1');await page.click(button(page,'Storage'));assert.equal(new URLSearchParams(route(page).split('?')[1]).get('tab'),'Storage');await page.click(button(page,'Audit Back'));assert.equal(page.container.querySelector('[role=tab][aria-selected=true]').textContent,'Networks');await page.click(button(page,'Audit Forward'));assert.equal(page.container.querySelector('[role=tab][aria-selected=true]').textContent,'Storage');saved=route(page);}finally{await page.close();}

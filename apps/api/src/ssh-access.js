@@ -72,7 +72,8 @@ export async function connectSSH(input,user,sessionId){
     reject(Object.assign(failure('Verify the target SSH host fingerprint before connecting',409),{fingerprint}));
     return;
    }
-   reject(error.level==='client-authentication'?authenticationError():failure('SSH connection failed: '+error.message,422));
+   const unavailable=Object.assign(failure('SSH connection failed: '+error.message,422),{code:'ssh_connection_unavailable'});
+   reject(error.level==='client-authentication'?authenticationError():unavailable);
   });
   client.connect({
    host:input.host,port,username:input.username,...(authentication?.options||passwordAuthentication(client,input.password)),

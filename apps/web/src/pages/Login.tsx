@@ -1,3 +1,4 @@
+import {documentation} from '../documentation';
 import {productLogo} from '../product-logo';
 import { useEffect, useState } from 'react';
 import { ArrowRight, Lock, User, Eye, EyeOff } from 'lucide-react';
@@ -56,7 +57,7 @@ export default function Login({onLogin}:{onLogin:()=>void}){
   <button className="btn primary" disabled={loading} aria-busy={loading}>{loading?'Please wait…':needsOwner?'Create owner account':challenge?'Verify & Sign in':'Sign in'}<ArrowRight size={18}/></button><footer><nav className="brand-links" aria-label="i-Clusters links">
    <a href="https://www.i-clusters.com" target="_blank" rel="noopener noreferrer">i-Clusters</a>
    <a href="https://github.com/theadekola/i-clusters" target="_blank" rel="noopener noreferrer">GitHub</a>
-   <a href="https://www.i-clusters.com/docs.html" target="_blank" rel="noopener noreferrer">Documentation</a>
+   <a href={needsOwner?documentation.ownerSetup:documentation.signIn} target="_blank" rel="noopener noreferrer">Documentation</a>
    <a href="https://www.i-clusters.com/donate.html" target="_blank" rel="noopener noreferrer">Donate</a>
   </nav></footer>
  </form></div>;

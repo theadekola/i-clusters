@@ -1,22 +1,61 @@
-# Connect Proxmox in one save
+# Connect and manage Proxmox in i-Clusters
 
-For inventory and metrics, choose **Monitoring only** and grant PVEAuditor to the user and token. To enable management later, edit the connection, select **Management**, and verify the upgraded token.
+Open **Settings → Connections → Add Connection → Proxmox** as an i-Clusters owner. Use the Proxmox API address that the i-Clusters controller can reach. The usual API port is `8006`.
 
-For management, sign in to Proxmox as an administrator and create one user and one API token. Use the Proxmox VE authentication server (`pve`) realm. The user and its privilege-separated token each need their own PVEAdmin permission entry.
+## Choose connection access
 
-1. Open **Datacenter → Permissions → Users → Add**. Create an enabled user such as `iclusters` in **Proxmox VE authentication server (pve)**.
-2. Open **Datacenter → Permissions → Add → User Permission**. Set Path `/`, User `iclusters@pve`, Role **PVEAdmin**, and enable **Propagate**.
-3. Open **Datacenter → Permissions → API Tokens → Add**. Choose that user and a token name such as `hub`. Keep **Privilege Separation** enabled. Ensure the token is unexpired. Copy the full token ID and secret immediately; the secret is displayed only once.
-4. Open **Datacenter → Permissions → Add → API Token Permission**. Set Path `/`, Token `iclusters@pve!hub`, Role **PVEAdmin**, and enable **Propagate**.
-5. In i-Clusters, enter the cluster name, Proxmox hostname/IP without a URL or port, API port (normally `8006`), full token ID and secret. Click **Save**.
+| Mode | Proxmox role to assign | What users can do in i-Clusters |
+| --- | --- | --- |
+| Monitoring only | PVEAuditor | Read inventory, status and metrics. |
+| Management | PVEAdmin | Use supported VM and container operations, such as power actions and configuration, subject to effective permissions. |
 
-These are two permission assignments, not two users or two tokens. Save verifies inherited cluster management and the effective permissions of visible nodes, VMs and CTs before replacing the connection. It enables the existing management flows and starts loading cluster inventory. Missing permissions stay in the same form with instructions; a failed check preserves the previous connection. There is no follow-up power-access popup or second administrator login.
+Use **Monitoring only** when your team needs visibility. The **Management** verification checks inherited cluster-level privileges and permissions on the guests visible to the token. Node shutdown and Proxmox access-control changes have separate permission requirements.
 
-PVEAdmin supports VM/CT power and configuration but does not grant Proxmox ACL administration or node shutdown. More-specific permission restrictions can still limit a guest. Guest OS information needs a QEMU Guest Agent, and Docker hosts require their separate connector or Engine connection. A `pve` account is not a Linux SSH account. Existing action approvals remain in effect.
+## Create a dedicated user and token
 
-New connections accept self-signed HTTPS certificates. Editing retains the existing verification policy and retains a saved CA only for the same host and port. Secrets are encrypted on the server and are never returned to the browser; re-enter the token secret when editing.
+1. In Proxmox, open **Datacenter → Permissions → Users → Add**. Create an enabled user named `iclusters` in the **Proxmox VE authentication server** realm. The resulting user ID is `iclusters@pve`.
+2. Open **Datacenter → Permissions → Add → User Permission**. Set **Path** to `/`, select `iclusters@pve`, choose **PVEAuditor** or **PVEAdmin**, and enable **Propagate**.
+3. Open **Datacenter → Permissions → API Tokens → Add**. Select `iclusters@pve`, enter a token name such as `hub`, and keep **Privilege Separation** enabled. Copy the full ID `iclusters@pve!hub` and store the one-time secret securely. If you set an expiry, plan to rotate the token before that date.
+4. Open **Datacenter → Permissions → Add → API Token Permission**. Select `iclusters@pve!hub`. Use path `/`, the same role and **Propagate**.
+5. In i-Clusters, select the corresponding connection mode. Enter the name, hostname or IP without a URL scheme or port, API port, full token ID and secret. Choose **Test Connection** to check the settings, then **Save** to verify and store them. A failed check preserves your existing connection.
 
-Reference: [Proxmox user management and API tokens](https://pve.proxmox.com/pve-docs/pveum.1.html).
+With privilege separation, the token can use only permissions granted to both the account and the token. This setup creates one user, one token and two permission entries. The `@pve` identity is for the Proxmox API. Use a Linux account and its own credentials for SSH.
+
+Enable Proxmox certificate verification wherever the connection form offers it. If Proxmox uses a private CA, provide the issuing public CA certificate. Re-enter the token secret when editing. Test a replacement token in i-Clusters before revoking the old one in Proxmox.
+
+## Troubleshoot permissions
+
+- **Invalid credentials or HTTP 401:** Verify the full ID, token secret, account status and expiry. If the secret was lost, create a replacement token.
+- **Permission denied or HTTP 403:** Check both permission entries, including **Propagate**. Review any more specific ACLs on the resources named in the error.
+- **Console denied:** The effective Proxmox token needs **VM.Console** for that guest or **Sys.Console** for a node. Check the i-Clusters account's permission as well.
+- **Missing guest details:** For VM guest OS information, verify that QEMU Guest Agent is enabled and running inside the VM. Pair Docker separately to manage the Docker Engine.
+- **Certificate or network error:** Verify port `8006`, API connectivity from the controller and the certificate name or CA.
+
+Administrators who prefer the Proxmox shell can inspect effective permissions with `pveum user permissions iclusters@pve` and `pveum user token permissions iclusters@pve hub`.
+
+## Nodes and services
+
+In **Proxmox → Nodes**, choose a node to inspect resource usage, storage, services and provider status. Check whether the node is online before opening its console or submitting tasks. Host actions require the corresponding i-Clusters and Proxmox permissions.
+
+## Virtual machines
+
+In **Proxmox → Virtual Machines**, filter by node or power state, then open a VM to inspect resources and configuration. Use **Console** for the guest display and **Shell** for SSH. Check **Tasks & Logs** after submitting a lifecycle, snapshot or backup action.
+
+## LXC containers
+
+In **Proxmox → LXC Containers**, select the container and verify its node and status before changing configuration. **Console** opens a running container even before guest SSH is available. If SSH is rejected or unavailable, **Open Proxmox Console** appears in Connection Settings when the guest console can be opened.
+
+## Proxmox storage
+
+In **Proxmox → Storage**, inspect pools, usage and configured content types. Check the target node and available space before selecting storage for a guest, ISO, template or backup.
+
+## Proxmox networks
+
+In **Proxmox → Networks**, select the node to inspect its reported interfaces, bridges and VLAN configuration. Keep a separate management connection available when changing the interface used to reach Proxmox.
+
+## Tasks and logs
+
+In **Proxmox → Tasks & Logs**, find the task on the node that accepted it. Open its log to confirm the outcome of a power, creation, snapshot or backup action.
 
 ## Switch between clusters
 

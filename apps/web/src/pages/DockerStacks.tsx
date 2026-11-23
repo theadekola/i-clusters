@@ -1,3 +1,4 @@
+import {documentation} from '../documentation';
 import {isActionCancelled} from '../action-cancellation';
 import BrandIcon from '../components/BrandIcon';
 import RefreshButton from '../components/RefreshButton';
@@ -23,7 +24,7 @@ export default function DockerStacks({renderActions,navigation,hostSelector,data
  const request=useRef(0);
  const log=async(c:any)=>{const version=++request.current;setModal(`Logs: ${c.name}`);setLogs('Loading...');try{const result=await api(`/docker/container/${encodeURIComponent(c.id)}/logs`);if(version===request.current)setLogs(result.logs||'No log output.')}catch(e:any){if(isActionCancelled(e))return;if(version===request.current)setLogs(e.message)}};
  const inspect=async()=>{setModal('Inspect Stack');setLogs('Loading...');try{const result=await Promise.all(cs.map(async(c:any)=>({name:c.name,id:c.id,status:c.status,service:c.labels?.['com.docker.compose.service'],mounts:c.mounts||[],image:c.image})));setLogs(JSON.stringify(result,null,2))}catch(e:any){if(isActionCancelled(e))return;setLogs(e.message)}};
- const headerActions=<>{!renderActions&&<RefreshButton className="btn secondary" aria-busy={busy} disabled={busy} onClick={refresh}><RefreshCw size={14}/>Refresh</RefreshButton>}<a className="btn secondary" href="https://docs.docker.com/compose/" target="_blank" rel="noreferrer">Compose Documentation</a></>;
+ const headerActions=<>{!renderActions&&<RefreshButton className="btn secondary" aria-busy={busy} disabled={busy} onClick={refresh}><RefreshCw size={14}/>Refresh</RefreshButton>}<a className="btn secondary" href={documentation.compose} target="_blank" rel="noreferrer">Compose Documentation</a></>;
  return <div className="compose-manager">{renderActions?renderActions(headerActions):<div className="volume-header docker-page-header"><div><h2><BrandIcon brand="docker" size={24}/>Compose Stacks</h2><p className="muted">Monitor and control applications discovered from Docker Compose labels.</p></div>{hostSelector}<div className="header-actions">{headerActions}</div></div>}
  {error&&<p className="error" role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
 

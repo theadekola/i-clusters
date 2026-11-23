@@ -24,7 +24,7 @@ test('i-Clusters sign in retains password visibility, remembered sessions and sa
  assert.deepEqual(links.map(link=>[link.textContent,link.href]),[
   ['i-Clusters','https://www.i-clusters.com/'],
   ['GitHub','https://github.com/theadekola/i-clusters'],
-  ['Documentation','https://www.i-clusters.com/docs.html'],
+  ['Documentation','https://www.i-clusters.com/docs.html#manual-docs-browser-sessions-md'],
   ['Donate','https://www.i-clusters.com/donate.html']
  ]);
  for(const link of links){assert.equal(link.target,'_blank');assert.ok(link.relList.contains('noopener'));assert.ok(link.relList.contains('noreferrer'));}
@@ -44,6 +44,7 @@ test('unclaimed installations show browser registration, validate confirmation a
  const submit=()=>act(async()=>page.container.querySelector('form').dispatchEvent(new page.dom.window.Event('submit',{bubbles:true,cancelable:true})));
  try{
   delete globalThis.__brandTokens;assert.equal(page.dom.window.location.hash,'');assert.ok(!JSON.stringify({...page.dom.window.sessionStorage,...page.dom.window.localStorage}).includes(testToken));assert.match(page.container.textContent,/Create your owner account/);assert.doesNotMatch(page.container.textContent,/claim-owner|controller console/);assert.equal(page.container.querySelectorAll('input').length,4);assert.equal(page.container.querySelector('.login-remember'),null);
+  assert.equal([...page.container.querySelectorAll('.brand-links a')].find(link=>link.textContent==='Documentation')?.href,'https://www.i-clusters.com/docs.html#first-login');
   await change(page,'#registration-name','First Owner');await change(page,'input[autocomplete=username]','First_Owner');await change(page,'#login-password','First-owner-password');await change(page,'#registration-confirm-password','different');await submit();assert.match(page.container.textContent,/Passwords do not match/);assert.equal(calls.length,0);
   await change(page,'#registration-confirm-password','First-owner-password');await submit();assert.deepEqual(calls,[{path:'/auth/register',body:{name:'First Owner',username:'First_Owner',password:'First-owner-password',setupToken:testToken}}]);assert.equal(logged,false);assert.equal(globalThis.__brandTokens,undefined);assert.match(page.container.textContent,/Owner account created/);assert.equal(page.container.querySelector('#registration-name'),null);assert.equal(page.container.querySelector('#login-password').value,'');assert.equal(page.container.querySelector('input[autocomplete=username]').value,'first_owner');assert.match(page.container.textContent,/Sign in to your account/);
  }finally{await page.close()}
