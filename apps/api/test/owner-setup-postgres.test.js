@@ -22,8 +22,10 @@ test('first-owner claims, replacement and recovery across database connections',
 
   const old = await issueOwnerSetupToken(db);
   const active = await issueOwnerSetupToken(db);
-  const stored = await db.query('SELECT token_digest, expires_at > now() AS fresh FROM owner_setup_link');
-  assert.deepEqual(stored.rows,[{token_digest:createHash('sha256').update(active).digest('hex'), fresh:true}]);
+  const stored = await db.query('SELECT token_digest, EXTRACT(EPOCH FROM expires_at - clock_timestamp())::float8 AS remaining FROM owner_setup_link');
+  assert.equal(stored.rows.length,1);
+  assert.equal(stored.rows[0].token_digest,createHash('sha256').update(active).digest('hex'));
+  assert.ok(stored.rows[0].remaining > 7190 && stored.rows[0].remaining <= 7200, 'A newly issued link is valid for two hours');
   await assert.rejects(registerOwner(db,{...account,setupToken:old}),denied(403));
   await db.query("UPDATE owner_setup_link SET expires_at = now() - interval '1 second'");
   await assert.rejects(registerOwner(db,{...account,setupToken:active}),denied(403));

@@ -377,6 +377,32 @@ test('Proxmox Save verifies full management in one request without a power popup
  }finally{await page.close()}
 });
 
+test('Proxmox spins only the active connection action while blocking other buttons',async()=>{
+ let pending;
+ const page=await mounted('components/ClusterConnection.tsx',{compact:true,label:'Connect Proxmox'},async(path,options)=>{
+  if(path==='/auth/me')return {user:{role:'owner'}};
+  if(path==='/connections/proxmox'&&!options?.method)return {cluster:null};
+  if(path==='/connections/proxmox/test'||path==='/connections/proxmox'&&options.method==='PUT')return pending.promise;
+  assert.fail('Unexpected request: '+path);
+ },true,false,'ClusterConnection');
+ try{
+  await page.click(button(page,'Connect Proxmox'));
+  const form=page.container.querySelector('.cluster-form');
+  for(const [name,value] of Object.entries({name:'Lab',host:'pve.test',tokenId:'hub@pve!controller',tokenSecret:testKey}))form.elements[name].value=value;
+  const actions=[...form.querySelectorAll('.modal-actions button')];
+  for(const [control,label] of [[actions[1],'Testing Connection…'],[actions[2],'Connecting…']]){
+   pending=Promise.withResolvers();
+   await page.click(control);
+   assert.deepEqual([...page.container.querySelectorAll('button[aria-busy=true]')],[control]);
+   assert.equal(control.textContent,label);
+   assert.ok(actions.every(action=>action.disabled));
+   await act(async()=>{pending.resolve({nodes:[],management:{verified:true}});});
+   assert.equal(page.container.querySelector('button[aria-busy=true]'),null);
+  }
+  assert.ok(page.container.querySelector('.connection-success'));
+ }finally{await page.close()}
+});
+
 test('Proxmox permission failure stays in the form and retains saved certificate policy',async()=>{
  let submitted,fail=true;const page=await mounted('components/ClusterConnection.tsx',{compact:true,label:'Edit'},async(p,init)=>{if(p==='/auth/me')return {user:{role:'owner'}};if(p==='/connections/proxmox'&&!init?.method)return {cluster:{name:'Lab',host:'pve.test',port:8006,tokenId:'app@pve!hub',verifyTls:true,hasCa:true}};submitted=JSON.parse(init.body);if(fail)throw Error('Proxmox management access is incomplete at /: Sys.Audit, VM.Audit. Assign PVEAdmin to both the user and token.');return {nodes:[],management:{verified:true}}},true,false,'ClusterConnection');
  try{await page.click(button(page,'Edit'));const form=page.container.querySelector('.cluster-form');form.querySelector('[name=tokenSecret]').value=testPassword;const submit=()=>act(async()=>{form.dispatchEvent(new page.dom.window.Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>setTimeout(r,0))});await submit();assert.equal(submitted.verifyTls,true);assert.equal(submitted.ca,undefined);assert.match(form.querySelector('[role=alert]').textContent,/PVEAdmin/);const checklist=form.querySelector('.cluster-access-checklist');assert.equal(checklist.querySelectorAll('li').length,4);assert.match(checklist.querySelector('p').textContent,/all four Proxmox settings/);assert.doesNotMatch(checklist.querySelector('p').textContent,/Sys.Audit/);assert.equal(checklist.querySelector('details').open,false);assert.match(checklist.querySelector('details').textContent,/Sys.Audit/);assert.equal(form.querySelector('[name=tokenSecret]').value,testPassword);assert.equal(page.container.querySelector('.connection-success'),null);fail=false;await submit();assert.ok(page.container.querySelector('.connection-success'));}finally{await page.close()}

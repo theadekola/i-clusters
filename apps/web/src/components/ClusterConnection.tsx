@@ -8,7 +8,9 @@ import { Card, Modal } from './UI';
 export function ClusterConnection({compact=false,createNew=false,label='Cluster Settings',primary=false,autoOpen=false,onSaved,onConnected}:{compact?:boolean;createNew?:boolean;label?:string;primary?:boolean;autoOpen?:boolean;onSaved?:()=>void;onConnected?:()=>void}) {
  const {data:session}=useApi<any>('/auth/me',null);
  const owner=session?.user?.role==='owner';
- const [open,setOpen]=useState(false),[cluster,setCluster]=useState<any>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[nodes,setNodes]=useState<any[]>([]),[success,setSuccess]=useState('');
+ const [open,setOpen]=useState(false),[cluster,setCluster]=useState<any>(null),[error,setError]=useState(''),[message,setMessage]=useState(''),[nodes,setNodes]=useState<any[]>([]),[success,setSuccess]=useState('');
+ const [operation,setOperation]=useState<'open'|'test'|'save'|null>(null);
+ const busy=operation!==null;
  const [accessMode,setAccessMode]=useState('management');
  const editTls=createNew||clusterId!=='default';
  const savedProfile=useRef('');
@@ -16,24 +18,25 @@ export function ClusterConnection({compact=false,createNew=false,label='Cluster 
  const accessIssue=/management access|permission report|API token|inventory access|PVEAdmin/i.test(error);
  useEffect(()=>{if(open&&error&&accessIssue)accessPanel.current?.scrollIntoView?.({block:'nearest'})},[open,error,accessIssue]);
  const close=()=>{if(busy)return;setOpen(false);if(success){if(savedProfile.current&&savedProfile.current!==clusterId){window.location.assign(clusterLocation(savedProfile.current));return}setSuccess('');onConnected?.();window.dispatchEvent(new Event('iclusters-connection'));onSaved?.()}};
- const load=async()=>{setBusy(true);setError('');try{savedProfile.current='';const response:any=createNew?{cluster:null}:await api('/connections/proxmox');setCluster(response.cluster);setAccessMode(response.cluster?.accessMode||'management');setNodes([]);setMessage('');setSuccess('');setOpen(true);}catch(e:any){setError(e.message);}finally{setBusy(false);}};
+ const load=async()=>{setOperation('open');setError('');try{savedProfile.current='';const response:any=createNew?{cluster:null}:await api('/connections/proxmox');setCluster(response.cluster);setAccessMode(response.cluster?.accessMode||'management');setNodes([]);setMessage('');setSuccess('');setOpen(true);}catch(e:any){setError(e.message);}finally{setOperation(null);}};
  const autoOpened=useRef(false);
  useEffect(()=>{if(!autoOpen)autoOpened.current=false;if(autoOpen&&owner&&!autoOpened.current){autoOpened.current=true;void load()}},[autoOpen,owner]);
  const submitting=useRef(false);
  const submit=async(event:any)=>{
-  event.preventDefault();if(submitting.current)return;submitting.current=true;setBusy(true);setError('');setMessage('');setNodes([]);
+  event.preventDefault();if(submitting.current)return;submitting.current=true;
   const form=event.currentTarget,values=new FormData(form),test=event.nativeEvent.submitter?.value==='test';
+  setOperation(test?'test':'save');setError('');setMessage('');setNodes([]);
   const body={name:values.get('name'),host:values.get('host'),port:Number(values.get('port')),tokenId:values.get('tokenId'),tokenSecret:values.get('tokenSecret'),verifyTls:editTls?values.get('verifyTls')==='on':cluster?.verifyTls===true,accessMode,management:accessMode==='management',...(editTls&&values.get('ca')?{ca:String(values.get('ca'))}:{})};
   try{const result:any=await api(`${createNew?'/cluster-profiles':'/connections/proxmox'}${test?'/test':''}`,{method:test||createNew?'POST':'PUT',body:JSON.stringify(body)});
    if(accessMode==='management'&&result.management?.verified!==true)throw Error('Proxmox management access was not confirmed. Check both PVEAdmin permission entries and retry.');
    setNodes(result.nodes);setMessage(`${test?'Connection verified':'Cluster saved'}. ${result.nodes.length} node(s) discovered.`);
    if(!test){savedProfile.current=result.profile?.id||'';form.reset();setSuccess(accessMode==='monitoring'?'Monitoring connection saved. Inventory and metrics are available.':`Proxmox connection successful. ${result.nodes.length} node(s) discovered. VM / CT power and configuration access verified.`);}
-  }catch(e:any){setError(e.message);}finally{submitting.current=false;setBusy(false);}
+  }catch(e:any){setError(e.message);}finally{submitting.current=false;setOperation(null);}
  };
  if(!owner)return null;
- return <>{compact?<button className={`btn ${primary?'primary':'secondary'}`} aria-busy={busy} disabled={busy} onClick={load}><Server size={15}/>{label}</button>:<Card className="cluster-connection"><div><h3><Server size={20}/> Cluster connection</h3><p>Connect a Proxmox cluster or standalone node. Its nodes and guests load automatically.</p><p className="muted">Save independent clusters and switch between them in the header.</p></div><button className="btn primary" aria-busy={busy} disabled={busy} onClick={load}>Add / Edit Cluster</button></Card>}
+ return <>{compact?<button className={`btn ${primary?'primary':'secondary'}`} aria-busy={operation==='open'} disabled={busy} onClick={load}><Server size={15}/>{label}</button>:<Card className="cluster-connection"><div><h3><Server size={20}/> Cluster connection</h3><p>Connect a Proxmox cluster or standalone node. Its nodes and guests load automatically.</p><p className="muted">Save independent clusters and switch between them in the header.</p></div><button className="btn primary" aria-busy={operation==='open'} disabled={busy} onClick={load}>Add / Edit Cluster</button></Card>}
  {!open&&error&&<p role="alert" className="login-error">{error}</p>}{!open&&message&&<p role="status">{message}</p>}
- <Modal portal={createNew} open={open} title={cluster?'Edit Cluster':'Add Cluster'} onClose={close} success={success}>
+ <Modal portal={createNew} open={open} title={cluster?'Edit Cluster':'Add Cluster'} onClose={close} closeDisabled={busy} success={success}>
  <div className="cluster-provider"><Server size={22}/> Proxmox VE</div>
  <form className="form-grid cluster-form" onSubmit={submit}>
  <label>Connection access<select value={accessMode} onChange={e=>setAccessMode(e.target.value)}><option value="management">Management</option><option value="monitoring">Monitoring only</option></select></label>
@@ -59,6 +62,6 @@ export function ClusterConnection({compact=false,createNew=false,label='Cluster 
  {!editTls&&<p className="muted cluster-wide">New connections accept self-signed Proxmox HTTPS certificates. Existing certificate-verification settings are retained when editing. Connection details are encrypted on the server.</p>}
  {error&&(accessIssue&&accessMode==='management'?<div ref={accessPanel} role="alert" className="login-error cluster-wide cluster-access-checklist"><p>Check that all four Proxmox settings are configured, then test the connection again.</p><ol><li><strong>User account:</strong> Enabled, with the correct realm.</li><li><strong>User permission:</strong> PVEAdmin at / with Propagate enabled.</li><li><strong>API token:</strong> Full user@realm!token ID, correct secret, unexpired, with Privilege Separation enabled.</li><li><strong>Token permission:</strong> PVEAdmin at / with Propagate enabled.</li></ol><details><summary>Technical details</summary><p>{error}</p></details></div>:<p role="alert" className="login-error cluster-wide">{error}</p>)}{message&&<p role="status" className="cluster-wide">{message}</p>}
  {!!nodes.length&&<ul className="cluster-wide">{nodes.map(n=><li key={n.name}>{n.name} — {n.status||'Unknown'}</li>)}</ul>}
- <div className="modal-actions cluster-wide"><button className="btn secondary" type="button" aria-busy={busy} disabled={busy} onClick={close}>Cancel</button><button className="btn secondary" type="submit" value="test" aria-busy={busy} disabled={busy}>Test Connection</button><button className="btn primary" type="submit" value="save" aria-busy={busy} disabled={busy}>{busy?'Connecting…':'Save'}</button></div>
+ <div className="modal-actions cluster-wide"><button className="btn secondary" type="button" disabled={busy} onClick={close}>Cancel</button><button className="btn secondary" type="submit" value="test" aria-busy={operation==='test'} disabled={busy}>{operation==='test'?'Testing Connection…':'Test Connection'}</button><button className="btn primary" type="submit" value="save" aria-busy={operation==='save'} disabled={busy}>{operation==='save'?'Connecting…':'Save'}</button></div>
  </form></Modal></>;
 }

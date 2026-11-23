@@ -35,8 +35,8 @@ case "$command" in
     [[ -t 1 ]] || { echo 'Open a private controller terminal to display a setup link.' >&2; exit 1; }
     echo 'Private first-owner setup'
     setup_origin=${2:-$(python3 deployment/browser_origin.py)}
-    docker compose exec -T api node scripts/owner-setup-link.mjs "$setup_origin" </dev/null
-    echo 'This private setup link expires in 30 minutes. Issuing another link replaces it.'
+    docker compose exec -T api node scripts/owner-setup-link.mjs "$setup_origin" --terminal-link </dev/null
+    echo 'This private setup link expires in 2 hours. Issuing another link replaces it.'
     ;;
   claim-owner)
     [[ -t 0 ]] || { echo 'Run sudo iclusters claim-owner from an interactive controller console.' >&2; exit 1; }
