@@ -18,6 +18,7 @@ async function listen(server, t) {
 test('Proxmox consoles use the configured cluster and bind each relay to one signed-in browser', async t => {
   const calls = [];
   let failure = 0, status = 'running', portOverride, nodeStatus = 'online';
+  let vmConfig = {};
   const password = 'vnc-pass';
   const ticket = password + ':PVEVNC:fixture+/=';
   const authorization = 'PVEAPIToken=console@pve!test=fixture-secret';
@@ -25,6 +26,7 @@ test('Proxmox consoles use the configured cluster and bind each relay to one sig
     calls.push(req.url);
     assert.equal(req.headers.authorization, authorization);
     if (req.url === '/api2/json/nodes') return res.end(JSON.stringify({data: [{node: 'node01', status: nodeStatus}]}));
+    if (req.url.endsWith('/qemu/100/config?current=1')) return res.end(JSON.stringify({data: vmConfig}));
     if (req.url.endsWith('/cluster/resources')) {
       return res.end(JSON.stringify({data: [
         {node: 'node01', vmid: 100, type: 'qemu', status},
@@ -32,14 +34,15 @@ test('Proxmox consoles use the configured cluster and bind each relay to one sig
       ]}));
     }
     const isNode = req.url === '/api2/json/nodes/node01/termproxy';
-    if (!isNode) assert.match(req.url, /^\/api2\/json\/nodes\/node0[12]\/(qemu\/100|lxc\/101)\/vncproxy$/);
+    const isText = req.url.endsWith('/termproxy');
+    if (!isNode) assert.match(req.url, /^\/api2\/json\/nodes\/node0[12]\/(qemu\/100|lxc\/101)\/(vncproxy|termproxy)$/);
     assert.equal(req.method, 'POST');
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
-    assert.equal(Buffer.concat(chunks).toString(), isNode ? 'cmd=login' : 'websocket=1');
     const isVm = req.url.includes('/qemu/');
+    assert.equal(Buffer.concat(chunks).toString(), isText ? isNode ? 'cmd=login' : isVm ? 'serial=serial2' : '' : 'websocket=1');
     const port = portOverride ?? (isVm ? '5901' : 5901);
-    res.end(JSON.stringify({data: {ticket, port, ...(isVm ? {password} : {}), ...(isNode ? {user:'console@pve!test'} : {})}}));
+    res.end(JSON.stringify({data: {ticket, port, ...(isVm ? {password} : {}), ...(isText ? {user:'console@pve!test'} : {})}}));
   });
   const upstream = new WebSocketServer({noServer: true});
   provider.on('upgrade', (req, socket, head) => {
@@ -52,11 +55,11 @@ test('Proxmox consoles use the configured cluster and bind each relay to one sig
     assert.equal(url.searchParams.get('vncticket'), ticket);
     if (failure) return socket.end(`HTTP/1.1 ${failure} Failed\r\nContent-Length: 0\r\n\r\n`);
     upstream.handleUpgrade(req, socket, head, client => {
-      if (isNode) {
+      if (req.headers['sec-websocket-protocol'] === 'binary') {
         assert.equal(req.headers['sec-websocket-protocol'], 'binary');
         client.once('message', frame => {
           assert.equal(frame.toString(), `console@pve!test:${ticket}\n`);
-          client.send(Buffer.from('OKnode login: '));
+          client.send(Buffer.from(isNode ? 'OKnode login: ' : 'OK\x1b[32mguest login: '));
           client.on('message', (data, binary) => client.send(data, {binary}));
         });
         return;
@@ -91,9 +94,11 @@ test('Proxmox consoles use the configured cluster and bind each relay to one sig
   const controller = http.createServer(app);
   controller.on('upgrade', guestConsole.upgrade);
   const origin = await listen(controller, t);
-  const create = (kind = 'qemu', node = 'node01', id = 100, token = 'operator', browserOrigin = origin) =>
+  const create = (kind = 'qemu', node = 'node01', id = 100, token = 'operator', browserOrigin = origin, display) =>
     fetch(`${origin}/api/proxmox/console/${kind}/${node}` + (kind === 'node' ? '' : `/${id}`), {
-      method: 'POST', headers: {origin: browserOrigin, ...(token ? {authorization: 'Bearer ' + token} : {})}
+      method: 'POST', headers: {origin: browserOrigin, ...(token ? {authorization: 'Bearer ' + token} : {}),
+        ...(display === undefined ? {} : {'content-type': 'application/json'})},
+      ...(display === undefined ? {} : {body: JSON.stringify({display})})
     });
   const connect = (key, browserOrigin = origin) => new WebSocket(origin.replace('http:', 'ws:') + consoleSocketPath, ['binary', key], {origin: browserOrigin});
   const rejected = async socket => {
@@ -174,4 +179,35 @@ test('Proxmox consoles use the configured cluster and bind each relay to one sig
   guestConsole.revoke('test-user','test-session');
   await nodeClosed;
   assert.deepEqual(audit.map(entry => entry[1]), ['qemu:node01:100', 'lxc:node02:101', 'node:node01']);
+
+  assert.equal((await create('qemu', 'node01', 100, 'operator', origin, 'invalid')).status, 400);
+  assert.equal((await create('qemu', 'node01', 100, 'operator', origin, 'text')).status, 409);
+  const graphical = await (await create('qemu', 'node01', 100, 'operator', origin, 'auto')).json();
+  assert.equal(graphical.display, 'graphical');
+  assert.equal(graphical.password, password);
+  const vncBrowser = connect(graphical.key);
+  assert.equal((await once(vncBrowser,'message'))[0].toString(), 'RFB 003.008\n');
+  const vncClosed = once(vncBrowser,'close');
+  guestConsole.revoke('test-user', 'test-session');
+  await vncClosed;
+  vmConfig = {serial0: 'socket', serial2: 'socket', vga: 'type=serial2'};
+  for (const [kind, node, id] of [['qemu','node01',100], ['lxc','node02',101]]) {
+    const request = await create(kind, node, id, 'operator', origin, 'auto');
+    const session = await request.json();
+    assert.equal(session.display, 'text');
+    assert.equal(session.password, undefined);
+    const browser = connect(session.key);
+    assert.equal((await once(browser,'message'))[0].toString(), 'OK\x1b[32mguest login: ');
+    browser.send('0:5:ä€');
+    assert.equal((await once(browser,'message'))[0].toString(), '0:5:ä€');
+    const closed = once(browser,'close');
+    guestConsole.revoke('test-user', 'test-session');
+    await closed;
+  }
+  const command = token => fetch(origin+'/api/proxmox/console/update-command', {headers:{authorization:'Bearer '+token}});
+  assert.equal((await command('operator')).status,403);
+  assert.equal((await command('restricted-admin')).status,403);
+  const update = await command('unrestricted-admin');
+  assert.equal(update.status,200);
+  assert.match((await update.json()).command,/apt-get/);
 });

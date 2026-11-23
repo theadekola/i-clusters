@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import ssh2 from 'ssh2';
 import {once} from 'node:events';
-import {guestUpdateCommand} from '../src/guest-package-update.js';
+import {spawnSync} from 'node:child_process';
+import {guestConsoleUpdateCommand,guestUpdateCommand} from '../src/guest-package-update.js';
 import {connectSSH,openGuestUpdate,shellSession,closeShell,writeShellInput} from '../src/ssh-access.js';
 test('guest updates use a separate PTY on the verified connection, bound to the logged-in guest session',async()=>{
  const key=crypto.generateKeyPairSync('rsa',{modulusLength:2048}).privateKey.export({type:'pkcs1',format:'pem'});
@@ -32,6 +33,16 @@ test('guest updates use a separate PTY on the verified connection, bound to the 
 });
 
 import {completedGuestUpdate} from '../src/guest-package-update.js';
+test('console update text contains no implied Enter and unpacks to the same update script as SSH',()=>{
+ assert.doesNotMatch(guestConsoleUpdateCommand,/[\r\n]/);
+ // Capture the argument to sh -c without executing the package updater.
+ const capture=command=>spawnSync('sh',['-c','sh() { printf "%s" "$2"; }; '+command],{encoding:'utf8'});
+ const ssh=capture(guestUpdateCommand),console=capture(guestConsoleUpdateCommand);
+ assert.equal(ssh.status,0,ssh.stderr);
+ assert.equal(console.status,0,console.stderr);
+ assert.equal(console.stdout,ssh.stdout.trimEnd());
+ assert.match(console.stdout,/Apply the available package upgrades to this guest/);
+});
 test('success requires both an applied-update receipt and a successful process exit',()=>{
  const receipt='done\r\nICLUSTERS_UPDATE_RESULT=1|Ubuntu 24.04.3 LTS\r\n';
  assert.deepEqual(completedGuestUpdate(0,receipt),{osVersion:'Ubuntu 24.04.3 LTS',rebootRequired:true});

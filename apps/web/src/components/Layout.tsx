@@ -31,7 +31,7 @@ const sections = [
   { title: 'INFRASTRUCTURE', items: [['Proxmox','/proxmox',Boxes],['Docker','/docker',Container],['Storage','/storage',Database],['Network','/network',Network]] },
   { title: 'DATA PROTECTION', items: [['Backups','/backups',HardDriveDownload]] },
   { title: 'MONITORING', items: [['Monitoring','/monitoring',Activity],['Alerts','/alerts',Bell],['AI Assistant','/ai',Sparkles]] },
-  { title: 'TOOLS', items: [['Shell','/tools/shell',Terminal],['SFTP Files','/tools/sftp',FolderOpen]] },
+  { title: 'TOOLS', items: [['Console','/tools/console',Terminal],['SFTP Files','/tools/sftp',FolderOpen]] },
   { title: 'MANAGEMENT', items: [['Users','/users',Users],['Settings','/settings',Settings]] },
 ];
 

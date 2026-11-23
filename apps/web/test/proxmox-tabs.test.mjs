@@ -9,7 +9,7 @@ async function component(file){
 function Location(){const location=useLocation(),navigate=useNavigate();return React.createElement(React.Fragment,null,React.createElement('output',{'data-location':location.pathname+location.search,'data-state':JSON.stringify(location.state)}),React.createElement('button',{onClick:()=>navigate(-1)},'Audit Back'),React.createElement('button',{onClick:()=>navigate(1)},'Audit Forward'))}
 function InventoryRoute({component,props}){
  const location=useLocation();
- return location.pathname==='/tools/shell'?null:React.createElement(component,props);
+ return ['/tools/shell','/tools/console'].includes(location.pathname)?null:React.createElement(component,props);
 }
 async function mounted(file,props,api,mobile=true,strict=false,entry='/proxmox',exportName='default',routeInventory=false){
  const dom=new JSDOM('<div id="root"></div>',{url:'https://iclusters.test'});const navigatorDescriptor=Object.getOwnPropertyDescriptor(globalThis,'navigator');Object.defineProperty(globalThis,'navigator',{value:dom.window.navigator,configurable:true});const originals={};for(const k of ['window','document','localStorage','Event','CustomEvent','HTMLElement','FormData','ResizeObserver','requestAnimationFrame']){originals[k]=globalThis[k];globalThis[k]=dom.window[k];}
@@ -195,7 +195,7 @@ test('VM wizard visits all eight tabs, retains edits, reviews values and submits
  assert.equal(writes[0].openConsole,true);
  assert.equal(page.container.querySelector('[role=dialog]'),null);
  const route=page.container.querySelector('[data-location]');
- assert.equal(route.dataset.location,'/tools/shell?mode=console&target=vm%3An1%3A107');
+ assert.equal(route.dataset.location,'/tools/console?target=vm%3An1%3A107');
  const consoleState=JSON.parse(route.dataset.state).consoleSelection;
  assert.equal(consoleState.name,'wizard-vm');
  assert.equal(consoleState.creation.creationReceipt,'vm-receipt');
@@ -232,7 +232,7 @@ test('CT wizard traverses all eight tabs, retains settings and submits matching 
  assert.equal(page.writes[0].password,'fixture8');assert.equal(page.writes[0].openConsole,true);
  assert.equal(page.container.querySelector('[role=dialog]'),null);
  const route=page.container.querySelector('[data-location]');
- assert.equal(route.dataset.location,'/tools/shell?mode=console&target=lxc%3An1%3A108');
+ assert.equal(route.dataset.location,'/tools/console?target=lxc%3An1%3A108');
  const consoleState=JSON.parse(route.dataset.state).consoleSelection;
  assert.equal(consoleState.name,'ct-fixture');
  assert.equal(consoleState.creation.creationReceipt,'ct-receipt');

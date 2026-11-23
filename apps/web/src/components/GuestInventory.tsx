@@ -28,7 +28,7 @@ export function useGuestInventory(kind:Kind,ready:boolean){
  const openTerminal=(guest:Pick<Guest,'id'|'name'|'node'>,consoleMode=false,creation?:ConsoleCreation)=>{
   lastInventory={entry:location.key,kind,top:window.scrollY,tableTop:listRef.current?.scrollTop||0};
   const target=encodeURIComponent(kind+':'+guest.node+':'+guest.id);
-  navigate('/tools/shell?'+(consoleMode?'mode=console&':'')+'target='+target,{
+  navigate((consoleMode?'/tools/console':'/tools/shell')+'?target='+target,{
    state:consoleMode?{consoleSelection:{name:guest.name,creation}}:null
   });
  };

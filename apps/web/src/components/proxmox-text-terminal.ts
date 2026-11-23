@@ -2,11 +2,11 @@ import {Terminal} from '@xterm/xterm';
 import {FitAddon} from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 
-export function attachNodeTerminal(
+export function attachProxmoxTerminal(
   viewport: HTMLDivElement, url: URL, key: string,
-  connected: () => boolean, failed: (message: string) => void
+  fontSize: number, connected: () => boolean, failed: (message: string) => void
 ) {
-  const terminal = new Terminal({theme: {background: '#07111d'}, cursorBlink: true, disableStdin: true});
+  const terminal = new Terminal({fontSize, theme: {background: '#07111d'}, cursorBlink: true, disableStdin: true});
   const fit = new FitAddon();
   terminal.loadAddon(fit);
   terminal.open(viewport);
@@ -33,7 +33,7 @@ export function attachNodeTerminal(
     if (acknowledged < acknowledgement.length) {
       while (offset < bytes.length && acknowledged < acknowledgement.length) {
         if (bytes[offset++] !== acknowledgement[acknowledged++]) {
-          failed('Proxmox rejected the node console ticket. Reconnect to request a new one.');
+          failed('Proxmox rejected the console ticket. Reconnect to request a new one.');
           socket.close();
           return;
         }
@@ -51,9 +51,12 @@ export function attachNodeTerminal(
     terminal.options.disableStdin = true;
     failed('The Proxmox console disconnected.');
   };
-  socket.onerror = () => failed('The Proxmox console disconnected.');
+  socket.onerror = () => {
+    terminal.options.disableStdin = true;
+    failed('The Proxmox console disconnected.');
+  };
 
-  return () => {
+  const dispose = () => {
     window.clearInterval(keepalive);
     observer.disconnect();
     input.dispose();
@@ -61,4 +64,5 @@ export function attachNodeTerminal(
     socket.close();
     terminal.dispose();
   };
+  return {terminal, resize, dispose};
 }
