@@ -194,11 +194,6 @@ export default function Shell({mode='shell',visible=true,consoleOnly=false}:{mod
    {connection.notice&&<p role="alert" className="error">{connection.notice}</p>}
    <SSHLogin openImmediately={!files} key={connection.target} target={connection.target} host={connection.address}
     connection={connection.saved} editing={connection.editing} mode={mode} requirePassword={connection.requirePassword}
-    onOpenConsole={(!files&&connection.kind==='Containers'&&connection.status==='running'&&live.data?.cluster?.accessMode!=='monitoring')?()=>{
-     openConsole(connection);
-     setConnection(null);
-     setParams(new URLSearchParams({mode:'console'}));
-    }:undefined}
     onConnected={r=>{
      void savedConnections.refresh();
      if(connection.editing)void api(`/ssh/session/${encodeURIComponent(r.id)}`,{method:'DELETE'}).catch(()=>{});

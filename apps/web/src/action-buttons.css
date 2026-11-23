@@ -169,6 +169,15 @@
   white-space: normal;
   overflow-wrap: anywhere;
 }
+.modal.modal .ssh-pairing-popup .automatic-node-pairing .action-row.pairing-actions {
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+:root .modal.modal .ssh-pairing-popup .automatic-node-pairing .action-row.pairing-actions > .btn {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  white-space: normal;
+}
 :root[data-preset][data-theme][data-appearance] :is(.modal button.btn.danger, .content .header-actions > .btn.danger) {
   background: #aa2637 !important;
   color: white !important;

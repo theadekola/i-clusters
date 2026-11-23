@@ -168,3 +168,57 @@ test('Docker pairing offers VM agent setup only for an agent prerequisite',async
  interfaces=[{inet:'192.0.2.10/24'}];
  assert.equal((await service.target('node02:lxc/200')).host,'192.0.2.10');
 });
+
+test('Docker pairing on a key-only LXC authenticates before probing and never publishes the credentials',async()=>{
+ const sshKey=()=>crypto.generateKeyPairSync('rsa',{modulusLength:2048}).privateKey.export({type:'pkcs1',format:'pem'});
+ const hostKey=sshKey(),privateKey=sshKey(),wrongKey=sshKey();
+ const clientKey=ssh2.utils.parseKey(privateKey).getPublicSSH();
+ const fingerprint='SHA256:'+crypto.createHash('sha256').update(ssh2.utils.parseKey(hostKey).getPublicSSH()).digest('base64').replace(/=+$/,'');
+ const clients=new Set();
+ const server=new ssh2.Server({hostKeys:[hostKey]},client=>{
+  clients.add(client);
+  client.on('error',()=>{}).on('close',()=>clients.delete(client));
+  client.on('authentication',ctx=>{
+   if(ctx.method!=='publickey'||ctx.username!=='root'||!ctx.key.data.equals(clientKey))
+    return ctx.reject(['publickey']);
+   if(ctx.signature&&ssh2.utils.parseKey(ctx.key.data).verify(ctx.blob,ctx.signature,ctx.hashAlgo)!==true)
+    return ctx.reject(['publickey']);
+   ctx.accept();
+  });
+ });
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const node='node01:lxc/109',calls=[],hosts=[];
+ const service=createAutomaticNodePairing({
+  kind:'docker',config:()=>({}),resolveTarget:async()=>({host:'127.0.0.1',identity:{guest:true}}),
+  origin:()=>'https://controller.test:6002',ca:()=>'',nodes:()=>hosts,
+  pairing:()=>({code:'once'}),pair:()=>({id:'docker-agent',token:'agent-only'}),heartbeatTimeout:0,
+  run:async(_client,user,sudoPassword,payload)=>{
+   assert.equal(user,'root');assert.equal(sudoPassword,'');
+   calls.push(payload.mode);
+   if(payload.mode==='probe')return {ready:true,hostname:'guest109'};
+   hosts.push({id:'docker-agent',hostname:'guest109',online:true,...connectorRelease,lastSeen:new Date(Date.now()+1000).toISOString()});
+   return {installed:true};
+  }
+ });
+ const target=await service.target(node);
+ const input={...target,port:server.address().port,username:'root',fingerprint,confirm:true,verified:true};
+ async function attempt(credentials){
+  const job=await service.start({...input,...credentials});
+  await service.wait(node);
+  const status=service.status(job.id);
+  assert.equal(status.privateKey,undefined);
+  assert.equal(status.keyPassphrase,undefined);
+  assert.equal(status.password,undefined);
+  return status;
+ }
+ try{
+  assert.match((await attempt({password:'fixture'})).message,/did not offer password login/);
+  assert.match((await attempt({privateKey:wrongKey})).message,/rejected this key/);
+  assert.deepEqual(calls,[]);
+  assert.equal((await attempt({privateKey})).state,'completed');
+  assert.deepEqual(calls,['probe','install']);
+ }finally{
+  for(const client of clients)client.end();
+  await new Promise(resolve=>server.close(resolve));
+ }
+});
