@@ -1036,7 +1036,9 @@ try{
     for(let pass=0;pass<2;pass++){
      await photo.waitFor();
      const bounds=await photo.boundingBox(),rail=await sidebar.boundingBox(),trigger=await page.locator('.sidebar-account .profile-trigger').boundingBox();
-     assert.ok(bounds.width===20&&bounds.height===20&&bounds.x>=rail.x&&bounds.x+bounds.width<=rail.x+rail.width);
+     assert.equal(bounds.width,36,'The saved avatar uses the 36px size in both sidebar states');
+     assert.equal(bounds.height,36);
+     assert.ok(bounds.x>=rail.x&&bounds.x+bounds.width<=rail.x+rail.width);
      assert.ok(bounds.y>=trigger.y&&bounds.y+bounds.height<=trigger.y+trigger.height);
      await page.locator('.nav-toggle').click();
     }
