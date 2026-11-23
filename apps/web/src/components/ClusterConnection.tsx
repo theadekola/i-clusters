@@ -1,3 +1,4 @@
+import {documentation} from '../documentation';
 import {clusterId,clusterLocation} from '../cluster-context';
 import { useEffect,useRef,useState } from 'react';
 import { Server,ChevronDown } from 'lucide-react';
@@ -57,7 +58,7 @@ export function ClusterConnection({compact=false,createNew=false,label='Cluster 
  </ol>
  {accessMode==='management'?<p>These are two PVEAdmin permission entries for one user and one token. They enable VM / CT power and configuration. PVEAdmin does not grant Proxmox permission administration or node shutdown.</p>:<p>Use a PVEAuditor token for inventory and monitoring.</p>}
  <p>Guest OS details require the QEMU Guest Agent. Connect Docker hosts separately for Docker management. Your @pve account is not a Linux SSH account.</p>
- <a href="https://pve.proxmox.com/pve-docs/pveum.1.html" target="_blank" rel="noopener noreferrer">Proxmox user and API token documentation</a>
+ <a href={documentation.proxmoxToken} target="_blank" rel="noopener noreferrer">Proxmox user and API token documentation</a>
  </details>
  {!editTls&&<p className="muted cluster-wide">New connections accept self-signed Proxmox HTTPS certificates. Existing certificate-verification settings are retained when editing. Connection details are encrypted on the server.</p>}
  {error&&(accessIssue&&accessMode==='management'?<div ref={accessPanel} role="alert" className="login-error cluster-wide cluster-access-checklist"><p>Check that all four Proxmox settings are configured, then test the connection again.</p><ol><li><strong>User account:</strong> Enabled, with the correct realm.</li><li><strong>User permission:</strong> PVEAdmin at / with Propagate enabled.</li><li><strong>API token:</strong> Full user@realm!token ID, correct secret, unexpired, with Privilege Separation enabled.</li><li><strong>Token permission:</strong> PVEAdmin at / with Propagate enabled.</li></ol><details><summary>Technical details</summary><p>{error}</p></details></div>:<p role="alert" className="login-error cluster-wide">{error}</p>)}{message&&<p role="status" className="cluster-wide">{message}</p>}

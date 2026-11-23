@@ -165,15 +165,55 @@ test('saved VM and LXC connections use direct SSH and rejected LXC credentials r
    if(fail){
     const dialog=page.container.querySelector('[role=dialog]');
     assert.match(dialog.textContent,/SSH login failed/);
-    assert.doesNotMatch(dialog.textContent,/Open Proxmox Console/);
+    const openConsole=[...dialog.querySelectorAll('.ssh-dialog-footer button')].find(button=>button.textContent==='Open Proxmox Console');
+    assert.ok(openConsole);
     assert.equal(dialog.querySelector('[name=host]').value,host);
     assert.equal(dialog.querySelector('[name=password]').value,'');
     assert.equal(dialog.querySelector('[name=password]').required,true);
+    await page.click(openConsole);
+    assert.equal(page.container.querySelector('[role=dialog]'),null);
+    assert.equal(page.container.querySelector('[role=tab][aria-selected=true]').textContent,'ct');
+    assert.match(page.container.querySelector('.guest-console').textContent,/CT 210/);
    }else{
     assert.ok(page.container.querySelector('[role=tab]'));
     assert.equal(page.container.querySelector('[role=dialog]'),null);
     assert.equal(requests.some(r=>r.path==='/ssh/fingerprint'),false);
    }
+  }finally{await page.close();}
+ }
+});
+
+test('VM console shortcut appears after a user login failure or an unreachable SSH service',async()=>{
+ for(const blockedAt of ['fingerprint','connect']){
+  const target='vm:pve:100';
+  const vm={id:'100',name:'Fixture VM',node:'pve',status:'running'};
+  const page=await mounted('pages/Shell.tsx',{},async path=>{
+   if(path==='/proxmox')return {vms:[vm]};
+   if(path==='/ssh/connections?mode=shell')return {};
+   if(path.startsWith('/proxmox/vm/pve/100/details'))return {host:'192.0.2.100'};
+   if(path==='/ssh/'+blockedAt)throw Object.assign(Error('SSH unavailable'),{
+    status:422,body:{code:blockedAt==='fingerprint'?'ssh_connection_unavailable':'ssh_authentication_failed'}
+   });
+   if(path==='/ssh/fingerprint')return {fingerprint:'SHA256:fixture'};
+   assert.fail('Unexpected lookup: '+path);
+  });
+  try{
+   await page.click(page.container.querySelector('[aria-label="Connect to Fixture VM"]'));
+   const form=page.container.querySelector('form[aria-label="SSH"]');
+   const shortcut=()=>[...form.querySelectorAll('.ssh-dialog-footer button')].find(button=>button.textContent==='Open Proxmox Console');
+   assert.equal(shortcut(),undefined);
+   await act(async()=>{await new Promise(resolve=>setTimeout(resolve,300));});
+   if(blockedAt==='connect'){
+    assert.equal(shortcut(),undefined);
+    form.querySelector('[name=password]').value='fixture-password';
+    await act(async()=>{form.dispatchEvent(new page.dom.window.Event('submit',{bubbles:true,cancelable:true}));});
+   }
+   assert.ok(shortcut());
+   assert.equal(shortcut().nextElementSibling.textContent,'Connect');
+   await page.click(shortcut());
+   assert.equal(page.container.querySelector('[role=dialog]'),null);
+   assert.equal(page.container.querySelector('[role=tab][aria-selected=true]').textContent,'Fixture VM');
+   assert.match(page.container.querySelector('.guest-console').textContent,/VM 100/);
   }finally{await page.close();}
  }
 });

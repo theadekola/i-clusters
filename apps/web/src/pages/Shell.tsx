@@ -9,7 +9,7 @@ import {Server,Monitor,Box,Search,LayoutGrid,List,Ellipsis,Plus,X} from 'lucide-
 import {useApi} from '../hooks';
 import {api} from '../api';
 import {Card,Badge,Modal} from '../components/UI';
-import SSHTerminal,{SSHLogin} from '../components/SSHAccess';
+import SSHTerminal,{SSHLogin,canOpenConsoleAfterSSHFailure} from '../components/SSHAccess';
 function HostStatus({status}:{status:string}){
  const previous=useRef(status);
  const badge=useRef<HTMLSpanElement>(null);
@@ -98,7 +98,7 @@ export default function Shell({mode='shell',visible=true,consoleOnly=false}:{mod
   connectionAttempt.current=attempt;
   setBusy(true);
   setError('');
-  let saved=savedConnections.data?.[r.target],notice='',requirePassword=false;
+  let saved=savedConnections.data?.[r.target],notice='',requirePassword=false,sshBlocked=false;
   try{
    if(!configure&&(files||saved?.hasPassword)){
     try{
@@ -117,6 +117,7 @@ export default function Shell({mode='shell',visible=true,consoleOnly=false}:{mod
      }else{
       notice=files?`Saved SSH connection failed: ${error.message}. Check the connection username and password.`:error.message;
       requirePassword=error.body?.code==='ssh_authentication_failed';
+      sshBlocked=canOpenConsoleAfterSSHFailure(error);
      }
     }
    }
@@ -130,7 +131,7 @@ export default function Shell({mode='shell',visible=true,consoleOnly=false}:{mod
      notice||='Guest address discovery unavailable. Enter its SSH address in the connection form.';
     }
    }
-   if(connectionAttempt.current===attempt)setConnection({...r,address:address||'',saved,editing:configure,notice,requirePassword});
+   if(connectionAttempt.current===attempt)setConnection({...r,address:address||'',saved,editing:configure,notice,requirePassword,sshBlocked});
   }finally{
    if(connectionAttempt.current===attempt){
     connectionAttempt.current=null;
@@ -194,6 +195,15 @@ export default function Shell({mode='shell',visible=true,consoleOnly=false}:{mod
    {connection.notice&&<p role="alert" className="error">{connection.notice}</p>}
    <SSHLogin openImmediately={!files} key={connection.target} target={connection.target} host={connection.address}
     connection={connection.saved} editing={connection.editing} mode={mode} requirePassword={connection.requirePassword}
+    sshBlocked={connection.sshBlocked}
+    onOpenConsole={!files&&/^(vm|lxc):/.test(connection.target)&&connection.status==='running'&&live.data?.cluster?.accessMode!=='monitoring'?()=>{
+     openConsole(connection);
+     setConnection(null);
+     const next=new URLSearchParams(params);
+     next.delete('target');
+     next.set('mode','console');
+     setParams(next,{state:null});
+    }:undefined}
     onConnected={r=>{
      void savedConnections.refresh();
      if(connection.editing)void api(`/ssh/session/${encodeURIComponent(r.id)}`,{method:'DELETE'}).catch(()=>{});
