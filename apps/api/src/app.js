@@ -86,7 +86,6 @@ import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import {accountIdentity} from './username.js';
 import {registerOwner,setupStatus} from './setup.js';
-import {guestConsoleUpdateCommand} from './guest-package-update.js';
 import { clusterStore,clusterConfig,publicCluster,validateCluster } from './cluster-config.js';
 import {productRouter,countAction} from './product-usage.js';
 import { pool } from './db.js';
@@ -173,9 +172,6 @@ export function createApp({guestConsole=createProxmoxConsole(),profiles=process.
  app.use('/api',(req,res,next)=>permits(req.user.permissionKeys,req.method,req.path,req.body,req.user.sub)
    ?next():res.status(403).json({error:'This action is restricted by your account permissions.'}));
  app.post('/api/proxmox/console/node/:node',authorize('admin'),(req,res)=>guestConsole.start(req,res,audit,'node'));
- app.get('/api/proxmox/console/update-command',authorize('admin'),(_req,res)=>{
-  res.set('Cache-Control','no-store').json({command:guestConsoleUpdateCommand});
- });
  for(const kind of ['qemu','lxc']){
   app.post(`/api/proxmox/console/${kind}/:node/:id`,authorize('operator'),(req,res)=>{
    return guestConsole.start(req,res,audit,kind);

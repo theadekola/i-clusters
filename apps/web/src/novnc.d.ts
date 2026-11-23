@@ -5,7 +5,6 @@ declare module '@novnc/novnc' {
       credentials?: {password: string};
     });
     scaleViewport: boolean;
-    clipboardPasteFrom(text: string): void;
     disconnect(): void;
     focus(): void;
   }

@@ -1,10 +1,6 @@
 import {readFileSync} from 'node:fs';
 const script = readFileSync(new URL('./guest-package-update.sh',import.meta.url),'utf8');
-const quote = value => "'" + value.replaceAll("'", "'\\''") + "'";
-export const guestUpdateCommand = 'sh -c ' + quote(script);
-// A paste into an interactive shell must contain no line breaks that submit it.
-export const guestConsoleUpdateCommand =
- `sh -c "$(printf '%s\\n' ${script.trimEnd().split('\n').map(quote).join(' ')})"`;
+export const guestUpdateCommand = 'sh -c '+"'"+script.replaceAll("'","'\\''")+"'";
 
 export function assertGuestUpdateSession(session, loginId) {
  if (!session || session.sessionId !== loginId || session.mode !== 'shell' || session.closed || session.updateChannel ||
