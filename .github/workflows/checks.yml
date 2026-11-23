@@ -77,7 +77,7 @@ jobs:
         run: ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_CHECK_ACTION_ROWS=1 LAYOUT_ROUTES=/settings LAYOUT_WIDTHS=1800,1280,1024,768,390,320 node apps/web/scripts/audit-layout.mjs
       - name: Check host cards, sidebar layouts and restart notifications
         run: |
-          ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_HOST_CARDS=1 LAYOUT_ROUTES='/proxmox,/tools/shell,/tools/sftp,/settings?tab=Connections' LAYOUT_WIDTHS=1440,1024,390,320 node apps/web/scripts/audit-layout.mjs
+          ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_HOST_CARDS=1 LAYOUT_ROUTES='/proxmox,/proxmox?tab=Virtual%20Machines,/proxmox?tab=LXC%20Containers,/tools/shell,/tools/sftp,/settings?tab=Connections' LAYOUT_WIDTHS=1440,1024,390,320 node apps/web/scripts/audit-layout.mjs
           ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_GUEST_RESTART=1 LAYOUT_ROUTES=/proxmox LAYOUT_WIDTHS=1280,390 LAYOUT_HTTPS_KEY="$RUNNER_TEMP/pairing.key" LAYOUT_HTTPS_CERT="$RUNNER_TEMP/pairing.crt" node apps/web/scripts/audit-layout.mjs
       - name: Verify popup layouts in Chromium
         run: |

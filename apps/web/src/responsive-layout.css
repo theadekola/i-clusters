@@ -259,7 +259,7 @@ body,.app-shell,.main-shell{min-inline-size:0;max-inline-size:100%}
   overflow-x: auto;
   overscroll-behavior-inline: contain;
 }
-:is(.content.content,.modal.modal) :is(.action-row,.schedule-quick,[class$="-actions"],[class*="-actions "],.vm-create-footer,.ssh-dialog-footer) > :is(button,a.btn,select,label,.vm-power-actions) {
+:is(.content.content,.modal.modal) :is(.action-row,.schedule-quick,[class$="-actions"],[class*="-actions "],.vm-create-footer,.ssh-dialog-footer) > :is(button,a.btn,select,label) {
   flex: none;
   white-space: nowrap;
   overflow-wrap: normal;

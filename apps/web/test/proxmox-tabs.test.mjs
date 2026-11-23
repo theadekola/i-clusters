@@ -318,9 +318,10 @@ test('Back from a card Shell restores the filtered inventory and scroll position
    page.dom.window.scrollY=320;
    page.dom.window.scrollTo=(_x,y)=>{restored=y};
    assert.equal(page.container.querySelector('[role=dialog]'),null);await page.click(button(page,'Details'));
-   const power=page.container.querySelector('.vm-power-actions');
-   assert.deepEqual([...power.querySelectorAll('button')].map(button=>button.textContent.trim()),['Start','Shutdown','Reboot']);
-   assert.equal(page.container.querySelector('.vm-detail-actions details'),null);
+   const actions=page.container.querySelector('.vm-detail-actions');
+   assert.deepEqual([...actions.querySelectorAll(':scope > button')].map(button=>button.textContent.trim()),
+    ['Snapshot','Backup','Console','Shell','Start','Shutdown','Reboot']);
+   assert.equal(actions.querySelector('details'),null);
    await page.click(page.container.querySelector('[aria-label="Close dialog"]'));await page.click(button(page,'Shell'));
    assert.equal(list(),null);
    assert.equal(page.container.querySelector('[data-location]').dataset.location,'/tools/shell?target='+encodeURIComponent(kind+':n2:'+id));

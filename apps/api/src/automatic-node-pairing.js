@@ -8,7 +8,7 @@ import {clusterConfig} from './cluster-config.js';
 import {pve} from './connectors.js';
 import {targetSSHHost} from './ssh-target.js';
 import {createPairing,pairNode,revokeAgent,agentNodes} from './node-agents.js';
-import {passwordAuthentication} from './ssh-password.js';
+import {parseSSHPrivateKey,sshAuthentication,sshAuthenticationMessages,lxcRootLoginMessage} from './ssh-password.js';
 import {connectorSource,connectorRelease} from './connector-release.js';
 const script=readFileSync(new URL('./agent-assets/pair-node-ssh.py',import.meta.url),'utf8');
 const fail=(message,status=400)=>Object.assign(Error(message),{status});
@@ -49,16 +49,22 @@ if(typeof node!=='string'||!(kind==='docker'?/^[A-Za-z0-9_.-]+:(qemu|lxc)\/\d+$/
  async function perform(job,input){let client,registered,installed=false;const previous=recovery.get(job);try{
   if(binding()!==input.connectionId)throw fail('The Proxmox connection changed. Reopen setup.',409);
   client=clientFactory();
+  const authentication=sshAuthentication(client,input);
   await new Promise((resolve,reject)=>{
    let hostKeyRejected=false;
    client.once('ready',resolve);
    client.once('error',error=>{
     let message='SSH could not connect to the selected host. Check the address, port and SSH service.';
     if(hostKeyRejected)message='SSH host key verification failed. Check the host identity from its trusted console before retrying.';
-    else if(error?.level==='client-authentication')message='SSH login failed. Check the Linux username and password on the selected host.';
+    else if(error?.level==='client-authentication'){
+     const reason=authentication.reason();
+     message=(kind==='docker'||reason==='additional-method'?sshAuthenticationMessages[reason]:undefined)||
+      (job.node.includes(':lxc/')&&input.username==='root'?lxcRootLoginMessage:
+       'SSH login failed. Check the Linux username and password on the selected host.');
+    }
     reject(fail(message,422));
    });
-   client.connect({host:input.host,port:input.port,username:input.username,...passwordAuthentication(client,input.password),readyTimeout:12000,
+   client.connect({host:input.host,port:input.port,username:input.username,...authentication.options,readyTimeout:12000,
     hostVerifier:key=>{hostKeyRejected=!verifySSHHostKey(input,key);return !hostKeyRejected}});
   });
   if(binding()!==input.connectionId)throw fail('The Proxmox connection changed. Reopen setup.',409);
@@ -77,7 +83,7 @@ if(typeof node!=='string'||!(kind==='docker'?/^[A-Za-z0-9_.-]+:(qemu|lxc)\/\d+$/
   }
   Object.assign(job,{state:'installing',message:'Installing and pairing the connector on the verified node.'});
   const result=await run(client,input.username,input.password,{...base,mode:'install',...registered,source:deflateSync(Buffer.from(connectorSource)).toString('base64'),revision:connectorRelease.revision});
-  if(!result?.installed)throw fail('The node did not verify connector installation.',422);installed=true;recovery.delete(job);registered.token='';input.password='';client.end();
+  if(!result?.installed)throw fail('The node did not verify connector installation.',422);installed=true;recovery.delete(job);registered.token='';input.password='';input.key=undefined;client.end();
   Object.assign(job,{state:'verifying',message:'Connector started. Waiting for its first fresh heartbeat.'});const deadline=now()+heartbeatTimeout;
   do{if(fresh(job)){Object.assign(job,{state:'completed',message:'Node connector installed, paired and fresh heartbeat verified.'});return}if(now()>=deadline)break;await sleep(1000)}while(true);
   Object.assign(job,{state:'unverified',message:'Connector installed, but its heartbeat is not verified yet. Check HTTPS connectivity and its systemd service. Do not reinstall it.'});
@@ -88,7 +94,7 @@ if(typeof node!=='string'||!(kind==='docker'?/^[A-Za-z0-9_.-]+:(qemu|lxc)\/\d+$/
    return;
   }
   if(['docker-missing','docker-start'].includes(error.reason))job.action=error.reason;
-  if(registered&&!installed)revoke(registered.id);Object.assign(job,{state:'failed',message:error?.status?error.message:'Automatic pairing failed. Check the selected node, SSH credentials and controller HTTPS access. Inspect the node before retrying.'});}finally{input.password='';if(registered)registered.token='';client?.end();running.delete(job.node)}}
+  if(registered&&!installed)revoke(registered.id);Object.assign(job,{state:'failed',message:error?.status?error.message:'Automatic pairing failed. Check the selected node, SSH credentials and controller HTTPS access. Inspect the node before retrying.'});}finally{input.password='';input.key=undefined;if(registered)registered.token='';client?.end();running.delete(job.node)}}
  return {async target(node){
   const target=await readTarget(node);
   const latest=[...jobs.values()].reverse().find(job=>job.node===node);
@@ -97,7 +103,12 @@ if(typeof node!=='string'||!(kind==='docker'?/^[A-Za-z0-9_.-]+:(qemu|lxc)\/\d+$/
   return job.state==='failed'?target:{...target,job};
  },status:read,async start(input){
   if(input?.confirm!==true||input?.verified!==true)throw fail('Approve installation and verify the SSH host fingerprint.');nodeName(input.node);
-  if(typeof input.username!=='string'||!/^[A-Za-z_][A-Za-z0-9_.-]{0,99}$/.test(input.username)||typeof input.password!=='string'||!input.password||input.password.length>2048||/[\r\n\0]/.test(input.password))throw fail('Enter fresh SSH username and password credentials.');
+  const useKey=input.privateKey!==undefined;
+  const needsPassword=!useKey||input.username!=='root';
+  if(useKey&&kind!=='docker')throw fail('SSH key pairing is available for Docker hosts.');
+  if(typeof input.username!=='string'||!/^[A-Za-z_][A-Za-z0-9_.-]{0,99}$/.test(input.username)||
+   (needsPassword&&(typeof input.password!=='string'||!input.password||input.password.length>2048||/[\r\n\0]/.test(input.password))))
+   throw fail('Enter fresh SSH username and password credentials.');
   if(!Number.isInteger(Number(input.port))||Number(input.port)<1||Number(input.port)>65535||!/^SHA256:[A-Za-z0-9+/]{43}$/.test(input.fingerprint||''))throw fail('Enter a valid SSH port and verify the host fingerprint.');
   const target=await readTarget(input.node);
   if(target.guestAgentSetup)throw fail('Verify QEMU Guest Agent before pairing this Docker host.',409);
@@ -117,9 +128,10 @@ if(typeof node!=='string'||!(kind==='docker'?/^[A-Za-z0-9_.-]+:(qemu|lxc)\/\d+$/
    await assertAvailable(input.node,target.host);
    if(running.has(input.node))throw fail('Automatic pairing is already running for this node.',409);
   }
+  const key=useKey?parseSSHPrivateKey(input):undefined;
   if(!resumed&&jobs.size>=100){const old=[...jobs].find(([,j])=>!running.has(j.node)&&!(recovery.has(j)&&exists(j)));if(old)jobs.delete(old[0]);else throw fail('Too many node installations are running.',429)}
   const job=resumed||{id:crypto.randomUUID(),node:input.node,state:'connecting',message:'Connecting to the selected Proxmox node.',startedAt:new Date(now()).toISOString()};job.state='connecting';jobs.set(job.id,job);
-  const credentials={installDocker:input.installDocker===true,node:input.node,host:input.host,port:Number(input.port),username:input.username,password:input.password,fingerprint:input.fingerprint,connectionId:input.connectionId};const pending=Promise.resolve().then(()=>perform(job,credentials)).catch(()=>{Object.assign(job,{state:'failed',message:'Installation tracking failed. Inspect the node connector before retrying.'})});running.set(job.node,pending);return {...job};
+  const credentials={installDocker:input.installDocker===true,node:input.node,host:input.host,port:Number(input.port),username:input.username,password:needsPassword?input.password:'',key,fingerprint:input.fingerprint,connectionId:input.connectionId};const pending=Promise.resolve().then(()=>perform(job,credentials)).catch(()=>{Object.assign(job,{state:'failed',message:'Installation tracking failed. Inspect the node connector before retrying.'})});running.set(job.node,pending);return {...job};
  },wait:node=>running.get(node)};
 }
 export const automaticNodePairing=createAutomaticNodePairing();

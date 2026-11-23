@@ -90,7 +90,8 @@ function fixture(path){
  if(path==='/proxmox/storage/configuration')return {resources:[{id:'local',type:'dir',enabled:true,shared:false,path:'/var/lib/vz',content:['iso','vztmpl']},{id:'local-lvm',type:'lvmthin',enabled:true,shared:null,vgname:'pve',thinpool:'data',content:['images','rootdir']},{id:'backup-ssd',type:'dir',enabled:true,shared:true,path:'/mnt/pve/backup-ssd',content:['backup'],nodes:['node01']}],sampledAt:new Date().toISOString()};
  if(path==='/docker/hosts')return {hosts:[{id:'docker-fixture',name:'control-vm',online:true}]};
  if(path==='/users')return {users:[{id:'owner',name:'Layout Review',email:'review@example.test',role:'owner',status:'active'}]};
- if(path==='/ssh/connections')return {};
+ if(path==='/ssh/connections')return process.env.LAYOUT_REMOTE_PANELS?
+  {'vm:node01:100':{host:'192.0.2.100',port:22,username:'fixture',hasPassword:true}}:{};
  if(path==='/ssh/fingerprint')return {host:'192.0.2.100',fingerprint:'SHA256:'+'a'.repeat(43)};
  return sample;
 }
@@ -231,6 +232,13 @@ try{
     return route.fulfill({json:{result:deliveryPrefs}});
    }
    if(path==='/node-agents/pairing-targets'){const kind=new URL(route.request().url()).searchParams.get('kind');return route.fulfill({json:{targets:kind==='docker'?[{id:'node01:qemu/100',name:'Control-VM',label:'Control-VM · VM 100 · node01'},{id:'node01:lxc/131',name:'Fixture',label:'Fixture · CT 131 · node01',paired:true}]:[{id:'node:node01',name:'node01',label:'node01 · Proxmox node'}]}});}
+   if(path==='/node-agents/automatic-docker-pairing'&&route.request().method()==='POST'){
+    const input=route.request().postDataJSON();
+    assert.equal(input.privateKey,'fixture key');
+    assert.equal(input.password,undefined);
+    assert.equal(input.verified,true);
+    return route.fulfill({json:{job:{id:'failed-ssh',state:'failed',message:'Fixture SSH server rejected the key.'}}});
+   }
    if(path.endsWith('/automatic-pairing/target')||path.endsWith('/automatic-docker-pairing/target'))return route.fulfill({json:{host:'192.0.2.100',connectionId:'fixture-only',controller:'https://controller.test'}});
    if(['/configuration/ai/models','/configuration/ai/test','/configuration/ai'].includes(path)&&route.request().method()!=='GET'){
     const posted=route.request().postDataJSON(),config=posted.configuration||posted,id=config.AI_PROVIDER||'openai';assert.ok(aiMetadata[id]);assert.equal(config.OPENAI_API_KEY,'fixture-'+id);assert.equal(config.OPENAI_API_TYPE,aiMetadata[id].types[0]);
@@ -265,7 +273,7 @@ try{
    return route.fulfill({json:{result}});
   }
   if(process.env.LAYOUT_REMOTE_PANELS&&path==='/ssh/connect'){
-   assert.equal(route.request().postDataJSON().mode,'shell');
+   assert.deepEqual(route.request().postDataJSON(),{mode:'shell',target:'vm:node01:100',saved:true});
    return route.fulfill({json:{id:'layout-terminal'}});
   }
   if(process.env.LAYOUT_REMOTE_PANELS&&path.startsWith('/ssh/session/layout-terminal')){
@@ -369,15 +377,12 @@ try{
     const rowPositions=elements=>elements.map(el=>Math.round(el.getBoundingClientRect().top));
     const actionRows=await actions.getByRole('button').evaluateAll(rowPositions);
     assert.equal(actionRows.length,7);
-    assert.deepEqual(actionRows.slice(0,4),Array(4).fill(actionRows[0]));
-    assert.deepEqual(actionRows.slice(4),Array(3).fill(actionRows[4]));
-    assert.ok(actionRows[4]>actionRows[0]);
+    assert.equal(new Set(actionRows).size,1,'All seven guest actions stay on one row');
     const cardRows=await resources.locator(':scope > div').evaluateAll(rowPositions);
     assert.equal(cardRows.length,4);
     assert.equal(new Set(cardRows).size,1);
-    for(const group of [actions,resources]){
-     assert.ok(await group.evaluate(el=>el.scrollWidth<=el.clientWidth+1),route+' overflows at '+width);
-    }
+    assert.ok(await actions.evaluate(el=>el.scrollWidth<=el.clientWidth+1||getComputedStyle(el).overflowX==='auto'));
+    assert.ok(await resources.evaluate(el=>el.scrollWidth<=el.clientWidth+1),route+' resources overflow at '+width);
     await page.keyboard.press('Escape');
     await page.getByRole('dialog').waitFor({state:'detached'});
     await page.getByRole('button',{name:copy('List view'),exact:true}).click();
@@ -919,6 +924,16 @@ try{
     assert.ok(await install.isDisabled(),'A password alone cannot authorize installation');
     await consent.check();
     assert.ok(await install.isEnabled(),'A verified target, credentials and consent enable installation');
+    if(setup==='docker'){
+     await ssh.getByLabel('Authentication method',{exact:true}).selectOption('key');
+     assert.equal(await ssh.getByLabel('Sudo password',{exact:true}).count(),0);
+     await ssh.locator('input[type=file]').setInputFiles({name:'fixture-key',mimeType:'text/plain',buffer:Buffer.from('fixture key')});
+     await install.click();
+     const retry=ssh.getByRole('button',{name:'Retry pairing',exact:true});
+     const back=ssh.getByRole('button',{name:'Back to host selection',exact:true});
+     await retry.waitFor();
+     assert.equal(Math.round((await retry.boundingBox()).y),Math.round((await back.boundingBox()).y),'Retry and Back remain on one row');
+    }
     await page.keyboard.press('Escape');await ssh.waitFor({state:'detached'});assert.ok(await parent.isVisible());assert.equal(await page.getByLabel(label,{exact:true}).inputValue(),host);await page.waitForFunction(()=>document.activeElement?.textContent==='Connect Automatically with SSH');assert.equal(await page.getByRole('button',{name:'Connect Automatically with SSH',exact:true}).evaluate(e=>e===document.activeElement),true);await page.getByRole('button',{name:'Connect Automatically with SSH',exact:true}).click();await ssh.waitFor();await ssh.getByLabel(copy('SSH / sudo password'),{exact:true}).waitFor();assert.equal(await ssh.getByLabel(copy('SSH / sudo password'),{exact:true}).inputValue(),'');await identity.waitFor();assert.equal(await consent.isChecked(),false);assert.ok(await install.isDisabled());if(process.env.LAYOUT_SCREENSHOTS)await ssh.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-${setup}-ssh-popup.png`});await ssh.getByRole('button',{name:copy('Close dialog'),exact:true}).click();await ssh.waitFor({state:'detached'});
    }
    await page.goto(base+'ai');await page.locator('.assistant-workspace').waitFor();if(await page.locator('.history-toggle').isVisible())await page.locator('.history-toggle').click();await page.getByRole('button',{name:'Configure AI Assistant',exact:true}).click();await page.getByLabel('AI provider',{exact:true}).waitFor();const beforeModels=aiModelReads,beforeTests=aiTests,beforeSaves=aiSaves;

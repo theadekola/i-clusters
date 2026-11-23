@@ -1,14 +1,13 @@
 import {guestUpdateCommand,assertGuestUpdateSession,completedGuestUpdate} from './guest-package-update.js';
 import {sshKeyFingerprint,verifySSHHostKey} from './ssh-host-trust.js';
-import {passwordAuthentication} from './ssh-password.js';
+import {passwordAuthentication,parseSSHPrivateKey,sshAuthentication,sshAuthenticationMessages,lxcRootLoginMessage} from './ssh-password.js';
 import {approvalTargetForPath,resolveActionApproval} from './action-approval.js';
 export {approvalTargetForPath} from './action-approval.js';
 import {shellDeadline,shellExpired} from './ssh-idle.js';
 import {StringDecoder} from 'node:string_decoder';
 import path from 'node:path';
 
-import ssh2 from 'ssh2';
-const {Client,utils}=ssh2;
+import {Client} from 'ssh2';
 import crypto from 'node:crypto';
 import {savedSSH,publicSavedSSH,deleteSavedSSH,saveSSH,purgeSavedSSH} from './ssh-credentials.js';
 export {savedSSH,publicSavedSSH,deleteSavedSSH} from './ssh-credentials.js';
@@ -52,37 +51,17 @@ export async function connectSSH(input,user,sessionId){
  if(!/^(node|vm|lxc):/.test(input.target||'')&&!/^docker:[a-f0-9-]{36}$/.test(input.target||''))throw failure('Invalid target');
  const port=Number(input.port||22);if(!Number.isInteger(port)||port<1||port>65535)throw failure('Invalid SSH port');
  if(typeof input.username!=='string'||!input.username)throw failure('SSH username is required');
- let key;
- if(useKey){
-  if(typeof input.privateKey!=='string'||!input.privateKey.trim()||Buffer.byteLength(input.privateKey)>65536||
-   (input.keyPassphrase!==undefined&&(typeof input.keyPassphrase!=='string'||input.keyPassphrase.length>2048)))
-   throw failure('Choose a valid SSH private key file.');
-  key=utils.parseKey(input.privateKey,input.keyPassphrase);
-  if(!key||Array.isArray(key)||key instanceof Error||!key.isPrivateKey())
-   throw failure('The SSH private key could not be read. Check the key file and passphrase.');
- }else if(typeof input.password!=='string'||!input.password)throw failure('SSH username and password are required');
+ const key=useKey?parseSSHPrivateKey(input):undefined;
+ if(!key&&(typeof input.password!=='string'||!input.password))throw failure('SSH username and password are required');
 
- let offeredMethods,needsAdditionalMethod=false;
- const authenticationError=()=>{
-  let message='SSH login failed. Check the username and password for this target. Use a Linux SSH account on the displayed host, such as root or a sudo user. An i-Clusters login or a Proxmox @pve account does not automatically grant SSH access.';
-  if(needsAdditionalMethod)message='This SSH account requires an additional authentication method. Use the Proxmox console or an SSH client configured for that account.';
-  else if(useKey)message='The SSH server rejected this key. Check that the matching public key is authorized for this Linux username.';
-  else if(offeredMethods?.includes('publickey')&&!offeredMethods.some(method=>method==='password'||method==='keyboard-interactive'))
-   message='The SSH server did not offer password login for this account. Select SSH key to connect with an authorized key.';
-  else if(input.target.startsWith('lxc:')&&input.mode==='shell'&&input.username==='root')
-   message='SSH login failed. Check the username and password. The container may allow root on its console while blocking root login over SSH.';
-  return Object.assign(failure(message,422),{code:'ssh_authentication_failed'});
- };
  const client=new Client();
- const methods=useKey?['publickey']:['password','keyboard-interactive'];
- const shellAuthentication=(methodsLeft,partial)=>{
-  if(!methodsLeft)return 'none';
-  offeredMethods??=methodsLeft;
-  needsAdditionalMethod||=partial===true;
-  const next=methodsLeft.length?methods.find(method=>methodsLeft.includes(method)):methods[0];
-  if(!next||needsAdditionalMethod)return false;
-  methods.splice(methods.indexOf(next),1);
-  return useKey?{type:'publickey',username:input.username,key}:next;
+ const shell=mode==='shell'&&input.mode!=='authorize';
+ const authentication=shell?sshAuthentication(client,{username:input.username,password:input.password,key}):null;
+ const authenticationError=()=>{
+  const message=sshAuthenticationMessages[authentication?.reason()]||
+   (input.target.startsWith('lxc:')&&shell&&input.username==='root'?lxcRootLoginMessage:
+    'SSH login failed. Check the username and password for this target. Use a Linux SSH account on the displayed host, such as root or a sudo user. An i-Clusters login or a Proxmox @pve account does not automatically grant SSH access.');
+  return Object.assign(failure(message,422),{code:'ssh_authentication_failed'});
  };
  let fingerprint='';
  await new Promise((resolve,reject)=>{
@@ -96,8 +75,7 @@ export async function connectSSH(input,user,sessionId){
    reject(error.level==='client-authentication'?authenticationError():failure('SSH connection failed: '+error.message,422));
   });
   client.connect({
-   host:input.host,port,username:input.username,...(useKey?{}:passwordAuthentication(client,input.password)),
-   ...(mode==='shell'&&input.mode!=='authorize'?{authHandler:shellAuthentication}:{}),
+   host:input.host,port,username:input.username,...(authentication?.options||passwordAuthentication(client,input.password)),
    readyTimeout:12000,keepaliveInterval:10000,hostVerifier:key=>{
     fingerprint=sshKeyFingerprint(key);
     return verifySSHHostKey(input,key);

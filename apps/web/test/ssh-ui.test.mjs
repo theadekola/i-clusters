@@ -165,7 +165,7 @@ test('saved VM and LXC connections use direct SSH and rejected LXC credentials r
    if(fail){
     const dialog=page.container.querySelector('[role=dialog]');
     assert.match(dialog.textContent,/SSH login failed/);
-    assert.match(dialog.textContent,/Open Proxmox Console/);
+    assert.doesNotMatch(dialog.textContent,/Open Proxmox Console/);
     assert.equal(dialog.querySelector('[name=host]').value,host);
     assert.equal(dialog.querySelector('[name=password]').value,'');
     assert.equal(dialog.querySelector('[name=password]').required,true);
