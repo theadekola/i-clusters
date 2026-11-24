@@ -1,0 +1,98 @@
+:root[data-preset="midnight-glass"] {
+  --glass-solid: #122a40;
+  --glass-tint: #0d2236b8;
+  --glass-border: #a3d8f048;
+  --glass-edge: #d3efff25;
+  --glass-shadow: #030c1b40;
+  --glass-navigation: #092033df;
+  --glass-navigation-border: #8fcfe04d;
+}
+
+:root[data-preset="midnight-glass"][data-theme="light"] {
+  --glass-solid: #f2f8fc;
+  --glass-tint: #f6fbffd4;
+  --glass-border: #4d779957;
+  --glass-edge: #ffffffd6;
+  --glass-shadow: #23496423;
+}
+
+:root[data-preset="midnight-glass"][data-theme="light"][data-background="gradient"] body {
+  background: radial-gradient(ellipse at 77% 0%, #a8dbea, transparent 53%),
+    radial-gradient(ellipse at 9% 46%, #c0ddeb, transparent 48%),
+    radial-gradient(ellipse at 96% 88%, #ccd5ee, transparent 52%), #eaf2f9;
+  background-attachment: fixed;
+}
+
+/* Keep nested surfaces such as table controls, alerts and dialogs on their readable base palette. */
+:root[data-preset="midnight-glass"][data-theme] :is(
+  .content .overview-v2 .overview-stats > .overview-stat:not(.needs-attention),
+  .content .overview-v2 .overview-grid > .card:not(.overview-inventory),
+  .content .overview-v2 .overview-primary-row > .card
+) {
+  background: var(--glass-solid) !important;
+  border-color: var(--glass-border) !important;
+  box-shadow: inset 0 1px var(--glass-edge), 0 8px 24px var(--glass-shadow);
+}
+
+:root[data-preset="midnight-glass"][data-theme] #primary-navigation {
+  background: #10263a !important;
+  border-color: var(--glass-navigation-border) !important;
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  :root[data-preset="midnight-glass"][data-background="gradient"][data-theme] :is(
+    .content .overview-v2 .overview-stats > .overview-stat:not(.needs-attention),
+    .content .overview-v2 .overview-grid > .card:not(.overview-inventory),
+    .content .overview-v2 .overview-primary-row > .card
+  ) {
+    background: linear-gradient(145deg, var(--glass-edge), transparent 70%), var(--glass-tint) !important;
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+  }
+
+  :root[data-preset="midnight-glass"][data-background="gradient"][data-theme] #primary-navigation {
+    background: var(--glass-navigation) !important;
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+  }
+}
+
+:root[data-preset="midnight-glass"] #primary-navigation .nav-item.active {
+  box-shadow: inset 2px 0 var(--app-dark-accent), 0 0 14px color-mix(in srgb, var(--app-accent) 22%, transparent) !important;
+}
+
+:root[data-preset="midnight-glass"][data-theme] .overview-v2 .overview-stat:is(:hover,:focus-visible) {
+  border-color: var(--theme-icon) !important;
+}
+
+:root[data-preset="midnight-glass"][data-theme] .overview-v2 .overview-stat.needs-attention {
+  border-color: var(--theme-warning, #a67427) !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-preset="midnight-glass"][data-animations="on"][data-transitions="on"] .overview-v2 {
+    animation: midnight-glass-reveal 220ms ease-out;
+  }
+
+  :root[data-preset="midnight-glass"][data-animations="on"][data-transitions="on"] .overview-v2 .overview-toolbar {
+    animation: midnight-glass-focus 220ms ease-out;
+  }
+
+  :root[data-preset="midnight-glass"][data-animations="on"][data-transitions="on"] .overview-v2 .mini-meter > span {
+    transition: width 300ms ease-out;
+  }
+
+  :root[data-preset="midnight-glass"][data-animations="on"][data-transitions="on"] #primary-navigation .nav-item {
+    transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+  }
+}
+
+@keyframes midnight-glass-reveal {
+  from { opacity: .72; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes midnight-glass-focus {
+  from { filter: blur(2px); }
+  to { filter: blur(0); }
+}
