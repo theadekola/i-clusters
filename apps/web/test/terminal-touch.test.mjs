@@ -7,12 +7,12 @@ const {attachTerminalTouchSelection}=await import('data:text/javascript;base64,'
 function fixture(){
  const dom=new JSDOM('<div id="terminal"><div class="xterm-screen"></div></div>');
  const previous=globalThis.document;globalThis.document=dom.window.document;
- const element=document.getElementById('terminal');element.firstChild.getBoundingClientRect=()=>({left:0,top:0,width:200,height:100});
- const calls=[],line='root hello world    ';
- const terminal={cols:20,rows:5,buffer:{active:{viewportY:10,length:15,getLine:()=>({getCell:c=>({getChars:()=>line[c]||' ',getWidth:()=>1})})}},scrollLines(){},options:{disableStdin:false},paste(text){calls.push(['paste',text])},focus(){},getSelection(){return 'hello'},selectAll(){},clearSelection(){},blur(){},select(...args){calls.push(args)}};
+ const element=document.getElementById('terminal');element.firstChild.getBoundingClientRect=()=>({left:0,top:0,bottom:100,width:200,height:100});
+ const calls=[],scrolls=[],line='root hello world    ';
+ const terminal={cols:20,rows:5,buffer:{active:{viewportY:10,length:15,getLine:()=>({getCell:c=>({getChars:()=>line[c]||' ',getWidth:()=>1})})}},scrollLines(lines){scrolls.push(lines);this.buffer.active.viewportY=Math.max(0,Math.min(10,this.buffer.active.viewportY+lines));element.firstChild.dispatchEvent(new dom.window.Event('scroll'));},options:{disableStdin:false},paste(text){calls.push(['paste',text])},focus(){},getSelection(){return 'hello'},selectAll(){},clearSelection(){},blur(){},select(...args){calls.push(args)}};
  const release=attachTerminalTouchSelection(element,terminal);
  const touch=(type,x=70,y=10,count=1,target=element)=>{const event=new dom.window.Event(type,{bubbles:true,cancelable:true});Object.defineProperty(event,'touches',{value:Array.from({length:count},(_,identifier)=>({identifier,clientX:x,clientY:y}))});target.dispatchEvent(event);return event;};
- return {touch,calls,element,release,dom,terminal,close(){release();dom.window.close();if(previous===undefined)delete globalThis.document;else globalThis.document=previous}};
+ return {touch,calls,scrolls,element,release,dom,terminal,close(){release();dom.window.close();if(previous===undefined)delete globalThis.document;else globalThis.document=previous}};
 }
 test('half-second hold highlights the touched word at the scrolled buffer row and drag expands it',t=>{
  t.mock.timers.enable({apis:['setTimeout']});const f=fixture();
@@ -22,6 +22,28 @@ test('half-second hold highlights the touched word at the scrolled buffer row an
   assert.equal(f.touch('touchmove',140,30).defaultPrevented,true);
   assert.deepEqual(f.calls.at(-1),[5,10,30]);
   assert.equal(f.touch('touchend').defaultPrevented,true);
+ }finally{f.close()}
+});
+test('vertical terminal drags scroll both directions without the scrollbar, before or after a hold',t=>{
+ t.mock.timers.enable({apis:['setTimeout']});const f=fixture();
+ try{
+  const screen=f.element.querySelector('.xterm-screen');
+  f.touch('touchstart',70,20,1,screen);
+  assert.equal(f.touch('touchmove',71,71,1,screen).defaultPrevented,true);
+  assert.equal(f.terminal.buffer.active.viewportY,8);
+  f.touch('touchmove',71,82,1,screen);
+  assert.equal(f.terminal.buffer.active.viewportY,7);
+  t.mock.timers.tick(500);
+  assert.deepEqual(f.calls,[]);
+  f.touch('touchend',71,82,0,screen);
+  f.touch('touchstart',70,80,1,screen);
+  t.mock.timers.tick(500);
+  assert.equal(f.element.querySelector('.terminal-selection').hidden,false);
+  assert.equal(f.touch('touchmove',70,37,1,screen).defaultPrevented,true);
+  assert.deepEqual(f.scrolls,[-2,-1,2]);
+  assert.equal(f.terminal.buffer.active.viewportY,9);
+  assert.equal(f.element.querySelector('.terminal-selection').hidden,true);
+  assert.equal(f.touch('touchend',70,37,0,screen).defaultPrevented,true);
  }finally{f.close()}
 });
 test('normal taps scrolling multitouch and cancelled holds do not select',t=>{
@@ -46,7 +68,7 @@ test('selection handles persist after release and adjust either boundary across 
   f.touch('touchstart');t.mock.timers.tick(500);f.touch('touchend');
   assert.equal(f.element.querySelector('.terminal-selection').hidden,false);
   const start=f.element.querySelector('[data-selection-handle=start]');
-  f.touch('touchstart',50,-5,1,start);f.touch('touchmove',20,-5,1,start);f.touch('touchend',20,-5,1,start);
+  f.touch('touchstart',50,-5,1,start);f.touch('touchmove',20,0,1,start);f.touch('touchend',20,0,1,start);
   assert.deepEqual(f.calls.at(-1),[2,10,8]);
   const end=f.element.querySelector('[data-selection-handle=end]');
   f.touch('touchstart',100,20,1,end);f.touch('touchmove',150,60,1,end);f.touch('touchend',150,60,1,end);
