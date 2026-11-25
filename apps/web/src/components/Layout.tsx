@@ -17,7 +17,7 @@ import {applyAppearance,watchSystemTheme,loadSidebarDisplay} from '../appearance
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Boxes, Container, Database, Network, HardDriveDownload,
-  CalendarClock, History, RotateCcw, Activity, Bell, Sparkles, Users, Settings,
+  CalendarClock, History, RotateCcw, Activity, Bell, Users, Settings,
   Terminal, FolderOpen, PanelLeftOpen, PanelLeftClose, X, Cloud
 } from 'lucide-react';
 import { useState,useEffect,useRef } from 'react';
@@ -30,7 +30,7 @@ const sections = [
   { title: 'OVERVIEW', items: [['Dashboard','/',LayoutDashboard]] },
   { title: 'INFRASTRUCTURE', items: [['Proxmox','/proxmox',Boxes],['Docker','/docker',Container],['Storage','/storage',Database],['Network','/network',Network]] },
   { title: 'DATA PROTECTION', items: [['Backups','/backups',HardDriveDownload]] },
-  { title: 'MONITORING', items: [['Monitoring','/monitoring',Activity],['Alerts','/alerts',Bell],['AI Assistant','/ai',Sparkles]] },
+  { title: 'MONITORING', items: [['Monitoring','/monitoring',Activity],['Alerts','/alerts',Bell]] },
   { title: 'TOOLS', items: [['Shell','/tools/shell',Terminal],['SFTP Files','/tools/sftp',FolderOpen]] },
   { title: 'MANAGEMENT', items: [['Users','/users',Users],['Settings','/settings',Settings]] },
 ];

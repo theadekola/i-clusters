@@ -41,7 +41,6 @@ i-Clusters is a self-hosted interface for managing Proxmox VE environments, virt
 | Monitoring | Collected measurements, connection health, measured alert rules, unresolved alerts, recovery history and provider task outcomes |
 | Notifications | Header activity feed, persistent unresolved-alert badge and configured Discord, Telegram, SMTP, Slack, Teams, Pushover, Gotify, webhook and IFTTT delivery |
 | Tools | Administrator SSH shell with multiple tabs, copy/paste and SFTP file operations, using target authentication and verified host identity |
-| AI Assistant | Owner-selected OpenAI, Claude, Gemini, DeepSeek, Groq or Mistral; matching models, connection testing and read-only assistance |
 | Administration | Optional authenticator MFA, recovery codes, revocable device sessions, password changes, accounts/roles, audit records, encrypted supported integration configuration, browser appearance and session preferences |
 
 Missing or inaccessible information is shown as unavailable or partial. It is not replaced with demo data. A queued action is not proof of provider completion. An independent security scanner, arbitrary workflow automation, generic Docker-volume/database backup execution and Compose file deployment are not implemented. OPNsense and Tailscale integrations are not included.
@@ -66,7 +65,7 @@ flowchart TB
     Agents --> Docker["Local or guest Docker socket"]
 ```
 
-Paired connectors poll i-Clusters over outbound HTTPS; the arrows show logical access, not inbound listener requirements. Optional external notification services and the selected AI provider receive requests only for their configured features. See [architecture and repository structure](docs/architecture.md) for trust boundaries, data flows and source layout.
+Paired connectors poll i-Clusters over outbound HTTPS; the arrows show logical access, not inbound listener requirements. Optional external notification services receive requests only for their configured features. See [architecture and repository structure](docs/architecture.md) for trust boundaries, data flows and source layout.
 
 ## Install on Ubuntu
 
@@ -165,7 +164,7 @@ The header bell counts **active, unacknowledged alerts only**. Acknowledged cond
 
 Configure your channel in **Settings → Integrations**, choose its severity/recovery preference, save, enable it and send an explicitly confirmed test. Supported channels include Discord, Telegram, SMTP, Slack, Teams, Pushover, Gotify, custom webhooks and IFTTT. Automatic alerts are sent individually by default. Notification Preferences can group them into digests, set quiet hours and repeat active alerts. See the [channel setup guide](docs/notification-channels.md). Saved credentials do not prove delivery. Failed deliveries retry with backoff; delivery is not guaranteed exactly once.
 
-Open **AI Assistant → Configure AI Assistant** to configure a provider. Choose a provider to update its API type and model choices. You can load models and test an unsaved provider/API-key/model draft before saving. Changing provider requires its own key. AI tests and use can incur provider charges. Assistant requests send user text and selected infrastructure measurements to the selected AI provider; the assistant cannot execute infrastructure actions.
+The AI Assistant is suspended. Overview, reports and alerts use measurements from connected providers.
 
 ## Updates and build information
 

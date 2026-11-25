@@ -1,5 +1,4 @@
 import {createProxmoxConsole} from './proxmox-console.js';
-import {createAssistantHistory} from './assistant-history.js';
 import {createClusterProfiles} from './cluster-profiles.js';
 import {disconnectCluster} from './cluster-config.js';
 import {createGuestRestarts} from './guest-restarts.js';
@@ -41,8 +40,6 @@ import {resetGuestDiscovery} from './guest-discovery.js';
 import {notificationIds} from './notification-channels.js';
 import {buildInfo} from './build-info.js';
 import {publicDockerImage,publicDockerVolume} from './docker-public.js';
-import {readMeasurements} from './assistant-cache.js';
-import {queryAI,listAIModels,assistantContext,inventoryAnswer,recentActivityAnswer,questionContext,publicWebSearch} from './ai.js';
 import {connectorSSHAddress} from './connector-ssh-target.js';
 import {connectorUpdater} from './connector-updates.js';
 import {headerNotifications} from './header-notifications.js';
@@ -171,6 +168,9 @@ export function createApp({guestConsole=createProxmoxConsole(),profiles=process.
  app.use('/api',(req,res,next)=>{if(!['GET','HEAD'].includes(req.method)&&(process.env.ICLUSTERS_CONTROLLER_DATA||process.env.DATA_DIR)&&existsSync((process.env.ICLUSTERS_CONTROLLER_DATA||process.env.DATA_DIR)+'/maintenance.json'))return res.status(503).json({error:'Controller maintenance is in progress. Retry after it completes.'});next();});
  app.use('/api',(req,res,next)=>permits(req.user.permissionKeys,req.method,req.path,req.body,req.user.sub)
    ?next():res.status(403).json({error:'This action is restricted by your account permissions.'}));
+ // The assistant is suspended. Keep existing encrypted chats and configuration on disk.
+ app.use('/api/ai',(_req,res)=>res.sendStatus(404));
+ app.use('/api/configuration/:service',(req,res,next)=>req.params.service.toLowerCase()==='ai'?res.sendStatus(404):next());
  app.post('/api/proxmox/console/node/:node',authorize('admin'),(req,res)=>guestConsole.start(req,res,audit,'node'));
  for(const kind of ['qemu','lxc']){
   app.post(`/api/proxmox/console/${kind}/:node/:id`,authorize('operator'),(req,res)=>{
@@ -342,7 +342,7 @@ export function createApp({guestConsole=createProxmoxConsole(),profiles=process.
    monitor.invalidate();
    const status=result?.task||result?.jobId?'queued':'success';res.locals.activityStatus=status;countAction(db,req.user.sub,label,status);
 
-   await audit(req,label,resource,label==='assistant.query'?{provider:result?.mode,webSearch:result?.webSearch===true}:{result:result??null},status);
+   await audit(req,label,resource,{result:result??null},status);
    res.json({ok:true,result,message:status==='queued'?'Task accepted. Check task history for completion.':'Operation completed.'});
  });
  action('post','/node-agents/guest/agent','owner','guest.install-agent',req=>bootstrapGuest({...req.body,purpose:'guest-agent'}));
@@ -649,42 +649,6 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
  action('delete','/alerts/rules/:id','admin','alert.rule.delete',async req=>{mutate(s=>s.rules=s.rules.filter(r=>r.id!==req.params.id));});
  action('post','/alerts/:id/acknowledge','operator','alert.acknowledge',async req=>{let result;mutate(state=>{result=changeAlertStatus(state,req.params.id,req.user)});return result;});
  action('post','/alerts/:id/resolve','operator','alert.resolve',async req=>{let result;mutate(state=>{result=changeAlertStatus(state,req.params.id,req.user,{resolve:true})});return result;});
- action('post','/ai/health','viewer','health.inspect',async()=>{const s=await monitor.sample(true);return {summary:`${s.services.filter(x=>x.status==='reachable').length} reachable integrations/services; ${s.services.filter(x=>x.status==='error').length} connection failures; ${s.alerts.filter(a=>a.status==='active').length} active alerts. This is an API and threshold check, not a security scan.`};});
- const conversations=createAssistantHistory();
- read('/ai/conversations',req=>conversations.list(req.user.sub));
- read('/ai/conversations/:id',req=>({thread:conversations.get(req.user.sub,Number(req.params.id))}));
- app.patch('/api/ai/conversations/:id',authorize('viewer'),(req,res)=>res.json({thread:conversations.edit(req.user.sub,Number(req.params.id),req.body)}));
- app.delete('/api/ai/conversations/:id',authorize('viewer'),(req,res)=>{conversations.remove(req.user.sub,Number(req.params.id));res.json({ok:true})});
- app.post('/api/ai/conversations/import',authorize('viewer'),(req,res)=>{conversations.import(req.user.sub,req.body.threads);res.json({ok:true})});
- action('post','/ai/chat','viewer','assistant.query',async req=>{
-   const message=required(req.body.message,'Message');
-   const chat=req.body.threadId===undefined?null:conversations.begin(req.user.sub,req.body.threadId,req.body.exchangeId,message);
-   if(chat?.result)return chat.result;
-   try{
-    const result=await assistantReply(req,message,chat?.history);
-    chat?.finish(result);
-    return result;
-   }catch(error){chat?.finish({error:error.aiError?error.message:'The reply could not be completed. Retry this message.'});throw error;}
- });
- async function assistantReply(req,message,savedHistory){
-   const ai=configuration.resolve('ai');
-   if(/^web:/i.test(message.trim()))return publicWebSearch(ai,message.trim());
-   const recent=(get().headerActivities||[]).filter(row=>row.audience==='shared').slice(0,12).map(({title,status,time})=>({title,status,time}));
-   const activityAnswer=recentActivityAnswer(message,recent);
-   const s=await monitor.sample();
-   const inventory=await readMeasurements(s,snapshot=>assistantContext(snapshot,Infinity));
-   inventory.alerts=assistantContext({alerts:s.alerts},Infinity).alerts;
-   const direct=activityAnswer||inventoryAnswer(inventory,message);
-   const context=questionContext(inventory,message);
-   context.recentActivity=recent;
-   if(direct)context.verifiedAnswer=direct;
-   if(!ai.OPENAI_API_KEY){
-    if(direct)return {answer:direct,mode:'inventory'};
-    throw httpError('Configure and save an AI provider to receive a reply.',400);
-   }
-   const history=savedHistory||(Array.isArray(req.body.history)?req.body.history.slice(-4).filter(row=>typeof row?.question==='string'&&typeof row?.answer==='string').map(row=>({question:row.question.slice(0,2000),answer:row.answer.slice(0,4000)})):[]);
-   return {answer:await queryAI(ai,JSON.stringify({context,message,history})),mode:ai.AI_PROVIDER||'openai'};
- }
  read('/users',async()=>({users:(await db.query(`SELECT id,name,email,username,profile,role,cluster_roles AS "clusterRoles",status,two_factor_enabled AS "twoFactor",last_login AS "lastLogin",created_at AS "createdAt" FROM users ORDER BY created_at`)).rows}),'admin');
  action('put','/users/:id/cluster-access','owner','user.cluster-access',async req=>{
    const assignments=req.body.roles;
@@ -725,11 +689,10 @@ read('/proxmox/node/:node/logs',async req=>({logs:await pve(`/nodes/${encode(req
  action('post','/operations/:id/network-check','owner','network.diagnose',req=>operationalAction(req.params.id,{action:'network-check'}));
  action('post','/operations/:id/tools','owner','host.monitoring-tools.install',req=>connectionService.perform(req.params.id,{...req.body,action:'monitoring-tools',target:'node'}));
  read('/diagnostics',req=>providerDiagnostics({hostId:typeof req.query.dockerHost==='string'?req.query.dockerHost:undefined}),'owner');
- action('post','/configuration/ai/models','owner','configuration.models',async req=>({models:await listAIModels(validateConfiguration('ai',req.body.configuration??{},configuration.resolve('ai')))}));
  read('/configuration/:service',req=>configuration.publicConfig(req.params.service),'owner');
  action('put','/configuration/:service','owner','configuration.save',req=>configuration.save(req.params.service,req.body));
  action('delete','/configuration/:service','owner','configuration.disable',req=>configuration.disable(req.params.service));
- action('post','/configuration/:service/test','owner','configuration.test',async req=>{const id=req.params.service;if(!Object.hasOwn(configurationSchemas,id))throw httpError('Unsupported configuration service');try{if(notificationIds.includes(id)){if(req.body.confirm!==true)throw httpError('Confirm sending an external test notification');const config=validateConfiguration(id,req.body.configuration??{},configuration.resolve(id));const result=await notificationService.test(id,{env:config});return {...result,message:req.body.configuration?'Test notification delivered for the entered settings. Save Configuration to apply them.':'Test notification delivered.'};}if(id==='ai'){if(req.body.confirm!==true)throw httpError('Confirm sending a test request to the selected AI provider');const config=validateConfiguration('ai',req.body.configuration??{},configuration.resolve('ai'));await queryAI(config,'Reply with OK.',true);return {service:id,verified:true,model:config.OPENAI_MODEL,apiType:config.OPENAI_API_TYPE,message:req.body.configuration?'AI connection verified for the entered settings. Save Configuration to apply them.':'AI connection verified.'};}const config=validateConfiguration('truenas',req.body.configuration??{},configuration.resolve('truenas'));const result=await truenas('system.info',[],{...configuration.environment(),...config});if(!result||typeof result!=='object'||Array.isArray(result))throw Object.assign(Error('Invalid provider response'),{truenasFailure:'response'});return {service:id,verified:true,message:`Read-only connection check passed. Write permissions were not tested.${req.body.configuration?' Save Configuration to apply these settings.':''}`};}catch(error){if(error.status===400||error.notificationTest||id==='ai'&&error.aiError)throw error;throw httpError(truenasTestError(error),502);}});
+ action('post','/configuration/:service/test','owner','configuration.test',async req=>{const id=req.params.service;if(!Object.hasOwn(configurationSchemas,id))throw httpError('Unsupported configuration service');try{if(notificationIds.includes(id)){if(req.body.confirm!==true)throw httpError('Confirm sending an external test notification');const config=validateConfiguration(id,req.body.configuration??{},configuration.resolve(id));const result=await notificationService.test(id,{env:config});return {...result,message:req.body.configuration?'Test notification delivered for the entered settings. Save Configuration to apply them.':'Test notification delivered.'};}const config=validateConfiguration('truenas',req.body.configuration??{},configuration.resolve('truenas'));const result=await truenas('system.info',[],{...configuration.environment(),...config});if(!result||typeof result!=='object'||Array.isArray(result))throw Object.assign(Error('Invalid provider response'),{truenasFailure:'response'});return {service:id,verified:true,message:`Read-only connection check passed. Write permissions were not tested.${req.body.configuration?' Save Configuration to apply these settings.':''}`};}catch(error){if(error.status===400||error.notificationTest)throw error;throw httpError(truenasTestError(error),502);}});
 
  read('/notifications',()=>notificationService.status(),'owner');
  action('put','/notifications/preferences','owner','notification.preferences',req=>{const previous=get().notificationPreferences||{};const preferences={...previous,...validateNotificationPreferences(req.body,previous)};mutate(s=>s.notificationPreferences=preferences);return preferences;});

@@ -11,38 +11,49 @@ const {createApp}=await import('../src/app.js');
 const {publicWebSearch}=await import('../src/ai.js');
 test.after(()=>fs.rmSync(process.env.DATA_DIR,{recursive:true,force:true}));
 
-test('inventory and public questions use the saved API and persist answers per account',async t=>{
- const config={AI_PROVIDER:'openai',OPENAI_API_TYPE:'responses',OPENAI_API_KEY:'saved-fixture',OPENAI_MODEL:'saved-model'};
- const now=new Date().toISOString(),calls=[],audits=[];
- const sample={sampledAt:now,services:[{id:'proxmox',status:'reachable',sampledAt:now}],alerts:[],proxmox:{nodeInventory:{complete:true},resourceInventoryComplete:true,nodes:[{name:'node01',ip:'192.0.2.10'}],vms:[{name:'VM',node:'node01',status:'running'}],lxc:[]}};
- const server=createApp({profiles:null,configuration:{resolve:()=>config},monitor:{sample:async()=>sample,invalidate(){}},db:{query:async()=>({rows:[]})},audit:async(...args)=>audits.push(args),authenticate:(req,res,next)=>{req.user={sub:req.headers['x-user']||'alice',role:'owner'};next()}}).listen(0,'127.0.0.1');
- await new Promise(r=>server.once('listening',r));
+test('the suspended assistant preserves encrypted data and never contacts a provider',async t=>{
+ const {createConfigurationStore}=await import('../src/runtime-configuration.js');
+ const {createAssistantHistory}=await import('../src/assistant-history.js');
+ const directory=path.join(process.env.DATA_DIR,'suspended');
+ const configuration=createConfigurationStore(directory);
+ configuration.save('ai',{AI_PROVIDER:'openai',OPENAI_API_KEY:'saved-fixture'});
+ const history=createAssistantHistory(process.env.DATA_DIR);
+ history.begin('fixture',1,1,'Keep this chat').finish({answer:'Saved answer'});
+ const files=[path.join(directory,'ai.json'),path.join(process.env.DATA_DIR,'assistant-history',fs.readdirSync(path.join(process.env.DATA_DIR,'assistant-history'))[0])];
+ const before=files.map(file=>fs.readFileSync(file));
+ const server=createApp({profiles:null,configuration,monitor:{sample:async()=>({services:[],alerts:[]}),invalidate(){}},db:{query:async()=>({rows:[]})},audit:async()=>{},authenticate:(req,res,next)=>{req.user={sub:'fixture',role:'owner'};next()}}).listen(0,'127.0.0.1');
+ await new Promise(resolve=>server.once('listening',resolve));
  t.after(()=>{server.closeAllConnections();server.close()});
  const base='http://127.0.0.1:'+server.address().port+'/api',original=fetch;
- let timeout=false;
- t.mock.method(globalThis,'fetch',async(url,options)=>{
+ const outbound=[];
+ t.mock.method(globalThis,'fetch',async (url,options)=>{
   if(String(url).startsWith(base))return original(url,options);
-  assert.equal(url,'https://api.openai.com/v1/responses');
-  assert.equal(options.headers.Authorization,'Bearer saved-fixture');
-  const body=JSON.parse(options.body);assert.equal(body.model,'saved-model');calls.push(body);
-  if(timeout)throw new DOMException('Timed out','TimeoutError');
-  return Response.json({output:[{type:'message',content:[{type:'output_text',text:'Reply from the saved provider'}]}]});
+  outbound.push(url);
+  throw Error('Unexpected provider request');
  });
- const send=body=>fetch(base+'/ai/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
- let response=await send({message:'How many VMs are running?',threadId:1,exchangeId:1});
- assert.equal(response.status,200);assert.equal((await response.json()).result.mode,'openai');
- assert.match(JSON.parse(calls[0].input).context.verifiedAnswer,/1 running virtual machine/);
- response=await send({message:'web: public question',threadId:1,exchangeId:2});
- assert.equal(response.status,200);assert.deepEqual(JSON.parse(calls[1].input),{message:'web: public question'});
- assert.deepEqual(calls[1].tools,[{type:'web_search'}]);assert.equal(calls[1].tool_choice,'required');
- assert.equal((await (await fetch(base+'/ai/conversations/1')).json()).thread.rows.length,2);
- assert.deepEqual((await (await fetch(base+'/ai/conversations',{headers:{'x-user':'bob'}})).json()).threads,[]);
- assert.equal((await fetch(base+'/ai/conversations/1',{headers:{'x-user':'bob'}})).status,404);
- const count=calls.length;await send({message:'web: public question',threadId:1,exchangeId:2});assert.equal(calls.length,count);
- timeout=true;response=await send({message:'Another question',threadId:1,exchangeId:3});assert.equal(response.status,504);
- const failed=(await (await fetch(base+'/ai/conversations/1')).json()).thread.rows[2];
- assert.equal(failed.answer,undefined);assert.match(failed.error,/90 seconds/);
- assert.ok(!JSON.stringify(audits.map(row=>row.slice(1))).includes('Reply from the saved provider'));
+ for(const [method,endpoint,body] of [
+  ['POST','/ai/chat',{message:'web: test'}],
+  ['POST','/ai/health',{}],
+  ['GET','/ai/conversations'],
+  ['GET','/ai/conversations/1'],
+  ['PATCH','/ai/conversations/1',{title:'Changed'}],
+  ['DELETE','/ai/conversations/1'],
+  ['POST','/ai/conversations/import',{threads:[]}],
+  ['GET','/configuration/ai'],
+  ['PUT','/configuration/%61i',{OPENAI_API_KEY:'replacement'}],
+  ['DELETE','/configuration/ai'],
+  ['POST','/configuration/ai/models',{}],
+  ['POST','/configuration/ai/test',{confirm:true}]
+ ]){
+  const response=await fetch(base+endpoint,{method,...(body?{headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{})});
+  assert.equal(response.status,404,method+' '+endpoint);
+ }
+ assert.equal((await fetch(base+'/alerts')).status,200);
+ assert.equal((await fetch(base+'/configuration/truenas')).status,200);
+ assert.deepEqual(outbound,[]);
+ assert.equal(configuration.environment({OPENAI_API_KEY:'legacy-env',SMTP_PORT:'587'}).OPENAI_API_KEY,undefined);
+ assert.equal(configuration.environment({OPENAI_API_KEY:'legacy-env',SMTP_PORT:'587'}).SMTP_PORT,'587');
+ assert.deepEqual(files.map(file=>fs.readFileSync(file)),before);
 });
 
 test('search-capable saved providers return clickable citations and others report model-only replies',async t=>{

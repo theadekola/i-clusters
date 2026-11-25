@@ -16,7 +16,7 @@ const sections:Record<string,{name:string;tabs?:string[]}>= {
  '/alerts':{name:'Alerts',tabs:['Active Alerts','Alert History','Alert Rules']},
  '/users':{name:'Users',tabs:['Accounts','Audit Logs']},
  '/settings':{name:'Settings',tabs:settingsTabs},
- '/ai':{name:'AI Assistant'},'/tools/shell':{name:'Shell'},'/tools/sftp':{name:'SFTP Files'}
+ '/tools/shell':{name:'Shell'},'/tools/sftp':{name:'SFTP Files'}
 };
 export type PageCrumb={label:string;to?:string};
 export function pageTrail(pathname:string,search:string,host?:string,role?:string):PageCrumb[]{

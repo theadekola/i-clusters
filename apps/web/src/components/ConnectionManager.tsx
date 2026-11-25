@@ -24,7 +24,7 @@ import GuestConnections from './GuestConnections';
 import ConnectionHealthGuide from './ConnectionHealthGuide';
 import './connections.css';
 const titles:any={proxmox:'Proxmox',docker:'Docker',truenas:'TrueNAS'};
-const Icon=({provider,size=26}:{provider:string;size?:number})=>provider==='ai'?<PageIcon name="assistant" size={size}/>:<BrandIcon brand={provider} size={size} fallback="server"/>;
+const Icon=({provider,size=26}:{provider:string;size?:number})=><BrandIcon brand={provider} size={size} fallback="server"/>;
 const time=(value:string)=>value&&!Number.isNaN(Date.parse(value))?new Date(value).toLocaleString():'Not yet checked';
 const compactTime=(value:string)=>value&&!Number.isNaN(Date.parse(value))?new Date(value).toLocaleString([],{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}):'Not yet checked';
 function checkedTime(value:string){
@@ -42,7 +42,7 @@ export default function ConnectionManager({navigation}:{navigation?:ReactNode}={
 }
 function OwnerConnections({navigation}:{navigation?:ReactNode}){
  const hostProfiles=useClusterProfiles();
- const notifications=useApi<any>('/notifications',null),ai=useApi<any>('/configuration/ai',null);
+ const notifications=useApi<any>('/notifications',null);
  const [guestRevision,setGuestRevision]=useState(0);
  const [configuration,setConfiguration]=useState(''),[updateNode,setUpdateNode]=useState<any>(null);
  const [query,setQuery]=useSearchParams(),navigate=useNavigate();
@@ -57,11 +57,11 @@ function OwnerConnections({navigation}:{navigation?:ReactNode}){
  const setup=query.get('setup')||'',choose=(kind:string)=>{setSelected('');const next=new URLSearchParams(query);next.set('tab','Connections');if(kind)next.set('setup',kind);else next.delete('setup');setQuery(next);};
  useEffect(()=>{if(setup)document.getElementById('connection-add-setup')?.scrollIntoView?.({behavior:'smooth',block:'start'});},[setup]);
  useEffect(()=>{if(setup==='truenas'){setConfiguration(setup);choose('')}},[setup]);
- const refresh=async()=>{setStatuses({});setGuestRevision(v=>v+1);await Promise.all([cluster.refresh(),direct.refresh(),nodes.refresh(),health.refresh(),notifications.refresh(),ai.refresh()]);};
+ const refresh=async()=>{setStatuses({});setGuestRevision(v=>v+1);await Promise.all([cluster.refresh(),direct.refresh(),nodes.refresh(),health.refresh(),notifications.refresh()]);};
  useEffect(()=>{const id=query.get('connector');if(id&&nodes.data.nodes.some((n:any)=>n.id===id)){setSelected(nodes.data.nodes.find((n:any)=>n.id===id)?.kind==='docker'?id+':node':id);const next=new URLSearchParams(query);next.delete('connector');setQuery(next,{replace:true})}},[query,nodes.data.nodes]);
  const checkSetup=async()=>{setStatuses({});setBusy(true);setError('');setMessage('Checking connection setup…');try{const result=await api('/connections/health?refresh=1');health.setData(result);setCheckFailure('');setGuestRevision(v=>v+1);await Promise.all([nodes.refresh(),cluster.refresh(),direct.refresh()]);setMessage(result.refreshing?'Available checks are shown. Remaining provider checks are running in the background.':'Connection setup checks completed.');}catch(e:any){setCheckFailure(e.message);setError(e.message);setMessage('');}finally{setBusy(false)}};
  const test=async(row:any,connect=false)=>{setBusy(true);setError('');setMessage('');try{
-  let result:any;if(row.id==='proxmox')result=await api('/connections/proxmox/verify');else if(row.id==='direct')result=await api('/connections/docker/verify');else if(row.verifyHost)result=await api(`/docker/hosts/${encodeURIComponent(row.verifyHost)}/verify`);else if(row.agentId){const inventory=await api('/node-agents'),node=inventory.nodes.find((n:any)=>n.id===row.agentId);if(!node?.online)throw Error('Connector is offline. Check its service and HTTPS connection.');result={status:'reachable'};}else if(row.provider==='truenas'||row.provider==='ai'){if(row.provider==='ai'&&!await confirmChoice('Send a small AI connection test? API usage may be billed.'))return;result=await api('/configuration/'+row.provider+'/test',{method:'POST',body:JSON.stringify({confirm:true})});if(!result.result?.verified)throw Error('Connection could not be verified.');}else{await checkSetup();if(connect)navigate(row.manage);return;}
+  let result:any;if(row.id==='proxmox')result=await api('/connections/proxmox/verify');else if(row.id==='direct')result=await api('/connections/docker/verify');else if(row.verifyHost)result=await api(`/docker/hosts/${encodeURIComponent(row.verifyHost)}/verify`);else if(row.agentId){const inventory=await api('/node-agents'),node=inventory.nodes.find((n:any)=>n.id===row.agentId);if(!node?.online)throw Error('Connector is offline. Check its service and HTTPS connection.');result={status:'reachable'};}else if(row.provider==='truenas'){result=await api('/configuration/'+row.provider+'/test',{method:'POST',body:JSON.stringify({confirm:true})});if(!result.result?.verified)throw Error('Connection could not be verified.');}else{await checkSetup();if(connect)navigate(row.manage);return;}
   if(result.status&&result.status!=='reachable')throw Error(result.message||'Connection unavailable');
   setStatuses(s=>({...s,[row.id]:{status:row.agentId&&!row.verifyHost&&row.kind==='docker'?row.status:'online',checkedAt:new Date().toISOString()}}));setMessage(row.agentId&&!row.verifyHost?'Connector verified. Guest Engine access still needs its own verification.':'Connection verified.');
   if(connect&&row.kind==='docker'&&(row.id==='direct'||row.verifyHost)){setDockerHost(row.id==='direct'?'':row.verifyHost);navigate('/docker');}else if(connect)navigate(row.manage);
@@ -71,14 +71,13 @@ function OwnerConnections({navigation}:{navigation?:ReactNode}){
  // Configuration remains visible if a health read fails; unverified is never presented as online.
  const fallback=[...(cluster.data.cluster?[{id:'proxmox',kind:'proxmox',provider:'proxmox',name:cluster.data.cluster.name,endpoint:cluster.data.cluster.host,source:cluster.data.cluster.source,method:'Proxmox API',manage:'/proxmox'}]:[]),...nodes.data.nodes.map((n:any)=>({id:n.kind==='docker'?n.id+':node':n.id,agentId:n.id,kind:n.kind==='docker'?'docker':'proxmox',provider:n.kind==='docker'?'docker':'proxmox',name:n.name,endpoint:n.hostname||n.name,method:'Paired connector',manage:'/docker'})),...(direct.data.connection?[{id:'direct',kind:'docker',provider:'docker',name:'Direct Docker API',endpoint:direct.data.connection.url,source:direct.data.connection.source,method:'Advanced · Docker HTTPS API',manage:'/docker'}]:[])].map(r=>({...r,status:'unverified',issues:[]}));
  const rows=(health.data.connections?.length?health.data.connections:fallback).map((r:any)=>({...connectionTestState(r,statuses[r.id]),...(health.error?{status:'unverified'}:{}),connector:nodes.data.nodes.find((n:any)=>n.id===r.agentId)}));
- if(ai.data?.fields?.find((f:any)=>f.key==='OPENAI_API_KEY')?.hasValue&&!ai.data.disabled)rows.push(connectionTestState({id:'ai',kind:'other',provider:'ai',name:'AI Assistant',method:(ai.data.providers?.[ai.data.fields.find((f:any)=>f.key==='AI_PROVIDER')?.value||'openai']?.label||'OpenAI')+' API',endpoint:ai.data.fields.find((f:any)=>f.key==='OPENAI_MODEL')?.value||'Configured model',status:'unverified',issues:[],manage:'/ai'},statuses.ai));
- const summaryReading={...health,data:health.data?.counts?health.data:null,error:health.error||checkFailure||cluster.error||direct.error||nodes.error||ai.error};
+ const summaryReading={...health,data:health.data?.counts?health.data:null,error:health.error||checkFailure||cluster.error||direct.error||nodes.error};
  const ready=rows.filter((r:any)=>r.status==='online'&&!r.issues?.length),attention=rows.filter((r:any)=>r.status!=='online'||r.issues?.length);
  const pendingUpdates=nodes.data.nodes.filter((n:any)=>n.update?.available);
  const scoped=section==='connected'?ready:attention;
  const count=(key:string)=>key==='all'?scoped.length:scoped.filter((r:any)=>r.kind===key).length;
  const matches=(section==='connected'?ready:attention).filter((r:any)=>(filter==='all'||r.kind===filter)&&[r.name,r.endpoint,r.method].join(' ').toLowerCase().includes(search.toLowerCase())).sort((a:any,b:any)=>String(sort==='status'?a.status:a.name).localeCompare(String(sort==='status'?b.status:b.name)));
- const row=rows.find((r:any)=>r.id===selected),edit=(r:any)=>r.id==='proxmox'?'proxmox':r.id==='direct'?'direct':['truenas','ai'].includes(r.provider)?r.provider:'';
+ const row=rows.find((r:any)=>r.id===selected),edit=(r:any)=>r.id==='proxmox'?'proxmox':r.id==='direct'?'direct':r.provider==='truenas'?'truenas':'';
  const gotoSetup=()=>{setSelected('');setFilter('all');setSearch('');changeSection('setup');setTimeout(()=>document.getElementById('connection-guest-setup')?.scrollIntoView?.({behavior:'smooth',block:'start'}),0)};
  return <section className="connections-page" aria-label="Connections">
  <ConnectionHeader actions={<div className="settings-overview-actions connection-heading-actions"><RefreshButton className="btn secondary" aria-busy={busy||health.loading} disabled={busy||health.loading} onClick={checkSetup}><RefreshCw size={16}/>{busy?'Checking…':'Recheck Connections'}</RefreshButton><button className="btn primary" aria-busy={busy} disabled={busy} onClick={()=>choose('choose')}><Plus size={17}/>Add Connection</button></div>}/>
@@ -124,10 +123,10 @@ function OwnerConnections({navigation}:{navigation?:ReactNode}){
  {setup==='proxmox-node'&&<PairConnector kind="proxmox" onPaired={refresh} onComplete={gotoSetup}/>}
  {setup==='docker'&&<><PairConnector kind="docker" onPaired={refresh} onComplete={()=>choose('')}/><details><summary>Advanced connection methods</summary><p>Use an existing Docker HTTPS API with client certificates.</p><button type="button" className="btn secondary" onClick={()=>choose('direct')}>Direct Docker API</button></details></>}
  {setup==='direct'&&<><p>Use an existing trusted Docker HTTPS endpoint and client certificates. One direct endpoint is supported.</p><DockerConnection owner autoOpen onBack={()=>choose('docker')} label="Enter Direct Docker API" onConnected={()=>choose('')} refresh={refresh}/></>}
- {setup==='other'&&<><button className="btn secondary" onClick={()=>{choose('');setConfiguration('truenas')}}>Configure TrueNAS</button><button className="btn secondary" onClick={()=>{navigate('/ai?setup=ai')}}>Configure AI Assistant</button></>}
+ {setup==='other'&&<button className="btn secondary" onClick={()=>{choose('');setConfiguration('truenas')}}>Configure TrueNAS</button>}
  </div></Modal>
  {updateNode&&<ConnectorUpdateDialog key={updateNode.id} node={updateNode} onClose={()=>setUpdateNode(null)} onUpdated={()=>{void refresh()}}/>}
  <ConfigurationDialog service={configuration} onClose={()=>setConfiguration('')} onSaved={()=>{void refresh()}}/>
- <ConnectionHealthGuide row={row} busy={busy} error={error} message={message} onClose={()=>setSelected('')} onRecheck={checkSetup} onSetup={gotoSetup} onUpdate={row?.connector?.update?.available?()=>{setUpdateNode(row.connector);setSelected('')}:undefined} onEdit={row&&edit(row)?()=>{const target=edit(row);setSelected('');if(target==='ai')navigate('/ai?setup=ai');else if(target==='truenas')setConfiguration(target);else choose(target)}:undefined} onRemove={row&&removal(row)?()=>remove(row):undefined}/>
+ <ConnectionHealthGuide row={row} busy={busy} error={error} message={message} onClose={()=>setSelected('')} onRecheck={checkSetup} onSetup={gotoSetup} onUpdate={row?.connector?.update?.available?()=>{setUpdateNode(row.connector);setSelected('')}:undefined} onEdit={row&&edit(row)?()=>{const target=edit(row);setSelected('');if(target==='truenas')setConfiguration(target);else choose(target)}:undefined} onRemove={row&&removal(row)?()=>remove(row):undefined}/>
  </section>;
 }

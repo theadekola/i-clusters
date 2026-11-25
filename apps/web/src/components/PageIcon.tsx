@@ -4,7 +4,7 @@ import {LayoutDashboard,Database,Network,HardDriveDownload,Activity,Bell,Sparkle
 
 export const pageIcons={dashboard:LayoutDashboard,storage:Database,network:Network,backups:HardDriveDownload,monitoring:Activity,alerts:Bell,assistant:Sparkles,shell:Terminal,files:FolderOpen,users:Users,settings:Settings};
 export type PageIconName=keyof typeof pageIcons;
-const paths:Record<string,PageIconName>={'/':'dashboard','/storage':'storage','/network':'network','/backups':'backups','/monitoring':'monitoring','/alerts':'alerts','/ai':'assistant','/tools/shell':'shell','/tools/sftp':'files','/users':'users','/settings':'settings'};
+const paths:Record<string,PageIconName>={'/':'dashboard','/storage':'storage','/network':'network','/backups':'backups','/monitoring':'monitoring','/alerts':'alerts','/tools/shell':'shell','/tools/sftp':'files','/users':'users','/settings':'settings'};
 export function pageIconForPath(path:string):PageIconName{return Object.hasOwn(paths,path)?paths[path]:'dashboard'}
 export function pageIconForTitle(title:string):PageIconName{
  if(/network|interface|routing|firewall|dns|traffic|device/i.test(title))return 'network';
