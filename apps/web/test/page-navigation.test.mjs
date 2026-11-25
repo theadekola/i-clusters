@@ -10,7 +10,8 @@ test('every Settings title identifies the selected tab',()=>{
  settingsTabs.forEach((tab,index)=>{assert.equal(settingsTitle(tab),titles[index]);assert.equal(labels('/settings',`?tab=${tab}`)[1],tab)});
 });
 test('nested connection sections and legacy Settings links resolve to the real page',()=>{
- for(const [section,label] of Object.entries({connected:'Connected',setup:'Needs Setup',notifications:'Notifications',remote:'Remote Access'}))assert.deepEqual(labels('/settings',`?tab=Connections&section=${section}`),['Settings','Connections',label]);
+ for(const [section,label] of Object.entries({connected:'Connected',setup:'Needs Setup',notifications:'Notifications'}))assert.deepEqual(labels('/settings',`?tab=Connections&section=${section}`),['Settings','Connections',label]);
+ assert.deepEqual(labels('/settings','?tab=Connections&section=remote'),['Settings','Connections','Connected']);
  assert.deepEqual(labels('/settings','?tab=Notifications'),['Settings','Integrations']);
  assert.deepEqual(labels('/settings','?tab=System'),['Settings','General']);
  assert.deepEqual(labels('/settings','?tab=Advanced'),['Settings','General']);
