@@ -187,7 +187,7 @@ Running VMs with an existing QEMU guest agent can report services, installed pac
 
 For node status/services HTTP 403, in Proxmox open Datacenter → Permissions. Assign PVEAuditor at path `/`, with Propagate enabled, to both the backing user and privilege-separated API token. Guest inventory execution additionally requires `VM.GuestAgent.Unrestricted` on Proxmox 9 (older versions use their guest-agent execution privilege). Grant only on guests that i-Clusters should inspect. This is a powerful Proxmox permission; i-Clusters uses it for its fixed inventory commands. Node service management needs `Sys.Modify`; VM lifecycle actions need the corresponding VM management privileges.
 
-The overview uses compact live cards. Node selection filters resources and guests; the time selector filters collected CPU/memory history. Add Widget saves visible widgets in the browser. Refresh requests a fresh measurement; Export downloads the current report. Create VM and Run Backup open their actual action forms. AI Health Check reads the current live status. The infrastructure map shows observed node/guest relationships. API reachability is a measured percentage, not a fabricated security score. Backup counts are provider-reported archives and jobs; Monitoring shows task outcomes.
+The overview uses compact live cards. Node selection filters resources and guests; the time selector filters collected CPU/memory history. Add Widget saves visible widgets in the browser. Refresh requests a fresh measurement; Export downloads the current report. Create VM and Run Backup open their actual action forms. The infrastructure map shows observed node/guest relationships. API reachability is a measured percentage, not a fabricated security score. Backup counts are provider-reported archives and jobs; Monitoring shows task outcomes.
 
 For updates, use the header Update button or `sudo iclusters update`. GitHub checks run every minute. If the updater is missing, run `cd /opt/i-clusters && sudo bash deployment/setup-updater.sh` once.
 
@@ -225,8 +225,9 @@ If an existing tab only says “Loading i-Clusters…”, enter `/api/health` on
 the same installation in the address bar. The browser can then show a certificate
 warning directly. After an update, the recovery screen offers same-tab diagnostics
 and a network retry. Refresh that tab after restoring connectivity or establishing
-certificate trust. Clearing browser data is unnecessary. A QR code is an address, not
-proof that a remote device can reach it.
+certificate trust. Clearing browser data is unnecessary. Enter the controller’s IP address
+or HTTPS URL in i-Clusters Mobile. The device must be on a network or VPN that
+can reach the controller, and it must trust the controller’s certificate.
 
 Settings → Security → **Browser Certificate Setup** provides an explicit public-root check, SHA-256 fingerprint and download, with device installation instructions. Compare the fingerprint using the server command below before trusting it. This does not modify device trust or bypass a browser warning; the dashboard must first be reachable. The fixed `/local-ca.crt` endpoint serves only Caddy’s public root and returns unavailable when no local root exists. It never serves private keys.
 

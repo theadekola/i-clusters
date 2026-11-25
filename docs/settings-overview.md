@@ -68,4 +68,4 @@ About uses reported version facts and verified project links. Build number, UTC 
 
 All tabs retain responsive layouts, search where applicable and the existing permission checks. Removing duplicate sections does not add new provider capabilities or change live infrastructure.
 
-AI configuration lives on the AI Assistant page in its owner-only configuration popup. Proxmox storage registration uses one shared form across storage and backup destinations. Backup and snapshot schedule shortcuts open the canonical Schedules editor.
+Proxmox storage registration uses one shared form across storage and backup destinations. Backup and snapshot schedule shortcuts open the canonical Schedules editor.

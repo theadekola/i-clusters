@@ -16,6 +16,20 @@ The default installer and update service follow the configured branch, usually `
 
 Keep a verified encrypted off-host controller backup, preserve original encryption keys and finish active Docker operations before maintenance. The new upgrade rollback protects the consistent local controller state but does not reverse operations already submitted to providers or data migrations in their applications. See the [recovery guide](../deployment/SECURITY-AND-RECOVERY.md).
 
+## Before a commercial release
+
+Select one source revision and verify the checks and scan reports for that revision. Record the installed revision in the acceptance record. The branch-based installer follows new commits by default. Give customers a reproducible installation reference and document how to update or roll back from that build.
+
+| Release gate | Evidence to review |
+| --- | --- |
+| Provider permissions and stages | On staging, test denied roles and the advertised Proxmox, Docker and TrueNAS operations with the versions and permissions you intend to support. |
+| Restore and rollback | Restore a guest and the encrypted controller onto isolated infrastructure. Rehearse the controller upgrade and rollback with representative state. Record recovery time and verify data and login afterwards. |
+| Security and operations | Review dependency findings from the release revision, obtain an independent authenticated security review, and confirm support contacts, maintenance, retention and incident responsibilities for the offering. |
+| Performance and devices | Measure report freshness, latency and resource use at the intended fleet size. Test supported browsers on physical devices. Verify actual Android and iOS builds on physical devices before offering them commercially. |
+| Published documentation | Verify the live website guides and each in-app documentation link against the release, including initial login, provider setup, upgrades and recovery. |
+
+Record evidence privately using the procedure below. Publish the commercial offering after the relevant reviewers accept the results for the selected build.
+
 ## Private acceptance evidence
 
 Release verification is recorded against the tested source revision. For each customer installation, use the [deployment acceptance procedure](commercial-acceptance.md) to record provider versions, guest restore results, physical-device and load tests, and the independent security review. The reviewer examines the evidence and signs off the installation.

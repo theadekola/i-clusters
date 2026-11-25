@@ -1,7 +1,7 @@
 # Connections and connection health
 
 Open **Settings → Connections** to manage Proxmox, paired node connectors, Docker,
-TrueNAS, the AI Assistant and external notification delivery. Other resource pages
+TrueNAS and external notification delivery. Other resource pages
 link here instead of opening duplicate connection forms. Existing
 `Settings?tab=Notifications` bookmarks redirect to Connections → Notifications.
 
@@ -18,7 +18,7 @@ link here instead of opening duplicate connection forms. Existing
 - **Open** verifies the applicable API, connector heartbeat or exact Docker Engine
   before selecting its host and navigating. **Test** verifies without navigation.
   A paired node heartbeat does not verify all of its Docker guests. TrueNAS uses
-  its read-only provider test. AI tests require confirmation and can incur charges.
+  its read-only provider test.
 - **Recheck Connections** refreshes provider checks. Background checks and errors
   remain visible. Failed reads do not turn unverified sources into connected ones.
 - Removing a saved connection or revoking a connector removes i-Clusters access,
@@ -34,7 +34,7 @@ date and time, with the complete timestamp available on hover.
 ## Add a connection
 
 **Add Connection** offers Proxmox API, Proxmox node pairing, standalone Docker,
-TrueNAS, AI Assistant and notification channels. Direct Docker HTTPS API setup
+TrueNAS and notification channels. Direct Docker HTTPS API setup
 is under Advanced connection methods. Each saved cluster has its own Proxmox API endpoint and optional direct Docker endpoint. Select the cluster beside the navigation toggle before adding its connections.
 After connecting Proxmox, pair each node when Docker guest discovery is needed.
 Secrets stay encrypted on the server and saved values are never shown in forms.

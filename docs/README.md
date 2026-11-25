@@ -14,7 +14,7 @@ Developed by **The Adekola Labs** · Current source release: **1.0.0**.
 | Docker updates | [Image updates](docker-image-updates.md) |
 | Backups and controller restore | [Security/recovery](../deployment/SECURITY-AND-RECOVERY.md), [acceptance](acceptance-checklist.md) |
 | Operations and incidents | [Operations](operations.md), [warning recovery](monitoring-warning-recovery.md) |
-| Commercial acceptance | [Procedure](commercial-acceptance.md), [private record template](acceptance-record.example.json), [acceptance checklist](acceptance-checklist.md) |
+| Commercial release readiness | [Release gates](release-policy.md#before-a-commercial-release), [procedure](commercial-acceptance.md), [private record template](acceptance-record.example.json), [acceptance checklist](acceptance-checklist.md) |
 | Archived engineering reviews | [November live/interface assessment](audits/2026-11-05-live-interface-and-commercial-review.md), [earlier release assessment](audits/2026-10-20-release-candidate.md) |
 | Interface consistency | [Typography scale](interface-typography.md) |
 | Policies and contribution | [Security](../SECURITY.md), [privacy](../PRIVACY.md), [terms](../TERMS.md), [contributing](../CONTRIBUTING.md), [notices](../THIRD_PARTY_NOTICES.md) |

@@ -164,7 +164,7 @@ The header bell counts **active, unacknowledged alerts only**. Acknowledged cond
 
 Configure your channel in **Settings → Integrations**, choose its severity/recovery preference, save, enable it and send an explicitly confirmed test. Supported channels include Discord, Telegram, SMTP, Slack, Teams, Pushover, Gotify, custom webhooks and IFTTT. Automatic alerts are sent individually by default. Notification Preferences can group them into digests, set quiet hours and repeat active alerts. See the [channel setup guide](docs/notification-channels.md). Saved credentials do not prove delivery. Failed deliveries retry with backoff; delivery is not guaranteed exactly once.
 
-The AI Assistant is suspended. Overview, reports and alerts use measurements from connected providers.
+Overview, reports and alerts use measurements from connected providers. Redis caches recent measurements.
 
 ## Updates and build information
 
