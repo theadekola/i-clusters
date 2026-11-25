@@ -42,4 +42,4 @@ After signing in, open Settings → Connections → Add Connection. Choose Proxm
 
 For Docker, select a discovered guest or enter the address of a standalone Linux host. Use its Linux SSH account and approve the installation. On Debian and Ubuntu, the optional Docker setup installs the distribution package if needed and can start the service. Pairing checks the controller HTTPS connection and waits for the new connector to report a working Engine. An existing HTTPS Engine with client certificates can be connected under Advanced connection methods inside Docker setup.
 
-AI provider settings and notification channels are available under Settings → Integrations.
+Configure notification channels under Settings → Integrations.

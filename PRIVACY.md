@@ -16,7 +16,7 @@ The [website Privacy Policy](https://www.i-clusters.com/privacy.html) covers inf
 | Provider inventory, hostnames, addresses, measurements, alerts and activity | Infrastructure management and local persisted runtime state |
 | Supported integration secrets and saved connection details | Server-side connection configuration; supported credential stores encrypt secret values using deployment key material |
 | SSH/SFTP credentials and terminal/file data | Authenticated operations against the selected target; Shell and SFTP have separate encrypted saved credentials scoped to account, cluster and target, with a fixed 48-hour deadline from saving |
-| Previously saved assistant conversations | Questions, answers, sources, errors, titles and pinned state remain encrypted in per-account, per-cluster files under the API data directory while the feature is suspended |
+| Legacy assistant data | Earlier installations may retain encrypted conversations and provider configuration in the API data directory and its backups |
 | Browser access tokens, session markers and preferences; HttpOnly refresh cookie | Sign-in and preferences; short-lived access tokens and preferences use local/session storage, while browser refresh credentials use a Secure, HttpOnly cookie |
 | Guest maintenance restart records | The controller stores the initiating account, cluster and guest identifiers, power state, task receipt, timestamps and progress in PostgreSQL so the operator can resume a restart. |
 | Encrypted Docker operation journal | Installation checkpoints and recovery, including configuration required to restore the original container |
@@ -28,8 +28,7 @@ Infrastructure names, IP addresses, logs, filenames and prompts may contain pers
 
 - Proxmox, Docker, TrueNAS and SSH targets receive the configured requests needed for their connected features.
 - Enabled Discord, Telegram, SMTP, Slack, Teams, Pushover, Gotify, custom webhook or IFTTT channels receive alert/source/details and recovery messages. Tests send a user-confirmed request to the configured destination. Custom receivers and IFTTT applets can perform downstream actions.
-- The internal Redis cache holds selected cluster measurements for up to two minutes. It contains no assistant credentials or chat transcripts.
-- The AI Assistant, provider requests and public search are suspended. Existing encrypted assistant data stays on the controller. Operators of earlier installations should apply their retention policies to any data already sent to an external provider.
+- The internal Redis cache holds selected cluster measurements for up to two minutes.
 - The optional host updater contacts the configured Git upstream, normally GitHub. Installation/build/update tooling also downloads selected packages and container images.
 - External documentation, repository, portfolio and social links open their respective sites when followed.
 
@@ -51,7 +50,7 @@ Different stores have different lifetimes. Header activity is bounded and notifi
 
 Saved Shell and SFTP credentials expire 48 hours after saving. Reuse does not extend that deadline. Sessions opened with those saved credentials are rejected at expiry and disconnected by the cleanup loop. Legacy saved records without a save time require a fresh password. Credential expiry is independent of the i-Clusters account session.
 
-Previously saved assistant history remains encrypted on disk while the feature is suspended. Operators can manage it through their server data and backup retention policies.
+If you upgraded from an earlier build, include legacy assistant data in your controller and backup retention policies. Review any information previously shared with a configured provider under that provider’s retention terms.
 
 The operator should define retention, restrict administrator access, remove unused connections and accounts, and manage database/runtime/backups consistently. Disconnecting an integration stops i-Clusters's use of its saved configuration; it does not erase messages or resources already created on an external service. Browser sign-out is not deletion of server data. Requests for account information, correction or deletion must go to the installation operator, who must also consider applicable obligations and backup retention.
 

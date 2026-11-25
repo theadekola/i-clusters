@@ -18,11 +18,11 @@ The installation operator is responsible for authorizing users, protecting the c
 
 i-Clusters can submit operations that stop services, change infrastructure, delete resources or affect data. Read the selected target and confirmation carefully. A reported queued task is not a guarantee of completion. Provider/API failures, missing measurements and incomplete inventories must be investigated before relying on them. Test recovery on disposable resources and keep independent backups.
 
-AI assistance is read-only and can be inaccurate. Review its suggestions before making changes through other controls. Monitoring and security status displays do not certify security or guarantee detection of every outage or threat.
+Monitoring and security status displays do not certify security or guarantee detection of every outage or threat.
 
 ## External services and charges
 
-You choose and provide access to connected providers, notification channels and AI services. Their availability, terms, permissions and charges are separate from i-Clusters. Tests can send real notifications and AI tests can be billable. See [privacy and data handling](PRIVACY.md) for the information sent by configured features.
+You choose and provide access to connected infrastructure providers and notification channels. Their availability, terms, permissions and charges are separate from i-Clusters. Notification tests can send real messages. See [privacy and data handling](PRIVACY.md) for the information sent by configured features.
 
 ## Support and reporting
 
