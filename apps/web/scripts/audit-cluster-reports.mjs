@@ -187,9 +187,9 @@ export async function auditClusterReports({base,owner,profile,tls}){
      if(prefix)assert.ok(info.includes('Office-membership'));
     }
     if(route.includes('section=remote')){
-     const open=page.getByRole('link',{name:'Open Dashboard on This Device'});
-     await open.waitFor();assert.equal(await open.getAttribute('href'),url('/'));
-     assert.equal(await page.getByRole('link',{name:'Open in Browser'}).getAttribute('href'),url('/'));
+     const tabs=page.getByRole('navigation',{name:'Connection sections'});
+     assert.equal(await tabs.getByRole('button',{name:'Connected',exact:true}).getAttribute('aria-current'),'page');
+     assert.equal(await tabs.getByRole('button',{name:'Remote Access',exact:true}).count(),0);
     }
    }
   }

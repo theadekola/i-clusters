@@ -25,11 +25,12 @@ async function mounted(file,props,api,mobile=true,strict=false,exportName='defau
 
 const openNotifications=async page=>page.click(button(page,'Integrations'));
 const button=(page,label)=>[...page.container.querySelectorAll('button')].find(b=>b.textContent.trim()===label);
-test('dashboard QR decodes to the browser address without authentication data',async()=>{
- const page=await mounted('components/RemoteAccessLayout.tsx',{},async()=>({}));
- try{const svg=page.container.querySelector('svg.access-qr'),size=Number(svg.getAttribute('viewBox').split(' ')[2]),scale=4,width=size*scale,pixels=new Uint8ClampedArray(width*width*4).fill(255);for(const match of svg.querySelector('path').getAttribute('d').matchAll(/M(\d+) (\d+)h1v1h-1z/g)){for(let y=0;y<scale;y++)for(let x=0;x<scale;x++){const offset=(((Number(match[2])*scale+y)*width)+Number(match[1])*scale+x)*4;pixels[offset]=pixels[offset+1]=pixels[offset+2]=0;}}
- const {default:decode}=await import('jsqr');assert.equal(decode(pixels,width,width).data,'https://iclusters.test/');assert.equal(page.container.querySelector('[aria-label="Copy dashboard link"]').disabled,false);
- assert.equal(page.container.querySelector('[aria-label="Mobile dashboard address"]'),null);assert.equal(page.container.querySelector('[aria-label="VPN access path"]'),null);assert.equal(page.container.textContent.includes('VPN Connection'),false);page.dom.reconfigure({url:'https://192.0.2.40:7443/settings?tab=Connections'});await page.render({node:{name:'Another node',status:'pairing-required'}});assert.equal(page.container.querySelector('.access-open').getAttribute('href'),'https://192.0.2.40:7443/');
+test('legacy Remote Access links open Connected without a Remote Access tab',async()=>{
+ const page=await settingsPage('owner',false,false,false,false,false,'/settings?tab=Connections&section=remote');
+ try{
+  const nav=page.container.querySelector('[aria-label="Connection sections"]');
+  assert.deepEqual([...nav.querySelectorAll('button')].map(button=>button.textContent.trim()),['Connected','Host','Needs Setup']);
+  assert.equal(nav.querySelector('[aria-current="page"]').textContent.trim(),'Connected');
  }finally{await page.close()}
 });
 test('Android install prompt waits for a user gesture, is single use and disappears after acceptance',async()=>{

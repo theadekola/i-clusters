@@ -96,9 +96,9 @@ Check the per-node state and fresh heartbeat after enabling. A completed state v
 
 ## Mobile dashboard and installation
 
-The Remote Access tab includes a local QR encoder and a responsive mobile-access card. The dashboard QR contains the HTTPS dashboard root URL, including the configured port. Scanning opens the dashboard or, when signed out, the sign-in screen. Use the same Wi-Fi, and a dashboard name/address reachable from that phone with a trusted TLS certificate. A QR code does not provide public hosting, certificate trust.
+To use i-Clusters Mobile, enter the controller’s IP address or its HTTPS dashboard URL and choose **Continue**. Sign in with your existing i-Clusters account in the app. Your phone must be able to reach the controller over Wi-Fi or VPN and trust the controller’s HTTPS certificate.
 
-Android offers an explicit **Install i-Clusters** action when the browser supplies its installation event. The event is used only after a user gesture and is single-use. If unavailable, the page provides browser-menu instructions. iPhone/iPad show **Share → Add to Home Screen**, with **Open as Web App** when available. Installed/standalone windows suppress the prompt. The prompt is also available before sign-in for scanned links. Installation remains subject to device/browser eligibility and trusted HTTPS.
+Android offers an explicit **Install i-Clusters** action when the browser supplies its installation event. The event is used only after a user gesture and is single-use. If unavailable, the page provides browser-menu instructions. iPhone/iPad show **Share → Add to Home Screen**, with **Open as Web App** when available. Installed/standalone windows suppress the prompt. The browser installation prompt is also available before sign-in when opened with an installation link. Installation remains subject to device/browser eligibility and trusted HTTPS.
 
 The service worker handles navigation network failures with a connection notice. It does not cache HTML, API responses, keys or credentials and does not intercept API requests. It supplies no offline authenticated dashboard.
 
