@@ -6,6 +6,7 @@ export function attachTerminalTouchSelection(element:HTMLElement,terminal:Termin
  let disposed=false,hasRange=false;
  let timer:ReturnType<typeof setTimeout>|undefined;
  let start:{x:number;y:number;id:number}|undefined;
+ let drag:''|'scroll'|'select'='',scrollY=0;
  let selecting=false,first=0,last=0,anchor=0,edge:''|'start'|'end'='',offsetX=0,offsetY=0;
  const overlay=document.createElement('div');overlay.className='terminal-selection';overlay.hidden=true;
  const menu=document.createElement('div');menu.className='terminal-selection-menu';menu.setAttribute('role','toolbar');menu.setAttribute('aria-label','Terminal text actions');
@@ -61,14 +62,14 @@ export function attachTerminalTouchSelection(element:HTMLElement,terminal:Termin
  }
  const select=()=>{hasRange=true;copy.disabled=false;terminal.select(first%terminal.cols,Math.floor(first/terminal.cols),last-first+1);overlay.hidden=false;copy.textContent='Copy';position();};
  const begin=(event:TouchEvent)=>{
-  clear();start=undefined;edge='';selecting=false;
+  cancel();
   const target=event.target as HTMLElement;
-  if(target.closest('.terminal-selection-menu'))return;
+  if(target.closest('.terminal-selection-menu,.scrollbar'))return;
   if(event.touches.length!==1)return;
   const touch=event.touches[0];start={x:touch.clientX,y:touch.clientY,id:touch.identifier};
   const grabbed=target.closest<HTMLElement>('[data-selection-handle]');
   if(grabbed&&!overlay.hidden){
-   edge=grabbed.dataset.selectionHandle as 'start'|'end';selecting=true;
+   edge=grabbed.dataset.selectionHandle as 'start'|'end';selecting=true;drag='select';
    const g=geometry();if(g){const index=edge==='start'?first:last;offsetX=touch.clientX-(g.rect.left+(index%terminal.cols+.5)*g.width);offsetY=touch.clientY-(g.rect.top+(Math.floor(index/terminal.cols)-terminal.buffer.active.viewportY+.5)*g.height);}
    event.preventDefault();event.stopImmediatePropagation();return;
   }
@@ -92,8 +93,24 @@ export function attachTerminalTouchSelection(element:HTMLElement,terminal:Termin
   if(!start)return;
   if(event.touches.length!==1){cancel();return;}
   const touch=Array.from(event.touches).find(t=>t.identifier===start!.id);if(!touch)return;
-  if(!selecting){if(Math.hypot(touch.clientX-start.x,touch.clientY-start.y)>10){clear();start=undefined;}return;}
+  if(!drag){
+   // The first deliberate movement sets the gesture. Selection handles always select.
+   const dx=Math.abs(touch.clientX-start.x),dy=Math.abs(touch.clientY-start.y);
+   if(Math.hypot(dx,dy)<=10)return;
+   clear();
+   if(dy>dx){
+    drag='scroll';scrollY=start.y;selecting=false;
+    hasRange=false;overlay.hidden=true;terminal.clearSelection();
+   }else if(selecting)drag='select';
+   else{cancel();return;}
+  }
   event.preventDefault();event.stopImmediatePropagation();
+  if(drag==='scroll'){
+   const g=geometry();if(!g)return;
+   const lines=Math.trunc((scrollY-touch.clientY)/g.height);
+   if(lines){scrollY-=lines*g.height;terminal.scrollLines(lines);}
+   return;
+  }
   const g=geometry();if(g&&(touch.clientY<g.rect.top||touch.clientY>g.rect.bottom))terminal.scrollLines(touch.clientY<g.rect.top?-1:1);
   const cell=cellAt(touch.clientX-(edge?offsetX:0),touch.clientY-(edge?offsetY:0));if(!cell)return;
   const index=cell.row*terminal.cols+cell.column;
@@ -102,9 +119,9 @@ export function attachTerminalTouchSelection(element:HTMLElement,terminal:Termin
   else{first=Math.min(anchor,index);last=Math.max(anchor,index);}
   select();
  };
- const end=(event:TouchEvent)=>{clear();if(selecting){event.preventDefault();event.stopImmediatePropagation();}start=undefined;selecting=false;edge='';};
- function cancel(){clear();start=undefined;selecting=false;edge='';}
- const scroll=()=>{if(!selecting)cancel();position();};
+ const end=(event:TouchEvent)=>{if(selecting||drag==='scroll'){event.preventDefault();event.stopImmediatePropagation();}cancel();};
+ function cancel(){clear();start=undefined;selecting=false;edge='';drag='';}
+ const scroll=()=>{if(!selecting&&drag!=='scroll')cancel();position();};
  const menuEvent=(event:Event)=>{if((event.target as HTMLElement).closest('.terminal-manual-paste'))return;if(start||selecting||!overlay.hidden)event.preventDefault();};
  const key=(event:KeyboardEvent)=>{if(event.key==='Escape'&&!overlay.hidden){terminal.clearSelection();hasRange=false;overlay.hidden=true;}};
  const selection=terminal.onSelectionChange?.(()=>{if(!terminal.hasSelection()&&hasRange){hasRange=false;overlay.hidden=true;}});
