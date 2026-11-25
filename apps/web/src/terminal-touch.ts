@@ -64,7 +64,7 @@ export function attachTerminalTouchSelection(element:HTMLElement,terminal:Termin
  const begin=(event:TouchEvent)=>{
   cancel();
   const target=event.target as HTMLElement;
-  if(target.closest('.terminal-selection-menu,.xterm-scrollable-element .scrollbar'))return;
+  if(target.closest('.terminal-selection-menu,.scrollbar'))return;
   if(event.touches.length!==1)return;
   const touch=event.touches[0];start={x:touch.clientX,y:touch.clientY,id:touch.identifier};
   const grabbed=target.closest<HTMLElement>('[data-selection-handle]');
