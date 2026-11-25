@@ -71,8 +71,8 @@ jobs:
           npm install --prefix /tmp/iclusters-browser-tools --no-save --ignore-scripts playwright-core@1.62.1 @sparticuz/chromium@153.0.0
           openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=localhost -keyout "$RUNNER_TEMP/pairing.key" -out "$RUNNER_TEMP/pairing.crt"
           ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_CONNECTION_CHOICES=1 LAYOUT_ROUTES=/settings LAYOUT_WIDTHS=1280,390,320 LAYOUT_HTTPS_KEY="$RUNNER_TEMP/pairing.key" LAYOUT_HTTPS_CERT="$RUNNER_TEMP/pairing.crt" node apps/web/scripts/audit-layout.mjs
-      - name: Check saved chats, terminal panels and profile time zones
-        run: ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_ASSISTANT_CHAT=1 LAYOUT_REMOTE_PANELS=1 LAYOUT_ROUTES=/ai,/account,/tools/shell LAYOUT_WIDTHS=1280,390,320 node apps/web/scripts/audit-layout.mjs
+      - name: Check the retired AI route, terminal panels and profile time zones
+        run: ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_REMOTE_PANELS=1 LAYOUT_ROUTES=/ai,/account,/tools/shell LAYOUT_WIDTHS=1280,390,320 node apps/web/scripts/audit-layout.mjs
       - name: Check aligned General settings cards
         run: ICLUSTERS_BROWSER_TOOLS=/tmp/iclusters-browser-tools/node_modules LAYOUT_PRODUCTION=1 LAYOUT_CHECK_ACTION_ROWS=1 LAYOUT_ROUTES=/settings LAYOUT_WIDTHS=1800,1280,1024,768,390,320 node apps/web/scripts/audit-layout.mjs
       - name: Check host cards, sidebar layouts and restart notifications

@@ -18,7 +18,7 @@ const sections={
  '/backups':['Backup Jobs','Backup Archives','Restore Points','Schedules','Retention Policies','Destinations','Reports'],
  '/monitoring':['','Performance Reports','Network Traffic','Backup Trends','Temperatures','Provider Jobs','Hardware & Diagnostics'],
  '/alerts':['Active Alerts','Alert History','Alert Rules'],
- '/ai':[''],'/tools/shell':[''],'/tools/sftp':[''],'/users':['','Audit Logs'],
+ '/tools/shell':[''],'/tools/sftp':[''],'/users':['','Audit Logs'],
  '/settings':['General','Connections','Integrations','Appearance','About']
 };
 const markers=['VM','CT','pool','engine','container','job','volume','tank','disk','drive','share','membership','rule','controller'];

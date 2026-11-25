@@ -1,5 +1,7 @@
 # AI providers and models
 
+> **Suspended.** These setup instructions describe earlier releases. The AI page and provider endpoints are unavailable in the current build. Existing encrypted chats and provider settings are retained on the controller.
+
 Open **AI Assistant → Configure AI Assistant**. Select a provider to update the API format and suggested model choices, then enter an API key issued by that provider.
 
 | Provider | API format |

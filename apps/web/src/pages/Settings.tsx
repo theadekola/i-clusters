@@ -37,7 +37,11 @@ export default function Settings(){const [query,setQuery]=useSearchParams();cons
  }
  if(raw==='Security'||query.get('account')==='security')return <Navigate replace to='/account?section=Security'/>;
  const setup=query.get('setup');
- if(setup==='ai')return <Navigate replace to="/ai?setup=ai"/>;
+ if(setup==='ai'){
+  const next=new URLSearchParams(query);
+  next.delete('setup');
+  return <Navigate replace to={{pathname:'/settings',search:next.toString(),hash}}/>;
+ }
  if(category==='Connections'&&(setup==='notifications'||query.get('section')==='notifications')){
   const next=new URLSearchParams(query);
   next.set('tab','Integrations');

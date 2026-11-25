@@ -32,7 +32,7 @@ There is no formal long-term-support or backport commitment. Use the latest revi
 - Node connectors use short-lived one-use pairing codes, hashed controller-side credentials and restricted supported requests. The node service runs with privileged host access; protect and update the host. Revoke an unused connector and uninstall its local service separately.
 - Browser password visibility controls do not persist passwords. Remember this device persists sign-in for a fixed 10 days, enforced by server-signed tokens and browser expiry. Activity and refresh cannot extend it. Unchecked sessions use browser inactivity sign-out (30 minutes by default), which clears local tokens but is not server-side idle revocation.
 - Docker read-only inspection omits environment variables, arbitrary labels and volume-driver options. Missing metric samples do not count as recovery of metric alerts.
-- The AI assistant cannot execute actions. Requests use the configured fixed OpenAI endpoint and disable response storage; third-party policies still apply.
+- The AI Assistant is suspended. The controller does not send assistant requests to model providers or public search services.
 
 ## Deployment responsibilities
 
@@ -48,7 +48,7 @@ Intrusion detection and an independent authenticated security assessment are not
 
 Audit records capture submitted operations, failures and returned task identifiers. Provider tasks require later outcome checks. Database administrators can change audit records; the log is not cryptographically immutable. API reachability, successful configuration saves and queued actions are not proof of overall health, successful delivery or completed work.
 
-Snapshots on a pool are not independent off-host backups. i-Clusters does not supply a generic Docker-volume/database backup runner. Configured external notification channels (including custom webhooks/IFTTT) and AI requests can send sensitive infrastructure information outside the installation. See [PRIVACY.md](PRIVACY.md).
+Snapshots on a pool are not independent off-host backups. i-Clusters does not supply a generic Docker-volume/database backup runner. Configured external notification channels (including custom webhooks/IFTTT) can send sensitive infrastructure information outside the installation. See [PRIVACY.md](PRIVACY.md).
 
 ## Web build dependencies
 

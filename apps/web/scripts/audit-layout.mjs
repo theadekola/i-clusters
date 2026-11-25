@@ -21,9 +21,6 @@ const browserTools=process.env.ICLUSTERS_BROWSER_TOOLS;
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||(browserTools?pathToFileURL(path.join(browserTools,'playwright-core/index.mjs')).href:'playwright'));
 const browserExecutable=process.env.CHROMIUM_EXECUTABLE||(browserTools?await(await import(pathToFileURL(path.join(browserTools,'@sparticuz/chromium/build/index.js')).href)).default.executablePath():undefined);
 const root=fileURLToPath(new URL('../',import.meta.url));
-const aiMetadata=process.env.LAYOUT_CONNECTION_CHOICES?(await import('../../api/src/ai-providers.js')).publicAIProviders():null;
-const aiSchema=process.env.LAYOUT_CONNECTION_CHOICES?(await import('../../api/src/runtime-configuration.js')).configurationSchemas.ai:null;
-let aiFixture=aiSchema?{id:'ai',name:'AI Assistant',disabled:true,providers:aiMetadata,fields:aiSchema.fields.map(f=>({...f,value:f.defaultValue||'',hasValue:false}))}:null;
 const now=new Date().toISOString();
 const guests=Array.from({length:8},(_,i)=>({id:100+i,vmid:100+i,name:['Control-VM','HomeCloud','Mssql-Server','my-app-App'][i%4],node:'node01',type:i===7?'lxc':'qemu',status:'running',cpu:i+1,memory:1024**3,memoryMax:4*1024**3,disk:10*1024**3,diskMax:32*1024**3,memoryPercent:25,diskPercent:i===0?null:31,uptime:50000}));
 const nodes=[{id:'node01',name:'node01',node:'node01',status:'online',cpu:5,memoryPercent:71,uptime:100000,ip:'192.0.2.10'}];
@@ -62,7 +59,6 @@ function fixture(path){
  ]};
  if(process.env.LAYOUT_HOST_CARDS&&path==='/connections/proxmox/guests')return {guests:[{id:'100',node:'node01',name:'Fixture guest with a long name',status:'connected',detail:'Debian'},{id:'200',node:'node02',name:'Guest requiring setup',status:'disabled',detail:'Guest-agent access is disabled in this VM’s Proxmox options.'}]};
  if(path==='/auth/setup')return {registrationOpen:false};
- if(aiFixture&&path==='/configuration/ai')return aiFixture;
  if(process.env.LAYOUT_PROXMOX_SAVE&&path==='/connections/proxmox')return {cluster:null};
  if(path==='/account/profile-picture/owner')return {image:'data:image/png;base64,'+readFileSync(pathToFileURL(root+'public/assets/iclusters-192.png')).toString('base64')};
  if(path==='/auth/me')return {user:{...(process.env.LAYOUT_CHECK_LANGUAGES?{profile:{pictureVersion:'fixture'}}:{}),id:'owner',name:'Layout Review',role:process.env.LAYOUT_ROLE||'owner'}};
@@ -144,7 +140,7 @@ function actionLayoutIssues(root){
  return [...issues];
 }
 
-const routes=['/','/account','/proxmox','/docker','/storage','/network','/backups','/monitoring','/alerts','/ai','/users','/settings','/tools/sftp','/tools/shell'];
+const routes=['/','/account','/proxmox','/docker','/storage','/network','/backups','/monitoring','/alerts','/users','/settings','/tools/sftp','/tools/shell'];
 for(const [page,tabs] of Object.entries({
  proxmox:['Overview','Nodes','Virtual Machines','LXC Containers','Storage','Networks','Tasks & Logs'],
  docker:['Images','Volumes','Compose Stacks','Events','Updates'],
@@ -171,7 +167,7 @@ let restartPower='running',restartVerified=false,restartRecord=null,allowRestart
 const officeId='aaaa0000-0000-4000-8000-000000000001';
 let updateWrites=0;
 let deliveryPrefs={enabled:true,minimumSeverity:'info',channels:{discord:true,telegram:true,email:true},notifyResolved:true};
-let browser,clusterSaves=0,clusterTests=0,aiModelReads=0,aiTests=0,aiSaves=0;
+let browser,clusterSaves=0,clusterTests=0;
 try{
  if(server.listen)await server.listen();const base=server.resolvedUrls.local[0];
  browser=await chromium.launch({headless:true,...(browserExecutable?{executablePath:browserExecutable}:{}),args:['--no-sandbox','--disable-dev-shm-usage',...certArgs,...(browserTools?['--no-zygote','--single-process']:[])]});
@@ -179,7 +175,6 @@ try{
  const page=await context.newPage();
  await page.addInitScript(locale=>{if(!localStorage.getItem('iclusters_language'))localStorage.setItem('iclusters_language',locale);if(!sessionStorage.getItem('language-login-audit'))localStorage.setItem('iclusters_access_token','layout-fixture');localStorage.setItem('iclusters_last_activity',String(Date.now()));},auditLocale);
  await page.addInitScript(theme=>{if(theme)localStorage.setItem('iclusters_appearance',JSON.stringify({theme,preset:'midnight-cyan'}))},process.env.LAYOUT_THEME||'');
- const assistantThreads=new Map();
  await page.context().route('**/api/**',async route=>{
   readCount++;if(checkRefresh)await new Promise(resolve=>setTimeout(resolve,150));
   const path=new URL(route.request().url()).pathname.replace('/api','');
@@ -240,12 +235,6 @@ try{
     return route.fulfill({json:{job:{id:'failed-ssh',state:'failed',message:'Fixture SSH server rejected the key.'}}});
    }
    if(path.endsWith('/automatic-pairing/target')||path.endsWith('/automatic-docker-pairing/target'))return route.fulfill({json:{host:'192.0.2.100',connectionId:'fixture-only',controller:'https://controller.test'}});
-   if(['/configuration/ai/models','/configuration/ai/test','/configuration/ai'].includes(path)&&route.request().method()!=='GET'){
-    const posted=route.request().postDataJSON(),config=posted.configuration||posted,id=config.AI_PROVIDER||'openai';assert.ok(aiMetadata[id]);assert.equal(config.OPENAI_API_KEY,'fixture-'+id);assert.equal(config.OPENAI_API_TYPE,aiMetadata[id].types[0]);
-    if(path.endsWith('/models')){aiModelReads++;return route.fulfill({json:{result:{models:[id+'-fixture-model']}}});}
-    if(path.endsWith('/test')){aiTests++;assert.equal(posted.confirm,true);assert.equal(config.OPENAI_MODEL,id+'-fixture-model');return route.fulfill({json:{result:{verified:true,message:'AI connection verified for the entered settings. Save Configuration to apply them.'}}});}
-    aiSaves++;aiFixture={...aiFixture,disabled:false,fields:aiFixture.fields.map(f=>({...f,value:f.type==='password'?'':config[f.key]||f.value,hasValue:true}))};return route.fulfill({json:{result:aiFixture}});
-   }
   }
   if(process.env.LAYOUT_PROXMOX_SAVE){
    assert.ok(!path.includes('power-permissions'),'Saving must not open or call the removed power setup flow');
@@ -262,15 +251,6 @@ try{
    const visit=route.request().postDataJSON();
    if(Object.keys(visit??{}).length!==1||typeof visit?.feature!=='string'||!visit.feature.trim())failures.push('Invalid product visit payload');
    return route.fulfill({status:204});
-  }
-  if(path==='/ai/conversations')return route.fulfill({json:{threads:[...assistantThreads.values()].map(t=>({...t,question:t.rows[0]?.question,rows:[]}))}});
-  if(path.startsWith('/ai/conversations/'))return route.fulfill({json:{thread:assistantThreads.get(Number(path.split('/').at(-1)))}});
-  if(process.env.LAYOUT_ASSISTANT_CHAT&&path==='/ai/chat'&&route.request().method()==='POST'){
-   const {threadId,exchangeId,message}=route.request().postDataJSON();
-   const result={answer:'Fixture cluster is online.',mode:'openai'};
-   const thread=assistantThreads.get(threadId)||{id:threadId,title:message,rows:[]};
-   thread.rows.push({id:exchangeId,question:message,...result});assistantThreads.set(threadId,thread);
-   return route.fulfill({json:{result}});
   }
   if(process.env.LAYOUT_REMOTE_PANELS&&path==='/ssh/connect'){
    assert.deepEqual(route.request().postDataJSON(),{mode:'shell',target:'vm:node01:100',saved:true});
@@ -492,22 +472,12 @@ try{
     });
     failures.push(...painted.map(issue=>`${width}px ${route}: painted icon surface ${issue}`));
    }
-   if(route==='/ai'&&(!process.env.LAYOUT_ROLE||process.env.LAYOUT_ROLE==='owner')){
-    const workspace=page.locator('.assistant-workspace');
-    const drawer=workspace.locator('.history-toggle');
-    const opened=await drawer.isVisible()&&await drawer.getAttribute('aria-expanded')!=='true';
-    if(opened)await drawer.click();
-    const buttons=workspace.locator('.assistant-settings-list button');
-    await buttons.nth(1).waitFor();
-    const sizes=await buttons.evaluateAll(items=>items.map(item=>{
-     const rect=item.getBoundingClientRect(),icon=item.querySelector('svg').getBoundingClientRect();
-     return {top:rect.top,bottom:rect.bottom,height:rect.height,icon:icon.left,align:getComputedStyle(item).justifyContent};
-    }));
-    assert.equal(sizes.length,2);
-    assert.ok(sizes.every(row=>row.height>=44&&row.align==='flex-start'),'Left-aligned assistant controls with touch targets');
-    assert.ok(Math.abs(sizes[1].top-sizes[0].bottom-4)<1&&Math.abs(sizes[0].icon-sizes[1].icon)<1,'Compact gap and aligned icons');
-    assert.equal(await workspace.locator('.assistant-privacy').count(),0);
-    if(opened)await drawer.click();
+   if(route==='/ai'){
+    await page.getByRole('heading',{name:copy('Overview'),exact:true}).waitFor();
+    assert.equal(new URL(page.url()).pathname,'/');
+    assert.equal(await page.locator('.assistant-workspace').count(),0);
+    assert.equal(await page.getByRole('link',{name:copy('AI Assistant'),exact:true}).count(),0);
+    assert.equal(await page.getByRole('button',{name:copy('AI Health Check'),exact:true}).count(),0);
    }
    if(process.env.LAYOUT_REMOTE_PANELS&&route==='/account'){
     const zone=page.getByLabel('Time zone',{exact:true});
@@ -530,25 +500,6 @@ try{
     const toolbar=page.locator('.shell-session-toolbar');
     assert.equal(await toolbar.getByRole('button',{name:'Copy selected text',exact:true}).count(),1);
     assert.equal(await toolbar.getByRole('button',{name:'Fullscreen terminal',exact:true}).count(),1);
-   }
-   if(process.env.LAYOUT_ASSISTANT_CHAT&&route==='/ai'){
-    const workspace=page.locator('.assistant-workspace');
-    await workspace.waitFor();
-    await workspace.getByRole('textbox',{name:'Message'}).fill('Review the cluster');
-    await workspace.getByRole('button',{name:'Send',exact:true}).click();
-    await workspace.locator('.bubble.assistant').filter({hasText:'Fixture cluster is online.'}).first().waitFor();
-    await page.reload();
-    await page.locator('.bubble.assistant').filter({hasText:'Fixture cluster is online.'}).first().waitFor();
-    const composer=await workspace.locator('.assistant-compose').boundingBox();
-    const bounds=await workspace.boundingBox();
-    assert.ok(composer.y+composer.height>bounds.y+bounds.height-95,'Active composer stays at the bottom');
-    const history=workspace.locator('.history-toggle');
-    if(await history.isVisible())await history.click();
-    await workspace.getByRole('button',{name:'New chat',exact:true}).click();
-    await workspace.locator('.assistant-greeting').waitFor();
-    if(await history.isVisible())await history.click();
-    await workspace.locator('.assistant-history nav button').first().click();
-    await workspace.locator('.bubble.assistant').first().waitFor();
    }
    if(process.env.LAYOUT_CHECK_CHARTS==='1'&&route==='/monitoring?tab=Temperatures'){
     const reports=page.locator('.thermal-reports');
@@ -936,11 +887,6 @@ try{
     }
     await page.keyboard.press('Escape');await ssh.waitFor({state:'detached'});assert.ok(await parent.isVisible());assert.equal(await page.getByLabel(label,{exact:true}).inputValue(),host);await page.waitForFunction(()=>document.activeElement?.textContent==='Connect Automatically with SSH');assert.equal(await page.getByRole('button',{name:'Connect Automatically with SSH',exact:true}).evaluate(e=>e===document.activeElement),true);await page.getByRole('button',{name:'Connect Automatically with SSH',exact:true}).click();await ssh.waitFor();await ssh.getByLabel(copy('SSH / sudo password'),{exact:true}).waitFor();assert.equal(await ssh.getByLabel(copy('SSH / sudo password'),{exact:true}).inputValue(),'');await identity.waitFor();assert.equal(await consent.isChecked(),false);assert.ok(await install.isDisabled());if(process.env.LAYOUT_SCREENSHOTS)await ssh.screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-${setup}-ssh-popup.png`});await ssh.getByRole('button',{name:copy('Close dialog'),exact:true}).click();await ssh.waitFor({state:'detached'});
    }
-   await page.goto(base+'ai');await page.locator('.assistant-workspace').waitFor();if(await page.locator('.history-toggle').isVisible())await page.locator('.history-toggle').click();await page.getByRole('button',{name:'Configure AI Assistant',exact:true}).click();await page.getByLabel('AI provider',{exact:true}).waitFor();const beforeModels=aiModelReads,beforeTests=aiTests,beforeSaves=aiSaves;
-   for(const id of Object.keys(aiMetadata).filter(id=>id!=='n8n')){
-    await page.getByLabel('AI provider',{exact:true}).selectOption(id);assert.equal(await page.getByLabel('API key',{exact:true}).inputValue(),'');assert.equal(await page.getByLabel('API type',{exact:true}).inputValue(),aiMetadata[id].types[0]);assert.equal(await page.getByLabel('Model',{exact:true}).inputValue(),aiMetadata[id].defaultModel);assert.ok(await page.getByLabel('Model',{exact:true}).locator('option').count()>=3,'Provider has multiple model choices and a custom option');if(process.env.LAYOUT_SCREENSHOTS&&id==='anthropic')await page.locator('.modal').last().screenshot({path:`${process.env.LAYOUT_SCREENSHOTS}/${width}-ai-claude.png`});await page.getByLabel('API key',{exact:true}).fill('fixture-'+id);await page.getByRole('button',{name:'Load Models',exact:true}).click();await page.getByRole('option',{name:id+'-fixture-model',exact:true}).waitFor({state:'attached'});await page.getByLabel('Model',{exact:true}).selectOption(id+'-fixture-model');await page.getByRole('button',{name:'Test Connection',exact:true}).click();await page.getByRole('dialog',{name:'Confirm Action',exact:true}).getByRole('button',{name:'Confirm',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.configuration-feedback')?.textContent.includes('Connection test successful')).catch(async()=>{throw Error(id+': '+await page.locator('.configuration-dialog').innerText())});
-   }
-   assert.equal(aiModelReads,beforeModels+6);assert.equal(aiTests,beforeTests+6);assert.equal(aiSaves,beforeSaves);await page.getByRole('button',{name:'Save Configuration',exact:true}).click();await page.locator('.connection-success').waitFor();assert.equal(aiSaves,beforeSaves+1);await page.goto(base+'settings?tab=Connections&setup=ai');await page.getByLabel('AI provider',{exact:true}).waitFor();assert.equal(await page.getByLabel('AI provider',{exact:true}).inputValue(),'mistral');assert.equal(await page.getByLabel('Model',{exact:true}).inputValue(),'mistral-fixture-model');assert.equal(await page.getByLabel('API type',{exact:true}).inputValue(),'chat-completions');assert.equal(await page.getByLabel('API key',{exact:true}).inputValue(),'');
   }
   if(process.env.LAYOUT_PROXMOX_SAVE){
    const beforeSaves=clusterSaves,beforeTests=clusterTests;
